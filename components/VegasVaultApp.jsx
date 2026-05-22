@@ -536,13 +536,24 @@ function GameCard({ game, onGenerate, result, generating }) {
 // ── MAIN APP ──────────────────────────────────────────────────────────────────
 
 export default function VegasVaultApp() {
-  const [games] = useState(MOCK_GAMES);
+  const [games, setGames] = useState([]);
+const [trellAlerts, setTrellAlerts] = useState([]);
   const [results, setResults] = useState({});
   const [generating, setGenerating] = useState(null);
   const [activeResult, setActiveResult] = useState(null);
   const [activeGame, setActiveGame] = useState(null);
   const [filter, setFilter] = useState("ALL");
   const [error, setError] = useState(null);
+  
+  useEffect(() => {
+    fetch('/api/today')
+      .then(res => res.json())
+      .then(data => {
+        setGames(data.games || []);
+        setTrellAlerts(data.trellAlerts || []);
+      })
+      .catch(() => setGames(MOCK_GAMES));
+  }, []);
 
   const generated = Object.keys(results).length;
   const wins = Object.values(results).filter(r => r._won === true).length;
