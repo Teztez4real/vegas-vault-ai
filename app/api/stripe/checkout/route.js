@@ -6,8 +6,8 @@ export async function POST(request) {
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
     const { plan } = await request.json();
     const prices = {
+      weekly: process.env.STRIPE_WEEKLY_PRICE_ID,
       monthly: process.env.STRIPE_MONTHLY_PRICE_ID,
-      yearly: process.env.STRIPE_YEARLY_PRICE_ID,
     };
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',

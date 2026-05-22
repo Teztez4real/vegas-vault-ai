@@ -4,20 +4,20 @@ import { supabase } from '../lib/supabaseClient';
 
 const PLANS = [
   {
-    id: 'monthly',
-    label: 'Monthly',
-    price: '$29',
-    period: '/month',
+    id: 'weekly',
+    label: 'Weekly',
+    price: '$19.99',
+    period: '/week',
     features: ['Full Vegas Vault AI model', 'All MLB + tennis games', 'Auto-generated plays', 'Trell Rule alerts', 'Play history'],
     highlight: false,
   },
   {
-    id: 'yearly',
-    label: 'Yearly',
-    price: '$199',
-    period: '/year',
-    savings: 'Save $149',
-    features: ['Everything in monthly', 'Priority play generation', 'Exclusive model updates', 'Early access to new sports'],
+    id: 'monthly',
+    label: 'Monthly',
+    price: '$49.99',
+    period: '/month',
+    savings: 'Best value',
+    features: ['Everything in weekly', 'Priority play generation', 'Exclusive model updates', 'Early access to new sports'],
     highlight: true,
   }
 ];
