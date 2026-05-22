@@ -110,7 +110,6 @@ Run the FULL Vegas Vault Tennis AI Model in EXACT order. Return ONLY this JSON:
     "betType": "ML or Game Spread or Set Spread or Over/Under or First Set",
     "tier": "1 or 2 or 3 or PASS",
     "tierLabel": "🔒 LOCK or ⭐ Tier 2 or ⚠️ Tier 3 or 🚫 PASS",
-    "slot": "PUBLIC or VEGAS",
     "isScamPlay": true or false,
     "verdict": "One sentence final verdict.",
     "confidence": "HIGH or MEDIUM or LOW"
@@ -141,6 +140,19 @@ Return ONLY valid JSON. No preamble, no explanation outside the JSON.`;
 }
 
 // ── MOCK GAME DATA (will be replaced by real API) ─────────────────────────────
+
+const [games, setGames] = useState([]);
+const [trellAlerts, setTrellAlerts] = useState([]);
+
+useEffect(() => {
+  fetch('/api/today')
+    .then(res => res.json())
+    .then(data => {
+      setGames(data.games || []);
+      setTrellAlerts(data.trellAlerts || []);
+    })
+    .catch(() => setGames(MOCK_GAMES));
+}, []);
 
 const MOCK_GAMES = [
   {
