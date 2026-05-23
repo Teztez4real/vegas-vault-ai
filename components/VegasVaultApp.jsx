@@ -372,21 +372,21 @@ function PlayResult({ result, game, onClose }) {
   );
 }
 
-function GameCard({ game, onGenerate, result, generating }) {
-  const slotIsVegas = game.slot === "VEGAS";
-  const tierStyle = result ? (TIER_STYLES[result.summary.tier] || TIER_STYLES["3"]) : null;
+function GameCard({ game, onGenerate, results, generating }) {
+  const resultPublic = results[`${game.id}-PUBLIC`];
+  const resultVegas = results[`${game.id}-VEGAS`];
+  const hasAnyResult = resultPublic || resultVegas;
 
   return (
     <div style={{
       background: "#111",
-      border: `0.5px solid ${result ? (tierStyle?.border || "#333") : "#222"}`,
+      border: `0.5px solid ${hasAnyResult ? "#c9a22740" : "#222"}`,
       borderRadius: 12,
       padding: 14,
     }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
           <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 10, background: game.sport === "Tennis" ? "#0d2010" : game.sport === "NBA" ? "#1a0d00" : "#0a1a2e", color: game.sport === "Tennis" ? "#4ade80" : game.sport === "NBA" ? "#fb923c" : "#60a5fa" }}>{game.sport}</span>
-          <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 10, background: slotIsVegas ? "#1f0a0a" : "#0a1a2e", color: slotIsVegas ? "#f87171" : "#60a5fa" }}>{slotIsVegas ? "Vegas" : "Public"}</span>
         </div>
         <span style={{ fontSize: 11, color: "#555" }}>{game.time}</span>
       </div>
@@ -403,34 +403,53 @@ function GameCard({ game, onGenerate, result, generating }) {
         </div>
       </div>
 
-      <div style={{ borderTop: "0.5px solid #1e1e1e", paddingTop: 10 }}>
-        {result ? (
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: "#c9a227" }}>{result.summary.pick}</span>
-              <span style={{ fontSize: 11, color: "#666" }}>{result.summary.betType}</span>
-            </div>
-            <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 8, background: tierStyle?.bg, color: tierStyle?.text, border: `0.5px solid ${tierStyle?.border}` }}>
-              {tierStyle?.label}
-            </span>
+      <div style={{ borderTop: "0.5px solid #1e1e1e", paddingTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+        {/* Results row */}
+        {hasAnyResult && (
+          <div style={{ display: "flex", gap: 8 }}>
+            {[resultPublic, resultVegas].map((result, i) => {
+              if (!result) return null;
+              const slotLabel = i === 0 ? "PUBLIC" : "VEGAS";
+              const tierStyle = TIER_STYLES[result.summary.tier] || TIER_STYLES["3"];
+              return (
+                <div key={slotLabel} style={{ flex: 1, background: i === 0 ? "#0a1a2e" : "#1f0a0a", borderRadius: 8, padding: "6px 10px", display: "flex", flexDirection: "column", gap: 3 }}>
+                  <span style={{ fontSize: 10, color: i === 0 ? "#60a5fa" : "#f87171", fontWeight: 600 }}>{slotLabel}</span>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "#c9a227" }}>{result.summary.pick}</span>
+                    <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 6, background: tierStyle?.bg, color: tierStyle?.text, border: `0.5px solid ${tierStyle?.border}` }}>{tierStyle?.label}</span>
+                  </div>
+                  <span style={{ fontSize: 10, color: "#666" }}>{result.summary.betType}</span>
+                </div>
+              );
+            })}
           </div>
-        ) : (
-          <button
-            onClick={() => onGenerate(game)}
-            disabled={generating}
-            style={{
-              width: "100%", padding: "8px 0",
-              background: generating ? "#1a1a1a" : "#c9a2270f",
-              border: `0.5px solid ${generating ? "#333" : "#c9a227"}`,
-              borderRadius: 8, fontSize: 13,
-              color: generating ? "#555" : "#c9a227",
-              cursor: generating ? "not-allowed" : "pointer", fontWeight: 500,
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 6
-            }}
-          >
-            {generating ? "Analyzing..." : "Generate Play"}
-          </button>
         )}
+
+        {/* Analyze buttons */}
+        <div style={{ display: "flex", gap: 8 }}>
+          {["PUBLIC", "VEGAS"].map(slot => {
+            const isGenerating = generating === `${game.id}-${slot}`;
+            const hasResult = !!results[`${game.id}-${slot}`];
+            const isPublic = slot === "PUBLIC";
+            return (
+              <button
+                key={slot}
+                onClick={() => onGenerate(game, slot)}
+                disabled={!!generating}
+                style={{
+                  flex: 1, padding: "7px 0",
+                  background: hasResult ? (isPublic ? "#0a1a2e" : "#1f0a0a") : "transparent",
+                  border: `0.5px solid ${isPublic ? "#1e3a5f" : "#7f1d1d"}`,
+                  borderRadius: 8, fontSize: 12,
+                  color: generating ? "#444" : (isPublic ? "#60a5fa" : "#f87171"),
+                  cursor: generating ? "not-allowed" : "pointer", fontWeight: 500,
+                }}
+              >
+                {isGenerating ? "Analyzing..." : hasResult ? `↻ ${slot}` : `Analyze as ${slot}`}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -471,18 +490,20 @@ export default function VegasVaultApp() {
     if (filter === "Tennis") return g.sport === "Tennis";
     if (filter === "PUBLIC") return g.slot === "PUBLIC";
     if (filter === "VEGAS") return g.slot === "VEGAS";
-    if (filter === "NEW") return !results[g.id];
+    if (filter === "NEW") return !results[`${game.id}-PUBLIC`] && !results[`${game.id}-VEGAS`];
     return true;
   });
 
-  async function handleGenerate(game) {
-    setGenerating(game.id);
+  async function handleGenerate(game, slot) {
+    const key = `${game.id}-${slot}`;
+    setGenerating(key);
     setError(null);
     try {
-      const result = await generatePlay(game);
-      setResults(prev => ({ ...prev, [game.id]: result }));
+      const gameWithSlot = { ...game, slot };
+      const result = await generatePlay(gameWithSlot);
+      setResults(prev => ({ ...prev, [key]: result }));
       setActiveResult(result);
-      setActiveGame(game);
+      setActiveGame(gameWithSlot);
     } catch (e) {
       setError("Generation failed. Check your Anthropic API key in Vercel environment variables.");
     } finally {
@@ -491,8 +512,9 @@ export default function VegasVaultApp() {
   }
 
   function handleCardClick(game) {
-    if (results[game.id]) {
-      setActiveResult(results[game.id]);
+    const result = results[`${game.id}-VEGAS`] || results[`${game.id}-PUBLIC`];
+    if (result) {
+      setActiveResult(result);
       setActiveGame(game);
     }
   }
@@ -569,11 +591,11 @@ export default function VegasVaultApp() {
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 10 }}>
             {filteredGames.map(game => (
-              <div key={game.id} onClick={() => { if (results[game.id]) handleCardClick(game); }}>
+              <div key={game.id} onClick={() => handleCardClick(game)}>
                 <GameCard
                   game={game}
-                  result={results[game.id]}
-                  generating={generating === game.id}
+                  results={results}
+                  generating={generating}
                   onGenerate={handleGenerate}
                 />
               </div>
