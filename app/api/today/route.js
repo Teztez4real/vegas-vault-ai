@@ -19,29 +19,78 @@ function fmt(price) {
 }
 
 // ── MLB SLOT SYSTEM ───────────────────────────────────────────────────────────
+// PUBLIC days: Monday (1), Wednesday (3), Friday (5)
+// VEGAS days:  Tuesday (2), Thursday (4), Saturday (6), Sunday (0)
+//
+// Rules:
+// 1. First game = opposite of day base
+// 2. Same time slot = hold
+// 3. Single games in different time slots with no matching = hold
+// 4. Matching time slots (2+ games same time) = switch
+// 5. After matching group, next different time slot = switch
+// 6. Last game different time slot = switch
+// 7. Last game same time slot = hold
 
 function assignMLBSlots(games) {
-  const dayOfYear = Math.floor(
-    (new Date() - new Date(new Date().getFullYear(), 0, 0)) / 86400000
-  );
-  const dayBase = dayOfYear % 2 === 0 ? 'PUBLIC' : 'VEGAS';
+  const dayOfWeek = new Date().getDay();
+  const publicDays = [1, 3, 5];
+  const dayBase = publicDays.includes(dayOfWeek) ? 'PUBLIC' : 'VEGAS';
   const opposite = (s) => (s === 'PUBLIC' ? 'VEGAS' : 'PUBLIC');
+
+  if (games.length === 0) return games;
+
+  // Group games by time slot
+  const timeGroups = [];
+  let currentGroup = [games[0]];
+  for (let i = 1; i < games.length; i++) {
+    if (games[i].rawTime === games[i - 1].rawTime) {
+      currentGroup.push(games[i]);
+    } else {
+      timeGroups.push(currentGroup);
+      currentGroup = [games[i]];
+    }
+  }
+  timeGroups.push(currentGroup);
+
   let currentSlot = opposite(dayBase);
-  let lastTime = null;
-  return games.map((g, i) => {
-    if (i === 0) { lastTime = g.rawTime; return { ...g, slot: currentSlot }; }
-    if (g.rawTime !== lastTime) { currentSlot = opposite(currentSlot); lastTime = g.rawTime; }
-    return { ...g, slot: currentSlot };
-  });
+  const result = [];
+  let justHadMatchingGroup = false;
+
+  for (let g = 0; g < timeGroups.length; g++) {
+    const group = timeGroups[g];
+    const isFirstGroup = g === 0;
+    const isLastGroup = g === timeGroups.length - 1;
+    const isMatchingGroup = group.length > 1;
+    const isSingleGame = group.length === 1;
+
+    if (isFirstGroup) {
+      currentSlot = opposite(dayBase);
+      justHadMatchingGroup = isMatchingGroup;
+    } else if (isMatchingGroup) {
+      currentSlot = opposite(currentSlot);
+      justHadMatchingGroup = true;
+    } else if (isSingleGame) {
+      if (justHadMatchingGroup) {
+        currentSlot = opposite(currentSlot);
+        justHadMatchingGroup = false;
+      } else if (isLastGroup) {
+        currentSlot = opposite(currentSlot);
+      }
+    }
+
+    for (const game of group) {
+      result.push({ ...game, slot: currentSlot });
+    }
+  }
+
+  return result;
 }
 
 // ── CBS SPORTS PREVIEW ────────────────────────────────────────────────────────
 
 async function fetchCBSSportsPreview(awayTeam, homeTeam, sport = 'mlb') {
   try {
-    const query = `${awayTeam} vs ${homeTeam} preview ${sport}`;
-    const url = `https://www.cbssports.com/${sport}/news/`;
-    const res = await fetch(url, {
+    const res = await fetch(`https://www.cbssports.com/${sport}/news/`, {
       headers: { 'User-Agent': 'Mozilla/5.0' },
       signal: AbortSignal.timeout(4000),
     });
@@ -102,7 +151,6 @@ async function fetchOdds(sportKey) {
         betPercentage: 'Available with paid Odds API tier',
         moneyPercentage: 'Available with paid Odds API tier',
         commenceTime: game.commence_time,
-        rawGame: game,
       };
     }
     return oddsMap;
@@ -224,56 +272,43 @@ async function assembleMLBGame(g, oddsMap) {
 async function fetchNBAGames() {
   const apiKey = process.env.ODDS_API_KEY;
   if (!apiKey) return assignNBASlots(NBA_MOCK_GAMES);
-
   try {
     const oddsMap = await fetchOdds('basketball_nba');
     if (Object.keys(oddsMap).length === 0) return assignNBASlots(NBA_MOCK_GAMES);
-
     const games = await Promise.all(
       Object.entries(oddsMap).map(async ([key, odds], i) => {
         const [away, home] = key.split('|');
         const cbsPreview = await fetchCBSSportsPreview(away, home, 'nba');
         return {
-          id: 1000 + i,
-          sport: 'NBA',
-          gameType: 'playoffs',
+          id: 1000 + i, sport: 'NBA', gameType: 'playoffs',
           rawTime: odds.commenceTime,
           time: formatTime(odds.commenceTime),
           date: odds.commenceTime?.split('T')[0] || todayStr(),
           away, home,
-          awayRecord: 'See NBA standings',
-          homeRecord: 'See NBA standings',
+          awayRecord: 'See NBA standings', homeRecord: 'See NBA standings',
           awayAwayRecord: 'N/A', homeHomeRecord: 'N/A',
           awayLast5: 'N/A', homeLast5: 'N/A',
           awayLast10: 'N/A', homeLast10: 'N/A',
           awayStreak: 'N/A', homeStreak: 'N/A',
           awayML: odds.awayML, homeML: odds.homeML,
-          openingAwayML: odds.openingAwayML,
-          openingHomeML: odds.openingHomeML,
-          spread: odds.spread,
-          total: odds.total,
+          openingAwayML: odds.openingAwayML, openingHomeML: odds.openingHomeML,
+          spread: odds.spread, total: odds.total,
           lineMovement: odds.lineMovement,
-          betPercentage: odds.betPercentage,
-          moneyPercentage: odds.moneyPercentage,
+          betPercentage: odds.betPercentage, moneyPercentage: odds.moneyPercentage,
           awayRest: 'Check schedule', homeRest: 'Check schedule',
           awayB2B: false, homeB2B: false,
           awayPPG: 'N/A', awayOppPPG: 'N/A',
           homePPG: 'N/A', homeOppPPG: 'N/A',
           awayOffRating: 'N/A', awayDefRating: 'N/A', awayPace: 'N/A',
           homeOffRating: 'N/A', homeDefRating: 'N/A', homePace: 'N/A',
-          awayKeyPlayers: 'Check NBA roster',
-          homeKeyPlayers: 'Check NBA roster',
+          awayKeyPlayers: 'Check NBA roster', homeKeyPlayers: 'Check NBA roster',
           injuries: 'Check NBA injury report',
           h2hLast5: 'N/A', h2hAtHome: 'N/A',
-          seriesGame: 1,
-          awaySeriesWins: 0, homeSeriesWins: 0,
-          seriesHistory: 'N/A',
-          cbsPreview,
-          slot: 'PUBLIC',
+          seriesGame: 1, awaySeriesWins: 0, homeSeriesWins: 0,
+          seriesHistory: 'N/A', cbsPreview, slot: 'PUBLIC',
         };
       })
     );
-
     return assignNBASlots(games);
   } catch (err) {
     console.error('NBA games error:', err.message);
@@ -281,35 +316,27 @@ async function fetchNBAGames() {
   }
 }
 
-// ── TRELL RULE ALERTS ─────────────────────────────────────────────────────────
-
-async function fetchTrellAlerts() {
-  return [];
-}
-
 // ── MAIN HANDLER ──────────────────────────────────────────────────────────────
 
 export async function GET() {
   try {
-    const [scheduleGames, mlbOdds, nbaGames, trellAlerts] = await Promise.all([
+    const [scheduleGames, mlbOdds, nbaGames] = await Promise.all([
       fetchMLBSchedule(),
       fetchOdds('baseball_mlb'),
       fetchNBAGames(),
-      fetchTrellAlerts(),
     ]);
 
-    const mlbGames = await Promise.all(
+    const mlbGamesRaw = await Promise.all(
       scheduleGames.map(g => assembleMLBGame(g, mlbOdds))
     );
 
-    mlbGames.sort((a, b) => new Date(a.rawTime) - new Date(b.rawTime));
-    const mlbWithSlots = assignMLBSlots(mlbGames);
-
-    const allGames = [...mlbWithSlots, ...nbaGames];
+    mlbGamesRaw.sort((a, b) => new Date(a.rawTime) - new Date(b.rawTime));
+    const mlbGames = assignMLBSlots(mlbGamesRaw);
+    const allGames = [...mlbGames, ...nbaGames];
 
     return NextResponse.json({
       games: allGames,
-      trellAlerts,
+      trellAlerts: [],
       generatedAt: new Date().toISOString(),
     });
   } catch (err) {
