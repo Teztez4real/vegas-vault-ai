@@ -385,7 +385,7 @@ function GameCard({ game, onGenerate, result, generating }) {
     }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-          <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 10, background: game.sport === "Tennis" ? "#0d2010" : "#0a1a2e", color: game.sport === "Tennis" ? "#4ade80" : "#60a5fa" }}>{game.sport}</span>
+          <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 10, background: game.sport === "Tennis" ? "#0d2010" : game.sport === "NBA" ? "#1a0d00" : "#0a1a2e", color: game.sport === "Tennis" ? "#4ade80" : game.sport === "NBA" ? "#fb923c" : "#60a5fa" }}>{game.sport}</span>
           <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 10, background: slotIsVegas ? "#1f0a0a" : "#0a1a2e", color: slotIsVegas ? "#f87171" : "#60a5fa" }}>{slotIsVegas ? "Vegas" : "Public"}</span>
         </div>
         <span style={{ fontSize: 11, color: "#555" }}>{game.time}</span>
@@ -467,6 +467,7 @@ export default function VegasVaultApp() {
 
   const filteredGames = games.filter(g => {
     if (filter === "MLB") return g.sport === "MLB";
+    if (filter === "NBA") return g.sport === "NBA";
     if (filter === "Tennis") return g.sport === "Tennis";
     if (filter === "PUBLIC") return g.slot === "PUBLIC";
     if (filter === "VEGAS") return g.slot === "VEGAS";
@@ -496,7 +497,7 @@ export default function VegasVaultApp() {
     }
   }
 
-  const FILTERS = ["ALL", "MLB", "Tennis", "PUBLIC", "VEGAS", "NEW"];
+  const FILTERS = ["ALL", "MLB", "NBA", "Tennis", "PUBLIC", "VEGAS", "NEW"];
   const today = new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
 
   return (
