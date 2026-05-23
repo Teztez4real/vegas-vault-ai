@@ -106,6 +106,86 @@ async function fetchCBSSportsPreview(awayTeam, homeTeam, sport = 'mlb') {
   }
 }
 
+// ── ESPN H2H ──────────────────────────────────────────────────────────────────
+
+async function fetchESPNH2H(awayTeam, homeTeam, sport = 'mlb') {
+  try {
+    const query = encodeURIComponent(`${awayTeam} vs ${homeTeam} head to head ${sport}`);
+    const res = await fetch(`https://www.espn.com/${sport}/`, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' },
+      signal: AbortSignal.timeout(4000),
+    });
+    if (!res.ok) return `ESPN H2H not available for ${awayTeam} vs ${homeTeam}`;
+    const html = await res.text();
+    // Look for any mention of both teams near each other
+    const awayShort = awayTeam.split(' ').pop();
+    const homeShort = homeTeam.split(' ').pop();
+    const pattern = new RegExp(`(${awayShort}[^<]{0,200}${homeShort}|${homeShort}[^<]{0,200}${awayShort})`, 'i');
+    const match = html.match(pattern);
+    if (match) {
+      return `ESPN: ${match[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 400)}`;
+    }
+    return `ESPN H2H: Cross-reference ESPN.com for ${awayTeam} vs ${homeTeam} series history`;
+  } catch {
+    return `ESPN H2H: Cross-reference ESPN.com for ${awayTeam} vs ${homeTeam} series history`;
+  }
+}
+
+// ── COVERS H2H ────────────────────────────────────────────────────────────────
+
+async function fetchCoversH2H(awayTeam, homeTeam, sport = 'mlb') {
+  try {
+    const sportPath = sport === 'nba' ? 'nba' : 'mlb';
+    const awaySlug = awayTeam.toLowerCase().replace(/\s+/g, '-');
+    const homeSlug = homeTeam.toLowerCase().replace(/\s+/g, '-');
+    const res = await fetch(`https://www.covers.com/${sportPath}/matchup/${awaySlug}-vs-${homeSlug}-odds`, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return `Covers.com H2H: Cross-reference covers.com for ${awayTeam} vs ${homeTeam} ATS history`;
+    const html = await res.text();
+    const match = html.match(/(?:head.to.head|h2h|series|all.time)[^<]{0,600}/i);
+    if (match) {
+      return `Covers.com: ${match[0].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 500)}`;
+    }
+    return `Covers.com H2H: Cross-reference covers.com for ${awayTeam} vs ${homeTeam} ATS and SU series history`;
+  } catch {
+    return `Covers.com H2H: Cross-reference covers.com for ${awayTeam} vs ${homeTeam} ATS and SU series history`;
+  }
+}
+
+// ── ROTOWIRE INJURIES ─────────────────────────────────────────────────────────
+
+async function fetchRotoWireInjuries(awayTeam, homeTeam, sport = 'mlb') {
+  try {
+    const sportPath = sport === 'nba' ? 'basketball/nba' : 'baseball/mlb';
+    const res = await fetch(`https://www.rotowire.com/${sportPath}/injury-report.php`, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return `RotoWire injuries: Cross-reference rotowire.com for ${awayTeam} and ${homeTeam} injury report`;
+    const html = await res.text();
+    const awayShort = awayTeam.split(' ').pop();
+    const homeShort = homeTeam.split(' ').pop();
+    // Extract injury rows containing either team name
+    const rows = [];
+    const rowPattern = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+    let rowMatch;
+    while ((rowMatch = rowPattern.exec(html)) !== null) {
+      const row = rowMatch[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      if ((row.includes(awayShort) || row.includes(homeShort)) && row.length > 10 && row.length < 300) {
+        rows.push(row.slice(0, 150));
+      }
+    }
+    if (rows.length > 0) {
+      return `RotoWire: ${rows.slice(0, 6).join(' | ')}`;
+    }
+    return `RotoWire: No injuries listed for ${awayTeam} or ${homeTeam} — check rotowire.com/baseball/mlb/injury-report.php`;
+  } catch {
+    return `RotoWire injuries: Cross-reference rotowire.com for ${awayTeam} and ${homeTeam} injury report`;
+  }
+}
+
 // ── THE ODDS API ──────────────────────────────────────────────────────────────
 
 async function fetchOdds(sportKey) {
@@ -229,12 +309,15 @@ async function assembleMLBGame(g, oddsMap) {
   const awayPitcher = g.teams.away.probablePitcher;
   const oddsKey = `${away.name}|${home.name}`;
   const odds = oddsMap[oddsKey] || {};
-  const [homeRecord, awayRecord, homePitcherStats, awayPitcherStats, cbsPreview] = await Promise.all([
+  const [homeRecord, awayRecord, homePitcherStats, awayPitcherStats, cbsPreview, espnH2H, coversH2H, rotoWireInjuries] = await Promise.all([
     fetchTeamRecord(home.id),
     fetchTeamRecord(away.id),
     fetchPitcherStats(homePitcher?.id),
     fetchPitcherStats(awayPitcher?.id),
     fetchCBSSportsPreview(away.name, home.name, 'mlb'),
+    fetchESPNH2H(away.name, home.name, 'mlb'),
+    fetchCoversH2H(away.name, home.name, 'mlb'),
+    fetchRotoWireInjuries(away.name, home.name, 'mlb'),
   ]);
   return {
     id: g.gamePk, sport: 'MLB',
@@ -258,7 +341,8 @@ async function assembleMLBGame(g, oddsMap) {
     awayOffense: `${awayRecord.overall} record, ${awayRecord.last10} last 10`,
     homeOffense: `${homeRecord.overall} record, ${homeRecord.last10} last 10`,
     h2hLast5: 'See MLB Stats', h2hAtHome: 'See MLB Stats',
-    injuries: 'Check injury reports',
+    espnH2H, coversH2H,
+    injuries: rotoWireInjuries,
     lineMovement: odds.lineMovement || 'Odds API not connected',
     cbsPreview,
     seriesGame: g.seriesGameNumber || 1,
@@ -278,7 +362,12 @@ async function fetchNBAGames() {
     const games = await Promise.all(
       Object.entries(oddsMap).map(async ([key, odds], i) => {
         const [away, home] = key.split('|');
-        const cbsPreview = await fetchCBSSportsPreview(away, home, 'nba');
+        const [cbsPreview, espnH2H, coversH2H, rotoWireInjuries] = await Promise.all([
+          fetchCBSSportsPreview(away, home, 'nba'),
+          fetchESPNH2H(away, home, 'nba'),
+          fetchCoversH2H(away, home, 'nba'),
+          fetchRotoWireInjuries(away, home, 'nba'),
+        ]);
         return {
           id: 1000 + i, sport: 'NBA', gameType: 'playoffs',
           rawTime: odds.commenceTime,
@@ -302,10 +391,10 @@ async function fetchNBAGames() {
           awayOffRating: 'N/A', awayDefRating: 'N/A', awayPace: 'N/A',
           homeOffRating: 'N/A', homeDefRating: 'N/A', homePace: 'N/A',
           awayKeyPlayers: 'Check NBA roster', homeKeyPlayers: 'Check NBA roster',
-          injuries: 'Check NBA injury report',
+          injuries: rotoWireInjuries,
           h2hLast5: 'N/A', h2hAtHome: 'N/A',
           seriesGame: 1, awaySeriesWins: 0, homeSeriesWins: 0,
-          seriesHistory: 'N/A', cbsPreview, slot: 'PUBLIC',
+          seriesHistory: 'N/A', cbsPreview, espnH2H, coversH2H, slot: 'PUBLIC',
         };
       })
     );
