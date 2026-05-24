@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 // ── PROMPT ENGINE ─────────────────────────────────────────────────────────────
 
@@ -141,228 +141,195 @@ Run the FULL Vegas Vault Tennis AI Model in EXACT order. Return ONLY this JSON:
 Return ONLY valid JSON. No preamble, no explanation outside the JSON.`;
 }
 
-// ── MOCK FALLBACK DATA ────────────────────────────────────────────────────────
+// ── MOCK DATA ─────────────────────────────────────────────────────────────────
 
 const MOCK_GAMES = [
-  {
-    id: 1, sport: "MLB", slot: "PUBLIC", time: "1:10 PM CT",
-    away: "Yankees", home: "Red Sox",
-    awayRecord: "28-17", homeRecord: "22-24",
-    awayAwayRecord: "13-9", homeHomeRecord: "10-13",
-    awayLast5: "4-1", homeLast5: "2-3",
-    awayLast10: "7-3", homeLast10: "4-6",
-    awayML: "-145", homeML: "+125",
-    runLine: "Yankees -1.5 (+115)",
-    awayPitcher: "Gerrit Cole", homePitcher: "Brayan Bello",
-    awayPitcherStats: "3.21 ERA, 1.08 WHIP, 78 K in 70.1 IP, 5-2",
-    homePitcherStats: "4.87 ERA, 1.34 WHIP, 52 K in 64.0 IP, 3-5",
-    awayBullpenERA: "3.45", homeBullpenERA: "4.92",
-    awayOffense: "BA .261, OPS .778, strong 1-6 lineup",
-    homeOffense: "BA .243, OPS .714, streaky bottom third",
-    h2hLast5: "Yankees 4-1", h2hAtHome: "Yankees 3-1 at Fenway last 4",
-    injuries: "Red Sox: Rafael Devers (back, day-to-day) | Yankees: all clear",
-    lineMovement: "Opened Yankees -135, moved to -145. Sharp action on Yankees.",
-    seriesGame: "2", seriesLength: "3", date: "2026-05-22"
-  },
-  {
-    id: 2, sport: "MLB", slot: "VEGAS", time: "2:20 PM CT",
-    away: "Dodgers", home: "Padres",
-    awayRecord: "31-14", homeRecord: "26-20",
-    awayAwayRecord: "15-8", homeHomeRecord: "14-9",
-    awayLast5: "3-2", homeLast5: "4-1",
-    awayLast10: "6-4", homeLast10: "7-3",
-    awayML: "-160", homeML: "+140",
-    runLine: "Dodgers -1.5 (+105)",
-    awayPitcher: "Tyler Glasnow", homePitcher: "Dylan Cease",
-    awayPitcherStats: "2.98 ERA, 1.01 WHIP, 88 K in 75.2 IP, 6-2",
-    homePitcherStats: "2.61 ERA, 1.09 WHIP, 92 K in 79.1 IP, 5-3",
-    awayBullpenERA: "3.88", homeBullpenERA: "3.21",
-    awayOffense: "BA .268, OPS .812, MLB-best lineup depth",
-    homeOffense: "BA .254, OPS .741, Tatis/Machado carrying",
-    h2hLast5: "Dodgers 3-2", h2hAtHome: "Padres 3-1 vs Dodgers at Petco last 4",
-    injuries: "Dodgers: Freddie Freeman (ankle, questionable) | Padres: all clear",
-    lineMovement: "Opened Dodgers -150, moved to -160. Public heavy on Dodgers.",
-    seriesGame: "1", seriesLength: "3", date: "2026-05-22"
-  },
-  {
-    id: 3, sport: "MLB", slot: "PUBLIC", time: "7:05 PM CT",
-    away: "Cardinals", home: "Cubs",
-    awayRecord: "20-26", homeRecord: "24-22",
-    awayAwayRecord: "8-15", homeHomeRecord: "13-10",
-    awayLast5: "2-3", homeLast5: "3-2",
-    awayLast10: "4-6", homeLast10: "6-4",
-    awayML: "+130", homeML: "-150",
-    runLine: "Cardinals +1.5 (-135)",
-    awayPitcher: "Sonny Gray", homePitcher: "Justin Steele",
-    awayPitcherStats: "3.54 ERA, 1.19 WHIP, 61 K in 58.2 IP, 3-4",
-    homePitcherStats: "3.12 ERA, 1.14 WHIP, 74 K in 66.1 IP, 5-2",
-    awayBullpenERA: "4.44", homeBullpenERA: "3.67",
-    awayOffense: "BA .248, OPS .698, Goldschmidt cold last 2 weeks",
-    homeOffense: "BA .257, OPS .743, Swanson hot, solid top 6",
-    h2hLast5: "Cubs 3-2", h2hAtHome: "Cubs 3-0 vs Cardinals at Wrigley this season",
-    injuries: "Cardinals: Paul Goldschmidt (wrist, day-to-day) | Cubs: all clear",
-    lineMovement: "Opened Cubs -140, moved to -150. Public on Cubs.",
-    seriesGame: "3", seriesLength: "3", date: "2026-05-22"
-  },
+  { id:1, sport:"MLB", slot:"PUBLIC", time:"1:10 PM CT", away:"Yankees", home:"Red Sox", awayRecord:"28-17", homeRecord:"22-24", awayAwayRecord:"13-9", homeHomeRecord:"10-13", awayLast5:"4-1", homeLast5:"2-3", awayLast10:"7-3", homeLast10:"4-6", awayML:"-145", homeML:"+125", runLine:"Yankees -1.5 (+115)", awayPitcher:"Gerrit Cole", homePitcher:"Brayan Bello", awayPitcherStats:"3.21 ERA, 1.08 WHIP, 78 K in 70.1 IP, 5-2", homePitcherStats:"4.87 ERA, 1.34 WHIP, 52 K in 64.0 IP, 3-5", awayBullpenERA:"3.45", homeBullpenERA:"4.92", awayOffense:"BA .261, OPS .778, strong 1-6 lineup", homeOffense:"BA .243, OPS .714, streaky bottom third", h2hLast5:"Yankees 4-1", h2hAtHome:"Yankees 3-1 at Fenway last 4", injuries:"Red Sox: Rafael Devers (back, day-to-day) | Yankees: all clear", lineMovement:"Opened Yankees -135, moved to -145. Sharp action on Yankees.", seriesGame:"2", seriesLength:"3", date:"2026-05-23" },
+  { id:2, sport:"MLB", slot:"VEGAS", time:"2:20 PM CT", away:"Dodgers", home:"Padres", awayRecord:"31-14", homeRecord:"26-20", awayAwayRecord:"15-8", homeHomeRecord:"14-9", awayLast5:"3-2", homeLast5:"4-1", awayLast10:"6-4", homeLast10:"7-3", awayML:"-160", homeML:"+140", runLine:"Dodgers -1.5 (+105)", awayPitcher:"Tyler Glasnow", homePitcher:"Dylan Cease", awayPitcherStats:"2.98 ERA, 1.01 WHIP, 88 K in 75.2 IP, 6-2", homePitcherStats:"2.61 ERA, 1.09 WHIP, 92 K in 79.1 IP, 5-3", awayBullpenERA:"3.88", homeBullpenERA:"3.21", awayOffense:"BA .268, OPS .812, MLB-best lineup depth", homeOffense:"BA .254, OPS .741, Tatis/Machado carrying", h2hLast5:"Dodgers 3-2", h2hAtHome:"Padres 3-1 vs Dodgers at Petco last 4", injuries:"Dodgers: Freddie Freeman (ankle, questionable) | Padres: all clear", lineMovement:"Opened Dodgers -150, moved to -160. Public heavy on Dodgers.", seriesGame:"1", seriesLength:"3", date:"2026-05-23" },
+  { id:3, sport:"MLB", slot:"PUBLIC", time:"7:05 PM CT", away:"Cardinals", home:"Cubs", awayRecord:"20-26", homeRecord:"24-22", awayAwayRecord:"8-15", homeHomeRecord:"13-10", awayLast5:"2-3", homeLast5:"3-2", awayLast10:"4-6", homeLast10:"6-4", awayML:"+130", homeML:"-150", runLine:"Cardinals +1.5 (-135)", awayPitcher:"Sonny Gray", homePitcher:"Justin Steele", awayPitcherStats:"3.54 ERA, 1.19 WHIP, 61 K in 58.2 IP, 3-4", homePitcherStats:"3.12 ERA, 1.14 WHIP, 74 K in 66.1 IP, 5-2", awayBullpenERA:"4.44", homeBullpenERA:"3.67", awayOffense:"BA .248, OPS .698, Goldschmidt cold last 2 weeks", homeOffense:"BA .257, OPS .743, Swanson hot, solid top 6", h2hLast5:"Cubs 3-2", h2hAtHome:"Cubs 3-0 vs Cardinals at Wrigley this season", injuries:"Cardinals: Paul Goldschmidt (wrist, day-to-day) | Cubs: all clear", lineMovement:"Opened Cubs -140, moved to -150. Public on Cubs.", seriesGame:"3", seriesLength:"3", date:"2026-05-23" },
 ];
 
-// ── GENERATE PLAY ─────────────────────────────────────────────────────────────
+// ── GENERATE ──────────────────────────────────────────────────────────────────
 
 async function generatePlay(game) {
-  const prompt = game.sport === "Tennis"
-    ? buildTennisPrompt(game)
-    : buildBaseballPrompt(game);
-
   const response = await fetch("/api/generate", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+    method:"POST", headers:{"Content-Type":"application/json"},
     body: JSON.stringify({ game }),
   });
-
   if (!response.ok) throw new Error("Generate failed");
   return response.json();
 }
 
-// ── TIER STYLES ───────────────────────────────────────────────────────────────
+// ── CONSTANTS ─────────────────────────────────────────────────────────────────
 
 const TIER_STYLES = {
-  "1": { bg: "#0a2e1a", border: "#1a6b3a", text: "#4ade80", label: "LOCK" },
-  "2": { bg: "#2a1f00", border: "#b45309", text: "#fbbf24", label: "Tier 2" },
-  "3": { bg: "#1a1a1a", border: "#444", text: "#aaa", label: "Tier 3" },
-  "PASS": { bg: "#1f0a0a", border: "#7f1d1d", text: "#f87171", label: "Pass" }
+  "1":    { bg:"rgba(74,222,128,0.12)",  border:"rgba(74,222,128,0.4)",  text:"#4ade80", label:"LOCK"   },
+  "2":    { bg:"rgba(251,191,36,0.12)",  border:"rgba(251,191,36,0.4)",  text:"#fbbf24", label:"TIER 2" },
+  "3":    { bg:"rgba(148,163,184,0.08)", border:"rgba(148,163,184,0.25)",text:"#94a3b8", label:"TIER 3" },
+  "PASS": { bg:"rgba(248,113,113,0.12)", border:"rgba(248,113,113,0.4)", text:"#f87171", label:"PASS"   },
 };
 
 const CONF_STYLES = {
-  HIGH: { color: "#4ade80" },
-  MEDIUM: { color: "#fbbf24" },
-  LOW: { color: "#f87171" }
+  HIGH:   { color:"#4ade80" },
+  MEDIUM: { color:"#fbbf24" },
+  LOW:    { color:"#f87171" },
 };
 
-// ── COMPONENTS ────────────────────────────────────────────────────────────────
+const NAV_ITEMS = [
+  { icon:"⊞", label:"DASHBOARD",    active:true  },
+  { icon:"◈", label:"TODAY'S SLATE", active:false },
+  { icon:"◎", label:"AI ANALYZER",  active:false },
+  { icon:"🔒", label:"VAULT LOCKS",  active:false },
+  { icon:"↑↓", label:"ODDS MOVEMENT",active:false },
+  { icon:"◈", label:"SHARP MONEY",  active:false },
+  { icon:"◇", label:"PROPS AI",     active:false, arrow:true },
+  { icon:"↺", label:"HISTORY",      active:false },
+  { icon:"⚙", label:"SETTINGS",     active:false },
+];
 
-function AnalysisRow({ label, value }) {
+const ODDS_FEED = [
+  { team:"LAD", line:"-1.5", odds:"-110", up:true  },
+  { team:"NYY", line:"+1.5", odds:"-105", up:false },
+  { team:"HOU", line:"-1.5", odds:"-125", up:true  },
+  { team:"ATL", line:"+1.5", odds:"+102", up:false },
+  { team:"SD",  line:"-1.5", odds:"-115", up:true  },
+  { team:"PHI", line:"+1.5", odds:"-108", up:false },
+  { team:"BOS", line:"+1.5", odds:"+118", up:true  },
+  { team:"CHC", line:"-1.5", odds:"-130", up:false },
+];
+
+const INSIGHTS = [
+  { icon:"◉", text:"Sharp money is on TOR, line moving from TOR -120 to -135", time:"2m ago"  },
+  { icon:"◈", text:"Public is 78% heavy on NYY — Potential fade spot",           time:"4m ago"  },
+  { icon:"○", text:"Weather edge detected in 3 games — Impacting totals",         time:"6m ago"  },
+  { icon:"◉", text:"Reverse line movement on SD — Sharp vs public split",         time:"11m ago" },
+];
+
+// ── ANALYSIS ROW ──────────────────────────────────────────────────────────────
+
+function AnalysisRow({ index, label, value }) {
   return (
-    <div style={{ borderBottom: "0.5px solid #2a2a2a", padding: "10px 0", display: "flex", flexDirection: "column", gap: 4 }}>
-      <div style={{ fontSize: 11, fontWeight: 500, color: "#c9a227", textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</div>
-      <div style={{ fontSize: 13, color: "#ccc", lineHeight: 1.6 }}>{value}</div>
+    <div style={{ padding:"12px 0", borderBottom:"1px solid rgba(255,255,255,0.04)", display:"grid", gridTemplateColumns:"160px 1fr", gap:12, alignItems:"start" }}>
+      <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+        <span style={{ width:18, height:18, borderRadius:4, background:"rgba(201,162,39,0.15)", border:"1px solid rgba(201,162,39,0.25)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:9, color:"#c9a227", fontWeight:700, flexShrink:0 }}>{index}</span>
+        <span style={{ fontSize:9, color:"#c9a227", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.1em", lineHeight:1.3 }}>{label}</span>
+      </div>
+      <div style={{ fontSize:12, color:"#cbd5e1", lineHeight:1.7 }}>{value}</div>
     </div>
   );
 }
 
 function ScamPlayBlock({ scam }) {
-  if (!scam || !scam.active) {
-    return (
-      <div style={{ padding: "10px 14px", background: "#0d1f0d", border: "0.5px solid #1a6b3a", borderRadius: 8, marginTop: 8 }}>
-        <div style={{ fontSize: 11, color: "#4ade80", fontWeight: 500 }}>NO SCAM PLAY - Straightforward public side</div>
-      </div>
-    );
-  }
+  if (!scam?.active) return (
+    <div style={{ padding:"10px 14px", background:"rgba(74,222,128,0.05)", border:"1px solid rgba(74,222,128,0.15)", borderRadius:8, display:"flex", alignItems:"center", gap:8 }}>
+      <span style={{ color:"#4ade80" }}>✓</span>
+      <span style={{ fontSize:11, color:"#4ade80" }}>No scam play — straightforward public side</span>
+    </div>
+  );
   return (
-    <div style={{ background: "#1a0a0a", border: "1px solid #c9a227", borderRadius: 8, padding: "12px 14px", marginTop: 8 }}>
-      <div style={{ fontSize: 12, fontWeight: 600, color: "#c9a227", marginBottom: 8 }}>SCAM PLAY IDENTIFIED</div>
-      <div style={{ fontSize: 12, color: "#f87171", marginBottom: 6 }}>
-        <span style={{ fontWeight: 500 }}>WHY IT LOOKS WRONG: </span>{scam.whyItLooksWrong}
+    <div style={{ background:"rgba(201,162,39,0.04)", border:"1px solid rgba(201,162,39,0.2)", borderRadius:10, padding:"12px 14px" }}>
+      <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#c9a227", background:"rgba(201,162,39,0.1)", padding:"3px 8px", borderRadius:4, display:"inline-block", marginBottom:10 }}>⚡ SCAM PLAY</div>
+      <div style={{ marginBottom:8 }}>
+        <div style={{ fontSize:9, color:"#f87171", fontWeight:700, letterSpacing:"0.08em", marginBottom:3 }}>WHY IT LOOKS WRONG</div>
+        <div style={{ fontSize:12, color:"#fca5a5", lineHeight:1.6 }}>{scam.whyItLooksWrong}</div>
       </div>
-      <div style={{ fontSize: 12, color: "#4ade80" }}>
-        <span style={{ fontWeight: 500 }}>WHY IT IS ACTUALLY CORRECT: </span>{scam.whyItsActuallyCorrect}
+      <div>
+        <div style={{ fontSize:9, color:"#4ade80", fontWeight:700, letterSpacing:"0.08em", marginBottom:3 }}>WHY IT'S ACTUALLY CORRECT</div>
+        <div style={{ fontSize:12, color:"#86efac", lineHeight:1.6 }}>{scam.whyItsActuallyCorrect}</div>
       </div>
     </div>
   );
 }
+
+// ── PLAY RESULT MODAL ─────────────────────────────────────────────────────────
 
 function PlayResult({ result, game, onClose }) {
   const [expanded, setExpanded] = useState(false);
   const tier = TIER_STYLES[result.summary.tier] || TIER_STYLES["3"];
   const conf = CONF_STYLES[result.summary.confidence] || CONF_STYLES.MEDIUM;
   const a = result.analysis;
+  const isVegas = result.summary.slot === "VEGAS";
+  const isTennis = game.sport === "Tennis";
+
+  const baseballSteps = [
+    { label:"Matchup Foundation", key:"matchupFoundation" },
+    { label:"Records",            key:"records" },
+    { label:"Recent Form",        key:"recentForm" },
+    { label:"Head to Head",       key:"headToHead" },
+    { label:"Hitter & Lineup",    key:"hitterLineup" },
+    { label:"Pitching",           key:"pitching" },
+    { label:"Game Script",        key:"gameScript" },
+    { label:"Series Context",     key:"seriesContext" },
+    { label:"Trell Rule",         key:"trellRule" },
+    { label:"Pricing",            key:"pricingComprehension" },
+    { label:"Line Movement",      key:"lineMovement" },
+    { label:"Vegas vs Public",    key:"vegasVsPublic" },
+  ];
+  const tennisSteps = [
+    { label:"Matchup Foundation",  key:"matchupFoundation" },
+    { label:"Rankings & Tier",     key:"rankingsTier" },
+    { label:"Surface Analysis",    key:"surfaceAnalysis" },
+    { label:"Recent Form",         key:"recentForm" },
+    { label:"Tournament Context",  key:"tournamentContext" },
+    { label:"Fatigue & Schedule",  key:"fatigueScheduling" },
+    { label:"Head to Head",        key:"headToHead" },
+    { label:"Serve & Return",      key:"serveReturn" },
+    { label:"Mental & Psych",      key:"mentalPsychological" },
+    { label:"Injury Check",        key:"injuryCheck" },
+    { label:"Pricing Intelligence",key:"pricingIntelligence" },
+    { label:"Game Script",         key:"gameScript" },
+  ];
+  const steps = isTennis ? tennisSteps : baseballSteps;
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-      <div style={{ background: "#0f0f0f", border: "0.5px solid #2a2a2a", borderRadius: 16, width: "100%", maxWidth: 640, maxHeight: "90vh", overflowY: "auto" }}>
-        <div style={{ padding: "16px 20px", borderBottom: "0.5px solid #2a2a2a", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ fontSize: 13, color: "#666" }}>
-            {game.sport === "Tennis" ? `${game.player1} vs ${game.player2}` : `${game.away} @ ${game.home}`} - {game.time}
+    <div onClick={e => e.target===e.currentTarget && onClose()} style={{ position:"fixed", inset:0, zIndex:200, background:"rgba(0,0,0,0.8)", backdropFilter:"blur(16px)", display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
+      <div style={{ background:"#080c14", border:"1px solid rgba(255,255,255,0.08)", borderRadius:20, width:"100%", maxWidth:660, maxHeight:"92vh", overflowY:"auto", boxShadow:"0 40px 100px rgba(0,0,0,0.9)" }}>
+
+        {/* Header */}
+        <div style={{ padding:"14px 20px", borderBottom:"1px solid rgba(255,255,255,0.06)", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+            <span style={{ fontSize:10, fontWeight:700, letterSpacing:"0.1em", color: game.sport==="MLB" ? "#60a5fa" : game.sport==="NBA" ? "#fb923c" : "#a78bfa", background: game.sport==="MLB" ? "rgba(96,165,250,0.1)" : game.sport==="NBA" ? "rgba(251,146,60,0.1)" : "rgba(167,139,250,0.1)", padding:"2px 8px", borderRadius:4 }}>{game.sport}</span>
+            <span style={{ fontSize:12, color:"#475569" }}>{isTennis ? `${game.player1} vs ${game.player2}` : `${game.away} @ ${game.home}`} · {game.time}</span>
           </div>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: "#666", fontSize: 20, cursor: "pointer" }}>x</button>
+          <button onClick={onClose} style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:8, width:28, height:28, cursor:"pointer", color:"#64748b", fontSize:13, display:"flex", alignItems:"center", justifyContent:"center" }}>✕</button>
         </div>
 
-        <div style={{ padding: "20px", borderBottom: "0.5px solid #2a2a2a" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-            <div style={{ background: tier.bg, border: `1px solid ${tier.border}`, borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 600, color: tier.text }}>
-              {tier.label}
-            </div>
-            <div style={{ background: result.summary.slot === "VEGAS" ? "#1f0a0a" : "#0a1a2e", border: `0.5px solid ${result.summary.slot === "VEGAS" ? "#7f1d1d" : "#1e3a5f"}`, borderRadius: 8, padding: "5px 12px", fontSize: 12, color: result.summary.slot === "VEGAS" ? "#f87171" : "#60a5fa" }}>
-              {result.summary.slot === "VEGAS" ? "Vegas Slot" : "Public Slot"}
-            </div>
-            {result.summary.isScamPlay && (
-              <div style={{ background: "#1a1000", border: "0.5px solid #c9a227", borderRadius: 8, padding: "5px 12px", fontSize: 12, color: "#c9a227" }}>
-                Scam Play
-              </div>
-            )}
+        {/* Pick hero */}
+        <div style={{ padding:"22px 22px 18px" }}>
+          <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginBottom:18 }}>
+            <span style={{ fontSize:10, fontWeight:700, letterSpacing:"0.1em", padding:"4px 12px", borderRadius:6, background:tier.bg, border:`1px solid ${tier.border}`, color:tier.text }}>{tier.label}</span>
+            <span style={{ fontSize:10, fontWeight:700, padding:"4px 12px", borderRadius:6, background: isVegas ? "rgba(248,113,113,0.08)" : "rgba(96,165,250,0.08)", border: isVegas ? "1px solid rgba(248,113,113,0.25)" : "1px solid rgba(96,165,250,0.25)", color: isVegas ? "#f87171" : "#60a5fa", letterSpacing:"0.08em" }}>{isVegas ? "VEGAS SLOT" : "PUBLIC SLOT"}</span>
+            {result.summary.isScamPlay && <span style={{ fontSize:10, fontWeight:700, padding:"4px 12px", borderRadius:6, background:"rgba(201,162,39,0.08)", border:"1px solid rgba(201,162,39,0.25)", color:"#c9a227", letterSpacing:"0.08em" }}>⚡ SCAM PLAY</span>}
+            <span style={{ fontSize:10, padding:"4px 12px", borderRadius:6, background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)", color:conf.color, marginLeft:"auto" }}>Confidence: <strong>{result.summary.confidence}</strong></span>
           </div>
-
-          <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 8 }}>
-            <div style={{ fontSize: 28, fontWeight: 700, color: "#fff" }}>{result.summary.pick}</div>
-            <div style={{ fontSize: 18, fontWeight: 500, color: "#c9a227" }}>{result.summary.betType}</div>
+          <div style={{ display:"flex", alignItems:"baseline", gap:12, marginBottom:10 }}>
+            <span style={{ fontSize:30, fontWeight:800, color:"#f8fafc", letterSpacing:"-0.02em" }}>{result.summary.pick}</span>
+            <span style={{ fontSize:17, fontWeight:600, color:"#c9a227", background:"rgba(201,162,39,0.1)", padding:"2px 10px", borderRadius:6, border:"1px solid rgba(201,162,39,0.2)" }}>{result.summary.betType}</span>
           </div>
-
-          <div style={{ fontSize: 13, color: "#999", marginBottom: 14, lineHeight: 1.6 }}>{result.summary.verdict}</div>
-
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <div style={{ fontSize: 12, color: "#555" }}>Confidence:</div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: conf.color }}>{result.summary.confidence}</div>
-          </div>
+          <p style={{ fontSize:13, color:"#94a3b8", lineHeight:1.7, margin:0 }}>{result.summary.verdict}</p>
         </div>
 
-        <div style={{ padding: "16px 20px", borderBottom: "0.5px solid #2a2a2a", background: "#0a0a0a" }}>
-          <div style={{ fontSize: 11, color: "#c9a227", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>Final Verdict</div>
-          <div style={{ fontSize: 14, color: "#e5e5e5", lineHeight: 1.7 }}>{result.finalVerdict}</div>
+        {/* Final verdict */}
+        <div style={{ margin:"0 22px 18px", padding:"14px 16px", background:"rgba(201,162,39,0.04)", border:"1px solid rgba(201,162,39,0.12)", borderRadius:10 }}>
+          <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#c9a227", marginBottom:8 }}>FINAL VERDICT</div>
+          <p style={{ fontSize:13, color:"#e2e8f0", lineHeight:1.75, margin:0 }}>{result.finalVerdict}</p>
         </div>
 
-        <div style={{ padding: "12px 20px", borderBottom: expanded ? "0.5px solid #2a2a2a" : "none" }}>
-          <button
-            onClick={() => setExpanded(!expanded)}
-            style={{ width: "100%", background: "#1a1a1a", border: "0.5px solid #333", borderRadius: 8, padding: "10px", fontSize: 13, color: "#aaa", cursor: "pointer" }}
-          >
-            {expanded ? "Hide full analysis" : "See full Vegas Vault breakdown"}
+        {/* Expand */}
+        <div style={{ padding:"0 22px 18px" }}>
+          <button onClick={() => setExpanded(!expanded)} style={{ width:"100%", padding:"11px", background: expanded ? "rgba(201,162,39,0.06)" : "rgba(255,255,255,0.03)", border:`1px solid ${expanded ? "rgba(201,162,39,0.2)" : "rgba(255,255,255,0.07)"}`, borderRadius:10, fontSize:12, fontWeight:500, color: expanded ? "#c9a227" : "#64748b", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+            <span style={{ fontSize:9, transform: expanded ? "rotate(180deg)" : "none", display:"inline-block", transition:"transform 0.2s" }}>▼</span>
+            {expanded ? "Collapse full breakdown" : "View full Vegas Vault breakdown"}
           </button>
         </div>
 
         {expanded && (
-          <div style={{ padding: "4px 20px 20px" }}>
-            {game.sport === "Tennis" ? (
-              <>
-                <AnalysisRow label="1. Matchup Foundation" value={a.matchupFoundation} />
-                <AnalysisRow label="2. Rankings and Tier" value={a.rankingsTier} />
-                <AnalysisRow label="3. Surface Analysis" value={a.surfaceAnalysis} />
-                <AnalysisRow label="4. Recent Form" value={a.recentForm} />
-                <AnalysisRow label="5. Tournament Context" value={a.tournamentContext} />
-                <AnalysisRow label="6. Fatigue and Scheduling" value={a.fatigueScheduling} />
-                <AnalysisRow label="7. Head to Head" value={a.headToHead} />
-                <AnalysisRow label="8. Serve and Return" value={a.serveReturn} />
-                <AnalysisRow label="9. Mental and Psychological" value={a.mentalPsychological} />
-                <AnalysisRow label="10. Injury Check" value={a.injuryCheck} />
-                <AnalysisRow label="11. Pricing Intelligence" value={a.pricingIntelligence} />
-                <AnalysisRow label="12. Game Script" value={a.gameScript} />
-              </>
-            ) : (
-              <>
-                <AnalysisRow label="1. Matchup Foundation" value={a.matchupFoundation} />
-                <AnalysisRow label="2. Records" value={a.records} />
-                <AnalysisRow label="3. Recent Form" value={a.recentForm} />
-                <AnalysisRow label="4. Head to Head" value={a.headToHead} />
-                <AnalysisRow label="5. Hitter and Lineup" value={a.hitterLineup} />
-                <AnalysisRow label="6. Pitching" value={a.pitching} />
-                <AnalysisRow label="7. Game Script" value={a.gameScript} />
-                <AnalysisRow label="8. Series Context" value={a.seriesContext} />
-                <AnalysisRow label="9. Trell Rule" value={a.trellRule} />
-                <AnalysisRow label="10. Pricing Comprehension" value={a.pricingComprehension} />
-                <AnalysisRow label="11. Line Movement" value={a.lineMovement} />
-                <AnalysisRow label="12. Vegas vs Public" value={a.vegasVsPublic} />
-              </>
-            )}
-            <div style={{ marginTop: 8 }}>
-              <div style={{ fontSize: 11, color: "#c9a227", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>Scam Play</div>
+          <div style={{ padding:"0 22px 22px" }}>
+            <div style={{ borderTop:"1px solid rgba(255,255,255,0.05)", paddingTop:4 }}>
+              {steps.map((s,i) => <AnalysisRow key={s.key} index={i+1} label={s.label} value={a[s.key]||"—"} />)}
+            </div>
+            <div style={{ marginTop:18 }}>
+              <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#c9a227", marginBottom:10 }}>SCAM PLAY ANALYSIS</div>
               <ScamPlayBlock scam={a.scamPlay} />
             </div>
           </div>
@@ -372,85 +339,246 @@ function PlayResult({ result, game, onClose }) {
   );
 }
 
-function GameCard({ game, onGenerate, results, generating }) {
+// ── GAME CARD ─────────────────────────────────────────────────────────────────
+
+function TeamLogo({ abbr, size = 36 }) {
+  const colors = {
+    Yankees:["#003087","#E4002C"], RedSox:["#BD3039","#0C2340"], Dodgers:["#005A9C","#EF3E42"],
+    Padres:["#2F241D","#FFC425"], Cardinals:["#C41E3A","#0C2340"], Cubs:["#0E3386","#CC3433"],
+    Pirates:["#27251F","#FDB827"], "Blue Jays":["#134A8E","#E8291C"], Tigers:["#0C2C56","#FA4616"],
+    Orioles:["#DF4601","#000000"], Twins:["#002B5C","#D31145"], "Red Sox":["#BD3039","#0C2340"],
+    Guardians:["#0C2340","#E31937"], Phillies:["#E81828","#002D72"], Rays:["#092C5C","#8FBCE6"],
+    Yankees2:["#003087","#E4002C"], default:["#1e3a5f","#60a5fa"],
+  };
+  const [bg, accent] = colors[abbr] || colors.default;
+  const initials = abbr.replace(/\s+/g,'').slice(0,2).toUpperCase();
+  return (
+    <div style={{ width:size, height:size, borderRadius:8, background:`linear-gradient(135deg, ${bg}, ${bg}dd)`, border:`1px solid ${accent}40`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:size*0.33, fontWeight:800, color:accent, flexShrink:0, letterSpacing:"-0.02em" }}>
+      {initials}
+    </div>
+  );
+}
+
+function GameCard({ game, onGenerate, results, generating, onCardClick }) {
   const resultPublic = results[`${game.id}-PUBLIC`];
-  const resultVegas = results[`${game.id}-VEGAS`];
+  const resultVegas  = results[`${game.id}-VEGAS`];
   const hasAnyResult = resultPublic || resultVegas;
+  const bestResult = resultVegas || resultPublic;
+  const tier = bestResult ? (TIER_STYLES[bestResult.summary.tier] || TIER_STYLES["3"]) : null;
+  const isTennis = game.sport === "Tennis";
+  const sportColor = game.sport==="MLB" ? "#60a5fa" : game.sport==="NBA" ? "#fb923c" : "#a78bfa";
+  const sportBg    = game.sport==="MLB" ? "rgba(96,165,250,0.1)" : game.sport==="NBA" ? "rgba(251,146,60,0.1)" : "rgba(167,139,250,0.1)";
+  const awayName = isTennis ? game.player1 : game.away;
+  const homeName = isTennis ? game.player2 : game.home;
+  const awayRec  = isTennis ? `#${game.player1Ranking}` : game.awayRecord;
+  const homeRec  = isTennis ? `#${game.player2Ranking}` : game.homeRecord;
+
+  // Simulated public/sharp split for display
+  const publicPct = 30 + ((game.id * 17) % 45);
+  const sharpPct  = 100 - publicPct;
 
   return (
-    <div style={{
-      background: "#111",
-      border: `0.5px solid ${hasAnyResult ? "#c9a22740" : "#222"}`,
-      borderRadius: 12,
-      padding: 14,
-    }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-          <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 10, background: game.sport === "Tennis" ? "#0d2010" : game.sport === "NBA" ? "#1a0d00" : "#0a1a2e", color: game.sport === "Tennis" ? "#4ade80" : game.sport === "NBA" ? "#fb923c" : "#60a5fa" }}>{game.sport}</span>
+    <div
+      onClick={() => hasAnyResult && onCardClick(game)}
+      style={{
+        background: hasAnyResult ? "linear-gradient(145deg, #0d1520, #0a1218)" : "#0b0f18",
+        border: `1px solid ${hasAnyResult ? (tier?.border || "rgba(255,255,255,0.08)") : "rgba(255,255,255,0.06)"}`,
+        borderRadius:14, padding:"14px 16px",
+        cursor: hasAnyResult ? "pointer" : "default",
+        transition:"all 0.2s ease",
+        boxShadow: hasAnyResult ? `0 4px 24px ${tier?.border?.replace("0.4","0.08") || "transparent"}` : "none",
+        position:"relative", overflow:"hidden",
+      }}
+    >
+      {/* Gold accent top border on locked */}
+      {tier?.label === "LOCK" && <div style={{ position:"absolute", top:0, left:0, right:0, height:2, background:"linear-gradient(90deg, transparent, #c9a227, transparent)" }} />}
+
+      {/* Top row */}
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+        <span style={{ fontSize:9, fontWeight:700, letterSpacing:"0.1em", color:sportColor, background:sportBg, padding:"2px 7px", borderRadius:4 }}>{game.sport}</span>
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+          <span style={{ fontSize:10, color:"#475569" }}>{game.time}</span>
+          <span style={{ fontSize:14, color:"#2d3748", cursor:"pointer" }}>☆</span>
         </div>
-        <span style={{ fontSize: 11, color: "#555" }}>{game.time}</span>
       </div>
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-        <div style={{ textAlign: "center", flex: 1 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: "#e5e5e5" }}>{game.sport === "Tennis" ? game.player1 : game.away}</div>
-          <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>{game.sport === "Tennis" ? `#${game.player1Ranking}` : game.awayRecord}</div>
-        </div>
-        <div style={{ fontSize: 11, color: "#444", padding: "0 8px" }}>{game.sport === "Tennis" ? "vs" : "@"}</div>
-        <div style={{ textAlign: "center", flex: 1 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: "#e5e5e5" }}>{game.sport === "Tennis" ? game.player2 : game.home}</div>
-          <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>{game.sport === "Tennis" ? `#${game.player2Ranking}` : game.homeRecord}</div>
-        </div>
-      </div>
-
-      <div style={{ borderTop: "0.5px solid #1e1e1e", paddingTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
-        {/* Results row */}
-        {hasAnyResult && (
-          <div style={{ display: "flex", gap: 8 }}>
-            {[resultPublic, resultVegas].map((result, i) => {
-              if (!result) return null;
-              const slotLabel = i === 0 ? "PUBLIC" : "VEGAS";
-              const tierStyle = TIER_STYLES[result.summary.tier] || TIER_STYLES["3"];
-              return (
-                <div key={slotLabel} style={{ flex: 1, background: i === 0 ? "#0a1a2e" : "#1f0a0a", borderRadius: 8, padding: "6px 10px", display: "flex", flexDirection: "column", gap: 3 }}>
-                  <span style={{ fontSize: 10, color: i === 0 ? "#60a5fa" : "#f87171", fontWeight: 600 }}>{slotLabel}</span>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: "#c9a227" }}>{result.summary.pick}</span>
-                    <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 6, background: tierStyle?.bg, color: tierStyle?.text, border: `0.5px solid ${tierStyle?.border}` }}>{tierStyle?.label}</span>
-                  </div>
-                  <span style={{ fontSize: 10, color: "#666" }}>{result.summary.betType}</span>
-                </div>
-              );
-            })}
+      {/* Matchup */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 28px 1fr", alignItems:"center", gap:8, marginBottom:14 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+          <TeamLogo abbr={awayName} size={34} />
+          <div>
+            <div style={{ fontSize:9, color:"#4a5568", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:1 }}>{isTennis ? "PLAYER 1" : "AWAY"}</div>
+            <div style={{ fontSize:13, fontWeight:800, color:"#f1f5f9", letterSpacing:"-0.01em" }}>{awayName.toUpperCase()}</div>
+            <div style={{ fontSize:10, color:"#475569", marginTop:1 }}>{awayRec}</div>
           </div>
-        )}
+        </div>
+        <div style={{ textAlign:"center", fontSize:10, color:"#2d3748", fontWeight:700 }}>@</div>
+        <div style={{ display:"flex", alignItems:"center", gap:8, justifyContent:"flex-end" }}>
+          <div style={{ textAlign:"right" }}>
+            <div style={{ fontSize:9, color:"#4a5568", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:1 }}>{isTennis ? "PLAYER 2" : "HOME"}</div>
+            <div style={{ fontSize:13, fontWeight:800, color:"#f1f5f9", letterSpacing:"-0.01em" }}>{homeName.toUpperCase()}</div>
+            <div style={{ fontSize:10, color:"#475569", marginTop:1 }}>{homeRec}</div>
+          </div>
+          <TeamLogo abbr={homeName} size={34} />
+        </div>
+      </div>
 
-        {/* Analyze buttons */}
-        <div style={{ display: "flex", gap: 8 }}>
-          {["PUBLIC", "VEGAS"].map(slot => {
-            const isGenerating = generating === `${game.id}-${slot}`;
-            const hasResult = !!results[`${game.id}-${slot}`];
-            const isPublic = slot === "PUBLIC";
+      {/* Public/Sharp bar */}
+      <div style={{ marginBottom:12 }}>
+        <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+          <span style={{ fontSize:9, color:"#3b82f6", fontWeight:600, letterSpacing:"0.06em" }}>PUBLIC BETTING {publicPct}%</span>
+          <span style={{ fontSize:9, color:"#10b981", fontWeight:600, letterSpacing:"0.06em" }}>SHARP MONEY {sharpPct}%</span>
+        </div>
+        <div style={{ height:3, borderRadius:2, background:"rgba(255,255,255,0.06)", overflow:"hidden", display:"flex" }}>
+          <div style={{ width:`${publicPct}%`, background:"linear-gradient(90deg, #1d4ed8, #3b82f6)", borderRadius:"2px 0 0 2px" }} />
+          <div style={{ width:`${sharpPct}%`, background:"linear-gradient(90deg, #059669, #10b981)", borderRadius:"0 2px 2px 0" }} />
+        </div>
+      </div>
+
+      {/* Tier badge if analyzed */}
+      {bestResult && tier && (
+        <div style={{ display:"flex", justifyContent:"center", marginBottom:10 }}>
+          <div style={{ padding:"5px 20px", borderRadius:8, background:tier.bg, border:`1px solid ${tier.border}`, fontSize:11, fontWeight:800, color:tier.text, letterSpacing:"0.1em", display:"flex", alignItems:"center", gap:6 }}>
+            {tier.label==="LOCK" && "🔒 "}{tier.label}
+          </div>
+        </div>
+      )}
+
+      {/* Result mini strip */}
+      {hasAnyResult && (
+        <div style={{ display:"flex", gap:6, marginBottom:10 }}>
+          {[["PUBLIC",resultPublic],["VEGAS",resultVegas]].map(([slot,result]) => {
+            if (!result) return null;
+            const ts = TIER_STYLES[result.summary.tier]||TIER_STYLES["3"];
+            const iv = slot==="VEGAS";
             return (
-              <button
-                key={slot}
-                onClick={() => onGenerate(game, slot)}
-                disabled={!!generating}
-                style={{
-                  flex: 1, padding: "7px 0",
-                  background: hasResult ? (isPublic ? "#0a1a2e" : "#1f0a0a") : "transparent",
-                  border: `0.5px solid ${isPublic ? "#1e3a5f" : "#7f1d1d"}`,
-                  borderRadius: 8, fontSize: 12,
-                  color: generating ? "#444" : (isPublic ? "#60a5fa" : "#f87171"),
-                  cursor: generating ? "not-allowed" : "pointer", fontWeight: 500,
-                }}
-              >
-                {isGenerating ? "Analyzing..." : hasResult ? `↻ ${slot}` : `Analyze as ${slot}`}
-              </button>
+              <div key={slot} style={{ flex:1, background: iv?"rgba(248,113,113,0.05)":"rgba(96,165,250,0.05)", border: iv?"1px solid rgba(248,113,113,0.15)":"1px solid rgba(96,165,250,0.15)", borderRadius:7, padding:"6px 8px" }}>
+                <div style={{ fontSize:8, fontWeight:700, letterSpacing:"0.1em", color:iv?"#f87171":"#60a5fa", marginBottom:3 }}>{slot}</div>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                  <span style={{ fontSize:11, fontWeight:700, color:"#f8fafc" }}>{result.summary.pick}</span>
+                  <span style={{ fontSize:8, fontWeight:700, padding:"2px 5px", borderRadius:4, background:ts.bg, color:ts.text, border:`1px solid ${ts.border}` }}>{ts.label}</span>
+                </div>
+                <div style={{ fontSize:9, color:"#64748b", marginTop:1 }}>{result.summary.betType}</div>
+              </div>
             );
           })}
         </div>
+      )}
+
+      {/* Buttons */}
+      <div style={{ display:"flex", gap:8 }}>
+        {["PUBLIC","VEGAS"].map(slot => {
+          const key = `${game.id}-${slot}`;
+          const isGen = generating===key;
+          const hasRes = !!results[key];
+          const iv = slot==="VEGAS";
+          return (
+            <button key={slot} onClick={e=>{e.stopPropagation(); onGenerate(game,slot);}} disabled={!!generating} style={{ flex:1, padding:"8px 0", background: isGen?(iv?"rgba(248,113,113,0.12)":"rgba(96,165,250,0.12)"):(hasRes?(iv?"rgba(248,113,113,0.06)":"rgba(96,165,250,0.06)"):"rgba(255,255,255,0.03)"), border:`1px solid ${(isGen||hasRes)?(iv?"rgba(248,113,113,0.35)":"rgba(96,165,250,0.35)"):(iv?"rgba(248,113,113,0.15)":"rgba(96,165,250,0.15)")}`, borderRadius:8, fontSize:10, fontWeight:700, letterSpacing:"0.06em", color:generating&&!isGen?"#2d3748":(iv?"#f87171":"#60a5fa"), cursor:generating?"not-allowed":"pointer" }}>
+              {isGen ? "ANALYZING…" : hasRes ? `↻ ${slot}` : `Analyze as ${slot}`}
+            </button>
+          );
+        })}
       </div>
+    </div>
+  );
+}
+
+// ── SPARKLINE SVG ─────────────────────────────────────────────────────────────
+
+function Sparkline({ color = "#4ade80", width = 80, height = 36 }) {
+  const pts = [18,22,14,28,20,32,24,36,28,30,38,32].map((v,i) => `${i*(width/11)},${height - (v/40)*height}`).join(" ");
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.8" />
+    </svg>
+  );
+}
+
+// ── RADAR CHART ───────────────────────────────────────────────────────────────
+
+function RadarChart() {
+  const cx=80, cy=80, r=60;
+  const rings = [0.25,0.5,0.75,1].map(f => ({r:r*f}));
+  const dots = [
+    {angle:-90, dist:0.85, color:"#3b82f6"},
+    {angle:-10, dist:0.70, color:"#10b981"},
+    {angle:50,  dist:0.55, color:"#f87171"},
+    {angle:130, dist:0.80, color:"#c9a227"},
+    {angle:200, dist:0.65, color:"#a78bfa"},
+  ];
+  const toDeg = (a, d) => ({
+    x: cx + Math.cos(a*Math.PI/180)*r*d,
+    y: cy + Math.sin(a*Math.PI/180)*r*d,
+  });
+  const spokes = [0,45,90,135,180,225,270,315].map(a => ({
+    x1:cx, y1:cy,
+    x2: cx + Math.cos(a*Math.PI/180)*r,
+    y2: cy + Math.sin(a*Math.PI/180)*r,
+  }));
+  const filledPts = dots.map(d => toDeg(d.angle, d.dist));
+  const polyStr = filledPts.map(p=>`${p.x},${p.y}`).join(" ");
+
+  return (
+    <svg width={160} height={160} viewBox="0 0 160 160">
+      {rings.map((rng,i) => <circle key={i} cx={cx} cy={cy} r={rng.r} fill="none" stroke="rgba(96,165,250,0.1)" strokeWidth="1" />)}
+      {spokes.map((s,i) => <line key={i} x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2} stroke="rgba(96,165,250,0.08)" strokeWidth="1" />)}
+      <polygon points={polyStr} fill="rgba(59,130,246,0.15)" stroke="rgba(59,130,246,0.5)" strokeWidth="1.5" />
+      {dots.map((d,i) => {
+        const p = toDeg(d.angle, d.dist);
+        return <circle key={i} cx={p.x} cy={p.y} r={3.5} fill={d.color} opacity="0.9" />;
+      })}
+    </svg>
+  );
+}
+
+// ── CONFIDENCE MONITOR ────────────────────────────────────────────────────────
+
+function ConfidenceChart() {
+  const pts = [20,35,28,45,38,52,42,60,55,58,65,70,62,75,70].map((v,i) => `${i*(180/14)},${80-(v/80)*70}`).join(" ");
+  return (
+    <svg width="100%" height="60" viewBox="0 0 180 80" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="confGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#4ade80" stopOpacity="0.3" />
+          <stop offset="100%" stopColor="#4ade80" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <polygon points={`0,80 ${pts} 180,80`} fill="url(#confGrad)" />
+      <polyline points={pts} fill="none" stroke="#4ade80" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+// ── ODDS TICKER ───────────────────────────────────────────────────────────────
+
+function OddsTicker() {
+  const tickerRef = useRef(null);
+  useEffect(() => {
+    const el = tickerRef.current;
+    if (!el) return;
+    let pos = 0;
+    const speed = 0.4;
+    const half = el.scrollWidth / 2;
+    const tick = () => {
+      pos += speed;
+      if (pos >= half) pos = 0;
+      el.scrollLeft = pos;
+      requestAnimationFrame(tick);
+    };
+    const frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  const items = [...ODDS_FEED, ...ODDS_FEED];
+  return (
+    <div ref={tickerRef} style={{ overflowX:"hidden", display:"flex", gap:0, whiteSpace:"nowrap" }}>
+      {items.map((o,i) => (
+        <div key={i} style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"0 20px", borderRight:"1px solid rgba(255,255,255,0.05)" }}>
+          <span style={{ fontSize:11, fontWeight:700, color:"#e2e8f0" }}>{o.team}{o.line}</span>
+          <span style={{ fontSize:11, color: o.odds.startsWith("+") ? "#10b981" : "#e2e8f0", fontWeight:600 }}>{o.odds}</span>
+          <span style={{ fontSize:10, color: o.up ? "#10b981" : "#f87171" }}>{o.up ? "▲" : "▼"}</span>
+        </div>
+      ))}
     </div>
   );
 }
@@ -458,39 +586,37 @@ function GameCard({ game, onGenerate, results, generating }) {
 // ── MAIN APP ──────────────────────────────────────────────────────────────────
 
 export default function VegasVaultApp() {
-  const [games, setGames] = useState([]);
+  const [games, setGames]             = useState([]);
   const [trellAlerts, setTrellAlerts] = useState([]);
-  const [results, setResults] = useState({});
-  const [generating, setGenerating] = useState(null);
+  const [results, setResults]         = useState({});
+  const [generating, setGenerating]   = useState(null);
   const [activeResult, setActiveResult] = useState(null);
-  const [activeGame, setActiveGame] = useState(null);
-  const [filter, setFilter] = useState("ALL");
-  const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [activeGame, setActiveGame]   = useState(null);
+  const [filter, setFilter]           = useState("ALL");
+  const [error, setError]             = useState(null);
+  const [loading, setLoading]         = useState(true);
+  const [time, setTime]               = useState(new Date());
 
   useEffect(() => {
     fetch("/api/today")
-      .then(res => res.json())
-      .then(data => {
-        setGames(data.games || MOCK_GAMES);
-        setTrellAlerts(data.trellAlerts || []);
-        setLoading(false);
-      })
-      .catch(() => {
-        setGames(MOCK_GAMES);
-        setLoading(false);
-      });
+      .then(r => r.json())
+      .then(data => { setGames(data.games||MOCK_GAMES); setTrellAlerts(data.trellAlerts||[]); setLoading(false); })
+      .catch(() => { setGames(MOCK_GAMES); setLoading(false); });
+  }, []);
+
+  useEffect(() => {
+    const t = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(t);
   }, []);
 
   const generated = Object.keys(results).length;
+  const FILTERS = ["ALL","MLB","NBA","Tennis","NHL","NCAAF","SOCCER","NEW"];
 
   const filteredGames = games.filter(g => {
-    if (filter === "MLB") return g.sport === "MLB";
-    if (filter === "NBA") return g.sport === "NBA";
-    if (filter === "Tennis") return g.sport === "Tennis";
-    if (filter === "PUBLIC") return g.slot === "PUBLIC";
-    if (filter === "VEGAS") return g.slot === "VEGAS";
-    if (filter === "NEW") return !results[`${game.id}-PUBLIC`] && !results[`${game.id}-VEGAS`];
+    if (filter==="MLB")    return g.sport==="MLB";
+    if (filter==="NBA")    return g.sport==="NBA";
+    if (filter==="Tennis") return g.sport==="Tennis";
+    if (filter==="NEW")    return !results[`${g.id}-PUBLIC`] && !results[`${g.id}-VEGAS`];
     return true;
   });
 
@@ -501,10 +627,10 @@ export default function VegasVaultApp() {
     try {
       const gameWithSlot = { ...game, slot };
       const result = await generatePlay(gameWithSlot);
-      setResults(prev => ({ ...prev, [key]: result }));
+      setResults(prev => ({ ...prev, [key]:result }));
       setActiveResult(result);
       setActiveGame(gameWithSlot);
-    } catch (e) {
+    } catch {
       setError("Generation failed. Check your Anthropic API key in Vercel environment variables.");
     } finally {
       setGenerating(null);
@@ -513,120 +639,290 @@ export default function VegasVaultApp() {
 
   function handleCardClick(game) {
     const result = results[`${game.id}-VEGAS`] || results[`${game.id}-PUBLIC`];
-    if (result) {
-      setActiveResult(result);
-      setActiveGame(game);
-    }
+    if (result) { setActiveResult(result); setActiveGame(game); }
   }
 
-  const FILTERS = ["ALL", "MLB", "NBA", "Tennis", "PUBLIC", "VEGAS", "NEW"];
-  const today = new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  const today = new Date().toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
+  const timeStr = time.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
   return (
-    <div style={{ fontFamily: "'DM Mono', 'Courier New', monospace", background: "#080808", minHeight: "100vh", color: "#e5e5e5" }}>
+    <div style={{ fontFamily:"'DM Mono','Courier New',monospace", background:"#060810", minHeight:"100vh", color:"#e2e8f0", display:"flex", flexDirection:"column" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap');
-        * { box-sizing: border-box; }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: #111; }
-        ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+        *{box-sizing:border-box;margin:0;padding:0;}
+        body{background:#060810;overflow-x:hidden;}
+        ::-webkit-scrollbar{width:3px;}
+        ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:2px;}
+        button{font-family:inherit;}
+        @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+        @keyframes scanLine{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
       `}</style>
 
-      <div style={{ borderBottom: "0.5px solid #1e1e1e", padding: "14px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, background: "#080808", zIndex: 10 }}>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-          <span style={{ fontSize: 16, fontWeight: 500, color: "#fff", letterSpacing: "0.05em" }}>VEGAS</span>
-          <span style={{ fontSize: 16, fontWeight: 500, color: "#c9a227", letterSpacing: "0.05em" }}>VAULT</span>
-          <span style={{ fontSize: 11, color: "#444", marginLeft: 4 }}>AI</span>
+      {/* TOP NAV BAR */}
+      <div style={{ height:52, borderBottom:"1px solid rgba(255,255,255,0.06)", display:"flex", alignItems:"center", background:"rgba(6,8,16,0.95)", backdropFilter:"blur(20px)", position:"sticky", top:0, zIndex:100, flexShrink:0 }}>
+        {/* Logo zone */}
+        <div style={{ width:200, padding:"0 20px", display:"flex", alignItems:"center", gap:10, borderRight:"1px solid rgba(255,255,255,0.06)", flexShrink:0 }}>
+          <div style={{ width:28, height:28, background:"linear-gradient(135deg,#c9a227,#8b6914)", borderRadius:6, display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:900, color:"#000" }}>V</div>
+          <div>
+            <span style={{ fontSize:13, fontWeight:700, color:"#f8fafc", letterSpacing:"0.06em" }}>VEGAS </span>
+            <span style={{ fontSize:13, fontWeight:700, color:"#c9a227", letterSpacing:"0.06em" }}>VAULT</span>
+            <span style={{ fontSize:10, color:"#4a5568", marginLeft:5 }}>AI</span>
+          </div>
         </div>
-        <div style={{ display: "flex", gap: 20, fontSize: 12, color: "#555" }}>
-          <span style={{ color: "#888" }}>Dashboard</span>
-          <span>History</span>
-          <span>Settings</span>
-        </div>
-        <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#1a1500", border: "0.5px solid #c9a227", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: "#c9a227", fontWeight: 500 }}>C</div>
-      </div>
 
-      <div style={{ padding: "20px 24px", maxWidth: 900, margin: "0 auto" }}>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 10, marginBottom: 24 }}>
-          {[
-            { label: "Today's games", val: loading ? "..." : games.length },
-            { label: "Generated", val: `${generated} / ${games.length}`, accent: true },
-            { label: "Win rate (7d)", val: "68%", green: true },
-            { label: "Top tier", val: "Lock" }
-          ].map((s, i) => (
-            <div key={i} style={{ background: "#111", border: "0.5px solid #1e1e1e", borderRadius: 10, padding: "12px 14px" }}>
-              <div style={{ fontSize: 11, color: "#555", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>{s.label}</div>
-              <div style={{ fontSize: 20, fontWeight: 500, color: s.green ? "#4ade80" : s.accent ? "#c9a227" : "#e5e5e5" }}>{s.val}</div>
+        {/* Center tabs */}
+        <div style={{ flex:1, display:"flex", justifyContent:"center", gap:0 }}>
+          {["DASHBOARD","ALERTS 3","WATCHLIST 7"].map((tab,i) => (
+            <div key={i} style={{ padding:"0 20px", height:52, display:"flex", alignItems:"center", gap:8, fontSize:11, fontWeight:i===0?600:400, color:i===0?"#c9a227":"#4a5568", borderBottom:i===0?"2px solid #c9a227":"2px solid transparent", cursor:"pointer", letterSpacing:"0.06em" }}>
+              {i===1 && <span style={{ fontSize:8 }}>🔔</span>}
+              {i===2 && <span style={{ fontSize:8 }}>☆</span>}
+              {tab}
             </div>
           ))}
         </div>
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-          <div style={{ fontSize: 13, fontWeight: 500, color: "#e5e5e5" }}>Today's slate</div>
-          <div style={{ fontSize: 12, color: "#555", background: "#111", border: "0.5px solid #1e1e1e", borderRadius: 20, padding: "4px 12px" }}>{today}</div>
-        </div>
-
-        <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-          {FILTERS.map(f => (
-            <button key={f} onClick={() => setFilter(f)} style={{
-              fontSize: 12, padding: "4px 12px", borderRadius: 20,
-              border: `0.5px solid ${filter === f ? "#c9a227" : "#222"}`,
-              background: filter === f ? "#1a1500" : "transparent",
-              color: filter === f ? "#c9a227" : "#555",
-              cursor: "pointer", fontFamily: "inherit"
-            }}>{f}</button>
-          ))}
-        </div>
-
-        {error && (
-          <div style={{ background: "#1f0a0a", border: "0.5px solid #7f1d1d", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#f87171", marginBottom: 16 }}>
-            {error}
+        {/* Right icons */}
+        <div style={{ display:"flex", alignItems:"center", gap:16, padding:"0 20px" }}>
+          <span style={{ fontSize:16, color:"#2d3748", cursor:"pointer" }}>⌕</span>
+          <span style={{ fontSize:16, color:"#2d3748", cursor:"pointer" }}>🔔</span>
+          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+            <div style={{ width:30, height:30, borderRadius:"50%", background:"linear-gradient(135deg,#c9a227,#8b6914)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:700, color:"#000" }}>T</div>
+            <span style={{ fontSize:11, color:"#64748b" }}>▼</span>
           </div>
-        )}
+        </div>
+      </div>
 
-        {loading ? (
-          <div style={{ textAlign: "center", padding: "40px 0", color: "#555", fontSize: 13 }}>Loading today's slate...</div>
-        ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 10 }}>
-            {filteredGames.map(game => (
-              <div key={game.id} onClick={() => handleCardClick(game)}>
-                <GameCard
-                  game={game}
-                  results={results}
-                  generating={generating}
-                  onGenerate={handleGenerate}
-                />
+      {/* BODY: sidebar + main + right panel */}
+      <div style={{ display:"flex", flex:1, overflow:"hidden" }}>
+
+        {/* LEFT SIDEBAR */}
+        <div style={{ width:200, background:"rgba(6,8,16,0.98)", borderRight:"1px solid rgba(255,255,255,0.05)", display:"flex", flexDirection:"column", flexShrink:0, overflowY:"auto" }}>
+          <div style={{ flex:1, padding:"12px 0" }}>
+            {NAV_ITEMS.map((item,i) => (
+              <div key={i} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 20px", background:item.active?"rgba(201,162,39,0.08)":"transparent", borderLeft:item.active?"2px solid #c9a227":"2px solid transparent", cursor:"pointer", transition:"all 0.15s" }}>
+                <span style={{ fontSize:12, color:item.active?"#c9a227":"#2d3748", width:16 }}>{item.icon}</span>
+                <span style={{ fontSize:10, fontWeight:item.active?600:400, color:item.active?"#c9a227":"#475569", letterSpacing:"0.08em", flex:1 }}>{item.label}</span>
+                {item.arrow && <span style={{ fontSize:9, color:"#2d3748" }}>▶</span>}
               </div>
             ))}
           </div>
-        )}
 
-        <div style={{ marginTop: 16, background: "#111", border: "0.5px solid #1e1e1e", borderRadius: 12, padding: 16 }}>
-          <div style={{ fontSize: 12, color: "#c9a227", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>Trell Rule Alerts</div>
-          {trellAlerts.length === 0 ? (
-            <div style={{ fontSize: 13, color: "#4ade80" }}>No active Trell triggers today</div>
-          ) : (
-            trellAlerts.map((alert, i) => (
-              <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: i < trellAlerts.length - 1 ? "0.5px solid #1a1a1a" : "none", fontSize: 13 }}>
-                <div>
-                  <div style={{ color: "#e5e5e5" }}>{alert.player}</div>
-                  <div style={{ fontSize: 11, color: "#f87171", marginTop: 2 }}>{alert.status} - {alert.direction}</div>
-                </div>
-                <span style={{ fontSize: 14, color: "#f87171" }}>!</span>
+          {/* AI Engine Status */}
+          <div style={{ padding:"16px 20px", borderTop:"1px solid rgba(255,255,255,0.05)" }}>
+            <div style={{ fontSize:9, color:"#475569", letterSpacing:"0.1em", fontWeight:600, marginBottom:10 }}>AI ENGINE STATUS</div>
+            <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:10 }}>
+              <div style={{ width:6, height:6, borderRadius:"50%", background:"#4ade80", animation:"pulse 2s infinite" }} />
+              <span style={{ fontSize:10, color:"#4ade80", fontWeight:600 }}>ONLINE</span>
+              <span style={{ fontSize:10, color:"#4ade80", marginLeft:"auto" }}>100%</span>
+            </div>
+            <div style={{ height:2, background:"rgba(255,255,255,0.05)", borderRadius:1, marginBottom:12 }}>
+              <div style={{ height:"100%", width:"100%", background:"linear-gradient(90deg,#10b981,#4ade80)", borderRadius:1 }} />
+            </div>
+            {/* Globe graphic */}
+            <div style={{ display:"flex", justifyContent:"center" }}>
+              <svg width={100} height={100} viewBox="0 0 100 100">
+                <defs>
+                  <radialGradient id="globeGrad" cx="40%" cy="35%">
+                    <stop offset="0%" stopColor="#1e3a6e" />
+                    <stop offset="100%" stopColor="#060c1a" />
+                  </radialGradient>
+                </defs>
+                <circle cx={50} cy={50} r={45} fill="url(#globeGrad)" stroke="rgba(59,130,246,0.3)" strokeWidth="1" />
+                {[30,50,70].map((y,i)=><ellipse key={i} cx={50} cy={y} rx={45} ry={8} fill="none" stroke="rgba(59,130,246,0.15)" strokeWidth="0.8" />)}
+                <line x1={50} y1={5} x2={50} y2={95} stroke="rgba(59,130,246,0.15)" strokeWidth="0.8" />
+                <line x1={5} y1={50} x2={95} y2={50} stroke="rgba(59,130,246,0.15)" strokeWidth="0.8" />
+                {[[28,32],[55,45],[70,60],[40,65],[62,28]].map(([x,y],i)=>(
+                  <circle key={i} cx={x} cy={y} r={2} fill="#3b82f6" opacity="0.7" />
+                ))}
+                <circle cx={50} cy={50} r={45} fill="none" stroke="rgba(59,130,246,0.2)" strokeWidth="0.5" />
+              </svg>
+            </div>
+            <div style={{ fontSize:9, color:"#2d3748", textAlign:"center", marginTop:4 }}>Last updated: <span style={{ color:"#c9a227" }}>{timeStr}</span></div>
+          </div>
+        </div>
+
+        {/* MAIN CONTENT */}
+        <div style={{ flex:1, overflowY:"auto", display:"flex", flexDirection:"column" }}>
+
+          {/* Live odds ticker */}
+          <div style={{ borderBottom:"1px solid rgba(255,255,255,0.05)", background:"rgba(10,14,24,0.9)", padding:"0" }}>
+            <div style={{ display:"flex", alignItems:"center" }}>
+              <div style={{ padding:"8px 16px", fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#c9a227", borderRight:"1px solid rgba(255,255,255,0.06)", whiteSpace:"nowrap", flexShrink:0 }}>LIVE ODDS FEED</div>
+              <div style={{ flex:1, overflow:"hidden", padding:"8px 0" }}>
+                <OddsTicker />
               </div>
-            ))
-          )}
+              <div style={{ padding:"0 16px", flexShrink:0 }}>
+                <Sparkline color="#3b82f6" width={60} height={24} />
+              </div>
+            </div>
+          </div>
+
+          <div style={{ padding:"20px 20px 32px", flex:1 }}>
+
+            {/* Greeting + stat cards */}
+            <div style={{ marginBottom:20 }}>
+              <div style={{ marginBottom:16 }}>
+                <h1 style={{ fontSize:22, fontWeight:700, color:"#f8fafc", letterSpacing:"-0.02em" }}>{greeting}, Teztez4real.</h1>
+                <p style={{ fontSize:12, color:"#475569", marginTop:4 }}>Vegas Vault AI is scanning <span style={{ color:"#3b82f6", cursor:"pointer" }}>12 sportsbooks...</span></p>
+              </div>
+
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:10 }}>
+                {/* Today's games */}
+                <div style={{ background:"#0b0f1a", border:"1px solid rgba(255,255,255,0.06)", borderRadius:12, padding:"14px 16px" }}>
+                  <div style={{ fontSize:9, color:"#4a5568", letterSpacing:"0.1em", marginBottom:10, fontWeight:600 }}>TODAY'S GAMES</div>
+                  <div style={{ fontSize:28, fontWeight:800, color:"#f8fafc", letterSpacing:"-0.02em", marginBottom:6 }}>{loading?"…":games.length}</div>
+                  <div style={{ fontSize:10, color:"#2d3748" }}>{timeStr} CT</div>
+                </div>
+
+                {/* AI Picks generated */}
+                <div style={{ background:"#0b0f1a", border:"1px solid rgba(255,255,255,0.06)", borderRadius:12, padding:"14px 16px" }}>
+                  <div style={{ fontSize:9, color:"#4a5568", letterSpacing:"0.1em", marginBottom:10, fontWeight:600 }}>AI PICKS GENERATED</div>
+                  <div style={{ fontSize:28, fontWeight:800, color:"#c9a227", letterSpacing:"-0.02em", marginBottom:8 }}>{generated} / {loading?"…":games.length*2}</div>
+                  <div style={{ height:2, background:"rgba(255,255,255,0.05)", borderRadius:1 }}>
+                    <div style={{ height:"100%", width: games.length ? `${Math.min(100,(generated/(games.length*2))*100)}%` : "0%", background:"linear-gradient(90deg,#8b6914,#c9a227)", borderRadius:1, transition:"width 0.4s" }} />
+                  </div>
+                </div>
+
+                {/* Win rate */}
+                <div style={{ background:"#0b0f1a", border:"1px solid rgba(255,255,255,0.06)", borderRadius:12, padding:"14px 16px" }}>
+                  <div style={{ fontSize:9, color:"#4a5568", letterSpacing:"0.1em", marginBottom:6, fontWeight:600 }}>WIN RATE (7D)</div>
+                  <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"space-between" }}>
+                    <div style={{ fontSize:28, fontWeight:800, color:"#4ade80", letterSpacing:"-0.02em" }}>68%</div>
+                    <Sparkline color="#4ade80" width={64} height={32} />
+                  </div>
+                </div>
+
+                {/* Top tier */}
+                <div style={{ background:"#0b0f1a", border:"1px solid rgba(255,255,255,0.06)", borderRadius:12, padding:"14px 16px" }}>
+                  <div style={{ fontSize:9, color:"#4a5568", letterSpacing:"0.1em", marginBottom:10, fontWeight:600 }}>TOP TIER</div>
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                    <div style={{ fontSize:24, fontWeight:800, color:"#f8fafc", letterSpacing:"-0.02em" }}>LOCK</div>
+                    <span style={{ fontSize:22 }}>🔒</span>
+                  </div>
+                </div>
+
+                {/* AI Confidence */}
+                <div style={{ background:"#0b0f1a", border:"1px solid rgba(255,255,255,0.06)", borderRadius:12, padding:"14px 16px" }}>
+                  <div style={{ fontSize:9, color:"#4a5568", letterSpacing:"0.1em", marginBottom:6, fontWeight:600 }}>AI CONFIDENCE</div>
+                  <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"space-between" }}>
+                    <div>
+                      <div style={{ fontSize:18, fontWeight:800, color:"#c9a227" }}>HIGH</div>
+                      <div style={{ fontSize:12, color:"#c9a227", opacity:0.7 }}>98.7%</div>
+                    </div>
+                    <RadarChart />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Slate header + filters */}
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+              <h2 style={{ fontSize:16, fontWeight:700, color:"#f8fafc" }}>Today's Slate</h2>
+              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                <div style={{ fontSize:11, color:"#475569", background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.06)", borderRadius:6, padding:"4px 10px" }}>
+                  {today} ▾
+                </div>
+                <div style={{ fontSize:14, color:"#2d3748", cursor:"pointer" }}>⊟</div>
+              </div>
+            </div>
+
+            <div style={{ display:"flex", gap:6, marginBottom:16, flexWrap:"wrap" }}>
+              {FILTERS.map(f => (
+                <button key={f} onClick={() => setFilter(f)} style={{ fontSize:11, fontWeight:filter===f?700:400, padding:"5px 14px", borderRadius:6, border:`1px solid ${filter===f?"rgba(201,162,39,0.4)":"rgba(255,255,255,0.07)"}`, background:filter===f?"rgba(201,162,39,0.1)":"transparent", color:filter===f?"#c9a227":"#4a5568", cursor:"pointer", letterSpacing:"0.04em" }}>
+                  {f}
+                </button>
+              ))}
+            </div>
+
+            {error && (
+              <div style={{ background:"rgba(248,113,113,0.05)", border:"1px solid rgba(248,113,113,0.2)", borderRadius:10, padding:"10px 14px", fontSize:12, color:"#f87171", marginBottom:14 }}>{error}</div>
+            )}
+
+            {/* Cards */}
+            {loading ? (
+              <div style={{ textAlign:"center", padding:"60px 0", fontSize:11, color:"#2d3748", letterSpacing:"0.1em" }}>LOADING SLATE…</div>
+            ) : (
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:10 }}>
+                {filteredGames.map(game => (
+                  <GameCard key={game.id} game={game} results={results} generating={generating} onGenerate={handleGenerate} onCardClick={handleCardClick} />
+                ))}
+              </div>
+            )}
+
+            {/* Trell Alerts */}
+            {trellAlerts.length > 0 && (
+              <div style={{ marginTop:16, background:"#0b0f1a", border:"1px solid rgba(255,255,255,0.05)", borderRadius:12, padding:16 }}>
+                <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#c9a227", marginBottom:12 }}>⚡ TRELL RULE ALERTS</div>
+                {trellAlerts.map((alert,i) => (
+                  <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 0", borderBottom:i<trellAlerts.length-1?"1px solid rgba(255,255,255,0.04)":"none" }}>
+                    <div>
+                      <div style={{ fontSize:12, fontWeight:600, color:"#f1f5f9" }}>{alert.player}</div>
+                      <div style={{ fontSize:10, color:"#f87171", marginTop:2 }}>{alert.status} · {alert.direction}</div>
+                    </div>
+                    <span style={{ fontSize:9, fontWeight:700, padding:"3px 8px", borderRadius:4, background:"rgba(248,113,113,0.1)", border:"1px solid rgba(248,113,113,0.25)", color:"#f87171", letterSpacing:"0.08em" }}>ACTIVE</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* RIGHT PANEL */}
+        <div style={{ width:280, background:"rgba(6,8,16,0.98)", borderLeft:"1px solid rgba(255,255,255,0.05)", overflowY:"auto", flexShrink:0, padding:"16px 16px 24px" }}>
+
+          {/* AI Market Scanner */}
+          <div style={{ marginBottom:20 }}>
+            <div style={{ fontSize:10, fontWeight:700, letterSpacing:"0.1em", color:"#94a3b8", marginBottom:14 }}>AI MARKET SCANNER</div>
+            <div style={{ display:"flex", justifyContent:"center", marginBottom:12 }}>
+              <RadarChart />
+            </div>
+            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+              {[
+                { label:"Reverse Line Movement", count:7, color:"#3b82f6" },
+                { label:"Sharp Money Detected",  count:5, color:"#10b981" },
+                { label:"Public Heavy",           count:6, color:"#94a3b8" },
+                { label:"Vegas Trap Alert",       count:3, color:"#f87171" },
+              ].map((item,i) => (
+                <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                  <div>
+                    <div style={{ fontSize:9, color:"#4a5568", letterSpacing:"0.06em" }}>{item.label}</div>
+                    <div style={{ fontSize:18, fontWeight:800, color:item.color, letterSpacing:"-0.02em" }}>{item.count} <span style={{ fontSize:9, fontWeight:400, color:"#2d3748" }}>Games</span></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ borderTop:"1px solid rgba(255,255,255,0.05)", paddingTop:16, marginBottom:20 }}>
+            <div style={{ fontSize:10, fontWeight:700, letterSpacing:"0.1em", color:"#94a3b8", marginBottom:14 }}>AI INSIGHTS</div>
+            <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+              {INSIGHTS.map((ins,i) => (
+                <div key={i} style={{ display:"flex", gap:10, alignItems:"flex-start" }}>
+                  <div style={{ width:20, height:20, borderRadius:5, background:"rgba(59,130,246,0.1)", border:"1px solid rgba(59,130,246,0.2)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:8, color:"#3b82f6", flexShrink:0, marginTop:1 }}>{ins.icon}</div>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontSize:11, color:"#cbd5e1", lineHeight:1.5 }}>{ins.text}</div>
+                    <div style={{ fontSize:9, color:"#2d3748", marginTop:3 }}>{ins.time}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ borderTop:"1px solid rgba(255,255,255,0.05)", paddingTop:16 }}>
+            <div style={{ fontSize:10, fontWeight:700, letterSpacing:"0.1em", color:"#94a3b8", marginBottom:10 }}>AI CONFIDENCE MONITOR</div>
+            <ConfidenceChart />
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:6 }}>
+              <span style={{ fontSize:9, color:"#2d3748" }}>Overall AI Confidence</span>
+              <span style={{ fontSize:18, fontWeight:800, color:"#4ade80" }}>98.7%</span>
+            </div>
+          </div>
         </div>
       </div>
 
       {activeResult && activeGame && (
-        <PlayResult
-          result={activeResult}
-          game={activeGame}
-          onClose={() => { setActiveResult(null); setActiveGame(null); }}
-        />
+        <PlayResult result={activeResult} game={activeGame} onClose={() => { setActiveResult(null); setActiveGame(null); }} />
       )}
     </div>
   );
