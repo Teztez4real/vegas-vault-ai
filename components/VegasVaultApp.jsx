@@ -648,7 +648,7 @@ export default function VegasVaultApp() {
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
   return (
-    <div style={{ fontFamily:"'DM Mono','Courier New',monospace", background:"#060810", minHeight:"100vh", color:"#e2e8f0", display:"flex", flexDirection:"column" }}>
+    <div style={{ fontFamily:"'DM Mono','Courier New',monospace", background:"#060810", minHeight:"100vh", color:"#e2e8f0", display:"flex", flexDirection:"column", minHeight:"100dvh" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap');
         *{box-sizing:border-box;margin:0;padding:0;}
@@ -679,6 +679,8 @@ export default function VegasVaultApp() {
           .vv-ticker-label{display:none!important;}
           .vv-logo-label{display:none!important;}
           .vv-main-pad{padding:12px 12px 80px!important;}
+          .vv-body-wrap{flex-direction:column!important;height:auto!important;overflow:visible!important;}
+          .vv-main-scroll{overflow-y:visible!important;overflow-x:visible!important;height:auto!important;flex:none!important;}
         }
       `}</style>
 
@@ -717,7 +719,7 @@ export default function VegasVaultApp() {
       </div>
 
       {/* BODY: sidebar + main + right panel */}
-      <div style={{ display:"flex", flex:1, overflow:"hidden" }}>
+      <div className="vv-body-wrap" style={{ display:"flex", flex:1, minHeight:0 }}>
 
         {/* LEFT SIDEBAR */}
         <div className="vv-sidebar" style={{ width:200, background:"rgba(6,8,16,0.98)", borderRight:"1px solid rgba(255,255,255,0.05)", flexDirection:"column", flexShrink:0, overflowY:"auto" }}>
@@ -766,7 +768,7 @@ export default function VegasVaultApp() {
         </div>
 
         {/* MAIN CONTENT */}
-        <div style={{ flex:1, overflowY:"auto", display:"flex", flexDirection:"column" }}>
+        <div className="vv-main-scroll" style={{ flex:1, overflowY:"auto", display:"flex", flexDirection:"column", minWidth:0 }}>
 
           {/* Live odds ticker */}
           <div style={{ borderBottom:"1px solid rgba(255,255,255,0.05)", background:"rgba(10,14,24,0.9)", padding:"0" }}>
