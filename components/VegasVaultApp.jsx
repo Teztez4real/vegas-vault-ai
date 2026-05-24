@@ -567,15 +567,16 @@ function GlobeSVG({ timeStr }) {
   );
 }
 
-function OddsTicker() {
+function OddsTicker({ feed }) {
   const ref=useRef(null);
   useEffect(()=>{
     const el=ref.current; if(!el)return;
-    let pos=0; const speed=0.5; const half=el.scrollWidth/2;
-    const tick=()=>{pos+=speed;if(pos>=half)pos=0;el.scrollLeft=pos;requestAnimationFrame(tick);};
+    let pos=0; const speed=0.5;
+    const getHalf=()=>el.scrollWidth/2;
+    const tick=()=>{pos+=speed;if(pos>=getHalf())pos=0;el.scrollLeft=pos;requestAnimationFrame(tick);};
     const id=requestAnimationFrame(tick); return()=>cancelAnimationFrame(id);
-  },[]);
-  const items=[...ODDS_FEED,...ODDS_FEED];
+  },[feed]);
+  const items=[...feed,...feed];
   return(
     <div ref={ref} style={{ overflowX:"hidden",display:"flex",whiteSpace:"nowrap" }}>
       {items.map((o,i)=>(
@@ -605,10 +606,10 @@ function RightPanelContent() {
         </div>
         <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
           {[
-            {label:"Reverse Line Movement",count:7,sub:"Games",color:"#64748b"},
-            {label:"Sharp Money Detected",  count:5,sub:"Games",color:"#10b981"},
-            {label:"Public Heavy",           count:6,sub:"Games",color:"#64748b"},
-            {label:"Vegas Trap Alert",       count:3,sub:"Games",color:"#f87171"},
+            {label:"Reverse Line Movement",count:marketScanner.reverseLineMovement,sub:"Games",color:"#64748b"},
+            {label:"Sharp Money Detected",  count:marketScanner.sharpMoneyDetected, sub:"Games",color:"#10b981"},
+            {label:"Public Heavy",           count:marketScanner.publicHeavy,        sub:"Games",color:"#64748b"},
+            {label:"Vegas Trap Alert",       count:marketScanner.vegasTrapAlert,     sub:"Games",color:"#f87171"},
           ].map((item,i)=>(
             <div key={i}>
               <div style={{ fontSize:9,color:"#3a4a5e",letterSpacing:"0.06em",marginBottom:1 }}>{item.label}</div>
@@ -627,7 +628,7 @@ function RightPanelContent() {
           AI INSIGHTS
         </div>
         <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
-          {INSIGHTS.map((ins,i)=>(
+          {insights.map((ins,i)=>(
             <div key={i} style={{ display:"flex",gap:10,alignItems:"flex-start" }}>
               <div style={{ width:22,height:22,borderRadius:6,background:"rgba(59,130,246,0.1)",border:"1px solid rgba(59,130,246,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:"#3b82f6",flexShrink:0,marginTop:1 }}>{ins.icon}</div>
               <div style={{ flex:1 }}>
@@ -659,6 +660,9 @@ function RightPanelContent() {
 export default function VegasVaultApp() {
   const [games, setGames]             = useState([]);
   const [trellAlerts, setTrellAlerts] = useState([]);
+  const [oddsFeed, setOddsFeed]       = useState(ODDS_FEED);
+  const [marketScanner, setMarketScanner] = useState({ reverseLineMovement:7, sharpMoneyDetected:5, publicHeavy:6, vegasTrapAlert:3 });
+  const [insights, setInsights]       = useState(INSIGHTS);
   const [results, setResults]         = useState({});
   const [generating, setGenerating]   = useState(null);
   const [activeResult, setActiveResult] = useState(null);
@@ -670,7 +674,14 @@ export default function VegasVaultApp() {
 
   useEffect(()=>{
     fetch("/api/today").then(r=>r.json())
-      .then(data=>{setGames(data.games||MOCK_GAMES);setTrellAlerts(data.trellAlerts||[]);setLoading(false);})
+      .then(data=>{
+        setGames(data.games||MOCK_GAMES);
+        setTrellAlerts(data.trellAlerts||[]);
+        if (data.oddsFeed?.length) setOddsFeed(data.oddsFeed);
+        if (data.marketScanner) setMarketScanner(data.marketScanner);
+        if (data.insights?.length) setInsights(data.insights);
+        setLoading(false);
+      })
       .catch(()=>{setGames(MOCK_GAMES);setLoading(false);});
   },[]);
 
@@ -812,7 +823,7 @@ export default function VegasVaultApp() {
           <div style={{ borderBottom:"1px solid rgba(255,255,255,0.05)",background:"rgba(9,12,28,0.9)" }}>
             <div style={{ display:"flex",alignItems:"center" }}>
               <div className="vv-ticker-lbl" style={{ padding:"8px 16px",fontSize:9,fontWeight:700,letterSpacing:"0.12em",color:"#c9a227",borderRight:"1px solid rgba(255,255,255,0.05)",whiteSpace:"nowrap",flexShrink:0 }}>LIVE ODDS FEED</div>
-              <div style={{ flex:1,overflow:"hidden",padding:"8px 0" }}><OddsTicker/></div>
+              <div style={{ flex:1,overflow:"hidden",padding:"8px 0" }}><OddsTicker feed={oddsFeed}/></div>
               <div style={{ padding:"0 14px",flexShrink:0 }}><Sparkline color="#3b82f6" width={56} height={22}/></div>
             </div>
           </div>
