@@ -373,10 +373,13 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
   const isLock = tier?.label === "LOCK";
 
   // ── LIVE SCORE LOOKUP ─────────────────────────────────────────────────────
-  const liveKey = `${game.away}|${game.home}`;
-  const live = liveScores?.[liveKey];
+  const liveKey1 = `${game.away}|${game.home}`;
+  const liveKey2 = `${game.awayAbbr}|${game.homeAbbr}`;
+  const live = liveScores?.[liveKey1] || liveScores?.[liveKey2];
   const isLive = live?.status === 'Live';
   const isFinal = live?.status === 'Final';
+  const isDelayed = live?.isDelayed || false;
+  const isPostponed = live?.isPostponed || false;
   const gameStarted = isLive || isFinal;
 
   const awayName = isTennis ? game.player1 : game.away;
@@ -438,8 +441,14 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
               LIVE
             </span>
           )}
-          {isFinal && (
+          {isFinal && !isPostponed && (
             <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.1em",color:"#64748b",background:"rgba(100,116,139,0.15)",padding:"2px 8px",borderRadius:4 }}>FINAL</span>
+          )}
+          {isDelayed && (
+            <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.1em",color:"#fbbf24",background:"rgba(251,191,36,0.12)",padding:"2px 8px",borderRadius:4 }}>⏸ DELAYED</span>
+          )}
+          {isPostponed && (
+            <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.1em",color:"#f87171",background:"rgba(248,113,113,0.12)",padding:"2px 8px",borderRadius:4 }}>⛔ POSTPONED</span>
           )}
         </div>
         <div style={{ display:"flex",alignItems:"center",gap:10 }}>
@@ -541,7 +550,17 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
       )}
 
       {/* Action buttons */}
-      {gameStarted ? (
+      {isPostponed ? (
+        <div style={{ display:"flex",alignItems:"center",justifyContent:"center",padding:"10px 0",background:"rgba(248,113,113,0.05)",border:"1px solid rgba(248,113,113,0.15)",borderRadius:8 }}>
+          <span style={{ fontSize:10,fontWeight:700,color:"#f87171",letterSpacing:"0.08em" }}>⛔ POSTPONED — Analysis unavailable</span>
+        </div>
+      ) : isDelayed ? (
+        <div style={{ display:"flex",gap:8 }}>
+          <div style={{ flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:"8px 0",background:"rgba(251,191,36,0.05)",border:"1px solid rgba(251,191,36,0.2)",borderRadius:8 }}>
+            <span style={{ fontSize:10,fontWeight:700,color:"#fbbf24",letterSpacing:"0.06em" }}>⏸ DELAYED</span>
+          </div>
+        </div>
+      ) : gameStarted ? (
         <div style={{ display:"flex",alignItems:"center",justifyContent:"center",padding:"10px 0",background:"rgba(220,38,38,0.05)",border:"1px solid rgba(220,38,38,0.15)",borderRadius:8 }}>
           <span style={{ fontSize:10,fontWeight:700,color:"#dc2626",letterSpacing:"0.08em" }}>
             {isLive ? "🔴 GAME IN PROGRESS — LOCKED" : "⬛ FINAL — ANALYSIS LOCKED"}
@@ -730,9 +749,11 @@ export default function VegasVaultApp() {
   const [error, setError]             = useState(null);
   const [loading, setLoading]         = useState(true);
   const [time, setTime]               = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(()=>{
-    fetch("/api/today").then(r=>r.json())
+    setLoading(true);
+    fetch(`/api/today?date=${selectedDate}`).then(r=>r.json())
       .then(data=>{
         setGames(data.games||MOCK_GAMES);
         setTrellAlerts(data.trellAlerts||[]);
@@ -743,7 +764,7 @@ export default function VegasVaultApp() {
         setLoading(false);
       })
       .catch(()=>{setGames(MOCK_GAMES);setLoading(false);});
-  },[]);
+  },[selectedDate]);
 
   useEffect(()=>{
     const t=setInterval(()=>setTime(new Date()),1000);
@@ -778,20 +799,22 @@ export default function VegasVaultApp() {
   // ── LIVE SCORES — poll every 30s ─────────────────────────────────────────
   useEffect(() => {
     function fetchScores() {
-      fetch('/api/livescores').then(r => r.json()).then(data => {
+      fetch(`/api/livescores?date=${selectedDate}`).then(r => r.json()).then(data => {
         const map = {};
         (data.scores || []).forEach(s => {
-          // Match by team name to game id
-          const key = `${s.away}|${s.home}`;
-          map[key] = s;
+          // Index by full name AND abbreviation combos for reliable matching
+          const key1 = `${s.away}|${s.home}`;
+          const key2 = `${s.awayAbbr}|${s.homeAbbr}`;
+          map[key1] = s;
+          map[key2] = s;
         });
         setLiveScores(map);
       }).catch(() => {});
     }
     fetchScores();
-    const interval = setInterval(fetchScores, 30000); // every 30 seconds
+    const interval = setInterval(fetchScores, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [selectedDate]);
 
   const generated = Object.keys(results).length;
   const FILTERS = ["ALL","MLB","NBA","TENNIS","NHL","NCAAF","SOCCER","NEW"];
@@ -817,6 +840,24 @@ export default function VegasVaultApp() {
   function handleCardClick(game){
     const result=results[`${game.id}-VEGAS`]||results[`${game.id}-PUBLIC`];
     if(result){setActiveResult(result);setActiveGame(game);}
+  }
+
+  // Date navigation helpers
+  function changeDate(offset) {
+    const d = new Date(selectedDate + 'T12:00:00');
+    d.setDate(d.getDate() + offset);
+    setSelectedDate(d.toISOString().split('T')[0]);
+    setResults({}); // clear results when changing date
+  }
+  function formatDisplayDate(dateStr) {
+    const d = new Date(dateStr + 'T12:00:00');
+    const today = new Date().toISOString().split('T')[0];
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+    if (dateStr === today) return 'Today';
+    if (dateStr === yesterday) return 'Yesterday';
+    if (dateStr === tomorrow) return 'Tomorrow';
+    return d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
   }
 
   const today = new Date().toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
@@ -985,7 +1026,11 @@ export default function VegasVaultApp() {
             <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
               <h2 style={{ fontSize:16,fontWeight:700,color:"#f1f5f9" }}>Today's Slate</h2>
               <div style={{ display:"flex",alignItems:"center",gap:8 }}>
-                <div style={{ fontSize:11,color:"#3a4a5e",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:6,padding:"4px 10px" }}>{today} ▾</div>
+                <div style={{ display:"flex",alignItems:"center",gap:6 }}>
+                <button onClick={()=>changeDate(-1)} style={{ background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:6,color:"#64748b",fontSize:13,width:28,height:28,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit" }}>‹</button>
+                <div style={{ fontSize:11,color:"#c9a227",background:"rgba(201,162,39,0.08)",border:"1px solid rgba(201,162,39,0.2)",borderRadius:6,padding:"4px 12px",minWidth:80,textAlign:"center" }}>{formatDisplayDate(selectedDate)}</div>
+                <button onClick={()=>changeDate(1)} style={{ background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:6,color:"#64748b",fontSize:13,width:28,height:28,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit" }}>›</button>
+              </div>
                 <span style={{ fontSize:14,color:"#2d3a4a",cursor:"pointer" }}>⊟</span>
               </div>
             </div>

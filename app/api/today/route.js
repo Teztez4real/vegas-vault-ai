@@ -164,10 +164,9 @@ async function fetchOdds(sportKey) {
 
 // ── MLB STATS API ─────────────────────────────────────────────────────────────
 
-async function fetchMLBSchedule() {
-  const today = todayStr();
+async function fetchMLBSchedule(date) {
   const res = await fetch(
-    `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${today}&hydrate=team,probablePitcher,linescore`,
+    `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${date || todayStr()}&hydrate=team,probablePitcher,linescore`,
     { next: { revalidate: 600 } }
   );
   const data = await res.json();
@@ -263,6 +262,7 @@ async function assembleMLBGame(g, oddsMap) {
     injuries: 'Check injury reports',
     lineMovement: odds.lineMovement || 'Odds API not connected',
     cbsPreview,
+    gameStatus: g.status?.detailedState || 'Scheduled',
     seriesGame: g.seriesGameNumber || 1,
     seriesLength: g.gamesInSeries || 3,
     slot: 'PUBLIC',
@@ -321,10 +321,12 @@ async function fetchNBAGames() {
 
 // ── MAIN HANDLER ──────────────────────────────────────────────────────────────
 
-export async function GET() {
+export async function GET(request) {
+  const { searchParams } = new URL(request.url);
   try {
-    const [scheduleGames, mlbOddsResult, nbaGames] = await Promise.all([
-      fetchMLBSchedule(),
+    const dateParam = searchParams.get('date') || todayStr();
+  const [scheduleGames, mlbOddsResult, nbaGames] = await Promise.all([
+      fetchMLBSchedule(dateParam),
       fetchOdds('baseball_mlb'),
       fetchNBAGames(),
     ]);
