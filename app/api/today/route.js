@@ -119,7 +119,9 @@ async function fetchOdds(sportKey) {
     const data = await res.json();
     if (!Array.isArray(data)) return {};
     const oddsMap = {};
+    const bookmakerSet = new Set();
     for (const game of data) {
+      game.bookmakers?.forEach(b => bookmakerSet.add(b.key));
       const key = `${game.away_team}|${game.home_team}`;
       const bookmaker = game.bookmakers?.find(b => b.key === 'draftkings') || game.bookmakers?.[0];
       const h2h = bookmaker?.markets?.find(m => m.key === 'h2h');
@@ -153,10 +155,10 @@ async function fetchOdds(sportKey) {
         commenceTime: game.commence_time,
       };
     }
-    return oddsMap;
+    return { oddsMap, bookmakerCount: bookmakerSet.size };
   } catch (err) {
     console.error(`Odds API error (${sportKey}):`, err.message);
-    return {};
+    return { oddsMap: {}, bookmakerCount: 0 };
   }
 }
 
@@ -273,7 +275,8 @@ async function fetchNBAGames() {
   const apiKey = process.env.ODDS_API_KEY;
   if (!apiKey) return assignNBASlots(NBA_MOCK_GAMES);
   try {
-    const oddsMap = await fetchOdds('basketball_nba');
+    const oddsResult = await fetchOdds('basketball_nba');
+    const oddsMap = oddsResult.oddsMap || oddsResult;
     if (Object.keys(oddsMap).length === 0) return assignNBASlots(NBA_MOCK_GAMES);
     const games = await Promise.all(
       Object.entries(oddsMap).map(async ([key, odds], i) => {
@@ -320,11 +323,13 @@ async function fetchNBAGames() {
 
 export async function GET() {
   try {
-    const [scheduleGames, mlbOdds, nbaGames] = await Promise.all([
+    const [scheduleGames, mlbOddsResult, nbaGames] = await Promise.all([
       fetchMLBSchedule(),
       fetchOdds('baseball_mlb'),
       fetchNBAGames(),
     ]);
+    const mlbOdds = mlbOddsResult.oddsMap || mlbOddsResult;
+    const mlbBookmakerCount = mlbOddsResult.bookmakerCount || 0;
 
     const mlbGamesRaw = await Promise.all(
       scheduleGames.map(g => assembleMLBGame(g, mlbOdds))
@@ -337,6 +342,7 @@ export async function GET() {
     return NextResponse.json({
       games: allGames,
       trellAlerts: [],
+      bookmakerCount: mlbBookmakerCount,
       generatedAt: new Date().toISOString(),
     });
   } catch (err) {
