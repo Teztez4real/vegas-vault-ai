@@ -363,7 +363,7 @@ function PlayResult({ result, game, onClose }) {
 
 // ── GAME CARD — matches reference image exactly ───────────────────────────────
 
-function GameCard({ game, onGenerate, results, generating, onCardClick }) {
+function GameCard({ game, onGenerate, results, generating, onCardClick, liveScores }) {
   const resultPublic = results[`${game.id}-PUBLIC`];
   const resultVegas  = results[`${game.id}-VEGAS`];
   const hasAnyResult = resultPublic || resultVegas;
@@ -371,6 +371,13 @@ function GameCard({ game, onGenerate, results, generating, onCardClick }) {
   const tier = bestResult ? (TIER_STYLES[bestResult.summary.tier] || TIER_STYLES["3"]) : null;
   const isTennis = game.sport === "Tennis";
   const isLock = tier?.label === "LOCK";
+
+  // ── LIVE SCORE LOOKUP ─────────────────────────────────────────────────────
+  const liveKey = `${game.away}|${game.home}`;
+  const live = liveScores?.[liveKey];
+  const isLive = live?.status === 'Live';
+  const isFinal = live?.status === 'Final';
+  const gameStarted = isLive || isFinal;
 
   const awayName = isTennis ? game.player1 : game.away;
   const homeName = isTennis ? game.player2 : game.home;
@@ -423,7 +430,18 @@ function GameCard({ game, onGenerate, results, generating, onCardClick }) {
 
       {/* Header row */}
       <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
-        <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.1em",color:sportColor,background:sportBg,padding:"2px 8px",borderRadius:4 }}>{game.sport}</span>
+        <div style={{ display:"flex",alignItems:"center",gap:6 }}>
+          <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.1em",color:sportColor,background:sportBg,padding:"2px 8px",borderRadius:4 }}>{game.sport}</span>
+          {isLive && (
+            <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.1em",color:"#fff",background:"#dc2626",padding:"2px 8px",borderRadius:4,display:"flex",alignItems:"center",gap:4 }}>
+              <span style={{ width:5,height:5,borderRadius:"50%",background:"#fff",display:"inline-block",animation:"pulse 1s infinite" }}/>
+              LIVE
+            </span>
+          )}
+          {isFinal && (
+            <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.1em",color:"#64748b",background:"rgba(100,116,139,0.15)",padding:"2px 8px",borderRadius:4 }}>FINAL</span>
+          )}
+        </div>
         <div style={{ display:"flex",alignItems:"center",gap:10 }}>
           <span style={{ fontSize:10,color:"#4a5568",fontVariantNumeric:"tabular-nums" }}>{game.time}</span>
           <span style={{ fontSize:13,color:"#2a3545",cursor:"pointer",lineHeight:1 }}>☆</span>
@@ -453,6 +471,32 @@ function GameCard({ game, onGenerate, results, generating, onCardClick }) {
           <TeamLogo abbr={homeAbbr} size={42} />
         </div>
       </div>
+
+      {/* LIVE SCORE DISPLAY */}
+      {gameStarted && live && (
+        <div style={{ marginBottom:12,background:"rgba(220,38,38,0.06)",border:"1px solid rgba(220,38,38,0.2)",borderRadius:10,padding:"10px 14px" }}>
+          <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center" }}>
+            <div style={{ textAlign:"center",flex:1 }}>
+              <div style={{ fontSize:10,color:"#64748b",marginBottom:3 }}>{awayAbbr}</div>
+              <div style={{ fontSize:28,fontWeight:900,color:"#f1f5f9",lineHeight:1 }}>{live.awayScore ?? '-'}</div>
+            </div>
+            <div style={{ textAlign:"center",padding:"0 12px" }}>
+              {isLive ? (
+                <div>
+                  <div style={{ fontSize:10,color:"#dc2626",fontWeight:700 }}>{live.inningHalf?.slice(0,3).toUpperCase() || ''} {live.inning || ''}</div>
+                  <div style={{ fontSize:9,color:"#4a5568",marginTop:2 }}>{live.outs ?? 0} out{live.outs===1?'':'s'}</div>
+                </div>
+              ) : (
+                <div style={{ fontSize:10,color:"#64748b",fontWeight:600 }}>FINAL</div>
+              )}
+            </div>
+            <div style={{ textAlign:"center",flex:1 }}>
+              <div style={{ fontSize:10,color:"#64748b",marginBottom:3 }}>{homeAbbr}</div>
+              <div style={{ fontSize:28,fontWeight:900,color:"#f1f5f9",lineHeight:1 }}>{live.homeScore ?? '-'}</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Public / Sharp money bar */}
       <div style={{ marginBottom:12 }}>
@@ -497,19 +541,27 @@ function GameCard({ game, onGenerate, results, generating, onCardClick }) {
       )}
 
       {/* Action buttons */}
-      <div style={{ display:"flex",gap:8 }}>
-        {["PUBLIC","VEGAS"].map(slot=>{
-          const key=`${game.id}-${slot}`;
-          const isGen=generating===key;
-          const hasRes=!!results[key];
-          const iv=slot==="VEGAS";
-          return(
-            <button key={slot} onClick={e=>{e.stopPropagation();onGenerate(game,slot);}} disabled={!!generating} style={{ flex:1,padding:"8px 0",background:isGen?(iv?"rgba(248,113,113,0.1)":"rgba(96,165,250,0.1)"):(hasRes?(iv?"rgba(248,113,113,0.06)":"rgba(96,165,250,0.06)"):"transparent"),border:`1px solid ${(isGen||hasRes)?(iv?"rgba(248,113,113,0.4)":"rgba(96,165,250,0.4)"):(iv?"rgba(248,113,113,0.2)":"rgba(96,165,250,0.2)")}`,borderRadius:7,fontSize:10,fontWeight:600,letterSpacing:"0.04em",color:generating&&!isGen?"#1e2a3a":(iv?"#f87171":"#60a5fa"),cursor:generating?"not-allowed":"pointer",fontFamily:"inherit" }}>
-              {isGen?"ANALYZING…":hasRes?`↻ ${slot}`:`Analyze as ${slot}`}
-            </button>
-          );
-        })}
-      </div>
+      {gameStarted ? (
+        <div style={{ display:"flex",alignItems:"center",justifyContent:"center",padding:"10px 0",background:"rgba(220,38,38,0.05)",border:"1px solid rgba(220,38,38,0.15)",borderRadius:8 }}>
+          <span style={{ fontSize:10,fontWeight:700,color:"#dc2626",letterSpacing:"0.08em" }}>
+            {isLive ? "🔴 GAME IN PROGRESS — LOCKED" : "⬛ FINAL — ANALYSIS LOCKED"}
+          </span>
+        </div>
+      ) : (
+        <div style={{ display:"flex",gap:8 }}>
+          {["PUBLIC","VEGAS"].map(slot=>{
+            const key=`${game.id}-${slot}`;
+            const isGen=generating===key;
+            const hasRes=!!results[key];
+            const iv=slot==="VEGAS";
+            return(
+              <button key={slot} onClick={e=>{e.stopPropagation();onGenerate(game,slot);}} disabled={!!generating} style={{ flex:1,padding:"8px 0",background:isGen?(iv?"rgba(248,113,113,0.1)":"rgba(96,165,250,0.1)"):(hasRes?(iv?"rgba(248,113,113,0.06)":"rgba(96,165,250,0.06)"):"transparent"),border:`1px solid ${(isGen||hasRes)?(iv?"rgba(248,113,113,0.4)":"rgba(96,165,250,0.4)"):(iv?"rgba(248,113,113,0.2)":"rgba(96,165,250,0.2)")}`,borderRadius:8,fontSize:10,fontWeight:600,letterSpacing:"0.06em",color:generating&&!isGen?"#1e2a3a":(iv?"#f87171":"#60a5fa"),cursor:generating?"not-allowed":"pointer",fontFamily:"inherit" }}>
+                {isGen?"ANALYZING…":hasRes?`↻ ${slot}`:`Analyze as ${slot}`}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -582,7 +634,7 @@ function OddsTicker({ feed }) {
       {items.map((o,i)=>(
         <div key={i} style={{ display:"inline-flex",alignItems:"center",gap:5,padding:"0 18px",borderRight:"1px solid rgba(255,255,255,0.04)" }}>
           <span style={{ fontSize:11,fontWeight:700,color:"#cbd5e1" }}>{o.team}{o.line}</span>
-          <span style={{ fontSize:11,fontWeight:600,color:o.odds.startsWith("+") ? "#10b981" : "#e2e8f0" }}>{o.odds}</span>
+          <span style={{ fontSize:11,fontWeight:600,color:o.odds.startsWith("+")??"#10b981":"#e2e8f0" }}>{o.odds}</span>
           <span style={{ fontSize:9,color:o.up?"#10b981":"#f87171" }}>{o.up?"▲":"▼"}</span>
         </div>
       ))}
@@ -664,6 +716,7 @@ export default function VegasVaultApp() {
   const [marketScanner, setMarketScanner] = useState({ reverseLineMovement:7, sharpMoneyDetected:5, publicHeavy:6, vegasTrapAlert:3 });
   const [insights, setInsights]       = useState(INSIGHTS);
   const [results, setResults]         = useState({});
+  const [liveScores, setLiveScores]   = useState({});
   const [generating, setGenerating]   = useState(null);
   const [activeResult, setActiveResult] = useState(null);
   const [activeGame, setActiveGame]   = useState(null);
@@ -689,6 +742,24 @@ export default function VegasVaultApp() {
     const t=setInterval(()=>setTime(new Date()),1000);
     return()=>clearInterval(t);
   },[]);
+
+  // ── LIVE SCORES — poll every 30s ─────────────────────────────────────────
+  useEffect(() => {
+    function fetchScores() {
+      fetch('/api/livescores').then(r => r.json()).then(data => {
+        const map = {};
+        (data.scores || []).forEach(s => {
+          // Match by team name to game id
+          const key = `${s.away}|${s.home}`;
+          map[key] = s;
+        });
+        setLiveScores(map);
+      }).catch(() => {});
+    }
+    fetchScores();
+    const interval = setInterval(fetchScores, 30000); // every 30 seconds
+    return () => clearInterval(interval);
+  }, []);
 
   const generated = Object.keys(results).length;
   const FILTERS = ["ALL","MLB","NBA","TENNIS","NHL","NCAAF","SOCCER","NEW"];
@@ -902,7 +973,7 @@ export default function VegasVaultApp() {
             ):(
               <div className="vv-cards">
                 {filteredGames.map(game=>(
-                  <GameCard key={game.id} game={game} results={results} generating={generating} onGenerate={handleGenerate} onCardClick={handleCardClick}/>
+                  <GameCard key={game.id} game={game} results={results} generating={generating} onGenerate={handleGenerate} onCardClick={handleCardClick} liveScores={liveScores}/>
                 ))}
               </div>
             )}
