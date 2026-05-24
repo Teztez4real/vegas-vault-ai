@@ -376,8 +376,29 @@ function GameCard({ game, onGenerate, results, generating, onCardClick }) {
   const homeName = isTennis ? game.player2 : game.home;
   const awayCity = game.awayCity || "";
   const homeCity = game.homeCity || "";
-  const awayAbbr = game.awayAbbr || awayName.slice(0,3).toUpperCase();
-  const homeAbbr = game.homeAbbr || homeName.slice(0,3).toUpperCase();
+  // Full name → abbreviation lookup
+  const NAME_TO_ABBR = {
+    "Arizona Diamondbacks":"ARI","Atlanta Braves":"ATL","Baltimore Orioles":"BAL",
+    "Boston Red Sox":"BOS","Chicago Cubs":"CHC","Chicago White Sox":"CHW",
+    "Cincinnati Reds":"CIN","Cleveland Guardians":"CLE","Colorado Rockies":"COL",
+    "Detroit Tigers":"DET","Houston Astros":"HOU","Kansas City Royals":"KC",
+    "Los Angeles Angels":"LAA","Los Angeles Dodgers":"LAD","Miami Marlins":"MIA",
+    "Milwaukee Brewers":"MIL","Minnesota Twins":"MIN","New York Mets":"NYM",
+    "New York Yankees":"NYY","Oakland Athletics":"OAK","Philadelphia Phillies":"PHI",
+    "Pittsburgh Pirates":"PIT","San Diego Padres":"SD","Seattle Mariners":"SEA",
+    "San Francisco Giants":"SF","St. Louis Cardinals":"STL","Tampa Bay Rays":"TB",
+    "Texas Rangers":"TEX","Toronto Blue Jays":"TOR","Washington Nationals":"WSH",
+    // short names
+    "Diamondbacks":"ARI","Braves":"ATL","Orioles":"BAL","Red Sox":"BOS",
+    "Cubs":"CHC","White Sox":"CHW","Reds":"CIN","Guardians":"CLE","Rockies":"COL",
+    "Tigers":"DET","Astros":"HOU","Royals":"KC","Angels":"LAA","Dodgers":"LAD",
+    "Marlins":"MIA","Brewers":"MIL","Twins":"MIN","Mets":"NYM","Yankees":"NYY",
+    "Athletics":"OAK","Phillies":"PHI","Pirates":"PIT","Padres":"SD",
+    "Mariners":"SEA","Giants":"SF","Cardinals":"STL","Rays":"TB","Rangers":"TEX",
+    "Blue Jays":"TOR","Nationals":"WSH",
+  };
+  const awayAbbr = game.awayAbbr || NAME_TO_ABBR[awayName] || NAME_TO_ABBR[awayName.split(" ").pop()] || awayName.slice(0,3).toUpperCase();
+  const homeAbbr = game.homeAbbr || NAME_TO_ABBR[homeName] || NAME_TO_ABBR[homeName.split(" ").pop()] || homeName.slice(0,3).toUpperCase();
   const awayRec  = isTennis ? `#${game.player1Ranking}` : game.awayRecord;
   const homeRec  = isTennis ? `#${game.player2Ranking}` : game.homeRecord;
   const publicPct = 30 + ((game.id * 17) % 45);
@@ -416,7 +437,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick }) {
           <TeamLogo abbr={awayAbbr} size={42} />
           <div>
             <div style={{ fontSize:8,color:"#3a4a5e",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:2 }}>{awayCity}</div>
-            <div style={{ fontSize:14,fontWeight:900,color:"#e2e8f0",letterSpacing:"0.02em",textTransform:"uppercase",lineHeight:1 }}>{awayAbbr==="NYY"?"YANKEES":awayAbbr==="BOS"?"RED SOX":awayAbbr==="TB"?"RAYS":awayAbbr==="MIN"?"TWINS":awayAbbr==="CLE"?"GUARDIANS":awayAbbr==="PHI"?"PHILLIES":awayAbbr==="STL"?"CARDINALS":awayAbbr==="CIN"?"REDS":awayAbbr==="DET"?"TIGERS":awayAbbr==="BAL"?"ORIOLES":awayAbbr==="PIT"?"PIRATES":awayAbbr==="TOR"?"BLUE JAYS":awayName.split(" ").pop().toUpperCase()}</div>
+            <div style={{ fontSize:14,fontWeight:900,color:"#e2e8f0",letterSpacing:"0.02em",textTransform:"uppercase",lineHeight:1 }}>{({"ARI":"DBACKS","ATL":"BRAVES","BAL":"ORIOLES","BOS":"RED SOX","CHC":"CUBS","CHW":"WHITE SOX","CIN":"REDS","CLE":"GUARDIANS","COL":"ROCKIES","DET":"TIGERS","HOU":"ASTROS","KC":"ROYALS","LAA":"ANGELS","LAD":"DODGERS","MIA":"MARLINS","MIL":"BREWERS","MIN":"TWINS","NYM":"METS","NYY":"YANKEES","OAK":"ATHLETICS","PHI":"PHILLIES","PIT":"PIRATES","SD":"PADRES","SEA":"MARINERS","SF":"GIANTS","STL":"CARDINALS","TB":"RAYS","TEX":"RANGERS","TOR":"BLUE JAYS","WSH":"NATIONALS"})[awayAbbr] || awayName.split(" ").pop().toUpperCase()}</div>
             <div style={{ fontSize:10,color:"#3a4a5e",marginTop:3 }}>{awayRec}</div>
           </div>
         </div>
@@ -426,7 +447,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick }) {
         <div style={{ display:"flex",alignItems:"center",gap:10,justifyContent:"flex-end" }}>
           <div style={{ textAlign:"right" }}>
             <div style={{ fontSize:8,color:"#3a4a5e",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:2 }}>{homeCity}</div>
-            <div style={{ fontSize:14,fontWeight:900,color:"#e2e8f0",letterSpacing:"0.02em",textTransform:"uppercase",lineHeight:1 }}>{homeAbbr==="NYY"?"YANKEES":homeAbbr==="BOS"?"RED SOX":homeAbbr==="TB"?"RAYS":homeAbbr==="MIN"?"TWINS":homeAbbr==="CLE"?"GUARDIANS":homeAbbr==="PHI"?"PHILLIES":homeAbbr==="STL"?"CARDINALS":homeAbbr==="CIN"?"REDS":homeAbbr==="DET"?"TIGERS":homeAbbr==="BAL"?"ORIOLES":homeAbbr==="PIT"?"PIRATES":homeAbbr==="TOR"?"BLUE JAYS":homeName.split(" ").pop().toUpperCase()}</div>
+            <div style={{ fontSize:14,fontWeight:900,color:"#e2e8f0",letterSpacing:"0.02em",textTransform:"uppercase",lineHeight:1 }}>{({"ARI":"DBACKS","ATL":"BRAVES","BAL":"ORIOLES","BOS":"RED SOX","CHC":"CUBS","CHW":"WHITE SOX","CIN":"REDS","CLE":"GUARDIANS","COL":"ROCKIES","DET":"TIGERS","HOU":"ASTROS","KC":"ROYALS","LAA":"ANGELS","LAD":"DODGERS","MIA":"MARLINS","MIL":"BREWERS","MIN":"TWINS","NYM":"METS","NYY":"YANKEES","OAK":"ATHLETICS","PHI":"PHILLIES","PIT":"PIRATES","SD":"PADRES","SEA":"MARINERS","SF":"GIANTS","STL":"CARDINALS","TB":"RAYS","TEX":"RANGERS","TOR":"BLUE JAYS","WSH":"NATIONALS"})[homeAbbr] || homeName.split(" ").pop().toUpperCase()}</div>
             <div style={{ fontSize:10,color:"#3a4a5e",marginTop:3 }}>{homeRec}</div>
           </div>
           <TeamLogo abbr={homeAbbr} size={42} />
@@ -560,7 +581,7 @@ function OddsTicker() {
       {items.map((o,i)=>(
         <div key={i} style={{ display:"inline-flex",alignItems:"center",gap:5,padding:"0 18px",borderRight:"1px solid rgba(255,255,255,0.04)" }}>
           <span style={{ fontSize:11,fontWeight:700,color:"#cbd5e1" }}>{o.team}{o.line}</span>
-          <span style={{ fontSize:11,fontWeight:600,color:o.odds.startsWith("+")?"#10b981":"#e2e8f0" }}>{o.odds}</span>
+          <span style={{ fontSize:11,fontWeight:600,color:o.odds.startsWith("+") ? "#10b981" : "#e2e8f0" }}>{o.odds}</span>
           <span style={{ fontSize:9,color:o.up?"#10b981":"#f87171" }}>{o.up?"▲":"▼"}</span>
         </div>
       ))}
