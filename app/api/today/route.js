@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { assignNBASlots, NBA_MOCK_GAMES } from '@/lib/nbaModel';
+import { assignNBASlots } from '@/lib/nbaModel';
 
 // ── UTILITIES ─────────────────────────────────────────────────────────────────
 
@@ -271,51 +271,86 @@ async function assembleMLBGame(g, oddsMap) {
 
 // ── NBA GAMES ─────────────────────────────────────────────────────────────────
 
-async function fetchNBAGames() {
+async function fetchNBAGames(dateParam) {
   const apiKey = process.env.ODDS_API_KEY;
-  if (!apiKey) return assignNBASlots(NBA_MOCK_GAMES);
+  if (!apiKey) return [];
   try {
-    const oddsResult = await fetchOdds('basketball_nba');
-    const oddsMap = oddsResult.oddsMap || oddsResult;
-    if (Object.keys(oddsMap).length === 0) return assignNBASlots(NBA_MOCK_GAMES);
-    const games = await Promise.all(
-      Object.entries(oddsMap).map(async ([key, odds], i) => {
-        const [away, home] = key.split('|');
-        const cbsPreview = await fetchCBSSportsPreview(away, home, 'nba');
-        return {
-          id: 1000 + i, sport: 'NBA', gameType: 'playoffs',
-          rawTime: odds.commenceTime,
-          time: formatTime(odds.commenceTime),
-          date: odds.commenceTime?.split('T')[0] || todayStr(),
-          away, home,
-          awayRecord: 'See NBA standings', homeRecord: 'See NBA standings',
-          awayAwayRecord: 'N/A', homeHomeRecord: 'N/A',
-          awayLast5: 'N/A', homeLast5: 'N/A',
-          awayLast10: 'N/A', homeLast10: 'N/A',
-          awayStreak: 'N/A', homeStreak: 'N/A',
-          awayML: odds.awayML, homeML: odds.homeML,
-          openingAwayML: odds.openingAwayML, openingHomeML: odds.openingHomeML,
-          spread: odds.spread, total: odds.total,
-          lineMovement: odds.lineMovement,
-          betPercentage: odds.betPercentage, moneyPercentage: odds.moneyPercentage,
-          awayRest: 'Check schedule', homeRest: 'Check schedule',
-          awayB2B: false, homeB2B: false,
-          awayPPG: 'N/A', awayOppPPG: 'N/A',
-          homePPG: 'N/A', homeOppPPG: 'N/A',
-          awayOffRating: 'N/A', awayDefRating: 'N/A', awayPace: 'N/A',
-          homeOffRating: 'N/A', homeDefRating: 'N/A', homePace: 'N/A',
-          awayKeyPlayers: 'Check NBA roster', homeKeyPlayers: 'Check NBA roster',
-          injuries: 'Check NBA injury report',
-          h2hLast5: 'N/A', h2hAtHome: 'N/A',
-          seriesGame: 1, awaySeriesWins: 0, homeSeriesWins: 0,
-          seriesHistory: 'N/A', cbsPreview, slot: 'PUBLIC',
-        };
-      })
-    );
+    // Try regular season key first, then playoffs key
+    let oddsMap = {};
+    for (const sportKey of ['basketball_nba', 'basketball_nba_championship']) {
+      const oddsResult = await fetchOdds(sportKey);
+      const map = oddsResult.oddsMap || oddsResult;
+      const validEntries = Object.entries(map).filter(([k]) => !k.startsWith('_'));
+      if (validEntries.length > 0) {
+        validEntries.forEach(([k, v]) => { oddsMap[k] = v; });
+      }
+    }
+    if (Object.keys(oddsMap).length === 0) return [];
+
+    const games = (await Promise.all(
+      Object.entries(oddsMap)
+        .filter(([key]) => !key.startsWith('_'))
+        .map(async ([key, odds], i) => {
+          const [away, home] = key.split('|');
+          // Filter by selected date
+          const gameDate = odds.commenceTime?.split('T')[0];
+          if (dateParam && gameDate && gameDate !== dateParam) return null;
+
+          const NBA_ABBR = {
+            "Atlanta Hawks":"ATL","Boston Celtics":"BOS","Brooklyn Nets":"BKN",
+            "Charlotte Hornets":"CHA","Chicago Bulls":"CHI","Cleveland Cavaliers":"CLE",
+            "Dallas Mavericks":"DAL","Denver Nuggets":"DEN","Detroit Pistons":"DET",
+            "Golden State Warriors":"GSW","Houston Rockets":"HOU","Indiana Pacers":"IND",
+            "LA Clippers":"LAC","Los Angeles Clippers":"LAC","Los Angeles Lakers":"LAL",
+            "Memphis Grizzlies":"MEM","Miami Heat":"MIA","Milwaukee Bucks":"MIL",
+            "Minnesota Timberwolves":"MIN","New Orleans Pelicans":"NOP",
+            "New York Knicks":"NYK","Oklahoma City Thunder":"OKC","Orlando Magic":"ORL",
+            "Philadelphia 76ers":"PHI","Phoenix Suns":"PHX","Portland Trail Blazers":"POR",
+            "Sacramento Kings":"SAC","San Antonio Spurs":"SAS","Toronto Raptors":"TOR",
+            "Utah Jazz":"UTA","Washington Wizards":"WAS",
+          };
+
+          return {
+            id: 1000 + i, sport: 'NBA',
+            rawTime: odds.commenceTime,
+            time: formatTime(odds.commenceTime),
+            date: gameDate || dateParam || todayStr(),
+            away, home,
+            awayCity: away.split(' ').slice(0,-1).join(' ').toUpperCase(),
+            homeCity: home.split(' ').slice(0,-1).join(' ').toUpperCase(),
+            awayAbbr: NBA_ABBR[away] || away.split(' ').pop().slice(0,3).toUpperCase(),
+            homeAbbr: NBA_ABBR[home] || home.split(' ').pop().slice(0,3).toUpperCase(),
+            awayRecord: 'See NBA standings', homeRecord: 'See NBA standings',
+            awayAwayRecord: 'N/A', homeHomeRecord: 'N/A',
+            awayLast5: 'N/A', homeLast5: 'N/A',
+            awayLast10: 'N/A', homeLast10: 'N/A',
+            awayStreak: 'N/A', homeStreak: 'N/A',
+            awayML: odds.awayML || 'N/A', homeML: odds.homeML || 'N/A',
+            openingAwayML: odds.openingAwayML || 'N/A',
+            openingHomeML: odds.openingHomeML || 'N/A',
+            spread: odds.spread || 'N/A', total: odds.total || 'N/A',
+            lineMovement: odds.lineMovement || 'N/A',
+            betPercentage: 'Available with paid tier',
+            moneyPercentage: 'Available with paid tier',
+            awayKeyPlayers: 'Check NBA roster', homeKeyPlayers: 'Check NBA roster',
+            injuries: 'Check rotowire.com/basketball/nba/injury-report.php',
+            h2hLast5: 'N/A', h2hAtHome: 'N/A',
+            seriesGame: 1, awaySeriesWins: 0, homeSeriesWins: 0,
+            seriesHistory: 'N/A',
+            awayPPG: 'N/A', homePPG: 'N/A',
+            awayOffRating: 'N/A', homeOffRating: 'N/A',
+            awayDefRating: 'N/A', homeDefRating: 'N/A',
+            awayPace: 'N/A', homePace: 'N/A',
+            cbsPreview: 'Check CBS Sports for preview',
+            gameStatus: 'Scheduled', slot: 'PUBLIC',
+          };
+        })
+    )).filter(Boolean);
+
     return assignNBASlots(games);
   } catch (err) {
     console.error('NBA games error:', err.message);
-    return assignNBASlots(NBA_MOCK_GAMES);
+    return [];
   }
 }
 
@@ -409,7 +444,7 @@ export async function GET(request) {
   const [scheduleGames, mlbOddsResult, nbaGames, nflGames] = await Promise.all([
       fetchMLBSchedule(dateParam),
       fetchOdds('baseball_mlb'),
-      fetchNBAGames(),
+      fetchNBAGames(dateParam),
       fetchNFLGames(dateParam),
     ]);
     const mlbOdds = mlbOddsResult.oddsMap || mlbOddsResult;
