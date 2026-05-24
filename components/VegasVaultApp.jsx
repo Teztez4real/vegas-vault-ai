@@ -1189,12 +1189,47 @@ export default function VegasVaultApp() {
 
       {/* MOBILE BOTTOM NAV */}
       <div className="vv-bottom-nav">
-        {[{icon:"⊞",lbl:"HOME"},{icon:"📅",lbl:"SLATE"},{icon:"◎",lbl:"ANALYZE"},{icon:"🔒",lbl:"LOCKS"},{icon:"↺",lbl:"HISTORY"}].map((item,i)=>(
-          <div key={i} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"6px 14px",cursor:"pointer",opacity:i===0?1:0.38 }}>
-            <span style={{ fontSize:17,color:i===0?"#c9a227":"#475569" }}>{item.icon}</span>
-            <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.07em",color:i===0?"#c9a227":"#475569" }}>{item.lbl}</span>
+        {/* Home */}
+        <div style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"6px 10px",cursor:"pointer" }}>
+          <span style={{ fontSize:17,color:"#c9a227" }}>⊞</span>
+          <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.07em",color:"#c9a227" }}>HOME</span>
+        </div>
+        {/* Slate */}
+        <div style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"6px 10px",cursor:"pointer",opacity:0.38 }}>
+          <span style={{ fontSize:17,color:"#475569" }}>📅</span>
+          <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.07em",color:"#475569" }}>SLATE</span>
+        </div>
+        {/* Login/Account */}
+        {authUser ? (
+          <div onClick={()=>window.location.href="/settings"} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"6px 10px",cursor:"pointer" }}>
+            <div style={{ width:26,height:26,borderRadius:"50%",background:"linear-gradient(135deg,#c9a227,#8b6d10)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,color:"#000" }}>
+              {authUser.email?.[0].toUpperCase()}
+            </div>
+            <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.07em",color:"#c9a227" }}>ACCOUNT</span>
           </div>
-        ))}
+        ) : (
+          <div onClick={()=>{setShowAuthModal(true);setAuthMode('login');setAuthError('');setAuthMessage('');}} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"6px 10px",cursor:"pointer" }}>
+            <span style={{ fontSize:17,color:"#c9a227" }}>🔐</span>
+            <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.07em",color:"#c9a227" }}>LOGIN</span>
+          </div>
+        )}
+        {/* Settings */}
+        <div onClick={()=>window.location.href="/settings"} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"6px 10px",cursor:"pointer",opacity:0.7 }}>
+          <span style={{ fontSize:17,color:"#475569" }}>⚙</span>
+          <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.07em",color:"#475569" }}>SETTINGS</span>
+        </div>
+        {/* Sign out (only when logged in) */}
+        {authUser ? (
+          <div onClick={handleSignOut} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"6px 10px",cursor:"pointer",opacity:0.7 }}>
+            <span style={{ fontSize:17,color:"#475569" }}>↩</span>
+            <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.07em",color:"#475569" }}>SIGN OUT</span>
+          </div>
+        ) : (
+          <div style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"6px 10px",opacity:0.38 }}>
+            <span style={{ fontSize:17,color:"#475569" }}>↺</span>
+            <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.07em",color:"#475569" }}>HISTORY</span>
+          </div>
+        )}
       </div>
 
       {activeResult&&activeGame&&(
@@ -1204,7 +1239,7 @@ export default function VegasVaultApp() {
       {/* AUTH MODAL */}
       {showAuthModal && (
         <div onClick={e=>e.target===e.currentTarget&&setShowAuthModal(false)} style={{ position:"fixed",inset:0,zIndex:500,background:"rgba(0,0,0,0.8)",backdropFilter:"blur(16px)",display:"flex",alignItems:"center",justifyContent:"center",padding:16 }}>
-          <div style={{ background:"#0b0f1e",border:"1px solid rgba(255,255,255,0.08)",borderRadius:20,width:"100%",maxWidth:420,padding:0,boxShadow:"0 32px 80px rgba(0,0,0,0.9)",overflow:"hidden" }}>
+          <div style={{ background:"#0b0f1e",border:"1px solid rgba(255,255,255,0.08)",borderRadius:20,width:"100%",maxWidth:420,padding:0,boxShadow:"0 32px 80px rgba(0,0,0,0.9)",overflow:"hidden",maxHeight:"95vh",overflowY:"auto" }}>
             {/* Modal header */}
             <div style={{ padding:"18px 24px",borderBottom:"1px solid rgba(255,255,255,0.06)",display:"flex",justifyContent:"space-between",alignItems:"center" }}>
               <div style={{ display:"flex",gap:0 }}>
