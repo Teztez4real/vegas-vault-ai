@@ -249,7 +249,9 @@ async function fetchOdds(sportKey) {
     const data = await res.json();
     if (!Array.isArray(data)) return {};
     const oddsMap = {};
+    const bookmakerSet = new Set();
     for (const game of data) {
+      game.bookmakers?.forEach(b => bookmakerSet.add(b.key));
       const key = `${game.away_team}|${game.home_team}`;
       const bookmaker = game.bookmakers?.find(b => b.key === 'draftkings') || game.bookmakers?.[0];
       const h2h = bookmaker?.markets?.find(m => m.key === 'h2h');
@@ -283,6 +285,7 @@ async function fetchOdds(sportKey) {
         commenceTime: game.commence_time,
       };
     }
+    oddsMap._bookmakerCount = bookmakerSet.size;
     return oddsMap;
   } catch (err) {
     console.error(`Odds API error (${sportKey}):`, err.message);
@@ -539,6 +542,7 @@ export async function GET() {
     return NextResponse.json({
       games: allGames,
       trellAlerts: [],
+      bookmakerCount: mlbOdds._bookmakerCount || 0,
       oddsFeed: oddsValues.length > 0 ? oddsValues.slice(0,12).map(([key, odds]) => {
         const [away, home] = key.split('|');
         const ABBR = {"Yankees":"NYY","Red Sox":"BOS","Dodgers":"LAD","Padres":"SD","Cubs":"CHC","Cardinals":"STL","Rays":"TB","Mets":"NYM","Braves":"ATL","Phillies":"PHI","Guardians":"CLE","Astros":"HOU","Twins":"MIN","Mariners":"SEA","Giants":"SF","Rockies":"COL","Brewers":"MIL","Orioles":"BAL","Tigers":"DET","Royals":"KC","White Sox":"CHW","Pirates":"PIT","Reds":"CIN","Athletics":"OAK","Angels":"LAA","Rangers":"TEX","Blue Jays":"TOR","Nationals":"WSH","Diamondbacks":"ARI","Marlins":"MIA"};
