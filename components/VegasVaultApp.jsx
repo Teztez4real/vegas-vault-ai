@@ -416,8 +416,8 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
   const homeRec  = isTennis ? `#${game.player2Ranking}` : game.homeRecord;
   const publicPct = 30 + ((game.id * 17) % 45);
   const sharpPct  = 100 - publicPct;
-  const sportColor = game.sport==="MLB"?"#60a5fa":game.sport==="NBA"?"#fb923c":"#a78bfa";
-  const sportBg    = game.sport==="MLB"?"rgba(96,165,250,0.12)":game.sport==="NBA"?"rgba(251,146,60,0.12)":"rgba(167,139,250,0.12)";
+  const sportColor = game.sport==="MLB"?"#60a5fa":game.sport==="NBA"?"#fb923c":game.sport==="NFL"?"#34d399":"#a78bfa";
+  const sportBg    = game.sport==="MLB"?"rgba(96,165,250,0.12)":game.sport==="NBA"?"rgba(251,146,60,0.12)":game.sport==="NFL"?"rgba(52,211,153,0.12)":"rgba(167,139,250,0.12)";
 
   return (
     <div
@@ -823,12 +823,11 @@ export default function VegasVaultApp() {
   }, [selectedDate]);
 
   const generated = Object.keys(results).length;
-  const FILTERS = ["ALL","MLB","NBA","TENNIS","NHL","NCAAF","SOCCER","NEW"];
+  const FILTERS = ["ALL","MLB","NBA","NFL"];
   const filteredGames = games.filter(g=>{
     if(filter==="MLB")return g.sport==="MLB";
     if(filter==="NBA")return g.sport==="NBA";
-    if(filter==="TENNIS")return g.sport==="Tennis";
-    if(filter==="NEW")return !results[`${g.id}-PUBLIC`]&&!results[`${g.id}-VEGAS`];
+    if(filter==="NFL")return g.sport==="NFL";
     return true;
   });
 

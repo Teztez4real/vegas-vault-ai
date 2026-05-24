@@ -319,16 +319,98 @@ async function fetchNBAGames() {
   }
 }
 
+// ── NFL GAMES ─────────────────────────────────────────────────────────────────
+
+function assignNFLSlots(games) {
+  return games.map((g, i) => ({ ...g, slot: i % 2 === 0 ? 'PUBLIC' : 'VEGAS' }));
+}
+
+async function fetchNFLGames(dateParam) {
+  const apiKey = process.env.ODDS_API_KEY;
+  if (!apiKey) return [];
+  try {
+    // Check if NFL season is active (September through February)
+    const month = new Date().getMonth() + 1; // 1-12
+    if (month >= 3 && month <= 8) return []; // March-August = offseason, no games
+
+    const oddsResult = await fetchOdds('americanfootball_nfl');
+    const oddsMap = oddsResult.oddsMap || oddsResult;
+    if (Object.keys(oddsMap).length === 0) return [];
+
+    const games = Object.entries(oddsMap)
+      .filter(([key]) => !key.startsWith('_'))
+      .map(([key, odds], i) => {
+        const [away, home] = key.split('|');
+        // Only include games on the selected date
+        const gameDate = odds.commenceTime?.split('T')[0];
+        if (gameDate && gameDate !== dateParam) return null;
+        const ABBR = {
+          "Arizona Cardinals":"ARI","Atlanta Falcons":"ATL","Baltimore Ravens":"BAL",
+          "Buffalo Bills":"BUF","Carolina Panthers":"CAR","Chicago Bears":"CHI",
+          "Cincinnati Bengals":"CIN","Cleveland Browns":"CLE","Dallas Cowboys":"DAL",
+          "Denver Broncos":"DEN","Detroit Lions":"DET","Green Bay Packers":"GB",
+          "Houston Texans":"HOU","Indianapolis Colts":"IND","Jacksonville Jaguars":"JAX",
+          "Kansas City Chiefs":"KC","Las Vegas Raiders":"LV","Los Angeles Chargers":"LAC",
+          "Los Angeles Rams":"LAR","Miami Dolphins":"MIA","Minnesota Vikings":"MIN",
+          "New England Patriots":"NE","New Orleans Saints":"NO","New York Giants":"NYG",
+          "New York Jets":"NYJ","Philadelphia Eagles":"PHI","Pittsburgh Steelers":"PIT",
+          "San Francisco 49ers":"SF","Seattle Seahawks":"SEA","Tampa Bay Buccaneers":"TB",
+          "Tennessee Titans":"TEN","Washington Commanders":"WSH",
+        };
+        return {
+          id: 2000 + i, sport: 'NFL',
+          rawTime: odds.commenceTime,
+          time: formatTime(odds.commenceTime),
+          date: gameDate || dateParam,
+          away, home,
+          awayCity: away.split(' ').slice(0,-1).join(' ').toUpperCase(),
+          homeCity: home.split(' ').slice(0,-1).join(' ').toUpperCase(),
+          awayAbbr: ABBR[away] || away.split(' ').pop().slice(0,3).toUpperCase(),
+          homeAbbr: ABBR[home] || home.split(' ').pop().slice(0,3).toUpperCase(),
+          awayRecord: 'See NFL standings', homeRecord: 'See NFL standings',
+          awayAwayRecord: 'N/A', homeHomeRecord: 'N/A',
+          awayLast5: 'N/A', homeLast5: 'N/A', awayLast10: 'N/A', homeLast10: 'N/A',
+          awayStreak: 'N/A', homeStreak: 'N/A',
+          awayML: odds.awayML || 'N/A', homeML: odds.homeML || 'N/A',
+          openingAwayML: odds.openingAwayML || 'N/A',
+          openingHomeML: odds.openingHomeML || 'N/A',
+          spread: odds.spread || 'N/A',
+          total: odds.total || 'N/A',
+          lineMovement: odds.lineMovement || 'N/A',
+          betPercentage: 'Available with paid tier',
+          moneyPercentage: 'Available with paid tier',
+          awayQB: 'Check depth chart', homeQB: 'Check depth chart',
+          awayQBStats: 'N/A', homeQBStats: 'N/A',
+          awayOffense: 'Check NFL stats', homeOffense: 'Check NFL stats',
+          awayDefense: 'Check NFL stats', homeDefense: 'Check NFL stats',
+          h2hLast5: 'Check NFL H2H history',
+          injuries: 'Check rotowire.com/football/nfl/injury-report.php',
+          weather: 'Check game time weather',
+          cbsPreview: 'Check CBS Sports for preview',
+          gameStatus: 'Scheduled',
+          week: 'N/A', gameType: 'Regular Season',
+          slot: 'PUBLIC',
+        };
+      }).filter(Boolean);
+
+    return assignNFLSlots(games);
+  } catch (err) {
+    console.error('NFL games error:', err.message);
+    return [];
+  }
+}
+
 // ── MAIN HANDLER ──────────────────────────────────────────────────────────────
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   try {
     const dateParam = searchParams.get('date') || todayStr();
-  const [scheduleGames, mlbOddsResult, nbaGames] = await Promise.all([
+  const [scheduleGames, mlbOddsResult, nbaGames, nflGames] = await Promise.all([
       fetchMLBSchedule(dateParam),
       fetchOdds('baseball_mlb'),
       fetchNBAGames(),
+      fetchNFLGames(dateParam),
     ]);
     const mlbOdds = mlbOddsResult.oddsMap || mlbOddsResult;
     const mlbBookmakerCount = mlbOddsResult.bookmakerCount || 0;
@@ -339,7 +421,7 @@ export async function GET(request) {
 
     mlbGamesRaw.sort((a, b) => new Date(a.rawTime) - new Date(b.rawTime));
     const mlbGames = assignMLBSlots(mlbGamesRaw);
-    const allGames = [...mlbGames, ...nbaGames];
+    const allGames = [...mlbGames, ...nbaGames, ...nflGames];
 
     return NextResponse.json({
       games: allGames,

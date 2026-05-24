@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
-import { buildBaseballPrompt, buildTennisPrompt } from '@/lib/prompts';
+import { buildBaseballPrompt, buildTennisPrompt, buildNFLPrompt } from '@/lib/prompts';
 import { buildNBAPrompt } from '@/lib/nbaModel';
 
 function buildPrompt(game) {
   if (game.sport === 'Tennis') return buildTennisPrompt(game);
   if (game.sport === 'NBA') return buildNBAPrompt(game);
+  if (game.sport === 'NFL') return buildNFLPrompt(game);
   return buildBaseballPrompt(game);
 }
 
