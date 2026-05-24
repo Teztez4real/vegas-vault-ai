@@ -106,51 +106,101 @@ async function fetchCBSSportsPreview(awayTeam, homeTeam, sport = 'mlb') {
   }
 }
 
-// ── ESPN H2H ──────────────────────────────────────────────────────────────────
+// ── ESPN H2H (MLB Stats API — real H2H) ──────────────────────────────────────
 
-async function fetchESPNH2H(awayTeam, homeTeam, sport = 'mlb') {
+async function fetchMLBH2H(awayTeamId, homeTeamId, awayTeamName, homeTeamName) {
   try {
-    const query = encodeURIComponent(`${awayTeam} vs ${homeTeam} head to head ${sport}`);
-    const res = await fetch(`https://www.espn.com/${sport}/`, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' },
-      signal: AbortSignal.timeout(4000),
-    });
-    if (!res.ok) return `ESPN H2H not available for ${awayTeam} vs ${homeTeam}`;
-    const html = await res.text();
-    // Look for any mention of both teams near each other
-    const awayShort = awayTeam.split(' ').pop();
-    const homeShort = homeTeam.split(' ').pop();
-    const pattern = new RegExp(`(${awayShort}[^<]{0,200}${homeShort}|${homeShort}[^<]{0,200}${awayShort})`, 'i');
-    const match = html.match(pattern);
-    if (match) {
-      return `ESPN: ${match[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 400)}`;
+    const season = new Date().getFullYear();
+    // Fetch this season's games between these two teams
+    const res = await fetch(
+      `https://statsapi.mlb.com/api/v1/schedule?sportId=1&season=${season}&teamId=${homeTeamId}&opponentId=${awayTeamId}&gameType=R`,
+      { next: { revalidate: 3600 } }
+    );
+    const data = await res.json();
+    const games = [];
+    for (const date of data.dates || []) {
+      for (const game of date.games || []) {
+        // Only include completed games
+        if (game.status?.abstractGameState === 'Final') {
+          const home = game.teams?.home;
+          const away = game.teams?.away;
+          const homeWon = home?.isWinner;
+          const winner = homeWon ? home?.team?.name : away?.team?.name;
+          const score = `${away?.team?.name} ${away?.score ?? '?'} @ ${home?.team?.name} ${home?.score ?? '?'}`;
+          games.push({ date: date.date, score, winner });
+        }
+      }
     }
-    return `ESPN H2H: Cross-reference ESPN.com for ${awayTeam} vs ${homeTeam} series history`;
+
+    if (games.length === 0) {
+      return `No completed H2H games yet this season between ${awayTeamName} and ${homeTeamName}`;
+    }
+
+    const last5 = games.slice(-5).reverse();
+    const awayWins = games.filter(g => g.winner === awayTeamName).length;
+    const homeWins = games.filter(g => g.winner === homeTeamName).length;
+    const lines = last5.map(g => `${g.date}: ${g.score} (W: ${g.winner})`);
+    return `Season series: ${homeTeamName} ${homeWins}-${awayWins} ${awayTeamName} | Last ${last5.length} games: ${lines.join(' | ')}`;
   } catch {
-    return `ESPN H2H: Cross-reference ESPN.com for ${awayTeam} vs ${homeTeam} series history`;
+    return `MLB H2H unavailable — check mlb.com for ${awayTeamName} vs ${homeTeamName} series history`;
   }
 }
 
-// ── COVERS H2H ────────────────────────────────────────────────────────────────
+// ── COVERS H2H (Ball Don't Lie — NBA H2H) ────────────────────────────────────
 
-async function fetchCoversH2H(awayTeam, homeTeam, sport = 'mlb') {
+async function fetchNBAH2H(awayTeamName, homeTeamName) {
   try {
-    const sportPath = sport === 'nba' ? 'nba' : 'mlb';
-    const awaySlug = awayTeam.toLowerCase().replace(/\s+/g, '-');
-    const homeSlug = homeTeam.toLowerCase().replace(/\s+/g, '-');
-    const res = await fetch(`https://www.covers.com/${sportPath}/matchup/${awaySlug}-vs-${homeSlug}-odds`, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' },
+    // Ball Don't Lie free API — search for team IDs first
+    const teamsRes = await fetch('https://api.balldontlie.io/v1/teams', {
+      headers: { 'Authorization': process.env.BALLDONTLIE_API_KEY || '' },
       signal: AbortSignal.timeout(5000),
     });
-    if (!res.ok) return `Covers.com H2H: Cross-reference covers.com for ${awayTeam} vs ${homeTeam} ATS history`;
-    const html = await res.text();
-    const match = html.match(/(?:head.to.head|h2h|series|all.time)[^<]{0,600}/i);
-    if (match) {
-      return `Covers.com: ${match[0].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 500)}`;
-    }
-    return `Covers.com H2H: Cross-reference covers.com for ${awayTeam} vs ${homeTeam} ATS and SU series history`;
+
+    // Try without auth first (free tier)
+    const teamsResOpen = await fetch('https://www.balldontlie.io/api/v1/teams', {
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!teamsResOpen.ok) return `NBA H2H: Cross-reference ESPN.com for ${awayTeamName} vs ${homeTeamName} series history`;
+    const teamsData = await teamsResOpen.json();
+    const teams = teamsData.data || [];
+
+    const awayShort = awayTeamName.split(' ').pop();
+    const homeShort = homeTeamName.split(' ').pop();
+    const awayTeam = teams.find(t => t.name === awayShort || t.full_name.includes(awayShort));
+    const homeTeam = teams.find(t => t.name === homeShort || t.full_name.includes(homeShort));
+
+    if (!awayTeam || !homeTeam) return `NBA H2H: Cross-reference ESPN.com for ${awayTeamName} vs ${homeTeamName} series history`;
+
+    // Get recent games between these two teams
+    const season = new Date().getFullYear() - (new Date().getMonth() < 8 ? 1 : 0);
+    const gamesRes = await fetch(
+      `https://www.balldontlie.io/api/v1/games?seasons[]=${season}&team_ids[]=${awayTeam.id}&team_ids[]=${homeTeam.id}&per_page=10`,
+      { signal: AbortSignal.timeout(5000) }
+    );
+    if (!gamesRes.ok) return `NBA H2H: Cross-reference ESPN.com for ${awayTeamName} vs ${homeTeamName} series history`;
+    const gamesData = await gamesRes.json();
+    const games = (gamesData.data || []).filter(g => g.status === 'Final');
+
+    if (games.length === 0) return `No completed H2H games found this season for ${awayTeamName} vs ${homeTeamName}`;
+
+    const awayWins = games.filter(g => {
+      const awayScore = g.home_team.id === awayTeam.id ? g.home_team_score : g.visitor_team_score;
+      const homeScore = g.home_team.id === homeTeam.id ? g.home_team_score : g.visitor_team_score;
+      return awayScore > homeScore;
+    }).length;
+    const homeWins = games.length - awayWins;
+
+    const lines = games.slice(0, 5).map(g => {
+      const isHomeTeamHome = g.home_team.id === homeTeam.id;
+      const homeScore = isHomeTeamHome ? g.home_team_score : g.visitor_team_score;
+      const awayScore = isHomeTeamHome ? g.visitor_team_score : g.home_team_score;
+      const winner = homeScore > awayScore ? homeTeamName : awayTeamName;
+      return `${g.date?.slice(0,10)}: ${awayTeamName} ${awayScore} @ ${homeTeamName} ${homeScore} (W: ${winner})`;
+    });
+
+    return `Season series: ${homeTeamName} ${homeWins}-${awayWins} ${awayTeamName} | Last ${lines.length} games: ${lines.join(' | ')}`;
   } catch {
-    return `Covers.com H2H: Cross-reference covers.com for ${awayTeam} vs ${homeTeam} ATS and SU series history`;
+    return `NBA H2H: Cross-reference ESPN.com for ${awayTeamName} vs ${homeTeamName} series history`;
   }
 }
 
@@ -309,14 +359,13 @@ async function assembleMLBGame(g, oddsMap) {
   const awayPitcher = g.teams.away.probablePitcher;
   const oddsKey = `${away.name}|${home.name}`;
   const odds = oddsMap[oddsKey] || {};
-  const [homeRecord, awayRecord, homePitcherStats, awayPitcherStats, cbsPreview, espnH2H, coversH2H, rotoWireInjuries] = await Promise.all([
+  const [homeRecord, awayRecord, homePitcherStats, awayPitcherStats, cbsPreview, mlbH2H, rotoWireInjuries] = await Promise.all([
     fetchTeamRecord(home.id),
     fetchTeamRecord(away.id),
     fetchPitcherStats(homePitcher?.id),
     fetchPitcherStats(awayPitcher?.id),
     fetchCBSSportsPreview(away.name, home.name, 'mlb'),
-    fetchESPNH2H(away.name, home.name, 'mlb'),
-    fetchCoversH2H(away.name, home.name, 'mlb'),
+    fetchMLBH2H(away.id, home.id, away.name, home.name),
     fetchRotoWireInjuries(away.name, home.name, 'mlb'),
   ]);
   return {
@@ -340,8 +389,8 @@ async function assembleMLBGame(g, oddsMap) {
     awayBullpenERA: 'See team stats', homeBullpenERA: 'See team stats',
     awayOffense: `${awayRecord.overall} record, ${awayRecord.last10} last 10`,
     homeOffense: `${homeRecord.overall} record, ${homeRecord.last10} last 10`,
-    h2hLast5: 'See MLB Stats', h2hAtHome: 'See MLB Stats',
-    espnH2H, coversH2H,
+    h2hLast5: mlbH2H, h2hAtHome: 'See season series above',
+    espnH2H: mlbH2H, coversH2H: '',
     injuries: rotoWireInjuries,
     lineMovement: odds.lineMovement || 'Odds API not connected',
     cbsPreview,
@@ -362,10 +411,9 @@ async function fetchNBAGames() {
     const games = await Promise.all(
       Object.entries(oddsMap).map(async ([key, odds], i) => {
         const [away, home] = key.split('|');
-        const [cbsPreview, espnH2H, coversH2H, rotoWireInjuries] = await Promise.all([
+        const [cbsPreview, nbaH2H, rotoWireInjuries] = await Promise.all([
           fetchCBSSportsPreview(away, home, 'nba'),
-          fetchESPNH2H(away, home, 'nba'),
-          fetchCoversH2H(away, home, 'nba'),
+          fetchNBAH2H(away, home),
           fetchRotoWireInjuries(away, home, 'nba'),
         ]);
         return {
@@ -392,9 +440,9 @@ async function fetchNBAGames() {
           homeOffRating: 'N/A', homeDefRating: 'N/A', homePace: 'N/A',
           awayKeyPlayers: 'Check NBA roster', homeKeyPlayers: 'Check NBA roster',
           injuries: rotoWireInjuries,
-          h2hLast5: 'N/A', h2hAtHome: 'N/A',
+          h2hLast5: nbaH2H, h2hAtHome: 'See season series above',
           seriesGame: 1, awaySeriesWins: 0, homeSeriesWins: 0,
-          seriesHistory: 'N/A', cbsPreview, espnH2H, coversH2H, slot: 'PUBLIC',
+          seriesHistory: nbaH2H, cbsPreview, espnH2H: nbaH2H, coversH2H: '', slot: 'PUBLIC',
         };
       })
     );
