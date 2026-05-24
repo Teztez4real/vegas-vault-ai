@@ -285,8 +285,7 @@ async function fetchOdds(sportKey) {
         commenceTime: game.commence_time,
       };
     }
-    oddsMap._bookmakerCount = bookmakerSet.size;
-    return oddsMap;
+    return { oddsMap, bookmakerCount: bookmakerSet.size };
   } catch (err) {
     console.error(`Odds API error (${sportKey}):`, err.message);
     return {};
@@ -409,7 +408,8 @@ async function fetchNBAGames() {
   const apiKey = process.env.ODDS_API_KEY;
   if (!apiKey) return assignNBASlots(NBA_MOCK_GAMES);
   try {
-    const oddsMap = await fetchOdds('basketball_nba');
+    const oddsResult = await fetchOdds('basketball_nba');
+    const oddsMap = oddsResult.oddsMap || oddsResult;
     if (Object.keys(oddsMap).length === 0) return assignNBASlots(NBA_MOCK_GAMES);
     const games = await Promise.all(
       Object.entries(oddsMap).map(async ([key, odds], i) => {
@@ -460,11 +460,13 @@ async function fetchNBAGames() {
 
 export async function GET() {
   try {
-    const [scheduleGames, mlbOdds, nbaGames] = await Promise.all([
+    const [scheduleGames, mlbOddsResult, nbaGames] = await Promise.all([
       fetchMLBSchedule(),
       fetchOdds('baseball_mlb'),
       fetchNBAGames(),
     ]);
+    const mlbOdds = mlbOddsResult.oddsMap || mlbOddsResult;
+    const mlbBookmakerCount = mlbOddsResult.bookmakerCount || 0;
 
     const mlbGamesRaw = await Promise.all(
       scheduleGames.map(g => assembleMLBGame(g, mlbOdds))
@@ -542,7 +544,7 @@ export async function GET() {
     return NextResponse.json({
       games: allGames,
       trellAlerts: [],
-      bookmakerCount: mlbOdds._bookmakerCount || 0,
+      bookmakerCount: mlbBookmakerCount,
       oddsFeed: oddsValues.length > 0 ? oddsValues.slice(0,12).map(([key, odds]) => {
         const [away, home] = key.split('|');
         const ABBR = {"Yankees":"NYY","Red Sox":"BOS","Dodgers":"LAD","Padres":"SD","Cubs":"CHC","Cardinals":"STL","Rays":"TB","Mets":"NYM","Braves":"ATL","Phillies":"PHI","Guardians":"CLE","Astros":"HOU","Twins":"MIN","Mariners":"SEA","Giants":"SF","Rockies":"COL","Brewers":"MIL","Orioles":"BAL","Tigers":"DET","Royals":"KC","White Sox":"CHW","Pirates":"PIT","Reds":"CIN","Athletics":"OAK","Angels":"LAA","Rangers":"TEX","Blue Jays":"TOR","Nationals":"WSH","Diamondbacks":"ARI","Marlins":"MIA"};
