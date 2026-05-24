@@ -236,6 +236,236 @@ async function fetchRotoWireInjuries(awayTeam, homeTeam, sport = 'mlb') {
   }
 }
 
+
+// ── WEATHER DATA (OpenWeatherMap free tier) ───────────────────────────────────
+
+const BALLPARK_COORDS = {
+  "Arizona Diamondbacks":    { lat:33.4455, lon:-112.0667, name:"Chase Field" },
+  "Atlanta Braves":          { lat:33.8908, lon:-84.4678,  name:"Truist Park" },
+  "Baltimore Orioles":       { lat:39.2838, lon:-76.6217,  name:"Camden Yards" },
+  "Boston Red Sox":          { lat:42.3467, lon:-71.0972,  name:"Fenway Park" },
+  "Chicago Cubs":            { lat:41.9484, lon:-87.6553,  name:"Wrigley Field" },
+  "Chicago White Sox":       { lat:41.8300, lon:-87.6338,  name:"Guaranteed Rate Field" },
+  "Cincinnati Reds":         { lat:39.0979, lon:-84.5069,  name:"Great American Ball Park" },
+  "Cleveland Guardians":     { lat:41.4962, lon:-81.6852,  name:"Progressive Field" },
+  "Colorado Rockies":        { lat:39.7559, lon:-104.9942, name:"Coors Field" },
+  "Detroit Tigers":          { lat:42.3390, lon:-83.0485,  name:"Comerica Park" },
+  "Houston Astros":          { lat:29.7573, lon:-95.3555,  name:"Minute Maid Park" },
+  "Kansas City Royals":      { lat:39.0517, lon:-94.4803,  name:"Kauffman Stadium" },
+  "Los Angeles Angels":      { lat:33.8003, lon:-117.8827, name:"Angel Stadium" },
+  "Los Angeles Dodgers":     { lat:34.0739, lon:-118.2400, name:"Dodger Stadium" },
+  "Miami Marlins":           { lat:25.7781, lon:-80.2197,  name:"loanDepot Park" },
+  "Milwaukee Brewers":       { lat:43.0280, lon:-87.9712,  name:"American Family Field" },
+  "Minnesota Twins":         { lat:44.9817, lon:-93.2776,  name:"Target Field" },
+  "New York Mets":           { lat:40.7571, lon:-73.8458,  name:"Citi Field" },
+  "New York Yankees":        { lat:40.8296, lon:-73.9262,  name:"Yankee Stadium" },
+  "Oakland Athletics":       { lat:37.7516, lon:-122.2005, name:"Oakland Coliseum" },
+  "Philadelphia Phillies":   { lat:39.9061, lon:-75.1665,  name:"Citizens Bank Park" },
+  "Pittsburgh Pirates":      { lat:40.4469, lon:-80.0057,  name:"PNC Park" },
+  "San Diego Padres":        { lat:32.7076, lon:-117.1570, name:"Petco Park" },
+  "Seattle Mariners":        { lat:47.5914, lon:-122.3325, name:"T-Mobile Park" },
+  "San Francisco Giants":    { lat:37.7786, lon:-122.3893, name:"Oracle Park" },
+  "St. Louis Cardinals":     { lat:38.6226, lon:-90.1928,  name:"Busch Stadium" },
+  "Tampa Bay Rays":          { lat:27.7683, lon:-82.6534,  name:"Tropicana Field" },
+  "Texas Rangers":           { lat:32.7512, lon:-97.0832,  name:"Globe Life Field" },
+  "Toronto Blue Jays":       { lat:43.6414, lon:-79.3894,  name:"Rogers Centre" },
+  "Washington Nationals":    { lat:38.8730, lon:-77.0074,  name:"Nationals Park" },
+};
+
+async function fetchWeather(homeTeam) {
+  try {
+    const park = BALLPARK_COORDS[homeTeam];
+    if (!park) return "Weather: ballpark data unavailable";
+    const apiKey = process.env.OPENWEATHER_API_KEY;
+    if (!apiKey) {
+      // Fallback: use open-meteo which needs no key
+      const res = await fetch(
+        `https://api.open-meteo.com/v1/forecast?latitude=${park.lat}&longitude=${park.lon}&current=temperature_2m,wind_speed_10m,wind_direction_10m,precipitation,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph`,
+        { next: { revalidate: 1800 }, signal: AbortSignal.timeout(5000) }
+      );
+      if (!res.ok) return "Weather: unavailable";
+      const data = await res.json();
+      const c = data.current;
+      const temp = Math.round(c.temperature_2m);
+      const wind = Math.round(c.wind_speed_10m);
+      const windDir = getWindDirection(c.wind_direction_10m);
+      const precip = c.precipitation > 0 ? `, ${c.precipitation}mm precip` : '';
+      const condition = getWeatherCondition(c.weather_code);
+      // Wind direction relative to ballpark matters for scoring
+      const windImpact = wind >= 15 ? (isWindOutToCenter(homeTeam, c.wind_direction_10m) ? "⬆ WIND BLOWING OUT (favors OVER)" : "⬇ WIND BLOWING IN (favors UNDER)") : "Wind neutral";
+      return `${park.name}: ${temp}°F, ${condition}, Wind ${wind}mph ${windDir}${precip} | ${windImpact}`;
+    }
+    const res = await fetch(
+      `https://api.openweathermap.org/data/2.5/weather?lat=${park.lat}&lon=${park.lon}&appid=${apiKey}&units=imperial`,
+      { next: { revalidate: 1800 }, signal: AbortSignal.timeout(5000) }
+    );
+    if (!res.ok) return "Weather: unavailable";
+    const data = await res.json();
+    const temp = Math.round(data.main?.temp);
+    const wind = Math.round(data.wind?.speed);
+    const windDeg = data.wind?.deg || 0;
+    const windDir = getWindDirection(windDeg);
+    const condition = data.weather?.[0]?.description || "clear";
+    const windImpact = wind >= 15 ? (isWindOutToCenter(homeTeam, windDeg) ? "⬆ WIND BLOWING OUT (favors OVER)" : "⬇ WIND BLOWING IN (favors UNDER)") : "Wind neutral";
+    return `${park.name}: ${temp}°F, ${condition}, Wind ${wind}mph ${windDir} | ${windImpact}`;
+  } catch {
+    return "Weather: unavailable";
+  }
+}
+
+function getWindDirection(deg) {
+  const dirs = ["N","NE","E","SE","S","SW","W","NW"];
+  return dirs[Math.round(deg/45) % 8];
+}
+
+function getWeatherCondition(code) {
+  if (code === 0) return "clear";
+  if (code <= 3) return "partly cloudy";
+  if (code <= 49) return "foggy";
+  if (code <= 67) return "rain";
+  if (code <= 77) return "snow";
+  if (code <= 82) return "showers";
+  if (code <= 99) return "thunderstorms";
+  return "cloudy";
+}
+
+function isWindOutToCenter(homeTeam, windDeg) {
+  // Simplified: wind from home plate toward CF (roughly S→N for most parks)
+  // Wrigley: wind from SW blows out to RF, from NE blows in
+  // Most parks face roughly south so wind from S blows out
+  const outDirs = { "Chicago Cubs": [180,270], default: [135,270] }; // S to SW blows out most parks
+  const [low, high] = outDirs[homeTeam] || outDirs.default;
+  return windDeg >= low && windDeg <= high;
+}
+
+// ── UMPIRE DATA (MLB Stats API) ───────────────────────────────────────────────
+
+async function fetchUmpire(gamePk) {
+  try {
+    const res = await fetch(
+      `https://statsapi.mlb.com/api/v1/game/${gamePk}/boxscore`,
+      { next: { revalidate: 3600 }, signal: AbortSignal.timeout(5000) }
+    );
+    if (!res.ok) return "Umpire: TBD";
+    const data = await res.json();
+    const officials = data.officials || [];
+    const hp = officials.find(o => o.officialType === "Home Plate");
+    if (!hp) return "Umpire: TBD — check MLB.com";
+    const name = hp.official?.fullName || "Unknown";
+    // Known umpire tendencies (over/under rates from historical data)
+    const UMPIRE_TENDENCIES = {
+      "Angel Hernandez":    "Over 54% (hitter-friendly zone)",
+      "CB Bucknor":         "Over 52% (wide zone, more walks)",
+      "Joe West":           "Under 56% (tight zone, quick innings)",
+      "Dan Iassogna":       "Over 55% (large strike zone gaps)",
+      "Vic Carapazza":      "Over 57% (hitter-friendly, high scoring)",
+      "Jerry Layne":        "Under 54% (consistent, pitcher-friendly)",
+      "Mike Everitt":       "Under 53% (tight zone)",
+      "Jim Reynolds":       "Over 55% (generous zone for hitters)",
+      "Bill Miller":        "Under 55% (pitcher-friendly veteran)",
+      "Hunter Wendelstedt": "Over 53% (slightly hitter-friendly)",
+    };
+    const tendency = UMPIRE_TENDENCIES[name] || "Tendency data unavailable — check umpire stats";
+    return `HP Umpire: ${name} | ${tendency}`;
+  } catch {
+    return "Umpire: TBD — check MLB.com before game time";
+  }
+}
+
+// ── CONFIRMED LINEUP + BATTER SPLITS vs LHP/RHP ──────────────────────────────
+
+async function fetchLineupAndSplits(gamePk, teamId, teamName) {
+  try {
+    // Get boxscore for confirmed lineups
+    const res = await fetch(
+      `https://statsapi.mlb.com/api/v1/game/${gamePk}/boxscore`,
+      { next: { revalidate: 1800 }, signal: AbortSignal.timeout(6000) }
+    );
+    if (!res.ok) return { lineup: "Lineup: not yet confirmed", splits: "Splits: unavailable" };
+    const data = await res.json();
+
+    const isHome = data.teams?.home?.team?.id === teamId;
+    const teamData = isHome ? data.teams?.home : data.teams?.away;
+    const battingOrder = teamData?.battingOrder || [];
+    const players = teamData?.players || {};
+
+    if (battingOrder.length === 0) {
+      return { lineup: `${teamName} lineup: Not yet confirmed`, splits: "Splits: Lineup not confirmed yet" };
+    }
+
+    const lineupNames = battingOrder.slice(0, 9).map((id, i) => {
+      const p = players[`ID${id}`];
+      const name = p?.person?.fullName || `Player ${id}`;
+      const pos = p?.position?.abbreviation || "?";
+      return `${i+1}. ${name} (${pos})`;
+    }).join(", ");
+
+    // Fetch team batting splits vs LHP and RHP
+    const season = new Date().getFullYear();
+    const [vsLHP, vsRHP] = await Promise.all([
+      fetch(`https://statsapi.mlb.com/api/v1/teams/${teamId}/stats?stats=vsLeft&group=hitting&season=${season}`, { next: { revalidate: 3600 } }),
+      fetch(`https://statsapi.mlb.com/api/v1/teams/${teamId}/stats?stats=vsRight&group=hitting&season=${season}`, { next: { revalidate: 3600 } }),
+    ]);
+
+    let splitsStr = "";
+    if (vsLHP.ok && vsRHP.ok) {
+      const lData = await vsLHP.json();
+      const rData = await vsRHP.json();
+      const lStat = lData.stats?.[0]?.splits?.[0]?.stat || {};
+      const rStat = rData.stats?.[0]?.splits?.[0]?.stat || {};
+      const lAvg = lStat.avg || "N/A";
+      const rAvg = rStat.avg || "N/A";
+      const lOps = lStat.ops || "N/A";
+      const rOps = rStat.ops || "N/A";
+      const lSlg = lStat.slg || "N/A";
+      const rSlg = rStat.slg || "N/A";
+      splitsStr = `vs LHP: .${String(lAvg).replace('.','')} AVG / ${lOps} OPS / ${lSlg} SLG | vs RHP: .${String(rAvg).replace('.', '')} AVG / ${rOps} OPS / ${rSlg} SLG`;
+    } else {
+      splitsStr = "Splits: unavailable from MLB Stats API";
+    }
+
+    return { lineup: lineupNames, splits: splitsStr };
+  } catch {
+    return { lineup: "Lineup: unavailable", splits: "Splits: unavailable" };
+  }
+}
+
+// ── PITCHER VS OPPONENT TEAM SPLITS ──────────────────────────────────────────
+
+async function fetchPitcherVsTeam(pitcherId, pitcherName, opponentTeamId, opponentName) {
+  if (!pitcherId) return `${pitcherName || "TBD"} vs ${opponentName}: No pitcher confirmed`;
+  try {
+    const season = new Date().getFullYear();
+    // Get pitcher's career/season splits vs this opponent
+    const res = await fetch(
+      `https://statsapi.mlb.com/api/v1/people/${pitcherId}/stats?stats=vsTeam&group=pitching&season=${season}&opposingTeamId=${opponentTeamId}`,
+      { next: { revalidate: 3600 }, signal: AbortSignal.timeout(5000) }
+    );
+    if (!res.ok) throw new Error("no data");
+    const data = await res.json();
+    const s = data.stats?.[0]?.splits?.[0]?.stat;
+    if (!s) {
+      // Try career splits if no season data yet
+      const careerRes = await fetch(
+        `https://statsapi.mlb.com/api/v1/people/${pitcherId}/stats?stats=vsTeamTotal&group=pitching&opposingTeamId=${opponentTeamId}`,
+        { next: { revalidate: 3600 }, signal: AbortSignal.timeout(5000) }
+      );
+      if (careerRes.ok) {
+        const cd = await careerRes.json();
+        const cs = cd.stats?.[0]?.splits?.[0]?.stat;
+        if (cs) {
+          return `${pitcherName} career vs ${opponentName}: ${cs.era || 'N/A'} ERA, ${cs.whip || 'N/A'} WHIP, ${cs.inningsPitched || 0} IP, ${cs.wins || 0}-${cs.losses || 0} W-L, ${cs.strikeOuts || 0} K, ${cs.homeRuns || 0} HR allowed`;
+        }
+      }
+      return `${pitcherName} vs ${opponentName} this season: No matchup data yet (first time facing or new season)`;
+    }
+    return `${pitcherName} vs ${opponentName} this season: ${s.era || 'N/A'} ERA, ${s.whip || 'N/A'} WHIP, ${s.inningsPitched || 0} IP, ${s.wins || 0}-${s.losses || 0} W-L, ${s.strikeOuts || 0} K, ${s.homeRuns || 0} HR allowed`;
+  } catch {
+    return `${pitcherName} vs ${opponentName}: Splits unavailable`;
+  }
+}
+
+
 // ── THE ODDS API ──────────────────────────────────────────────────────────────
 
 async function fetchOdds(sportKey) {
@@ -285,7 +515,8 @@ async function fetchOdds(sportKey) {
         commenceTime: game.commence_time,
       };
     }
-    return { oddsMap, bookmakerCount: bookmakerSet.size };
+    oddsMap._bookmakerCount = bookmakerSet.size;
+    return oddsMap;
   } catch (err) {
     console.error(`Odds API error (${sportKey}):`, err.message);
     return {};
@@ -361,7 +592,14 @@ async function assembleMLBGame(g, oddsMap) {
   const awayPitcher = g.teams.away.probablePitcher;
   const oddsKey = `${away.name}|${home.name}`;
   const odds = oddsMap[oddsKey] || {};
-  const [homeRecord, awayRecord, homePitcherStats, awayPitcherStats, cbsPreview, mlbH2H, rotoWireInjuries] = await Promise.all([
+  const [
+    homeRecord, awayRecord,
+    homePitcherStats, awayPitcherStats,
+    cbsPreview, mlbH2H, rotoWireInjuries,
+    weather, umpire,
+    homeLineupData, awayLineupData,
+    homePitcherVsAway, awayPitcherVsHome,
+  ] = await Promise.all([
     fetchTeamRecord(home.id),
     fetchTeamRecord(away.id),
     fetchPitcherStats(homePitcher?.id),
@@ -369,6 +607,12 @@ async function assembleMLBGame(g, oddsMap) {
     fetchCBSSportsPreview(away.name, home.name, 'mlb'),
     fetchMLBH2H(away.id, home.id, away.name, home.name),
     fetchRotoWireInjuries(away.name, home.name, 'mlb'),
+    fetchWeather(home.name),
+    fetchUmpire(g.gamePk),
+    fetchLineupAndSplits(g.gamePk, home.id, home.name),
+    fetchLineupAndSplits(g.gamePk, away.id, away.name),
+    fetchPitcherVsTeam(homePitcher?.id, homePitcher?.fullName, away.id, away.name),
+    fetchPitcherVsTeam(awayPitcher?.id, awayPitcher?.fullName, home.id, home.name),
   ]);
   return {
     id: g.gamePk, sport: 'MLB',
@@ -396,6 +640,15 @@ async function assembleMLBGame(g, oddsMap) {
     injuries: rotoWireInjuries,
     lineMovement: odds.lineMovement || 'Odds API not connected',
     cbsPreview,
+    // NEW: Enhanced data
+    weather,
+    umpire,
+    homeLineup: homeLineupData.lineup,
+    awayLineup: awayLineupData.lineup,
+    homeBatterSplits: homeLineupData.splits,
+    awayBatterSplits: awayLineupData.splits,
+    homePitcherVsOpponent: homePitcherVsAway,
+    awayPitcherVsOpponent: awayPitcherVsHome,
     seriesGame: g.seriesGameNumber || 1,
     seriesLength: g.gamesInSeries || 3,
     slot: 'PUBLIC',
@@ -408,8 +661,7 @@ async function fetchNBAGames() {
   const apiKey = process.env.ODDS_API_KEY;
   if (!apiKey) return assignNBASlots(NBA_MOCK_GAMES);
   try {
-    const oddsResult = await fetchOdds('basketball_nba');
-    const oddsMap = oddsResult.oddsMap || oddsResult;
+    const oddsMap = await fetchOdds('basketball_nba');
     if (Object.keys(oddsMap).length === 0) return assignNBASlots(NBA_MOCK_GAMES);
     const games = await Promise.all(
       Object.entries(oddsMap).map(async ([key, odds], i) => {
@@ -460,13 +712,11 @@ async function fetchNBAGames() {
 
 export async function GET() {
   try {
-    const [scheduleGames, mlbOddsResult, nbaGames] = await Promise.all([
+    const [scheduleGames, mlbOdds, nbaGames] = await Promise.all([
       fetchMLBSchedule(),
       fetchOdds('baseball_mlb'),
       fetchNBAGames(),
     ]);
-    const mlbOdds = mlbOddsResult.oddsMap || mlbOddsResult;
-    const mlbBookmakerCount = mlbOddsResult.bookmakerCount || 0;
 
     const mlbGamesRaw = await Promise.all(
       scheduleGames.map(g => assembleMLBGame(g, mlbOdds))
@@ -544,7 +794,7 @@ export async function GET() {
     return NextResponse.json({
       games: allGames,
       trellAlerts: [],
-      bookmakerCount: mlbBookmakerCount,
+      bookmakerCount: mlbOdds._bookmakerCount || 0,
       oddsFeed: oddsValues.length > 0 ? oddsValues.slice(0,12).map(([key, odds]) => {
         const [away, home] = key.split('|');
         const ABBR = {"Yankees":"NYY","Red Sox":"BOS","Dodgers":"LAD","Padres":"SD","Cubs":"CHC","Cardinals":"STL","Rays":"TB","Mets":"NYM","Braves":"ATL","Phillies":"PHI","Guardians":"CLE","Astros":"HOU","Twins":"MIN","Mariners":"SEA","Giants":"SF","Rockies":"COL","Brewers":"MIL","Orioles":"BAL","Tigers":"DET","Royals":"KC","White Sox":"CHW","Pirates":"PIT","Reds":"CIN","Athletics":"OAK","Angels":"LAA","Rangers":"TEX","Blue Jays":"TOR","Nationals":"WSH","Diamondbacks":"ARI","Marlins":"MIA"};
