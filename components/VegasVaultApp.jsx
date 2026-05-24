@@ -582,7 +582,7 @@ function RadarChart({ size=160 }) {
   const polyStr=poly.map(p=>`${p.x},${p.y}`).join(" ");
   const spokes=[0,45,90,135,180,225,270,315];
   return(
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}> ? "#10b981" : 
       {rings.map((f,i)=><circle key={i} cx={cx} cy={cy} r={r*f} fill="none" stroke="rgba(59,130,246,0.12)" strokeWidth="1"/>)}
       {spokes.map((a,i)=><line key={i} x1={cx} y1={cy} x2={cx+Math.cos(a*Math.PI/180)*r} y2={cy+Math.sin(a*Math.PI/180)*r} stroke="rgba(59,130,246,0.08)" strokeWidth="1"/>)}
       <polygon points={polyStr} fill="rgba(59,130,246,0.12)" stroke="rgba(59,130,246,0.5)" strokeWidth="1.5"/>
@@ -634,7 +634,7 @@ function OddsTicker({ feed }) {
       {items.map((o,i)=>(
         <div key={i} style={{ display:"inline-flex",alignItems:"center",gap:5,padding:"0 18px",borderRight:"1px solid rgba(255,255,255,0.04)" }}>
           <span style={{ fontSize:11,fontWeight:700,color:"#cbd5e1" }}>{o.team}{o.line}</span>
-          <span style={{ fontSize:11,fontWeight:600,color:o.odds.startsWith("+")??"#10b981":"#e2e8f0" }}>{o.odds}</span>
+          <span style={{ fontSize:11,fontWeight:600,color:o.odds.startsWith("+") ? "#10b981" : "#e2e8f0" }}>{o.odds}</span>
           <span style={{ fontSize:9,color:o.up?"#10b981":"#f87171" }}>{o.up?"▲":"▼"}</span>
         </div>
       ))}
