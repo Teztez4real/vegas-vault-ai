@@ -363,7 +363,7 @@ function PlayResult({ result, game, onClose }) {
 
 // ── GAME CARD — matches reference image exactly ───────────────────────────────
 
-function GameCard({ game, onGenerate, results, generating, onCardClick, liveScores }) {
+function GameCard({ game, onGenerate, results, generating, onCardClick, liveScores, isSubscribed }) {
   const resultPublic = results[`${game.id}-PUBLIC`];
   const resultVegas  = results[`${game.id}-VEGAS`];
   const hasAnyResult = resultPublic || resultVegas;
@@ -553,23 +553,39 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
       )}
 
       {/* Action buttons */}
-      {isPostponed ? (
+      {/* PAYWALL OVERLAY — shown to non-subscribers */}
+      {!isSubscribed && !gameStarted && (
+        <div style={{ position:'relative' }}>
+          {/* Blurred preview of buttons */}
+          <div style={{ filter:'blur(4px)', pointerEvents:'none', display:'flex', gap:8 }}>
+            <div style={{ flex:1, padding:'9px 0', background:'rgba(96,165,250,0.06)', border:'1px solid rgba(96,165,250,0.2)', borderRadius:8, fontSize:10, fontWeight:600, color:'#60a5fa', textAlign:'center' }}>Analyze as PUBLIC</div>
+            <div style={{ flex:1, padding:'9px 0', background:'rgba(248,113,113,0.06)', border:'1px solid rgba(248,113,113,0.2)', borderRadius:8, fontSize:10, fontWeight:600, color:'#f87171', textAlign:'center' }}>Analyze as VEGAS</div>
+          </div>
+          {/* Lock overlay */}
+          <div onClick={() => window.location.href='/settings'} style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', gap:8, background:'rgba(7,9,26,0.75)', borderRadius:8, cursor:'pointer', backdropFilter:'blur(2px)' }}>
+            <span style={{ fontSize:14 }}>🔒</span>
+            <span style={{ fontSize:10, fontWeight:700, color:'#c9a227', letterSpacing:'0.08em' }}>SUBSCRIBE TO UNLOCK</span>
+          </div>
+        </div>
+      )}
+
+      {isSubscribed && isPostponed ? (
         <div style={{ display:"flex",alignItems:"center",justifyContent:"center",padding:"10px 0",background:"rgba(248,113,113,0.05)",border:"1px solid rgba(248,113,113,0.15)",borderRadius:8 }}>
           <span style={{ fontSize:10,fontWeight:700,color:"#f87171",letterSpacing:"0.08em" }}>⛔ POSTPONED — Analysis unavailable</span>
         </div>
-      ) : isDelayed ? (
+      ) : isSubscribed && isDelayed ? (
         <div style={{ display:"flex",gap:8 }}>
           <div style={{ flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:"8px 0",background:"rgba(251,191,36,0.05)",border:"1px solid rgba(251,191,36,0.2)",borderRadius:8 }}>
             <span style={{ fontSize:10,fontWeight:700,color:"#fbbf24",letterSpacing:"0.06em" }}>⏸ DELAYED</span>
           </div>
         </div>
-      ) : gameStarted ? (
+      ) : isSubscribed && gameStarted ? (
         <div style={{ display:"flex",alignItems:"center",justifyContent:"center",padding:"10px 0",background:"rgba(220,38,38,0.05)",border:"1px solid rgba(220,38,38,0.15)",borderRadius:8 }}>
           <span style={{ fontSize:10,fontWeight:700,color:"#dc2626",letterSpacing:"0.08em" }}>
             {isLive ? "🔴 GAME IN PROGRESS — LOCKED" : "⬛ FINAL — ANALYSIS LOCKED"}
           </span>
         </div>
-      ) : (
+      ) : isSubscribed ? (
         <div style={{ display:"flex",gap:8 }}>
           {["PUBLIC","VEGAS"].map(slot=>{
             const key=`${game.id}-${slot}`;
@@ -753,6 +769,15 @@ export default function VegasVaultApp() {
   const [loading, setLoading]         = useState(true);
   const [time, setTime]               = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [isSubscribed, setIsSubscribed] = useState(false);
+
+  // Check subscription status from localStorage (set after Stripe checkout)
+  useEffect(() => {
+    // Admin always has access
+    const adminFlag = typeof window !== 'undefined' && localStorage.getItem('vv_admin');
+    const subFlag = typeof window !== 'undefined' && localStorage.getItem('vv_subscribed');
+    if (adminFlag || subFlag) setIsSubscribed(true);
+  }, []);
 
   useEffect(()=>{
     setLoading(true);
@@ -943,7 +968,7 @@ export default function VegasVaultApp() {
         <div className="vv-sidebar" style={{ width:200,background:"rgba(7,9,26,0.99)",borderRight:"1px solid rgba(255,255,255,0.05)",flexDirection:"column",flexShrink:0,overflowY:"auto" }}>
           <div style={{ flex:1,padding:"10px 0" }}>
             {NAV_ITEMS.map((item,i)=>(
-              <div key={i} style={{ display:"flex",alignItems:"center",gap:12,padding:"11px 20px",background:item.active?"rgba(201,162,39,0.07)":"transparent",borderLeft:item.active?"2px solid #c9a227":"2px solid transparent",cursor:"pointer" }}>
+              <div key={i} onClick={()=>{ if(item.label==="SETTINGS") window.location.href="/settings"; }} style={{ display:"flex",alignItems:"center",gap:12,padding:"11px 20px",background:item.active?"rgba(201,162,39,0.07)":"transparent",borderLeft:item.active?"2px solid #c9a227":"2px solid transparent",cursor:item.label==="SETTINGS"?"pointer":"default" }}>
                 <span style={{ fontSize:13,color:item.active?"#c9a227":"#2d3a4a",width:18,flexShrink:0 }}>{item.icon}</span>
                 <span style={{ fontSize:10,fontWeight:item.active?700:400,color:item.active?"#c9a227":"#3a4a5e",letterSpacing:"0.08em",flex:1 }}>{item.label}</span>
                 {item.arrow&&<span style={{ fontSize:9,color:"#2d3a4a" }}>▶</span>}
@@ -1055,7 +1080,7 @@ export default function VegasVaultApp() {
             ):(
               <div className="vv-cards">
                 {filteredGames.map(game=>(
-                  <GameCard key={game.id} game={game} results={results} generating={generating} onGenerate={handleGenerate} onCardClick={handleCardClick} liveScores={liveScores}/>
+                  <GameCard key={game.id} game={game} results={results} generating={generating} onGenerate={handleGenerate} onCardClick={handleCardClick} liveScores={liveScores} isSubscribed={isSubscribed}/>
                 ))}
               </div>
             )}
