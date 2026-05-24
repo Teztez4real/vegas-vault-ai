@@ -657,7 +657,29 @@ export default function VegasVaultApp() {
         ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:2px;}
         button{font-family:inherit;}
         @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
-        @keyframes scanLine{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
+        .vv-sidebar{display:flex;}
+        .vv-right-panel{display:flex;flex-direction:column;width:280px;flex-shrink:0;}
+        .vv-right-stacked{display:none;}
+        .vv-bottom-nav{display:none;}
+        .vv-cards-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+        .vv-stat-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px;}
+        .vv-nav-center{flex:1;display:flex;justify-content:center;}
+        .vv-ticker-label{display:block;}
+        @media(max-width:1024px){
+          .vv-stat-grid{grid-template-columns:repeat(3,1fr)!important;}
+          .vv-right-panel{display:none!important;}
+          .vv-right-stacked{display:block!important;padding:0 16px 24px;}
+        }
+        @media(max-width:640px){
+          .vv-sidebar{display:none!important;}
+          .vv-bottom-nav{display:flex!important;position:fixed;bottom:0;left:0;right:0;height:58px;background:rgba(6,8,16,0.97);border-top:1px solid rgba(255,255,255,0.08);z-index:200;align-items:center;justify-content:space-around;padding:0 4px;backdrop-filter:blur(20px);}
+          .vv-cards-grid{grid-template-columns:1fr!important;}
+          .vv-stat-grid{grid-template-columns:repeat(2,1fr)!important;}
+          .vv-nav-center{display:none!important;}
+          .vv-ticker-label{display:none!important;}
+          .vv-logo-label{display:none!important;}
+          .vv-main-pad{padding:12px 12px 80px!important;}
+        }
       `}</style>
 
       {/* TOP NAV BAR */}
@@ -673,7 +695,7 @@ export default function VegasVaultApp() {
         </div>
 
         {/* Center tabs */}
-        <div style={{ flex:1, display:"flex", justifyContent:"center", gap:0 }}>
+        <div className="vv-nav-center" style={{ gap:0 }}>
           {["DASHBOARD","ALERTS 3","WATCHLIST 7"].map((tab,i) => (
             <div key={i} style={{ padding:"0 20px", height:52, display:"flex", alignItems:"center", gap:8, fontSize:11, fontWeight:i===0?600:400, color:i===0?"#c9a227":"#4a5568", borderBottom:i===0?"2px solid #c9a227":"2px solid transparent", cursor:"pointer", letterSpacing:"0.06em" }}>
               {i===1 && <span style={{ fontSize:8 }}>🔔</span>}
@@ -698,7 +720,7 @@ export default function VegasVaultApp() {
       <div style={{ display:"flex", flex:1, overflow:"hidden" }}>
 
         {/* LEFT SIDEBAR */}
-        <div style={{ width:200, background:"rgba(6,8,16,0.98)", borderRight:"1px solid rgba(255,255,255,0.05)", display:"flex", flexDirection:"column", flexShrink:0, overflowY:"auto" }}>
+        <div className="vv-sidebar" style={{ width:200, background:"rgba(6,8,16,0.98)", borderRight:"1px solid rgba(255,255,255,0.05)", flexDirection:"column", flexShrink:0, overflowY:"auto" }}>
           <div style={{ flex:1, padding:"12px 0" }}>
             {NAV_ITEMS.map((item,i) => (
               <div key={i} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 20px", background:item.active?"rgba(201,162,39,0.08)":"transparent", borderLeft:item.active?"2px solid #c9a227":"2px solid transparent", cursor:"pointer", transition:"all 0.15s" }}>
@@ -749,7 +771,7 @@ export default function VegasVaultApp() {
           {/* Live odds ticker */}
           <div style={{ borderBottom:"1px solid rgba(255,255,255,0.05)", background:"rgba(10,14,24,0.9)", padding:"0" }}>
             <div style={{ display:"flex", alignItems:"center" }}>
-              <div style={{ padding:"8px 16px", fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#c9a227", borderRight:"1px solid rgba(255,255,255,0.06)", whiteSpace:"nowrap", flexShrink:0 }}>LIVE ODDS FEED</div>
+              <div className="vv-ticker-label" style={{ padding:"8px 16px", fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#c9a227", borderRight:"1px solid rgba(255,255,255,0.06)", whiteSpace:"nowrap", flexShrink:0 }}>LIVE ODDS FEED</div>
               <div style={{ flex:1, overflow:"hidden", padding:"8px 0" }}>
                 <OddsTicker />
               </div>
@@ -759,7 +781,7 @@ export default function VegasVaultApp() {
             </div>
           </div>
 
-          <div style={{ padding:"20px 20px 32px", flex:1 }}>
+          <div className="vv-main-pad" style={{ padding:"20px 20px 32px", flex:1 }}>
 
             {/* Greeting + stat cards */}
             <div style={{ marginBottom:20 }}>
@@ -768,7 +790,7 @@ export default function VegasVaultApp() {
                 <p style={{ fontSize:12, color:"#475569", marginTop:4 }}>Vegas Vault AI is scanning <span style={{ color:"#3b82f6", cursor:"pointer" }}>12 sportsbooks...</span></p>
               </div>
 
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:10 }}>
+              <div className="vv-stat-grid">
                 {/* Today's games */}
                 <div style={{ background:"#0b0f1a", border:"1px solid rgba(255,255,255,0.06)", borderRadius:12, padding:"14px 16px" }}>
                   <div style={{ fontSize:9, color:"#4a5568", letterSpacing:"0.1em", marginBottom:10, fontWeight:600 }}>TODAY'S GAMES</div>
@@ -844,7 +866,7 @@ export default function VegasVaultApp() {
             {loading ? (
               <div style={{ textAlign:"center", padding:"60px 0", fontSize:11, color:"#2d3748", letterSpacing:"0.1em" }}>LOADING SLATE…</div>
             ) : (
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:10 }}>
+              <div className="vv-cards-grid">
                 {filteredGames.map(game => (
                   <GameCard key={game.id} game={game} results={results} generating={generating} onGenerate={handleGenerate} onCardClick={handleCardClick} />
                 ))}
@@ -869,8 +891,47 @@ export default function VegasVaultApp() {
           </div>
         </div>
 
+
+          {/* STACKED RIGHT PANEL — shows on tablet/mobile */}
+          <div className="vv-right-stacked" style={{ padding:"0 16px 24px" }}>
+            <div style={{ background:"#0b0f1a", border:"1px solid rgba(255,255,255,0.06)", borderRadius:12, padding:16, marginBottom:12 }}>
+              <div style={{ fontSize:10, fontWeight:700, letterSpacing:"0.1em", color:"#94a3b8", marginBottom:14 }}>AI MARKET SCANNER</div>
+              <div style={{ display:"flex", gap:16, alignItems:"center" }}>
+                <RadarChart />
+                <div style={{ display:"flex", flexDirection:"column", gap:8, flex:1 }}>
+                  {[{label:"Reverse Line Movement",count:7,color:"#3b82f6"},{label:"Sharp Money Detected",count:5,color:"#10b981"},{label:"Public Heavy",count:6,color:"#94a3b8"},{label:"Vegas Trap Alert",count:3,color:"#f87171"}].map((item,i)=>(
+                    <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                      <span style={{ fontSize:9, color:"#4a5568" }}>{item.label}</span>
+                      <span style={{ fontSize:15, fontWeight:800, color:item.color }}>{item.count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div style={{ background:"#0b0f1a", border:"1px solid rgba(255,255,255,0.06)", borderRadius:12, padding:16, marginBottom:12 }}>
+              <div style={{ fontSize:10, fontWeight:700, letterSpacing:"0.1em", color:"#94a3b8", marginBottom:12 }}>AI INSIGHTS</div>
+              {INSIGHTS.map((ins,i)=>(
+                <div key={i} style={{ display:"flex", gap:10, alignItems:"flex-start", marginBottom:10 }}>
+                  <div style={{ width:20, height:20, borderRadius:5, background:"rgba(59,130,246,0.1)", border:"1px solid rgba(59,130,246,0.2)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:8, color:"#3b82f6", flexShrink:0 }}>{ins.icon}</div>
+                  <div>
+                    <div style={{ fontSize:11, color:"#cbd5e1", lineHeight:1.5 }}>{ins.text}</div>
+                    <div style={{ fontSize:9, color:"#2d3748", marginTop:2 }}>{ins.time}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={{ background:"#0b0f1a", border:"1px solid rgba(255,255,255,0.06)", borderRadius:12, padding:16 }}>
+              <div style={{ fontSize:10, fontWeight:700, letterSpacing:"0.1em", color:"#94a3b8", marginBottom:10 }}>AI CONFIDENCE MONITOR</div>
+              <ConfidenceChart />
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:6 }}>
+                <span style={{ fontSize:9, color:"#2d3748" }}>Overall AI Confidence</span>
+                <span style={{ fontSize:18, fontWeight:800, color:"#4ade80" }}>98.7%</span>
+              </div>
+            </div>
+          </div>
+
         {/* RIGHT PANEL */}
-        <div style={{ width:280, background:"rgba(6,8,16,0.98)", borderLeft:"1px solid rgba(255,255,255,0.05)", overflowY:"auto", flexShrink:0, padding:"16px 16px 24px" }}>
+        <div className="vv-right-panel" style={{ background:"rgba(6,8,16,0.98)", borderLeft:"1px solid rgba(255,255,255,0.05)", overflowY:"auto", padding:"16px 16px 24px" }}>
 
           {/* AI Market Scanner */}
           <div style={{ marginBottom:20 }}>
@@ -919,6 +980,23 @@ export default function VegasVaultApp() {
             </div>
           </div>
         </div>
+      </div>
+
+
+      {/* MOBILE BOTTOM NAV */}
+      <div className="vv-bottom-nav">
+        {[
+          { icon:"⊞", label:"HOME"    },
+          { icon:"◈", label:"SLATE"   },
+          { icon:"◎", label:"ANALYZE" },
+          { icon:"🔒", label:"LOCKS"   },
+          { icon:"↺",  label:"HISTORY" },
+        ].map((item,i) => (
+          <div key={i} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:3, padding:"6px 12px", cursor:"pointer", opacity: i===0 ? 1 : 0.4 }}>
+            <span style={{ fontSize:16, color: i===0 ? "#c9a227" : "#475569" }}>{item.icon}</span>
+            <span style={{ fontSize:8, fontWeight:600, letterSpacing:"0.06em", color: i===0 ? "#c9a227" : "#475569" }}>{item.label}</span>
+          </div>
+        ))}
       </div>
 
       {activeResult && activeGame && (
