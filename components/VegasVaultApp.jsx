@@ -202,20 +202,38 @@ const INSIGHTS = [
 
 // ── MLB LOGO (ESPN CDN) ───────────────────────────────────────────────────────
 
-const MLB_IDS = {
-  "PIT":21,"TOR":14,"DET":6,"BAL":1,"MIN":9,"BOS":3,"CLE":5,"PHI":22,
-  "TB":30,"NYY":10,"STL":28,"CIN":4,"LAD":19,"SD":25,"HOU":18,"ATL":15,
-  "NYM":21,"CHC":16,"MIL":23,"SF":26,"SEA":27,"OAK":11,"TEX":13,"ARI":29,
-  "COL":17,"MIA":28,"WSH":20,"KC":7,"CHW":4,"LAA":2,
+// All 30 MLB teams — ESPN CDN slugs
+const MLB_SLUGS = {
+  "ARI":"ari","ATL":"atl","BAL":"bal","BOS":"bos",
+  "CHC":"chc","CHW":"chw","CIN":"cin","CLE":"cle",
+  "COL":"col","DET":"det","HOU":"hou","KC":"kc",
+  "LAA":"laa","LAD":"lad","MIA":"mia","MIL":"mil",
+  "MIN":"min","NYM":"nym","NYY":"nyy","OAK":"oak",
+  "PHI":"phi","PIT":"pit","SD":"sd","SEA":"sea",
+  "SF":"sf","STL":"stl","TB":"tb","TEX":"tex",
+  "TOR":"tor","WSH":"wsh",
+};
+
+// Fallback brand colors for each team
+const MLB_COLORS = {
+  "ARI":"#A71930","ATL":"#CE1141","BAL":"#DF4601","BOS":"#BD3039",
+  "CHC":"#0E3386","CHW":"#27251F","CIN":"#C6011F","CLE":"#0C2340",
+  "COL":"#33006F","DET":"#0C2C56","HOU":"#002D62","KC":"#004687",
+  "LAA":"#BA0021","LAD":"#005A9C","MIA":"#00A3E0","MIL":"#FFC52F",
+  "MIN":"#002B5C","NYM":"#002D72","NYY":"#003087","OAK":"#003831",
+  "PHI":"#E81828","PIT":"#FDB827","SD":"#2F241D","SEA":"#0C2C56",
+  "SF":"#FD5A1E","STL":"#C41E3A","TB":"#092C5C","TEX":"#003278",
+  "TOR":"#134A8E","WSH":"#AB0003",
 };
 
 function TeamLogo({ abbr, size=44 }) {
-  const id = MLB_IDS[abbr];
   const [err, setErr] = useState(false);
-  if (id && !err) {
+  const slug = MLB_SLUGS[abbr];
+
+  if (slug && !err) {
     return (
       <img
-        src={`https://a.espncdn.com/i/teamlogos/mlb/500/${abbr.toLowerCase()}.png`}
+        src={`https://a.espncdn.com/i/teamlogos/mlb/500/${slug}.png`}
         alt={abbr}
         width={size} height={size}
         style={{ objectFit:"contain", flexShrink:0 }}
@@ -223,11 +241,10 @@ function TeamLogo({ abbr, size=44 }) {
       />
     );
   }
-  // fallback
-  const colors = { PIT:"#FDB827",TOR:"#134A8E",DET:"#0C2C56",BAL:"#DF4601",MIN:"#002B5C",BOS:"#BD3039",CLE:"#0C2340",PHI:"#E81828",TB:"#092C5C",NYY:"#003087",STL:"#C41E3A",CIN:"#C6011F" };
-  const c = colors[abbr] || "#1e3a5f";
+  // Fallback colored box with initials
+  const c = MLB_COLORS[abbr] || "#1e3a5f";
   return (
-    <div style={{ width:size, height:size, borderRadius:8, background:`${c}22`, border:`1.5px solid ${c}66`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:size*0.32, fontWeight:900, color:c, flexShrink:0 }}>
+    <div style={{ width:size, height:size, borderRadius:8, background:`${c}22`, border:`1.5px solid ${c}66`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:size*0.3, fontWeight:900, color:c, flexShrink:0 }}>
       {abbr.slice(0,2)}
     </div>
   );
@@ -543,7 +560,7 @@ function OddsTicker() {
       {items.map((o,i)=>(
         <div key={i} style={{ display:"inline-flex",alignItems:"center",gap:5,padding:"0 18px",borderRight:"1px solid rgba(255,255,255,0.04)" }}>
           <span style={{ fontSize:11,fontWeight:700,color:"#cbd5e1" }}>{o.team}{o.line}</span>
-          <span style={{ fontSize:11,fontWeight:600,color:o.odds.startsWith("+") ? "#10b981" : "#e2e8f0" }}>{o.odds}</span>
+          <span style={{ fontSize:11,fontWeight:600,color:o.odds.startsWith("+")?"#10b981":"#e2e8f0" }}>{o.odds}</span>
           <span style={{ fontSize:9,color:o.up?"#10b981":"#f87171" }}>{o.up?"▲":"▼"}</span>
         </div>
       ))}
