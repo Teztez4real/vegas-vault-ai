@@ -592,7 +592,7 @@ function OddsTicker({ feed }) {
 
 // ── RIGHT PANEL CONTENT (reused for desktop + stacked mobile) ─────────────────
 
-function RightPanelContent() {
+function RightPanelContent({ marketScanner, insights }) {
   return(
     <>
       {/* AI Market Scanner */}
@@ -925,14 +925,14 @@ export default function VegasVaultApp() {
 
             {/* Stacked right panel (tablet/mobile) */}
             <div className="vv-right-stacked" style={{ marginTop:16,background:"#0b0f20",border:"1px solid rgba(255,255,255,0.06)",borderRadius:12,padding:16 }}>
-              <RightPanelContent/>
+              <RightPanelContent marketScanner={marketScanner} insights={insights}/>
             </div>
           </div>
         </div>
 
         {/* RIGHT PANEL (desktop) */}
         <div className="vv-right" style={{ width:290,background:"rgba(7,9,26,0.99)",borderLeft:"1px solid rgba(255,255,255,0.05)",overflowY:"auto",flexShrink:0,padding:"16px 16px 24px" }}>
-          <RightPanelContent/>
+          <RightPanelContent marketScanner={marketScanner} insights={insights}/>
         </div>
       </div>
 
