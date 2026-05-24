@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import { supabase } from '@/lib/supabaseClient';
 
 // ── PROMPT ENGINE ─────────────────────────────────────────────────────────────
 
@@ -139,6 +140,12 @@ Run the FULL Vegas Vault Tennis AI Model in EXACT order. Return ONLY this JSON:
 }
 
 Return ONLY valid JSON. No preamble, no explanation outside the JSON.`;
+}
+
+// ── ADMIN EMAILS ─────────────────────────────────────────────────────────────
+const ADMIN_EMAILS = ['battlecortez@gmail.com'];
+function checkIsAdmin(email) {
+  return ADMIN_EMAILS.some(a => a.toLowerCase() === (email||'').toLowerCase());
 }
 
 // ── MOCK DATA ─────────────────────────────────────────────────────────────────
@@ -770,13 +777,40 @@ export default function VegasVaultApp() {
   const [time, setTime]               = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [authUser, setAuthUser] = useState(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState('login'); // 'login' | 'signup'
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState('');
+  const [authMessage, setAuthMessage] = useState('');
+  const [showPw, setShowPw] = useState(false);
 
-  // Check subscription status from localStorage (set after Stripe checkout)
+  // Auth + subscription check
   useEffect(() => {
-    // Admin always has access
-    const adminFlag = typeof window !== 'undefined' && localStorage.getItem('vv_admin');
-    const subFlag = typeof window !== 'undefined' && localStorage.getItem('vv_subscribed');
-    if (adminFlag || subFlag) setIsSubscribed(true);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setAuthUser(session.user);
+        const admin = checkIsAdmin(session.user.email);
+        if (admin) {
+          localStorage.setItem('vv_admin', '1');
+          setIsSubscribed(true);
+        } else {
+          const subFlag = localStorage.getItem('vv_subscribed');
+          if (subFlag) setIsSubscribed(true);
+        }
+      }
+    });
+    supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setAuthUser(session.user);
+        const admin = checkIsAdmin(session.user.email);
+        if (admin) { localStorage.setItem('vv_admin', '1'); setIsSubscribed(true); }
+      } else {
+        setAuthUser(null);
+      }
+    });
   }, []);
 
   useEffect(()=>{
@@ -890,6 +924,34 @@ export default function VegasVaultApp() {
     return d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
   }
 
+  // Auth handlers
+  async function handleAuthSubmit() {
+    setAuthLoading(true); setAuthError(''); setAuthMessage('');
+    if (authMode === 'signup') {
+      const { error } = await supabase.auth.signUp({ email: authEmail, password: authPassword });
+      if (error) setAuthError(error.message);
+      else setAuthMessage('Check your email to confirm your account.');
+    } else {
+      const { data, error } = await supabase.auth.signInWithPassword({ email: authEmail, password: authPassword });
+      if (error) { setAuthError(error.message); }
+      else {
+        setAuthUser(data.user);
+        const admin = checkIsAdmin(data.user?.email);
+        if (admin) { localStorage.setItem('vv_admin', '1'); setIsSubscribed(true); }
+        setShowAuthModal(false);
+        setAuthEmail(''); setAuthPassword('');
+      }
+    }
+    setAuthLoading(false);
+  }
+
+  async function handleSignOut() {
+    await supabase.auth.signOut();
+    setAuthUser(null);
+    localStorage.removeItem('vv_admin');
+    setIsSubscribed(false);
+  }
+
   const today = new Date().toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
   const timeStr = time.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
   const hour = new Date().getHours();
@@ -951,13 +1013,24 @@ export default function VegasVaultApp() {
           ))}
         </div>
 
-        <div style={{ display:"flex",alignItems:"center",gap:14,padding:"0 18px",flexShrink:0 }}>
-          <span style={{ fontSize:17,color:"#2d3a4a",cursor:"pointer" }}>⌕</span>
-          <span style={{ fontSize:17,color:"#2d3a4a",cursor:"pointer" }}>🔔</span>
-          <div style={{ display:"flex",alignItems:"center",gap:7 }}>
-            <div style={{ width:32,height:32,borderRadius:"50%",background:"linear-gradient(135deg,#c9a227,#8b6d10)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:800,color:"#000" }}>T</div>
-            <span style={{ fontSize:11,color:"#3a4a5e" }}>▼</span>
-          </div>
+        <div style={{ display:"flex",alignItems:"center",gap:12,padding:"0 18px",flexShrink:0 }}>
+          {authUser ? (
+            <div style={{ display:"flex",alignItems:"center",gap:8 }}>
+              {checkIsAdmin(authUser.email) && (
+                <span style={{ fontSize:9,fontWeight:700,color:"#c9a227",background:"rgba(201,162,39,0.1)",border:"1px solid rgba(201,162,39,0.3)",borderRadius:4,padding:"2px 7px",letterSpacing:"0.08em" }}>ADMIN</span>
+              )}
+              <div style={{ display:"flex",alignItems:"center",gap:7,cursor:"pointer" }} onClick={()=>window.location.href="/settings"}>
+                <div style={{ width:32,height:32,borderRadius:"50%",background:"linear-gradient(135deg,#c9a227,#8b6d10)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:800,color:"#000" }}>
+                  {authUser.email?.[0].toUpperCase()}
+                </div>
+              </div>
+              <button onClick={handleSignOut} style={{ fontSize:10,color:"#475569",background:"transparent",border:"1px solid rgba(255,255,255,0.07)",borderRadius:6,padding:"4px 10px",cursor:"pointer",fontFamily:"inherit" }}>Sign Out</button>
+            </div>
+          ) : (
+            <button onClick={()=>{setShowAuthModal(true);setAuthMode('login');setAuthError('');setAuthMessage('');}} style={{ display:"flex",alignItems:"center",gap:8,background:"linear-gradient(135deg,#c9a227,#8b6d10)",border:"none",borderRadius:8,padding:"7px 16px",fontSize:11,fontWeight:700,color:"#000",cursor:"pointer",letterSpacing:"0.06em",fontFamily:"inherit" }}>
+              🔒 Login / Sign Up
+            </button>
+          )}
         </div>
       </div>
 
@@ -1126,6 +1199,60 @@ export default function VegasVaultApp() {
 
       {activeResult&&activeGame&&(
         <PlayResult result={activeResult} game={activeGame} onClose={()=>{setActiveResult(null);setActiveGame(null);}}/>
+      )}
+
+      {/* AUTH MODAL */}
+      {showAuthModal && (
+        <div onClick={e=>e.target===e.currentTarget&&setShowAuthModal(false)} style={{ position:"fixed",inset:0,zIndex:500,background:"rgba(0,0,0,0.8)",backdropFilter:"blur(16px)",display:"flex",alignItems:"center",justifyContent:"center",padding:16 }}>
+          <div style={{ background:"#0b0f1e",border:"1px solid rgba(255,255,255,0.08)",borderRadius:20,width:"100%",maxWidth:420,padding:0,boxShadow:"0 32px 80px rgba(0,0,0,0.9)",overflow:"hidden" }}>
+            {/* Modal header */}
+            <div style={{ padding:"18px 24px",borderBottom:"1px solid rgba(255,255,255,0.06)",display:"flex",justifyContent:"space-between",alignItems:"center" }}>
+              <div style={{ display:"flex",gap:0 }}>
+                {["login","signup"].map(m=>(
+                  <button key={m} onClick={()=>{setAuthMode(m);setAuthError('');setAuthMessage('');}} style={{ padding:"6px 20px",background:"none",border:"none",borderBottom:authMode===m?"2px solid #c9a227":"2px solid transparent",fontSize:11,fontWeight:authMode===m?700:400,color:authMode===m?"#c9a227":"#475569",cursor:"pointer",letterSpacing:"0.06em",fontFamily:"inherit" }}>
+                    {m==="login"?"SIGN IN":"SIGN UP"}
+                  </button>
+                ))}
+              </div>
+              <button onClick={()=>setShowAuthModal(false)} style={{ background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:8,width:28,height:28,cursor:"pointer",color:"#64748b",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit" }}>✕</button>
+            </div>
+
+            <div style={{ padding:"24px 24px 20px" }}>
+              <div style={{ marginBottom:20 }}>
+                <h2 style={{ fontSize:18,fontWeight:700,color:"#f1f5f9",marginBottom:6 }}>{authMode==="login"?"Welcome back,":"Create your account,"}</h2>
+                <p style={{ fontSize:12,color:"#475569" }}>
+                  {authMode==="login"?"Sign in to access your ":"Join "}<span style={{ color:"#c9a227" }}>Vegas Vault AI</span>{authMode==="login"?" dashboard.":"and start winning."}
+                </p>
+              </div>
+
+              {/* Email */}
+              <div style={{ marginBottom:12 }}>
+                <label style={{ fontSize:9,color:"#475569",letterSpacing:"0.1em",fontWeight:700,display:"block",marginBottom:6 }}>EMAIL ADDRESS</label>
+                <input type="email" placeholder="you@example.com" value={authEmail} onChange={e=>setAuthEmail(e.target.value)}
+                  style={{ width:"100%",padding:"10px 14px",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,color:"#e2e8f0",fontSize:13,outline:"none",fontFamily:"inherit" }}/>
+              </div>
+
+              {/* Password */}
+              <div style={{ marginBottom:16,position:"relative" }}>
+                <label style={{ fontSize:9,color:"#475569",letterSpacing:"0.1em",fontWeight:700,display:"block",marginBottom:6 }}>PASSWORD</label>
+                <input type={showPw?"text":"password"} placeholder="Enter your password" value={authPassword} onChange={e=>setAuthPassword(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleAuthSubmit()}
+                  style={{ width:"100%",padding:"10px 40px 10px 14px",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,color:"#e2e8f0",fontSize:13,outline:"none",fontFamily:"inherit" }}/>
+                <button onClick={()=>setShowPw(!showPw)} style={{ position:"absolute",right:12,top:30,background:"none",border:"none",cursor:"pointer",color:"#3a4a5e",fontSize:13,fontFamily:"inherit" }}>{showPw?"🙈":"👁"}</button>
+              </div>
+
+              {authError&&<div style={{ marginBottom:12,padding:"8px 12px",background:"rgba(248,113,113,0.08)",border:"1px solid rgba(248,113,113,0.2)",borderRadius:8,fontSize:12,color:"#f87171" }}>{authError}</div>}
+              {authMessage&&<div style={{ marginBottom:12,padding:"8px 12px",background:"rgba(74,222,128,0.08)",border:"1px solid rgba(74,222,128,0.2)",borderRadius:8,fontSize:12,color:"#4ade80" }}>{authMessage}</div>}
+
+              <button onClick={handleAuthSubmit} disabled={authLoading} style={{ width:"100%",padding:"12px 0",background:authLoading?"rgba(201,162,39,0.4)":"linear-gradient(135deg,#c9a227,#8b6d10)",border:"none",borderRadius:10,fontSize:12,fontWeight:700,color:"#000",cursor:authLoading?"not-allowed":"pointer",letterSpacing:"0.08em",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:8 }}>
+                {authLoading?"Please wait…":authMode==="login"?"LOG IN TO VAULT →":"CREATE ACCOUNT →"}
+              </button>
+
+              <div style={{ textAlign:"center",marginTop:14,fontSize:11,color:"#2d3a4a" }}>
+                🔒 Bank-level encryption. Your data is always protected.
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
