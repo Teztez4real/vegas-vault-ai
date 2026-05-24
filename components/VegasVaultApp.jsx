@@ -827,7 +827,6 @@ export default function VegasVaultApp() {
   return (
     <div style={{ fontFamily:"'DM Mono','Courier New',monospace",background:"#07091a",minHeight:"100vh",color:"#e2e8f0",display:"flex",flexDirection:"column" }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap');
         *{box-sizing:border-box;margin:0;padding:0;}
         body{background:#07091a;overflow-x:hidden;}
         ::-webkit-scrollbar{width:3px;}::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:2px;}
