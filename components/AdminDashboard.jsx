@@ -8,9 +8,7 @@ const AdminDashboard = dynamic(() => import('@/components/AdminDashboard'),    {
 
 // Admin email list — must match AuthGate.jsx
 const ADMIN_EMAILS = [
-  'teztez4real@gmail.com',
-  'teztez4real@icloud.com',
-  'teztez4real@yahoo.com',
+  'battlecortez@gmail.com',
 ];
 
 function isAdmin(email) {

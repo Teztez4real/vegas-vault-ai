@@ -5,9 +5,7 @@ import { supabase } from '../lib/supabaseClient';
 // ── ADMIN EMAILS ──────────────────────────────────────────────────────────────
 // Add any email that should have full admin access
 const ADMIN_EMAILS = [
-  'teztez4real@gmail.com',
-  'teztez4real@icloud.com',
-  'teztez4real@yahoo.com',
+  'battlecortez@gmail.com',
 ];
 
 export function isAdmin(email) {
