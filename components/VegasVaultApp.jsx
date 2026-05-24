@@ -375,7 +375,10 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
   // ── LIVE SCORE LOOKUP ─────────────────────────────────────────────────────
   const liveKey1 = `${game.away}|${game.home}`;
   const liveKey2 = `${game.awayAbbr}|${game.homeAbbr}`;
-  const live = liveScores?.[liveKey1] || liveScores?.[liveKey2];
+  const awayLast = game.away?.split(' ').pop();
+  const homeLast = game.home?.split(' ').pop();
+  const liveKey3 = `${awayLast}|${homeLast}`;
+  const live = liveScores?.[game.id] || liveScores?.[liveKey1] || liveScores?.[liveKey2] || liveScores?.[liveKey3];
   const isLive = live?.status === 'Live';
   const isFinal = live?.status === 'Final';
   const isDelayed = live?.isDelayed || false;
@@ -802,11 +805,14 @@ export default function VegasVaultApp() {
       fetch(`/api/livescores?date=${selectedDate}`).then(r => r.json()).then(data => {
         const map = {};
         (data.scores || []).forEach(s => {
-          // Index by full name AND abbreviation combos for reliable matching
-          const key1 = `${s.away}|${s.home}`;
-          const key2 = `${s.awayAbbr}|${s.homeAbbr}`;
-          map[key1] = s;
-          map[key2] = s;
+          // Index by gamePk, full name, abbreviation, and partial name combos
+          if (s.gamePk) map[s.gamePk] = s;
+          map[`${s.away}|${s.home}`] = s;
+          map[`${s.awayAbbr}|${s.homeAbbr}`] = s;
+          // Also index by last word of team name (e.g. "Tigers"|"Orioles")
+          const awayLast = s.away?.split(' ').pop();
+          const homeLast = s.home?.split(' ').pop();
+          if (awayLast && homeLast) map[`${awayLast}|${homeLast}`] = s;
         });
         setLiveScores(map);
       }).catch(() => {});
