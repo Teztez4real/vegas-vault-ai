@@ -454,6 +454,9 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
           {isPostponed && (
             <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.1em",color:"#f87171",background:"rgba(248,113,113,0.12)",padding:"2px 8px",borderRadius:4 }}>⛔ POSTPONED</span>
           )}
+          {!gameStarted && !isPostponed && preAnalyzed && (preAnalyzed[`${game.id}-PUBLIC`] || preAnalyzed[`${game.id}-VEGAS`]) && (
+            <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.1em",color:"#4ade80",background:"rgba(74,222,128,0.1)",padding:"2px 8px",borderRadius:4 }}>⚡ READY</span>
+          )}
         </div>
         <div style={{ display:"flex",alignItems:"center",gap:10 }}>
           <span style={{ fontSize:10,color:"#4a5568",fontVariantNumeric:"tabular-nums" }}>{game.time}</span>
@@ -775,6 +778,55 @@ export default function VegasVaultApp() {
     return()=>clearInterval(t);
   },[]);
 
+  // ── BACKGROUND PRE-ANALYSIS ─────────────────────────────────────────────────
+  useEffect(() => {
+    if (!games || games.length === 0) return;
+    // Only pre-analyze games that haven't started
+    const upcoming = games.filter(g => {
+      const live = liveScores[`${g.away}|${g.home}`] || liveScores[`${g.awayAbbr}|${g.homeAbbr}`];
+      return !live || live.status === 'Preview';
+    });
+    if (upcoming.length === 0) return;
+
+    let cancelled = false;
+    setPreAnalyzing(true);
+    setPreAnalyzeProgress(0);
+
+    async function runPreAnalysis() {
+      const total = upcoming.length * 2; // PUBLIC + VEGAS per game
+      let done = 0;
+      for (const game of upcoming) {
+        if (cancelled) break;
+        for (const slot of ['PUBLIC', 'VEGAS']) {
+          if (cancelled) break;
+          const key = `${game.id}-${slot}`;
+          // Skip if already analyzed or pre-analyzed
+          if (results[key] || preAnalyzed[key]) { done++; continue; }
+          try {
+            const res = await fetch('/api/preanalyze', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ game: { ...game, slot }, slot }),
+            });
+            if (res.ok) {
+              const data = await res.json();
+              if (data.summary) {
+                setPreAnalyzed(prev => ({ ...prev, [key]: data }));
+              }
+            }
+          } catch {}
+          done++;
+          setPreAnalyzeProgress(Math.round((done / total) * 100));
+          await new Promise(r => setTimeout(r, 200));
+        }
+      }
+      if (!cancelled) setPreAnalyzing(false);
+    }
+
+    runPreAnalysis();
+    return () => { cancelled = true; setPreAnalyzing(false); };
+  }, [games]);
+
   // ── WIN RATE & AI CONFIDENCE — computed from analyzed results ──────────────
   useEffect(() => {
     const allResults = Object.values(results);
@@ -834,12 +886,41 @@ export default function VegasVaultApp() {
 
   async function handleGenerate(game,slot){
     const key=`${game.id}-${slot}`;
-    setGenerating(key); setError(null);
+    setError(null);
+
+    // ── INSTANT: use pre-analyzed result if available ──────────────────────
+    if(preAnalyzed[key]){
+      setResults(prev=>({...prev,[key]:preAnalyzed[key]}));
+      setActiveResult(preAnalyzed[key]); setActiveGame({...game,slot});
+      return;
+    }
+
+    // ── LIVE: fetch from pre-analyze endpoint (uses server cache) ──────────
+    setGenerating(key);
     try{
-      const result=await generatePlay({...game,slot});
-      setResults(prev=>({...prev,[key]:result}));
-      setActiveResult(result); setActiveGame({...game,slot});
-    }catch{ setError("Generation failed. Check your Anthropic API key in Vercel environment variables."); }
+      const res = await fetch('/api/preanalyze', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ game:{...game,slot}, slot }),
+      });
+      const data = await res.json();
+      if(data.error || !data.summary){
+        // fallback to original generate
+        const result=await generatePlay({...game,slot});
+        setResults(prev=>({...prev,[key]:result}));
+        setActiveResult(result); setActiveGame({...game,slot});
+      } else {
+        setResults(prev=>({...prev,[key]:data}));
+        setPreAnalyzed(prev=>({...prev,[key]:data}));
+        setActiveResult(data); setActiveGame({...game,slot});
+      }
+    }catch{
+      try{
+        const result=await generatePlay({...game,slot});
+        setResults(prev=>({...prev,[key]:result}));
+        setActiveResult(result); setActiveGame({...game,slot});
+      }catch{ setError("Generation failed. Check your Anthropic API key in Vercel environment variables."); }
+    }
     finally{ setGenerating(null); }
   }
 
@@ -1089,6 +1170,13 @@ export default function VegasVaultApp() {
           <RightPanelContent marketScanner={marketScanner} insights={insights} aiConfidence={aiConfidence} confHistory={confHistory}/>
         </div>
       </div>
+
+      {/* PRE-ANALYSIS PROGRESS BAR */}
+      {preAnalyzing && preAnalyzeProgress < 100 && (
+        <div style={{ position:"fixed",top:0,left:0,right:0,zIndex:9999,height:2 }}>
+          <div style={{ height:"100%",background:"linear-gradient(90deg,#c9a227,#4ade80)",width:`${preAnalyzeProgress}%`,transition:"width 0.5s ease" }}/>
+        </div>
+      )}
 
       {/* MOBILE BOTTOM NAV */}
       <div className="vv-bottom-nav">
