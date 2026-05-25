@@ -661,20 +661,11 @@ async function assembleMLBGame(g, oddsMap) {
 // ── NBA GAMES ─────────────────────────────────────────────────────────────────
 
 async function fetchNBAGames(dateParam) {
-  const apiKey = process.env.ODDS_API_KEY;
-  if (!apiKey) return [];
   try {
-    // Try regular season key first, then playoffs key
-    let oddsMap = {};
-    for (const sportKey of ['basketball_nba', 'basketball_nba_championship']) {
-      const oddsResult = await fetchOdds(sportKey);
-      const map = oddsResult.oddsMap || oddsResult;
-      const validEntries = Object.entries(map).filter(([k]) => !k.startsWith('_'));
-      if (validEntries.length > 0) {
-        validEntries.forEach(([k, v]) => { oddsMap[k] = v; });
-      }
-    }
-    if (Object.keys(oddsMap).length === 0) return [];
+    // Use SharpAPI (same fetchOdds function) for NBA
+    const oddsResult = await fetchOdds('basketball_nba');
+    const oddsMap = oddsResult.oddsMap || oddsResult;
+    if (Object.keys(oddsMap).filter(k => !k.startsWith('_')).length === 0) return [];
 
     const games = (await Promise.all(
       Object.entries(oddsMap)
