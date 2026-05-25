@@ -660,6 +660,103 @@ async function assembleMLBGame(g, oddsMap) {
 
 // ── NBA GAMES ─────────────────────────────────────────────────────────────────
 
+// ── BALL DON'T LIE — NBA DATA ─────────────────────────────────────────────────
+
+async function fetchNBATeamData(teamName) {
+  try {
+    const res = await fetch('https://www.balldontlie.io/api/v1/teams', { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const teams = data.data || [];
+    const short = teamName.split(' ').pop();
+    const team = teams.find(t => t.name === short || t.full_name === teamName || t.full_name.includes(short));
+    return team || null;
+  } catch { return null; }
+}
+
+async function fetchNBAStandings(teamId) {
+  try {
+    const season = new Date().getFullYear() - (new Date().getMonth() < 8 ? 1 : 0);
+    const res = await fetch(`https://www.balldontlie.io/api/v1/season_averages?season=${season}&team_ids[]=${teamId}`, { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch { return null; }
+}
+
+async function fetchNBAH2H(awayTeamName, homeTeamName) {
+  try {
+    const [awayTeam, homeTeam] = await Promise.all([
+      fetchNBATeamData(awayTeamName),
+      fetchNBATeamData(homeTeamName),
+    ]);
+    if (!awayTeam || !homeTeam) return `H2H: Check ESPN for ${awayTeamName} vs ${homeTeamName}`;
+    const season = new Date().getFullYear() - (new Date().getMonth() < 8 ? 1 : 0);
+    const res = await fetch(
+      `https://www.balldontlie.io/api/v1/games?seasons[]=${season}&team_ids[]=${awayTeam.id}&team_ids[]=${homeTeam.id}&per_page=10`,
+      { signal: AbortSignal.timeout(5000) }
+    );
+    if (!res.ok) return `H2H: Check ESPN for ${awayTeamName} vs ${homeTeamName}`;
+    const data = await res.json();
+    const games = (data.data || []).filter(g => g.status === 'Final');
+    if (!games.length) return `No completed H2H games this season for ${awayTeamName} vs ${homeTeamName}`;
+    const awayWins = games.filter(g => {
+      const aScore = g.home_team.id === awayTeam.id ? g.home_team_score : g.visitor_team_score;
+      const hScore = g.home_team.id === homeTeam.id ? g.home_team_score : g.visitor_team_score;
+      return aScore > hScore;
+    }).length;
+    const homeWins = games.length - awayWins;
+    const lines = games.slice(0,5).map(g => {
+      const isHTH = g.home_team.id === homeTeam.id;
+      const hScore = isHTH ? g.home_team_score : g.visitor_team_score;
+      const aScore = isHTH ? g.visitor_team_score : g.home_team_score;
+      return `${g.date?.slice(0,10)}: ${awayTeamName} ${aScore} @ ${homeTeamName} ${hScore}`;
+    });
+    return `Season series: ${homeTeamName} ${homeWins}-${awayWins} ${awayTeamName} | Last ${lines.length}: ${lines.join(' | ')}`;
+  } catch { return `H2H: Check ESPN for ${awayTeamName} vs ${homeTeamName}`; }
+}
+
+async function fetchNBARecord(teamName) {
+  try {
+    const team = await fetchNBATeamData(teamName);
+    if (!team) return 'See NBA standings';
+    const season = new Date().getFullYear() - (new Date().getMonth() < 8 ? 1 : 0);
+    const res = await fetch(
+      `https://www.balldontlie.io/api/v1/games?seasons[]=${season}&team_ids[]=${team.id}&per_page=100`,
+      { signal: AbortSignal.timeout(6000) }
+    );
+    if (!res.ok) return 'See NBA standings';
+    const data = await res.json();
+    const games = (data.data || []).filter(g => g.status === 'Final');
+    if (!games.length) return 'Season not started';
+    let wins = 0, losses = 0, homeW = 0, homeL = 0, awayW = 0, awayL = 0;
+    const last5 = [], last10 = [];
+    for (const g of games) {
+      const isHome = g.home_team.id === team.id;
+      const teamScore = isHome ? g.home_team_score : g.visitor_team_score;
+      const oppScore = isHome ? g.visitor_team_score : g.home_team_score;
+      const won = teamScore > oppScore;
+      if (won) { wins++; isHome ? homeW++ : awayW++; }
+      else { losses++; isHome ? homeL++ : awayL++; }
+    }
+    const recent = games.slice(-10);
+    for (const g of recent) {
+      const isHome = g.home_team.id === team.id;
+      const teamScore = isHome ? g.home_team_score : g.visitor_team_score;
+      const oppScore = isHome ? g.visitor_team_score : g.home_team_score;
+      const r = teamScore > oppScore ? 'W' : 'L';
+      if (recent.indexOf(g) >= recent.length - 5) last5.push(r);
+      last10.push(r);
+    }
+    return {
+      record: `${wins}-${losses}`,
+      homeRecord: `${homeW}-${homeL}`,
+      awayRecord: `${awayW}-${awayL}`,
+      last5: last5.join(''),
+      last10: last10.join(''),
+    };
+  } catch { return null; }
+}
+
 async function fetchNBAGames(dateParam) {
   try {
     // Use SharpAPI (same fetchOdds function) for NBA
@@ -692,6 +789,15 @@ async function fetchNBAGames(dateParam) {
             "Utah Jazz":"UTA","Washington Wizards":"WAS",
           };
 
+          // Fetch real NBA data in parallel
+          const [awayRec, homeRec, h2h] = await Promise.all([
+            fetchNBARecord(away),
+            fetchNBARecord(home),
+            fetchNBAH2H(away, home),
+          ]);
+          const aRec = typeof awayRec === 'object' && awayRec ? awayRec : null;
+          const hRec = typeof homeRec === 'object' && homeRec ? homeRec : null;
+
           return {
             id: 1000 + i, sport: 'NBA',
             rawTime: odds.commenceTime,
@@ -702,10 +808,14 @@ async function fetchNBAGames(dateParam) {
             homeCity: home.split(' ').slice(0,-1).join(' ').toUpperCase(),
             awayAbbr: NBA_ABBR[away] || away.split(' ').pop().slice(0,3).toUpperCase(),
             homeAbbr: NBA_ABBR[home] || home.split(' ').pop().slice(0,3).toUpperCase(),
-            awayRecord: 'See NBA standings', homeRecord: 'See NBA standings',
-            awayAwayRecord: 'N/A', homeHomeRecord: 'N/A',
-            awayLast5: 'N/A', homeLast5: 'N/A',
-            awayLast10: 'N/A', homeLast10: 'N/A',
+            awayRecord: aRec?.record || 'See NBA standings',
+            homeRecord: hRec?.record || 'See NBA standings',
+            awayAwayRecord: aRec?.awayRecord || 'N/A',
+            homeHomeRecord: hRec?.homeRecord || 'N/A',
+            awayLast5: aRec?.last5 || 'N/A',
+            homeLast5: hRec?.last5 || 'N/A',
+            awayLast10: aRec?.last10 || 'N/A',
+            homeLast10: hRec?.last10 || 'N/A',
             awayStreak: 'N/A', homeStreak: 'N/A',
             awayML: odds.awayML || 'N/A', homeML: odds.homeML || 'N/A',
             openingAwayML: odds.openingAwayML || 'N/A',
@@ -716,9 +826,9 @@ async function fetchNBAGames(dateParam) {
             moneyPercentage: 'Available with paid tier',
             awayKeyPlayers: 'Check NBA roster', homeKeyPlayers: 'Check NBA roster',
             injuries: 'Check rotowire.com/basketball/nba/injury-report.php',
-            h2hLast5: 'N/A', h2hAtHome: 'N/A',
+            h2hLast5: h2h, h2hAtHome: 'See season series above',
             seriesGame: 1, awaySeriesWins: 0, homeSeriesWins: 0,
-            seriesHistory: 'N/A',
+            seriesHistory: h2h,
             awayPPG: 'N/A', homePPG: 'N/A',
             awayOffRating: 'N/A', homeOffRating: 'N/A',
             awayDefRating: 'N/A', homeDefRating: 'N/A',
