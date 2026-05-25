@@ -673,7 +673,9 @@ async function fetchNBAGames(dateParam) {
         .map(async ([key, odds], i) => {
           const [away, home] = key.split('|');
           // Filter by selected date
-          const gameDate = odds.commenceTime?.split('T')[0];
+          // Convert UTC to Eastern time for date comparison
+          const utcTime = odds.commenceTime;
+          const gameDate = utcTime ? new Date(utcTime).toLocaleDateString('en-CA', { timeZone: 'America/New_York' }) : null;
           if (dateParam && gameDate && gameDate !== dateParam) return null;
 
           const NBA_ABBR = {
