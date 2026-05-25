@@ -109,15 +109,114 @@ async function fetchCBSSportsPreview(awayTeam, homeTeam, sport = 'mlb') {
 // ── THE ODDS API ──────────────────────────────────────────────────────────────
 
 async function fetchOdds(sportKey) {
+  // ── TRY SHARPAPI FIRST ────────────────────────────────────────────────────
+  const sharpKey = process.env.SHARPAPI_KEY;
+  if (sharpKey) {
+    try {
+      // Map sport keys to SharpAPI league format
+      const leagueMap = {
+        'baseball_mlb': 'MLB',
+        'basketball_nba': 'NBA',
+        'americanfootball_nfl': 'NFL',
+        'basketball_nba_championship': 'NBA',
+      };
+      const league = leagueMap[sportKey];
+      if (!league) return { oddsMap: {}, bookmakerCount: 0 };
+
+      const res = await fetch(
+        `https://api.sharpapi.io/api/v1/odds?league=${league}&markets=h2h,spreads,totals`,
+        {
+          headers: { 'X-API-Key': sharpKey },
+          cache: 'no-store',
+        }
+      );
+      if (!res.ok) throw new Error(`SharpAPI ${res.status}`);
+      const data = await res.json();
+      const games = data.data || data.events || data || [];
+      if (!Array.isArray(games) || games.length === 0) throw new Error('No games returned');
+
+      const oddsMap = {};
+      const bookmakerSet = new Set();
+
+      for (const game of games) {
+        const awayTeam = game.away_team || game.awayTeam;
+        const homeTeam = game.home_team || game.homeTeam;
+        if (!awayTeam || !homeTeam) continue;
+        const key = `${awayTeam}|${homeTeam}`;
+
+        // Collect all bookmakers
+        const bookmakers = game.bookmakers || game.books || [];
+        bookmakers.forEach(b => bookmakerSet.add(b.key || b.title));
+
+        // Prefer DraftKings, fallback to first book
+        const book = bookmakers.find(b => (b.key||b.title||'').toLowerCase().includes('draftkings'))
+          || bookmakers.find(b => (b.key||b.title||'').toLowerCase().includes('fanduel'))
+          || bookmakers[0];
+
+        const h2h = book?.markets?.find(m => m.key === 'h2h' || m.type === 'moneyline');
+        const spreads = book?.markets?.find(m => m.key === 'spreads' || m.type === 'spread');
+        const totals = book?.markets?.find(m => m.key === 'totals' || m.type === 'total');
+
+        const homeML = h2h?.outcomes?.find(o => o.name === homeTeam || o.team === homeTeam)?.price;
+        const awayML = h2h?.outcomes?.find(o => o.name === awayTeam || o.team === awayTeam)?.price;
+        const homeSpread = spreads?.outcomes?.find(o => o.name === homeTeam || o.team === homeTeam);
+        const awaySpread = spreads?.outcomes?.find(o => o.name === awayTeam || o.team === awayTeam);
+        const total = totals?.outcomes?.[0]?.point || totals?.point;
+
+        // SharpAPI +EV detection
+        const evData = game.ev || game.expected_value || {};
+        const homeEV = evData.home || game.home_ev;
+        const awayEV = evData.away || game.away_ev;
+        const evNote = homeEV ? ` | +EV: Home ${homeEV > 0 ? '+' : ''}${homeEV}% / Away ${awayEV > 0 ? '+' : ''}${awayEV}%` : '';
+
+        // Reverse line movement detection
+        const rlm = game.reverse_line_movement || game.rlm;
+        const rlmNote = rlm ? ` | ⚡ REVERSE LINE MOVEMENT DETECTED — Sharp money on ${rlm}` : '';
+
+        // Line movement
+        const openHomeML = game.opening_home_ml || game.open_home;
+        const openAwayML = game.opening_away_ml || game.open_away;
+        let lineMovement = 'Line stable';
+        if (openHomeML && homeML && openHomeML !== homeML) {
+          const diff = homeML - openHomeML;
+          lineMovement = `Home opened ${fmt(openHomeML)}, now ${fmt(homeML)} (${diff > 0 ? 'moved toward home' : 'moved toward away'}, ${Math.abs(diff)} pts)${evNote}${rlmNote}`;
+        } else if (homeML) {
+          lineMovement = `Line stable. Home ${fmt(homeML)} / Away ${fmt(awayML)}${evNote}${rlmNote}`;
+        }
+
+        oddsMap[key] = {
+          homeML: fmt(homeML), awayML: fmt(awayML),
+          openingHomeML: fmt(openHomeML), openingAwayML: fmt(openAwayML),
+          spread: homeSpread ? `${homeTeam} ${homeSpread.point > 0 ? '+' : ''}${homeSpread.point} / ${awayTeam} ${awaySpread?.point > 0 ? '+' : ''}${awaySpread?.point}` : 'N/A',
+          runLine: homeSpread ? `Home ${homeSpread.point > 0 ? '+' : ''}${homeSpread.point} (${fmt(homeSpread.price)}) / Away ${awaySpread?.point > 0 ? '+' : ''}${awaySpread?.point} (${fmt(awaySpread?.price)})` : 'N/A',
+          total: total ? `${total}` : 'N/A',
+          lineMovement,
+          betPercentage: game.bet_percentage?.home || game.public_pct_home || 'N/A',
+          moneyPercentage: game.money_percentage?.home || game.sharp_pct_home || 'N/A',
+          homeEV: homeEV || null,
+          awayEV: awayEV || null,
+          rlm: rlm || null,
+          commenceTime: game.commence_time || game.start_time,
+        };
+      }
+
+      console.log(`SharpAPI: ${Object.keys(oddsMap).length} games, ${bookmakerSet.size} books`);
+      return { oddsMap, bookmakerCount: bookmakerSet.size };
+    } catch (err) {
+      console.error('SharpAPI error:', err.message, '— falling back to Odds API');
+    }
+  }
+
+  // ── FALLBACK: THE ODDS API ────────────────────────────────────────────────
   const apiKey = process.env.ODDS_API_KEY;
-  if (!apiKey) return {};
+  if (!apiKey) return { oddsMap: {}, bookmakerCount: 0 };
   try {
     const res = await fetch(
       `https://api.the-odds-api.com/v4/sports/${sportKey}/odds?regions=us&markets=h2h,spreads,totals&oddsFormat=american&apiKey=${apiKey}`,
       { cache: 'no-store' }
     );
     const data = await res.json();
-    if (!Array.isArray(data)) return {};
+    if (!Array.isArray(data)) return { oddsMap: {}, bookmakerCount: 0 };
     const oddsMap = {};
     const bookmakerSet = new Set();
     for (const game of data) {
@@ -150,14 +249,14 @@ async function fetchOdds(sportKey) {
         runLine: homeSpread ? `Home ${homeSpread.point > 0 ? '+' : ''}${homeSpread.point} (${fmt(homeSpread.price)}) / Away ${awaySpread?.point > 0 ? '+' : ''}${awaySpread?.point} (${fmt(awaySpread?.price)})` : 'N/A',
         total: total ? `${total}` : 'N/A',
         lineMovement,
-        betPercentage: 'Available with paid Odds API tier',
-        moneyPercentage: 'Available with paid Odds API tier',
+        betPercentage: 'N/A',
+        moneyPercentage: 'N/A',
         commenceTime: game.commence_time,
       };
     }
     return { oddsMap, bookmakerCount: bookmakerSet.size };
   } catch (err) {
-    console.error(`Odds API error (${sportKey}):`, err.message);
+    console.error(`Odds API fallback error:`, err.message);
     return { oddsMap: {}, bookmakerCount: 0 };
   }
 }
@@ -492,6 +591,9 @@ async function assembleMLBGame(g, oddsMap) {
     h2hLast5: mlbH2H, h2hAtHome: 'See season series above',
     injuries: 'Check rotowire.com for injury report',
     lineMovement: odds.lineMovement || 'Odds API not connected',
+    homeEV: odds.homeEV || null,
+    awayEV: odds.awayEV || null,
+    rlm: odds.rlm || null,
     cbsPreview,
     weather,
     umpire,
