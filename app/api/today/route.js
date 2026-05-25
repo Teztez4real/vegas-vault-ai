@@ -233,12 +233,15 @@ async function fetchOdds(sportKey) {
           }
         }
 
+        // Use only the preferred book's spread to avoid mixing books
+        const spreadHomePoint = bookData.spread?.homePoint;
+        const spreadAwayPoint = bookData.spread?.awayPoint;
         oddsMap[key] = {
           homeML: fmt(homeML), awayML: fmt(awayML),
           openingHomeML: fmt(openHomeML || homeML),
           openingAwayML: fmt(openAwayML || awayML),
-          spread: homePoint != null ? `${event.home} ${homePoint > 0 ? '+' : ''}${homePoint} / ${event.away} ${awayPoint > 0 ? '+' : ''}${awayPoint}` : 'N/A',
-          runLine: homePoint != null ? `Home ${homePoint > 0 ? '+' : ''}${homePoint} (${fmt(homeSpreadOdds)}) / Away ${awayPoint > 0 ? '+' : ''}${awayPoint} (${fmt(awaySpreadOdds)})` : 'N/A',
+          spread: spreadHomePoint != null ? `${event.home} ${spreadHomePoint > 0 ? '+' : ''}${spreadHomePoint} / ${event.away} ${spreadAwayPoint > 0 ? '+' : ''}${spreadAwayPoint}` : 'N/A',
+          runLine: spreadHomePoint != null ? `Home ${spreadHomePoint > 0 ? '+' : ''}${spreadHomePoint} (${fmt(bookData.spread?.homeOdds)}) / Away ${spreadAwayPoint > 0 ? '+' : ''}${spreadAwayPoint} (${fmt(bookData.spread?.awayOdds)})` : 'N/A',
           total: total ? `${total}` : 'N/A',
           lineMovement,
           betPercentage: 'N/A',
