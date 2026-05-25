@@ -5,20 +5,36 @@ export async function GET() {
   if (!sharpKey) return NextResponse.json({ error: 'SHARPAPI_KEY not set' });
 
   try {
-    const res = await fetch('https://api.sharpapi.io/api/v1/odds?league=MLB', {
+    const res = await fetch('https://api.sharpapi.io/api/v1/odds?league=mlb', {
       headers: { 'X-API-Key': sharpKey },
       cache: 'no-store',
     });
     const data = await res.json();
-    // Return first game raw so we can see exact structure
-    const games = data.data || data.events || data || [];
-    const firstGame = Array.isArray(games) ? games[0] : null;
+    const rows = data.data || [];
+
+    // Group by event to test parsing
+    const events = {};
+    for (const row of rows) {
+      const key = `${row.away_team}|${row.home_team}`;
+      if (!events[key]) events[key] = { home: row.home_team, away: row.away_team, markets: [] };
+      events[key].markets.push(row.market_type);
+    }
+
+    const eventList = Object.entries(events).slice(0,5).map(([k,v]) => ({
+      game: `${v.away} @ ${v.home}`,
+      marketTypes: [...new Set(v.markets)],
+    }));
+
+    const allMarkets = [...new Set(rows.map(r => r.market_type))];
+    const allBooks = [...new Set(rows.map(r => r.sportsbook))];
+
     return NextResponse.json({
       status: res.status,
-      totalGames: Array.isArray(games) ? games.length : 0,
-      topLevelKeys: Object.keys(data || {}),
-      firstGameKeys: firstGame ? Object.keys(firstGame) : [],
-      firstGame: firstGame,
+      totalRows: rows.length,
+      uniqueGames: Object.keys(events).length,
+      allMarketTypes: allMarkets,
+      allSportsbooks: allBooks,
+      sampleGames: eventList,
     });
   } catch (err) {
     return NextResponse.json({ error: err.message });

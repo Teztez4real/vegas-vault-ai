@@ -110,100 +110,159 @@ async function fetchCBSSportsPreview(awayTeam, homeTeam, sport = 'mlb') {
 
 async function fetchOdds(sportKey) {
   // ── TRY SHARPAPI FIRST ────────────────────────────────────────────────────
+  // SharpAPI returns flat rows: one row per sportsbook per selection per market
+  // We need to group by event and extract h2h, spreads, totals
   const sharpKey = process.env.SHARPAPI_KEY;
   if (sharpKey) {
     try {
-      // Map sport keys to SharpAPI league format
       const leagueMap = {
-        'baseball_mlb': 'MLB',
-        'basketball_nba': 'NBA',
-        'americanfootball_nfl': 'NFL',
-        'basketball_nba_championship': 'NBA',
+        'baseball_mlb': 'mlb',
+        'basketball_nba': 'nba',
+        'americanfootball_nfl': 'nfl',
+        'basketball_nba_championship': 'nba',
       };
       const league = leagueMap[sportKey];
       if (!league) return { oddsMap: {}, bookmakerCount: 0 };
 
       const res = await fetch(
-        `https://api.sharpapi.io/api/v1/odds?league=${league}&markets=h2h,spreads,totals`,
-        {
-          headers: { 'X-API-Key': sharpKey },
-          cache: 'no-store',
-        }
+        `https://api.sharpapi.io/api/v1/odds?league=${league}`,
+        { headers: { 'X-API-Key': sharpKey }, cache: 'no-store' }
       );
       if (!res.ok) throw new Error(`SharpAPI ${res.status}`);
       const data = await res.json();
-      const games = data.data || data.events || data || [];
-      if (!Array.isArray(games) || games.length === 0) throw new Error('No games returned');
+      const rows = data.data || [];
+      if (!rows.length) throw new Error('No rows');
 
-      const oddsMap = {};
+      // Group rows by event (home_team|away_team)
+      const eventMap = {};
       const bookmakerSet = new Set();
 
-      for (const game of games) {
-        const awayTeam = game.away_team || game.awayTeam;
-        const homeTeam = game.home_team || game.homeTeam;
-        if (!awayTeam || !homeTeam) continue;
-        const key = `${awayTeam}|${homeTeam}`;
+      for (const row of rows) {
+        const home = row.home_team;
+        const away = row.away_team;
+        if (!home || !away) continue;
+        const key = `${away}|${home}`;
+        if (!eventMap[key]) {
+          eventMap[key] = {
+            home, away,
+            commenceTime: row.event_start_time,
+            eventId: row.event_id,
+            books: {},
+          };
+        }
+        const book = row.sportsbook;
+        bookmakerSet.add(book);
+        if (!eventMap[key].books[book]) eventMap[key].books[book] = {};
+        const mt = row.market_type || '';
+        const sel = row.selection || '';
+        const odds = row.odds_american;
+        const line = row.line;
 
-        // Collect all bookmakers
-        const bookmakers = game.bookmakers || game.books || [];
-        bookmakers.forEach(b => bookmakerSet.add(b.key || b.title));
+        // Categorize market type
+        if (mt.includes('moneyline') || mt === 'h2h' || mt.includes('winner')) {
+          if (!eventMap[key].books[book].h2h) eventMap[key].books[book].h2h = {};
+          if (sel.toLowerCase().includes(home.split(' ').pop().toLowerCase()) || sel === home) {
+            eventMap[key].books[book].h2h.homeML = odds;
+          } else {
+            eventMap[key].books[book].h2h.awayML = odds;
+          }
+        } else if (mt.includes('spread') || mt.includes('run_line') || mt.includes('puck_line')) {
+          if (!eventMap[key].books[book].spread) eventMap[key].books[book].spread = {};
+          if (sel.toLowerCase().includes(home.split(' ').pop().toLowerCase()) || sel === home) {
+            eventMap[key].books[book].spread.homePoint = line;
+            eventMap[key].books[book].spread.homeOdds = odds;
+          } else {
+            eventMap[key].books[book].spread.awayPoint = line;
+            eventMap[key].books[book].spread.awayOdds = odds;
+          }
+        } else if (mt.includes('total') || mt.includes('over_under')) {
+          if (!eventMap[key].books[book].total) eventMap[key].books[book].total = line;
+        }
+      }
 
-        // Prefer DraftKings, fallback to first book
-        const book = bookmakers.find(b => (b.key||b.title||'').toLowerCase().includes('draftkings'))
-          || bookmakers.find(b => (b.key||b.title||'').toLowerCase().includes('fanduel'))
-          || bookmakers[0];
+      // Build final oddsMap from grouped events
+      const oddsMap = {};
+      const preferredBooks = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'pinnacle'];
 
-        const h2h = book?.markets?.find(m => m.key === 'h2h' || m.type === 'moneyline');
-        const spreads = book?.markets?.find(m => m.key === 'spreads' || m.type === 'spread');
-        const totals = book?.markets?.find(m => m.key === 'totals' || m.type === 'total');
+      for (const [key, event] of Object.entries(eventMap)) {
+        // Pick best available book
+        let bookData = null;
+        for (const preferred of preferredBooks) {
+          const found = Object.entries(event.books).find(([b]) => b.toLowerCase().includes(preferred));
+          if (found && found[1].h2h) { bookData = found[1]; break; }
+        }
+        if (!bookData) {
+          const first = Object.values(event.books).find(b => b.h2h);
+          if (first) bookData = first;
+        }
+        if (!bookData) continue;
 
-        const homeML = h2h?.outcomes?.find(o => o.name === homeTeam || o.team === homeTeam)?.price;
-        const awayML = h2h?.outcomes?.find(o => o.name === awayTeam || o.team === awayTeam)?.price;
-        const homeSpread = spreads?.outcomes?.find(o => o.name === homeTeam || o.team === homeTeam);
-        const awaySpread = spreads?.outcomes?.find(o => o.name === awayTeam || o.team === awayTeam);
-        const total = totals?.outcomes?.[0]?.point || totals?.point;
+        const homeML = bookData.h2h?.homeML;
+        const awayML = bookData.h2h?.awayML;
+        const homePoint = bookData.spread?.homePoint;
+        const awayPoint = bookData.spread?.awayPoint;
+        const homeSpreadOdds = bookData.spread?.homeOdds;
+        const awaySpreadOdds = bookData.spread?.awayOdds;
+        const total = bookData.total;
 
-        // SharpAPI +EV detection
-        const evData = game.ev || game.expected_value || {};
-        const homeEV = evData.home || game.home_ev;
-        const awayEV = evData.away || game.away_ev;
-        const evNote = homeEV ? ` | +EV: Home ${homeEV > 0 ? '+' : ''}${homeEV}% / Away ${awayEV > 0 ? '+' : ''}${awayEV}%` : '';
+        // Line movement: compare DraftKings vs Pinnacle as open/current proxy
+        const dkData = Object.entries(event.books).find(([b]) => b.toLowerCase().includes('draftkings'))?.[1];
+        const pinData = Object.entries(event.books).find(([b]) => b.toLowerCase().includes('pinnacle'))?.[1];
+        const openHomeML = pinData?.h2h?.homeML;
+        const openAwayML = pinData?.h2h?.awayML;
 
-        // Reverse line movement detection
-        const rlm = game.reverse_line_movement || game.rlm;
-        const rlmNote = rlm ? ` | ⚡ REVERSE LINE MOVEMENT DETECTED — Sharp money on ${rlm}` : '';
-
-        // Line movement
-        const openHomeML = game.opening_home_ml || game.open_home;
-        const openAwayML = game.opening_away_ml || game.open_away;
         let lineMovement = 'Line stable';
+        let rlm = null;
         if (openHomeML && homeML && openHomeML !== homeML) {
           const diff = homeML - openHomeML;
-          lineMovement = `Home opened ${fmt(openHomeML)}, now ${fmt(homeML)} (${diff > 0 ? 'moved toward home' : 'moved toward away'}, ${Math.abs(diff)} pts)${evNote}${rlmNote}`;
+          const dir = diff > 0 ? 'moved toward home' : 'moved toward away';
+          lineMovement = `DraftKings ${fmt(homeML)} vs Pinnacle ${fmt(openHomeML)} (${dir}, ${Math.abs(diff)} pts)`;
+          // Rough RLM detection: if line moved toward away but home team is heavily bet
+          rlm = diff < -5 ? event.away : diff > 5 ? event.home : null;
+          if (rlm) lineMovement += ` | ⚡ SHARP SIGNAL: Line moved toward ${rlm}`;
         } else if (homeML) {
-          lineMovement = `Line stable. Home ${fmt(homeML)} / Away ${fmt(awayML)}${evNote}${rlmNote}`;
+          lineMovement = `Line stable. Home ${fmt(homeML)} / Away ${fmt(awayML)}`;
+        }
+
+        // +EV: compare DraftKings to Pinnacle no-vig
+        let homeEV = null, awayEV = null;
+        if (dkData?.h2h?.homeML && pinData?.h2h?.homeML) {
+          const dkHome = dkData.h2h.homeML;
+          const pinHome = pinData.h2h.homeML;
+          const pinAway = pinData.h2h.awayML;
+          if (pinHome && pinAway) {
+            // No-vig probability from Pinnacle
+            const toProb = (ml) => ml < 0 ? (-ml)/(-ml+100) : 100/(ml+100);
+            const pHome = toProb(pinHome);
+            const pAway = toProb(pinAway);
+            const vig = pHome + pAway;
+            const nvHome = pHome / vig;
+            const nvAway = pAway / vig;
+            const dkProbHome = toProb(dkHome);
+            homeEV = Math.round((nvHome - dkProbHome) * 100 * 10) / 10;
+            awayEV = Math.round((nvAway - (1-dkProbHome)) * 100 * 10) / 10;
+          }
         }
 
         oddsMap[key] = {
           homeML: fmt(homeML), awayML: fmt(awayML),
-          openingHomeML: fmt(openHomeML), openingAwayML: fmt(openAwayML),
-          spread: homeSpread ? `${homeTeam} ${homeSpread.point > 0 ? '+' : ''}${homeSpread.point} / ${awayTeam} ${awaySpread?.point > 0 ? '+' : ''}${awaySpread?.point}` : 'N/A',
-          runLine: homeSpread ? `Home ${homeSpread.point > 0 ? '+' : ''}${homeSpread.point} (${fmt(homeSpread.price)}) / Away ${awaySpread?.point > 0 ? '+' : ''}${awaySpread?.point} (${fmt(awaySpread?.price)})` : 'N/A',
+          openingHomeML: fmt(openHomeML || homeML),
+          openingAwayML: fmt(openAwayML || awayML),
+          spread: homePoint != null ? `${event.home} ${homePoint > 0 ? '+' : ''}${homePoint} / ${event.away} ${awayPoint > 0 ? '+' : ''}${awayPoint}` : 'N/A',
+          runLine: homePoint != null ? `Home ${homePoint > 0 ? '+' : ''}${homePoint} (${fmt(homeSpreadOdds)}) / Away ${awayPoint > 0 ? '+' : ''}${awayPoint} (${fmt(awaySpreadOdds)})` : 'N/A',
           total: total ? `${total}` : 'N/A',
           lineMovement,
-          betPercentage: game.bet_percentage?.home || game.public_pct_home || 'N/A',
-          moneyPercentage: game.money_percentage?.home || game.sharp_pct_home || 'N/A',
-          homeEV: homeEV || null,
-          awayEV: awayEV || null,
-          rlm: rlm || null,
-          commenceTime: game.commence_time || game.start_time,
+          betPercentage: 'N/A',
+          moneyPercentage: 'N/A',
+          homeEV, awayEV, rlm,
+          commenceTime: event.commenceTime,
         };
       }
 
       console.log(`SharpAPI: ${Object.keys(oddsMap).length} games, ${bookmakerSet.size} books`);
       return { oddsMap, bookmakerCount: bookmakerSet.size };
     } catch (err) {
-      console.error('SharpAPI error:', err.message, '— falling back to Odds API');
+      console.error('SharpAPI error:', err.message);
     }
   }
 
