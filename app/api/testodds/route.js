@@ -5,35 +5,24 @@ export async function GET() {
   if (!sharpKey) return NextResponse.json({ error: 'SHARPAPI_KEY not set' });
 
   try {
-    // Get leagues list to find correct MLB/NBA/NFL league IDs
-    const leaguesRes = await fetch('https://api.sharpapi.io/api/v1/leagues', {
+    const res = await fetch('https://api.sharpapi.io/api/v1/events?league=mlb&include=odds', {
       headers: { 'X-API-Key': sharpKey },
       cache: 'no-store',
     });
-    const leaguesData = await leaguesRes.json();
-    const leagues = leaguesData.data || [];
-    
-    // Find MLB, NBA, NFL
-    const target = leagues.filter(l => 
-      ['mlb','nba','nfl','baseball','basketball','football'].some(s => 
-        (l.name||l.display_name||l.id||'').toLowerCase().includes(s)
-      )
-    ).slice(0, 20);
-
-    // Also test events endpoint with league=mlb
-    const eventsRes = await fetch('https://api.sharpapi.io/api/v1/events?league=mlb', {
-      headers: { 'X-API-Key': sharpKey },
-      cache: 'no-store',
-    });
-    const eventsData = await eventsRes.json();
-    const events = eventsData.data || [];
-    const sampleEvent = events[0] || null;
-
+    const data = await res.json();
+    const events = data.data || [];
+    const upcoming = events.filter(e => e.status !== 'completed');
+    const sample = upcoming[0];
     return NextResponse.json({
-      targetLeagues: target,
-      eventsCount: events.length,
-      sampleEventKeys: sampleEvent ? Object.keys(sampleEvent) : [],
-      sampleEvent,
+      status: res.status,
+      totalEvents: events.length,
+      upcomingEvents: upcoming.length,
+      sampleEventKeys: sample ? Object.keys(sample) : [],
+      sampleBooks: sample?.books ? sample.books.slice(0,2).map(b => ({
+        name: b.name || b.id,
+        markets: (b.markets||[]).map(m => m.name || m.id),
+      })) : [],
+      sampleGame: sample ? `${sample.away_team} @ ${sample.home_team} — ${sample.start_time}` : null,
     });
   } catch (err) {
     return NextResponse.json({ error: err.message });
