@@ -172,7 +172,6 @@ async function fetchOdds(sportKey) {
 
       // Build final oddsMap from grouped events
       const oddsMap = {};
-      const preferredBooks = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'pinnacle'];
 
       for (const [key, event] of Object.entries(eventMap)) {
         // Pick best available book
