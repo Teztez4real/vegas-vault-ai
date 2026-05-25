@@ -16,8 +16,8 @@ export async function POST(request) {
     const prompt = buildPrompt(game);
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const message = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 2200,
+      model: 'claude-sonnet-4-5',
+      max_tokens: 4000,
       messages: [
         {
           role: 'user',
@@ -27,8 +27,8 @@ export async function POST(request) {
 3. If H2H says "See MLB Stats" — use records and recent form to infer H2H advantage.
 4. If injuries say "Check rotowire" — assume both teams are healthy unless stated otherwise.
 5. If lineup says "Not yet confirmed" — analyze based on typical lineup depth and season stats.
-6. NEVER say data is missing. ALWAYS make a pick. Incomplete data = use best judgment.
-7. Keep each analysis field to 2 sentences max. Return valid JSON only. No preamble.`
+6. NEVER say data is missing. ALWAYS make a full pick with complete analysis.
+7. Return valid JSON only. No preamble.`
         }
       ],
     });
