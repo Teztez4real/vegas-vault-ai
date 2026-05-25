@@ -226,9 +226,9 @@ const MLB_COLORS = {
   "TOR":"#134A8E","WSH":"#AB0003",
 };
 
-function TeamLogo({ abbr, size=44 }) {
+function TeamLogo({ abbr, size=44, sport="MLB" }) {
   const [err, setErr] = useState(false);
-  const slug = MLB_SLUGS[abbr];
+  const slug = sport === "MLB" ? MLB_SLUGS[abbr] : null;
 
   if (slug && !err) {
     return (
@@ -412,6 +412,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
   };
   const awayAbbr = game.awayAbbr || NAME_TO_ABBR[awayName] || NAME_TO_ABBR[awayName.split(" ").pop()] || awayName.slice(0,3).toUpperCase();
   const homeAbbr = game.homeAbbr || NAME_TO_ABBR[homeName] || NAME_TO_ABBR[homeName.split(" ").pop()] || homeName.slice(0,3).toUpperCase();
+  const logoSport = game.sport;
   const awayRec  = isTennis ? `#${game.player1Ranking}` : game.awayRecord;
   const homeRec  = isTennis ? `#${game.player2Ranking}` : game.homeRecord;
   const publicPct = 30 + ((game.id * 17) % 45);
@@ -464,7 +465,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
       <div style={{ display:"grid",gridTemplateColumns:"1fr 20px 1fr",alignItems:"center",gap:6,marginBottom:14 }}>
         {/* Away */}
         <div style={{ display:"flex",alignItems:"center",gap:10 }}>
-          <TeamLogo abbr={awayAbbr} size={42} />
+          <TeamLogo abbr={awayAbbr} size={42} sport={logoSport} />
           <div>
             <div style={{ fontSize:8,color:"#3a4a5e",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:2 }}>{awayCity}</div>
             <div style={{ fontSize:14,fontWeight:900,color:"#e2e8f0",letterSpacing:"0.02em",textTransform:"uppercase",lineHeight:1 }}>{({"ARI":"DBACKS","ATL":"BRAVES","BAL":"ORIOLES","BOS":"RED SOX","CHC":"CUBS","CHW":"WHITE SOX","CIN":"REDS","CLE":"GUARDIANS","COL":"ROCKIES","DET":"TIGERS","HOU":"ASTROS","KC":"ROYALS","LAA":"ANGELS","LAD":"DODGERS","MIA":"MARLINS","MIL":"BREWERS","MIN":"TWINS","NYM":"METS","NYY":"YANKEES","OAK":"ATHLETICS","PHI":"PHILLIES","PIT":"PIRATES","SD":"PADRES","SEA":"MARINERS","SF":"GIANTS","STL":"CARDINALS","TB":"RAYS","TEX":"RANGERS","TOR":"BLUE JAYS","WSH":"NATIONALS"})[awayAbbr] || awayName.split(" ").pop().toUpperCase()}</div>
@@ -480,7 +481,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
             <div style={{ fontSize:14,fontWeight:900,color:"#e2e8f0",letterSpacing:"0.02em",textTransform:"uppercase",lineHeight:1 }}>{({"ARI":"DBACKS","ATL":"BRAVES","BAL":"ORIOLES","BOS":"RED SOX","CHC":"CUBS","CHW":"WHITE SOX","CIN":"REDS","CLE":"GUARDIANS","COL":"ROCKIES","DET":"TIGERS","HOU":"ASTROS","KC":"ROYALS","LAA":"ANGELS","LAD":"DODGERS","MIA":"MARLINS","MIL":"BREWERS","MIN":"TWINS","NYM":"METS","NYY":"YANKEES","OAK":"ATHLETICS","PHI":"PHILLIES","PIT":"PIRATES","SD":"PADRES","SEA":"MARINERS","SF":"GIANTS","STL":"CARDINALS","TB":"RAYS","TEX":"RANGERS","TOR":"BLUE JAYS","WSH":"NATIONALS"})[homeAbbr] || homeName.split(" ").pop().toUpperCase()}</div>
             <div style={{ fontSize:10,color:"#3a4a5e",marginTop:3 }}>{homeRec}</div>
           </div>
-          <TeamLogo abbr={homeAbbr} size={42} />
+          <TeamLogo abbr={homeAbbr} size={42} sport={logoSport} />
         </div>
       </div>
 
