@@ -224,6 +224,39 @@ async function fetchPitcherStats(pitcherId) {
 }
 
 
+// ── MLB H2H (MLB Stats API) ───────────────────────────────────────────────────
+
+async function fetchMLBH2H(awayTeamId, homeTeamId, awayTeamName, homeTeamName) {
+  try {
+    const season = new Date().getFullYear();
+    const res = await fetch(
+      `https://statsapi.mlb.com/api/v1/schedule?sportId=1&season=${season}&teamId=${homeTeamId}&opponentId=${awayTeamId}&gameType=R`,
+      { next: { revalidate: 3600 } }
+    );
+    if (!res.ok) return `No H2H data available — check MLB.com`;
+    const data = await res.json();
+    const games = [];
+    for (const date of data.dates || []) {
+      for (const game of date.games || []) {
+        if (game.status?.abstractGameState === 'Final') {
+          const home = game.teams?.home;
+          const away = game.teams?.away;
+          const winner = home?.isWinner ? home?.team?.name : away?.team?.name;
+          games.push({ date: date.date, score: `${away?.team?.name} ${away?.score ?? '?'} @ ${home?.team?.name} ${home?.score ?? '?'}`, winner });
+        }
+      }
+    }
+    if (games.length === 0) return `No completed H2H games yet this season`;
+    const last5 = games.slice(-5).reverse();
+    const awayWins = games.filter(g => g.winner === awayTeamName).length;
+    const homeWins = games.filter(g => g.winner === homeTeamName).length;
+    const lines = last5.map(g => `${g.date}: ${g.score} (W: ${g.winner})`);
+    return `Season series: ${homeTeamName} ${homeWins}-${awayWins} ${awayTeamName} | Last ${last5.length}: ${lines.join(' | ')}`;
+  } catch {
+    return `H2H unavailable — check MLB.com`;
+  }
+}
+
 // ── WEATHER (Open-Meteo — free, no API key) ───────────────────────────────────
 
 const BALLPARK_COORDS = {
@@ -420,7 +453,7 @@ async function assembleMLBGame(g, oddsMap) {
   const [
     homeRecord, awayRecord, homePitcherStats, awayPitcherStats, cbsPreview,
     weather, umpire, homeLineupData, awayLineupData,
-    homePitcherVsAway, awayPitcherVsHome,
+    homePitcherVsAway, awayPitcherVsHome, mlbH2H,
   ] = await Promise.all([
     fetchTeamRecord(home.id),
     fetchTeamRecord(away.id),
@@ -433,6 +466,7 @@ async function assembleMLBGame(g, oddsMap) {
     fetchLineupAndSplits(g.gamePk, away.id, away.name),
     fetchPitcherVsTeam(homePitcher?.id, homePitcher?.fullName, away.id, away.name),
     fetchPitcherVsTeam(awayPitcher?.id, awayPitcher?.fullName, home.id, home.name),
+    fetchMLBH2H(away.id, home.id, away.name, home.name),
   ]);
   return {
     id: g.gamePk, sport: 'MLB',
@@ -455,7 +489,7 @@ async function assembleMLBGame(g, oddsMap) {
     awayBullpenERA: 'See team stats', homeBullpenERA: 'See team stats',
     awayOffense: `${awayRecord.overall} record, ${awayRecord.last10} last 10`,
     homeOffense: `${homeRecord.overall} record, ${homeRecord.last10} last 10`,
-    h2hLast5: 'See MLB Stats', h2hAtHome: 'See MLB Stats',
+    h2hLast5: mlbH2H, h2hAtHome: 'See season series above',
     injuries: 'Check rotowire.com for injury report',
     lineMovement: odds.lineMovement || 'Odds API not connected',
     cbsPreview,
