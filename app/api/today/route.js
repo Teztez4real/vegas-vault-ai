@@ -125,7 +125,7 @@ async function fetchOdds(sportKey) {
       // Fetch moneyline, run_line, and totals in parallel
       const [mlRes, rlRes, totRes] = await Promise.all([
         fetch(`https://api.sharpapi.io/api/v1/odds?league=${league}&market=moneyline`, { headers: { 'X-API-Key': sharpKey }, cache: 'no-store' }),
-        fetch(`https://api.sharpapi.io/api/v1/odds?league=${league}&market=run_line`, { headers: { 'X-API-Key': sharpKey }, cache: 'no-store' }),
+        fetch(`https://api.sharpapi.io/api/v1/odds?league=${league}&market=${league === 'mlb' ? 'run_line' : 'point_spread'}`, { headers: { 'X-API-Key': sharpKey }, cache: 'no-store' }),
         fetch(`https://api.sharpapi.io/api/v1/odds?league=${league}&market=total`, { headers: { 'X-API-Key': sharpKey }, cache: 'no-store' }),
       ]);
 
@@ -161,7 +161,7 @@ async function fetchOdds(sportKey) {
           if (!eventMap[key].books[book].h2h) eventMap[key].books[book].h2h = {};
           if (isHome) eventMap[key].books[book].h2h.homeML = odds;
           else eventMap[key].books[book].h2h.awayML = odds;
-        } else if (mt === 'run_line' || mt === 'spread' || mt === 'puck_line') {
+        } else if (mt === 'run_line' || mt === 'spread' || mt === 'puck_line' || mt === 'point_spread' || mt.includes('point_spread')) {
           if (!eventMap[key].books[book].spread) eventMap[key].books[book].spread = {};
           if (isHome) { eventMap[key].books[book].spread.homePoint = line; eventMap[key].books[book].spread.homeOdds = odds; }
           else { eventMap[key].books[book].spread.awayPoint = line; eventMap[key].books[book].spread.awayOdds = odds; }
@@ -732,6 +732,9 @@ async function fetchNBAGames(dateParam) {
             awayPace: 'N/A', homePace: 'N/A',
             cbsPreview: 'Check CBS Sports for preview',
             gameStatus: 'Scheduled', slot: 'PUBLIC',
+            homeEV: odds.homeEV || null,
+            awayEV: odds.awayEV || null,
+            rlm: odds.rlm || null,
           };
         })
     )).filter(Boolean);
