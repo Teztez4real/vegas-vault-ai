@@ -114,7 +114,7 @@ async function fetchOdds(sportKey) {
   try {
     const res = await fetch(
       `https://api.the-odds-api.com/v4/sports/${sportKey}/odds?regions=us&markets=h2h,spreads,totals&oddsFormat=american&apiKey=${apiKey}`,
-      { next: { revalidate: 300 } }
+      { cache: 'no-store' }
     );
     const data = await res.json();
     if (!Array.isArray(data)) return {};
