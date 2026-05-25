@@ -4,44 +4,38 @@ export async function GET() {
   const sharpKey = process.env.SHARPAPI_KEY;
   if (!sharpKey) return NextResponse.json({ error: 'SHARPAPI_KEY not set' });
 
-  const results = {};
+  try {
+    const [mlRes, rlRes, totRes] = await Promise.all([
+      fetch('https://api.sharpapi.io/api/v1/odds?league=mlb&market=moneyline', { headers: { 'X-API-Key': sharpKey }, cache: 'no-store' }),
+      fetch('https://api.sharpapi.io/api/v1/odds?league=mlb&market=run_line', { headers: { 'X-API-Key': sharpKey }, cache: 'no-store' }),
+      fetch('https://api.sharpapi.io/api/v1/odds?league=mlb&market=total', { headers: { 'X-API-Key': sharpKey }, cache: 'no-store' }),
+    ]);
+    const mlRows = (await mlRes.json()).data || [];
+    const rlRows = (await rlRes.json()).data || [];
+    const totRows = (await totRes.json()).data || [];
 
-  // Test different approaches to get game odds
-  const tests = [
-    { name: 'odds_mlb', url: 'https://api.sharpapi.io/api/v1/odds?league=mlb&market=moneyline' },
-    { name: 'odds_spread', url: 'https://api.sharpapi.io/api/v1/odds?league=mlb&market=spread' },
-    { name: 'events_today', url: `https://api.sharpapi.io/api/v1/events?league=mlb&date=${new Date().toISOString().split('T')[0]}` },
-    { name: 'events_no_filter', url: 'https://api.sharpapi.io/api/v1/events?league=mlb&status=upcoming' },
-    { name: 'docs', url: 'https://api.sharpapi.io/api/v1' },
-  ];
-
-  for (const test of tests) {
-    try {
-      const res = await fetch(test.url, {
-        headers: { 'X-API-Key': sharpKey },
-        cache: 'no-store',
-        signal: AbortSignal.timeout(5000),
-      });
-      const data = await res.json();
-      const rows = data.data || data || [];
-      const first = Array.isArray(rows) ? rows[0] : null;
-      results[test.name] = {
-        status: res.status,
-        count: Array.isArray(rows) ? rows.length : 'object',
-        firstKeys: first ? Object.keys(first).slice(0,10) : Object.keys(data||{}).slice(0,10),
-        firstItem: first ? {
-          home: first.home_team,
-          away: first.away_team,
-          market: first.market_type || first.market,
-          book: first.sportsbook || first.book,
-          oddsAmerican: first.odds_american,
-          selection: first.selection,
-        } : null,
-      };
-    } catch(err) {
-      results[test.name] = { error: err.message };
+    // Group by game
+    const games = {};
+    for (const row of [...mlRows, ...rlRows, ...totRows]) {
+      const k = `${row.away_team}|${row.home_team}`;
+      if (!games[k]) games[k] = { home: row.home_team, away: row.away_team, markets: new Set(), books: new Set() };
+      games[k].markets.add(row.market_type);
+      games[k].books.add(row.sportsbook);
     }
-  }
 
-  return NextResponse.json(results);
+    return NextResponse.json({
+      mlRows: mlRows.length,
+      rlRows: rlRows.length,
+      totRows: totRows.length,
+      uniqueGames: Object.keys(games).length,
+      allBooks: [...new Set([...mlRows,...rlRows,...totRows].map(r=>r.sportsbook))],
+      sampleGames: Object.values(games).slice(0,5).map(g => ({
+        game: `${g.away} @ ${g.home}`,
+        markets: [...g.markets],
+        books: [...g.books],
+      })),
+    });
+  } catch(err) {
+    return NextResponse.json({ error: err.message });
+  }
 }

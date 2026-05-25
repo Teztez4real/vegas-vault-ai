@@ -122,70 +122,52 @@ async function fetchOdds(sportKey) {
       const league = leagueMap[sportKey];
       if (!league) return { oddsMap: {}, bookmakerCount: 0 };
 
-      // Use events endpoint with odds included
-      const res = await fetch(
-        `https://api.sharpapi.io/api/v1/events?league=${league}&include=odds`,
-        { headers: { 'X-API-Key': sharpKey }, cache: 'no-store' }
-      );
-      if (!res.ok) throw new Error(`SharpAPI ${res.status}`);
-      const data = await res.json();
-      const rows = data.data || [];
-      if (!rows.length) throw new Error('No rows');
+      // Fetch moneyline, run_line, and totals in parallel
+      const [mlRes, rlRes, totRes] = await Promise.all([
+        fetch(`https://api.sharpapi.io/api/v1/odds?league=${league}&market=moneyline`, { headers: { 'X-API-Key': sharpKey }, cache: 'no-store' }),
+        fetch(`https://api.sharpapi.io/api/v1/odds?league=${league}&market=run_line`, { headers: { 'X-API-Key': sharpKey }, cache: 'no-store' }),
+        fetch(`https://api.sharpapi.io/api/v1/odds?league=${league}&market=total`, { headers: { 'X-API-Key': sharpKey }, cache: 'no-store' }),
+      ]);
 
-      // Events endpoint: each row is a game with books/markets nested
+      const mlRows  = (await mlRes.json()).data  || [];
+      const rlRows  = (await rlRes.json()).data  || [];
+      const totRows = (await totRes.json()).data || [];
+      const allRows = [...mlRows, ...rlRows, ...totRows];
+      if (!allRows.length) throw new Error('No rows from SharpAPI');
+
+      // Group by event key
       const eventMap = {};
       const bookmakerSet = new Set();
+      const preferredBooks = ['draftkings','fanduel','betmgm','caesars','pinnacle','bovada'];
 
-      for (const event of rows) {
-        const home = event.home_team;
-        const away = event.away_team;
+      for (const row of allRows) {
+        const home = row.home_team;
+        const away = row.away_team;
         if (!home || !away) continue;
-        // Only include upcoming/live games
-        if (event.status === 'completed') continue;
         const key = `${away}|${home}`;
-        const books = event.books || [];
-        const eventBooks = {};
+        if (!eventMap[key]) eventMap[key] = { home, away, commenceTime: row.event_start_time, books: {} };
+        const book = (row.sportsbook || '').toLowerCase();
+        bookmakerSet.add(book);
+        if (!eventMap[key].books[book]) eventMap[key].books[book] = {};
+        const mt = (row.market_type || '').toLowerCase();
+        const sel = row.selection || '';
+        const odds = row.odds_american;
+        const line = row.line;
+        const homeWord = home.split(' ').pop().toLowerCase();
+        const selLow = sel.toLowerCase();
+        const isHome = selLow.includes(homeWord) || sel === home;
 
-        for (const book of books) {
-          const bookName = book.name || book.id || '';
-          bookmakerSet.add(bookName);
-          const markets = book.markets || [];
-          const bookData = {};
-          for (const market of markets) {
-            const mt = market.name || market.id || '';
-            const outcomes = market.outcomes || market.selections || [];
-            if (mt.includes('moneyline') || mt === 'h2h') {
-              bookData.h2h = {};
-              for (const o of outcomes) {
-                const name = o.name || o.team || '';
-                if (name === home || name.includes(home.split(' ').pop())) bookData.h2h.homeML = o.odds_american || o.price;
-                else bookData.h2h.awayML = o.odds_american || o.price;
-              }
-            } else if (mt.includes('spread') || mt.includes('run_line')) {
-              bookData.spread = {};
-              for (const o of outcomes) {
-                const name = o.name || o.team || '';
-                if (name === home || name.includes(home.split(' ').pop())) {
-                  bookData.spread.homePoint = o.line || o.point;
-                  bookData.spread.homeOdds = o.odds_american || o.price;
-                } else {
-                  bookData.spread.awayPoint = o.line || o.point;
-                  bookData.spread.awayOdds = o.odds_american || o.price;
-                }
-              }
-            } else if (mt.includes('total') || mt.includes('over_under')) {
-              const over = outcomes.find(o => (o.name||'').toLowerCase() === 'over');
-              if (over) bookData.total = over.line || over.point;
-            }
-          }
-          if (Object.keys(bookData).length) eventBooks[bookName] = bookData;
+        if (mt === 'moneyline') {
+          if (!eventMap[key].books[book].h2h) eventMap[key].books[book].h2h = {};
+          if (isHome) eventMap[key].books[book].h2h.homeML = odds;
+          else eventMap[key].books[book].h2h.awayML = odds;
+        } else if (mt === 'run_line' || mt === 'spread' || mt === 'puck_line') {
+          if (!eventMap[key].books[book].spread) eventMap[key].books[book].spread = {};
+          if (isHome) { eventMap[key].books[book].spread.homePoint = line; eventMap[key].books[book].spread.homeOdds = odds; }
+          else { eventMap[key].books[book].spread.awayPoint = line; eventMap[key].books[book].spread.awayOdds = odds; }
+        } else if (mt === 'total' || mt.includes('over_under')) {
+          if (!eventMap[key].books[book].total && selLow === 'over') eventMap[key].books[book].total = line;
         }
-
-        eventMap[key] = {
-          home, away,
-          commenceTime: event.start_time,
-          books: eventBooks,
-        };
       }
 
       // Build final oddsMap from grouped events
