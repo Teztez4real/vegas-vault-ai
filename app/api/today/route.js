@@ -125,7 +125,10 @@ async function fetchOdds(sportKey) {
       // Fetch moneyline, run_line, and totals in parallel
       const [mlRes, rlRes, totRes] = await Promise.all([
         fetch(`https://api.sharpapi.io/api/v1/odds?league=${league}&market=moneyline`, { headers: { 'X-API-Key': sharpKey }, cache: 'no-store' }),
-        fetch(`https://api.sharpapi.io/api/v1/odds?league=${league}&market=${league === 'mlb' ? 'run_line' : 'point_spread'}`, { headers: { 'X-API-Key': sharpKey }, cache: 'no-store' }),
+        // NBA: point_spread not available on current plan - skip, use moneyline only
+        league === 'mlb'
+          ? fetch(`https://api.sharpapi.io/api/v1/odds?league=${league}&market=run_line`, { headers: { 'X-API-Key': sharpKey }, cache: 'no-store' })
+          : Promise.resolve({ json: async () => ({ data: [] }) }),
         fetch(`https://api.sharpapi.io/api/v1/odds?league=${league}&market=total`, { headers: { 'X-API-Key': sharpKey }, cache: 'no-store' }),
       ]);
 
