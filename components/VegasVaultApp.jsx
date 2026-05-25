@@ -778,55 +778,6 @@ export default function VegasVaultApp() {
     return()=>clearInterval(t);
   },[]);
 
-  // ── BACKGROUND PRE-ANALYSIS ─────────────────────────────────────────────────
-  useEffect(() => {
-    if (!games || games.length === 0) return;
-    // Only pre-analyze games that haven't started
-    const upcoming = games.filter(g => {
-      const live = liveScores[`${g.away}|${g.home}`] || liveScores[`${g.awayAbbr}|${g.homeAbbr}`];
-      return !live || live.status === 'Preview';
-    });
-    if (upcoming.length === 0) return;
-
-    let cancelled = false;
-    setPreAnalyzing(true);
-    setPreAnalyzeProgress(0);
-
-    async function runPreAnalysis() {
-      const total = upcoming.length * 2; // PUBLIC + VEGAS per game
-      let done = 0;
-      for (const game of upcoming) {
-        if (cancelled) break;
-        for (const slot of ['PUBLIC', 'VEGAS']) {
-          if (cancelled) break;
-          const key = `${game.id}-${slot}`;
-          // Skip if already analyzed or pre-analyzed
-          if (results[key] || preAnalyzed[key]) { done++; continue; }
-          try {
-            const res = await fetch('/api/preanalyze', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ game: { ...game, slot }, slot }),
-            });
-            if (res.ok) {
-              const data = await res.json();
-              if (data.summary) {
-                setPreAnalyzed(prev => ({ ...prev, [key]: data }));
-              }
-            }
-          } catch {}
-          done++;
-          setPreAnalyzeProgress(Math.round((done / total) * 100));
-          await new Promise(r => setTimeout(r, 200));
-        }
-      }
-      if (!cancelled) setPreAnalyzing(false);
-    }
-
-    runPreAnalysis();
-    return () => { cancelled = true; setPreAnalyzing(false); };
-  }, [games]);
-
   // ── WIN RATE & AI CONFIDENCE — computed from analyzed results ──────────────
   useEffect(() => {
     const allResults = Object.values(results);
