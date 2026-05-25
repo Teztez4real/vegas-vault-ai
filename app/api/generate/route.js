@@ -16,9 +16,14 @@ export async function POST(request) {
     const prompt = buildPrompt(game);
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-5',
-      max_tokens: 4000,
-      messages: [{ role: 'user', content: prompt }],
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1800,
+      messages: [
+        {
+          role: 'user',
+          content: prompt + '\n\nIMPORTANT: Be concise. Keep each analysis field to 1-2 sentences max. Return valid JSON only.'
+        }
+      ],
     });
     const text = message.content.map(b => b.text || '').join('');
     const clean = text.replace(/```json|```/g, '').trim();
