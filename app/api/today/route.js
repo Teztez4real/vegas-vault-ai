@@ -716,8 +716,8 @@ function getNBAKeyPlayers(teamName) {
 async function fetchNBASeries(awayTeam, homeTeam) {
   // Returns playoff series info based on known 2026 playoff matchups
   const knownSeries = {
-    "New York Knicks|Cleveland Cavaliers": { game: 6, awayWins: 3, homeWins: 2, note: "Knicks lead series 3-2, Game 6 at Cleveland" },
-    "Cleveland Cavaliers|New York Knicks": { game: 6, awayWins: 2, homeWins: 3, note: "Knicks lead 3-2, Cleveland must win at home" },
+    "New York Knicks|Cleveland Cavaliers": { game: 4, awayWins: 3, homeWins: 0, note: "Knicks lead ECF series 3-0, Game 4 at Cleveland. Knicks on 10-game win streak. Cleveland must win to avoid sweep." },
+    "Cleveland Cavaliers|New York Knicks": { game: 4, awayWins: 0, homeWins: 3, note: "Knicks lead ECF 3-0, Cleveland faces elimination at home in Game 4." },
     "Oklahoma City Thunder|San Antonio Spurs": { game: 4, awayWins: 2, homeWins: 1, note: "Thunder lead 2-1" },
     "San Antonio Spurs|Oklahoma City Thunder": { game: 4, awayWins: 1, homeWins: 2, note: "Thunder lead series 2-1" },
   };
