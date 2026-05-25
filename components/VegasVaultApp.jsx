@@ -606,7 +606,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
             );
           })}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
