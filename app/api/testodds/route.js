@@ -11,30 +11,24 @@ export async function GET() {
     });
     const data = await res.json();
     const rows = data.data || [];
-
-    // Group by event to test parsing
     const events = {};
     for (const row of rows) {
       const key = `${row.away_team}|${row.home_team}`;
-      if (!events[key]) events[key] = { home: row.home_team, away: row.away_team, markets: [] };
-      events[key].markets.push(row.market_type);
+      if (!events[key]) events[key] = { home: row.home_team, away: row.away_team, markets: new Set(), books: new Set() };
+      events[key].markets.add(row.market_type);
+      events[key].books.add(row.sportsbook);
     }
-
-    const eventList = Object.entries(events).slice(0,5).map(([k,v]) => ({
-      game: `${v.away} @ ${v.home}`,
-      marketTypes: [...new Set(v.markets)],
-    }));
-
-    const allMarkets = [...new Set(rows.map(r => r.market_type))];
-    const allBooks = [...new Set(rows.map(r => r.sportsbook))];
-
     return NextResponse.json({
       status: res.status,
       totalRows: rows.length,
       uniqueGames: Object.keys(events).length,
-      allMarketTypes: allMarkets,
-      allSportsbooks: allBooks,
-      sampleGames: eventList,
+      allMarketTypes: [...new Set(rows.map(r => r.market_type))],
+      allSportsbooks: [...new Set(rows.map(r => r.sportsbook))],
+      sampleGames: Object.entries(events).slice(0,5).map(([k,v]) => ({
+        game: `${v.away} @ ${v.home}`,
+        markets: [...v.markets],
+        books: [...v.books],
+      })),
     });
   } catch (err) {
     return NextResponse.json({ error: err.message });
