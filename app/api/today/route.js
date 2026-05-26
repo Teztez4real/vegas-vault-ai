@@ -1104,7 +1104,7 @@ async function fetchNFLGames(dateParam) {
           awayQBStats: 'N/A', homeQBStats: 'N/A',
           awayOffense: 'Check NFL stats', homeOffense: 'Check NFL stats',
           awayDefense: 'Check NFL stats', homeDefense: 'Check NFL stats',
-          h2hLast5: await fetchNFLH2H(away, home),
+          h2hLast5: nflH2HMap[key] || 'Check NFL H2H history',
           injuries: 'Check rotowire.com/football/nfl/injury-report.php',
           weather: 'Check game time weather',
           cbsPreview: 'Check CBS Sports for preview',
