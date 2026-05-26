@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import { supabase } from '@/lib/supabaseClient';
 
 // ── PROMPT ENGINE ─────────────────────────────────────────────────────────────
 
@@ -140,6 +141,8 @@ Run the FULL Vegas Vault Tennis AI Model in EXACT order. Return ONLY this JSON:
 
 Return ONLY valid JSON. No preamble, no explanation outside the JSON.`;
 }
+
+const ADMIN_EMAIL = 'battlecortez@gmail.com';
 
 // ── MOCK DATA ─────────────────────────────────────────────────────────────────
 
@@ -756,12 +759,82 @@ export default function VegasVaultApp() {
   const [results, setResults]         = useState({});
   const [liveScores, setLiveScores]   = useState({});
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [authUser, setAuthUser]         = useState(null);
+  const [showAuth, setShowAuth]         = useState(false);
+  const [authMode, setAuthMode]         = useState('login'); // login | signup | plans
+  const [authEmail, setAuthEmail]       = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authLoading, setAuthLoading]   = useState(false);
+  const [authError, setAuthError]       = useState('');
+  const [authMsg, setAuthMsg]           = useState('');
+  const [showPw, setShowPw]             = useState(false);
 
+  // Check auth + subscription on mount
   useEffect(() => {
     const admin = typeof window !== 'undefined' && localStorage.getItem('vv_admin');
-    const sub = typeof window !== 'undefined' && localStorage.getItem('vv_subscribed');
+    const sub   = typeof window !== 'undefined' && localStorage.getItem('vv_subscribed');
     if (admin || sub) setIsSubscribed(true);
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setAuthUser(session.user);
+        if (session.user.email === ADMIN_EMAIL) {
+          localStorage.setItem('vv_admin', '1');
+          setIsSubscribed(true);
+        }
+      }
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      if (session?.user) {
+        setAuthUser(session.user);
+        if (session.user.email === ADMIN_EMAIL) {
+          localStorage.setItem('vv_admin', '1');
+          setIsSubscribed(true);
+        }
+      } else {
+        setAuthUser(null);
+      }
+    });
+    return () => subscription.unsubscribe();
   }, []);
+
+  async function handleAuthSubmit() {
+    setAuthLoading(true); setAuthError(''); setAuthMsg('');
+    if (authMode === 'signup') {
+      const { data, error } = await supabase.auth.signUp({ email: authEmail, password: authPassword });
+      if (error) { setAuthError(error.message); setAuthLoading(false); return; }
+      if (data?.user) { setAuthUser(data.user); setAuthMode('plans'); }
+    } else {
+      const { data, error } = await supabase.auth.signInWithPassword({ email: authEmail, password: authPassword });
+      if (error) { setAuthError(error.message); setAuthLoading(false); return; }
+      if (data?.user) {
+        setAuthUser(data.user);
+        if (data.user.email === ADMIN_EMAIL) { localStorage.setItem('vv_admin','1'); setIsSubscribed(true); }
+        setShowAuth(false); setAuthEmail(''); setAuthPassword('');
+      }
+    }
+    setAuthLoading(false);
+  }
+
+  async function handleSignOut() {
+    await supabase.auth.signOut();
+    setAuthUser(null);
+    localStorage.removeItem('vv_admin');
+    localStorage.removeItem('vv_subscribed');
+    setIsSubscribed(false);
+  }
+
+  async function handleSubscribe(plan) {
+    if (!authUser) { setAuthMode('login'); return; }
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch('/api/stripe/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session?.access_token },
+      body: JSON.stringify({ plan }),
+    });
+    const { url } = await res.json();
+    if (url) window.location.href = url;
+  }
   const [bookmakerCount, setBookmakerCount] = useState(12);
   const [winRate, setWinRate]         = useState(null);
   const [aiConfidence, setAiConfidence] = useState(null);
@@ -947,13 +1020,20 @@ export default function VegasVaultApp() {
           ))}
         </div>
 
-        <div style={{ display:"flex",alignItems:"center",gap:14,padding:"0 18px",flexShrink:0 }}>
-          <span style={{ fontSize:17,color:"#2d3a4a",cursor:"pointer" }}>⌕</span>
-          <span style={{ fontSize:17,color:"#2d3a4a",cursor:"pointer" }}>🔔</span>
-          <div style={{ display:"flex",alignItems:"center",gap:7 }}>
-            <div style={{ width:32,height:32,borderRadius:"50%",background:"linear-gradient(135deg,#c9a227,#8b6d10)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:800,color:"#000" }}>T</div>
-            <span style={{ fontSize:11,color:"#3a4a5e" }}>▼</span>
-          </div>
+        <div style={{ display:"flex",alignItems:"center",gap:10,padding:"0 18px",flexShrink:0 }}>
+          {authUser ? (
+            <div style={{ display:"flex",alignItems:"center",gap:8 }}>
+              {authUser.email===ADMIN_EMAIL && <span style={{ fontSize:9,fontWeight:700,color:"#c9a227",background:"rgba(201,162,39,0.12)",border:"1px solid rgba(201,162,39,0.3)",borderRadius:4,padding:"2px 7px",letterSpacing:"0.08em" }}>ADMIN</span>}
+              <div style={{ width:32,height:32,borderRadius:"50%",background:"linear-gradient(135deg,#c9a227,#8b6d10)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,color:"#000",cursor:"pointer" }} onClick={()=>window.location.href='/settings'}>
+                {authUser.email?.[0]?.toUpperCase()}
+              </div>
+              <button onClick={handleSignOut} style={{ fontSize:10,color:"#475569",background:"transparent",border:"1px solid rgba(255,255,255,0.08)",borderRadius:6,padding:"4px 10px",cursor:"pointer",fontFamily:"inherit" }}>Sign Out</button>
+            </div>
+          ) : (
+            <button onClick={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');setAuthMsg('');}} style={{ display:"flex",alignItems:"center",gap:7,background:"linear-gradient(135deg,#c9a227,#8b6d10)",border:"none",borderRadius:8,padding:"7px 16px",fontSize:11,fontWeight:700,color:"#000",cursor:"pointer",letterSpacing:"0.06em",fontFamily:"inherit" }}>
+              🔒 Login / Sign Up
+            </button>
+          )}
         </div>
       </div>
 
@@ -1112,16 +1192,128 @@ export default function VegasVaultApp() {
 
       {/* MOBILE BOTTOM NAV */}
       <div className="vv-bottom-nav">
-        {[{icon:"⊞",lbl:"HOME"},{icon:"📅",lbl:"SLATE"},{icon:"◎",lbl:"ANALYZE"},{icon:"🔒",lbl:"LOCKS"},{icon:"↺",lbl:"HISTORY"}].map((item,i)=>(
-          <div key={i} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"6px 14px",cursor:"pointer",opacity:i===0?1:0.38 }}>
-            <span style={{ fontSize:17,color:i===0?"#c9a227":"#475569" }}>{item.icon}</span>
-            <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.07em",color:i===0?"#c9a227":"#475569" }}>{item.lbl}</span>
+        <div style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"6px 12px",cursor:"pointer" }}>
+          <span style={{ fontSize:17,color:"#c9a227" }}>⊞</span>
+          <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.07em",color:"#c9a227" }}>HOME</span>
+        </div>
+        <div style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"6px 12px",cursor:"pointer",opacity:0.38 }}>
+          <span style={{ fontSize:17,color:"#475569" }}>📅</span>
+          <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.07em",color:"#475569" }}>SLATE</span>
+        </div>
+        {authUser ? (
+          <div onClick={()=>window.location.href='/settings'} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"6px 12px",cursor:"pointer" }}>
+            <div style={{ width:26,height:26,borderRadius:"50%",background:"linear-gradient(135deg,#c9a227,#8b6d10)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:"#000" }}>{authUser.email?.[0]?.toUpperCase()}</div>
+            <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.07em",color:"#c9a227" }}>ACCOUNT</span>
           </div>
-        ))}
+        ) : (
+          <div onClick={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');setAuthMsg('');}} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"6px 12px",cursor:"pointer" }}>
+            <span style={{ fontSize:17,color:"#c9a227" }}>🔐</span>
+            <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.07em",color:"#c9a227" }}>LOGIN</span>
+          </div>
+        )}
+        <div onClick={()=>window.location.href='/settings'} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"6px 12px",cursor:"pointer",opacity:0.7 }}>
+          <span style={{ fontSize:17,color:"#475569" }}>⚙</span>
+          <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.07em",color:"#475569" }}>SETTINGS</span>
+        </div>
+        {authUser ? (
+          <div onClick={handleSignOut} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"6px 12px",cursor:"pointer",opacity:0.7 }}>
+            <span style={{ fontSize:17,color:"#475569" }}>↩</span>
+            <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.07em",color:"#475569" }}>SIGN OUT</span>
+          </div>
+        ) : (
+          <div style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"6px 12px",opacity:0.38 }}>
+            <span style={{ fontSize:17,color:"#475569" }}>↺</span>
+            <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.07em",color:"#475569" }}>HISTORY</span>
+          </div>
+        )}
       </div>
 
       {activeResult&&activeGame&&(
         <PlayResult result={activeResult} game={activeGame} onClose={()=>{setActiveResult(null);setActiveGame(null);}}/>
+      )}
+
+      {/* AUTH MODAL */}
+      {showAuth&&(
+        <div onClick={e=>e.target===e.currentTarget&&setShowAuth(false)} style={{ position:"fixed",inset:0,zIndex:9999,background:"rgba(0,0,0,0.85)",backdropFilter:"blur(20px)",display:"flex",alignItems:"center",justifyContent:"center",padding:16 }}>
+          <div style={{ background:"#0a0d1a",border:"1px solid rgba(255,255,255,0.08)",borderRadius:20,width:"100%",maxWidth:960,maxHeight:"95vh",overflowY:"auto",display:"flex",boxShadow:"0 40px 100px rgba(0,0,0,0.9)",flexWrap:"wrap" }}>
+
+            {/* LEFT — branding (hidden on small screens) */}
+            <div className="vv-auth-left" style={{ flex:"0 0 400px",padding:"44px 36px",background:"linear-gradient(135deg,#07091a,#0d1225)",borderRight:"1px solid rgba(255,255,255,0.06)",borderRadius:"20px 0 0 20px",display:"flex",flexDirection:"column",justifyContent:"space-between" }}>
+              <div>
+                <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:36 }}>
+                  <div style={{ width:38,height:38,background:"linear-gradient(135deg,#c9a227,#8b6d10)",borderRadius:9,display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,fontWeight:900,color:"#000" }}>V</div>
+                  <div><div style={{ fontSize:15,fontWeight:800,color:"#f1f5f9",letterSpacing:"0.05em" }}>VEGAS VAULT</div><div style={{ fontSize:9,color:"#c9a227",letterSpacing:"0.15em",fontWeight:600 }}>AI</div></div>
+                </div>
+                <div style={{ fontSize:26,fontWeight:800,color:"#f1f5f9",lineHeight:1.2,marginBottom:10 }}>AI-POWERED SPORTS<br/><span style={{ color:"#c9a227" }}>INTELLIGENCE</span></div>
+                <div style={{ fontSize:12,color:"#475569",marginBottom:32,lineHeight:1.6 }}>Advanced algorithms. Real-time data.<br/><span style={{ color:"#c9a227" }}>Unfair advantages.</span></div>
+                {[{icon:"◎",title:"AI PREDICTIONS",desc:"Proprietary models with 68%+ win rate."},{icon:"🔒",title:"VAULT LOCKS",desc:"Top tier plays backed by sharp data."},{icon:"📊",title:"REAL-TIME EDGE",desc:"Live odds movement & sharp money alerts."}].map((f,i)=>(
+                  <div key={i} style={{ display:"flex",gap:12,marginBottom:18 }}>
+                    <div style={{ width:38,height:38,background:"rgba(201,162,39,0.1)",border:"1px solid rgba(201,162,39,0.2)",borderRadius:9,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,flexShrink:0 }}>{f.icon}</div>
+                    <div><div style={{ fontSize:10,fontWeight:700,color:"#e2e8f0",letterSpacing:"0.08em",marginBottom:2 }}>{f.title}</div><div style={{ fontSize:10,color:"#475569" }}>{f.desc}</div></div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:10,padding:"12px 14px" }}>
+                <div style={{ fontSize:9,color:"#3a4a5e",letterSpacing:"0.1em",marginBottom:6 }}>LIVE SYSTEM STATUS</div>
+                <div style={{ display:"flex",justifyContent:"space-between" }}>
+                  <span style={{ fontSize:10,color:"#64748b" }}>AI ENGINE: <span style={{ color:"#4ade80",fontWeight:700 }}>ONLINE</span></span>
+                  <span style={{ fontSize:10,color:"#64748b" }}>SCANNER: <span style={{ color:"#4ade80",fontWeight:700 }}>ACTIVE</span></span>
+                </div>
+              </div>
+            </div>
+
+            {/* RIGHT — form */}
+            <div style={{ flex:1,minWidth:280,padding:"44px 36px",display:"flex",flexDirection:"column" }}>
+              <button onClick={()=>setShowAuth(false)} style={{ alignSelf:"flex-end",background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:8,width:30,height:30,cursor:"pointer",color:"#64748b",fontSize:14,marginBottom:20,fontFamily:"inherit" }}>✕</button>
+
+              {authMode==='plans' ? (
+                <div>
+                  <div style={{ fontSize:20,fontWeight:800,color:"#f1f5f9",marginBottom:4 }}>Choose Your Plan</div>
+                  <div style={{ fontSize:12,color:"#475569",marginBottom:28 }}>Unlock full AI analysis on every game.</div>
+                  <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:16 }}>
+                    {[{id:"weekly",label:"WEEKLY",price:"$19.99",period:"/week",features:["Full AI model","All games","Auto plays","Trell Rule alerts"],highlight:false},{id:"monthly",label:"MONTHLY",price:"$49.99",period:"/month",features:["Everything weekly","Priority generation","Model updates","Early access"],highlight:true,badge:"Best Value"}].map(plan=>(
+                      <div key={plan.id} style={{ background:plan.highlight?"rgba(201,162,39,0.06)":"rgba(255,255,255,0.02)",border:`1px solid ${plan.highlight?"rgba(201,162,39,0.3)":"rgba(255,255,255,0.07)"}`,borderRadius:12,padding:"18px 14px",position:"relative" }}>
+                        {plan.badge&&<div style={{ position:"absolute",top:-9,left:"50%",transform:"translateX(-50%)",background:"#c9a227",color:"#000",fontSize:8,fontWeight:800,padding:"2px 10px",borderRadius:10,whiteSpace:"nowrap" }}>{plan.badge}</div>}
+                        <div style={{ fontSize:10,fontWeight:700,color:plan.highlight?"#c9a227":"#94a3b8",letterSpacing:"0.1em",marginBottom:8 }}>{plan.label}</div>
+                        <div style={{ display:"flex",alignItems:"baseline",gap:3,marginBottom:12 }}><span style={{ fontSize:22,fontWeight:900,color:"#f1f5f9" }}>{plan.price}</span><span style={{ fontSize:10,color:"#475569" }}>{plan.period}</span></div>
+                        <ul style={{ listStyle:"none",marginBottom:14 }}>{plan.features.map((f,i)=><li key={i} style={{ fontSize:10,color:"#64748b",marginBottom:4,display:"flex",gap:6 }}><span style={{ color:"#c9a227" }}>✓</span>{f}</li>)}</ul>
+                        <button onClick={()=>handleSubscribe(plan.id)} style={{ width:"100%",padding:"9px 0",background:plan.highlight?"linear-gradient(135deg,#c9a227,#8b6d10)":"rgba(255,255,255,0.05)",border:plan.highlight?"none":"1px solid rgba(255,255,255,0.1)",borderRadius:8,fontSize:10,fontWeight:700,color:plan.highlight?"#000":"#94a3b8",cursor:"pointer",fontFamily:"inherit" }}>Subscribe</button>
+                      </div>
+                    ))}
+                  </div>
+                  <button onClick={()=>setShowAuth(false)} style={{ width:"100%",padding:"9px 0",background:"transparent",border:"1px solid rgba(255,255,255,0.07)",borderRadius:8,fontSize:10,color:"#475569",cursor:"pointer",fontFamily:"inherit" }}>Maybe later — continue to dashboard</button>
+                </div>
+              ) : (
+                <div style={{ display:"flex",flexDirection:"column",justifyContent:"center",maxWidth:340 }}>
+                  <div style={{ display:"flex",gap:0,marginBottom:28,borderBottom:"1px solid rgba(255,255,255,0.07)" }}>
+                    {["login","signup"].map(m=>(
+                      <button key={m} onClick={()=>{setAuthMode(m);setAuthError('');setAuthMsg('');}} style={{ padding:"7px 20px",background:"none",border:"none",borderBottom:authMode===m?"2px solid #c9a227":"2px solid transparent",fontSize:11,fontWeight:authMode===m?700:400,color:authMode===m?"#c9a227":"#475569",cursor:"pointer",letterSpacing:"0.08em",fontFamily:"inherit",marginBottom:-1 }}>
+                        {m==="login"?"SIGN IN":"SIGN UP"}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ fontSize:20,fontWeight:700,color:"#f1f5f9",marginBottom:4 }}>{authMode==="login"?"Welcome back,":"Create your account,"}</div>
+                  <div style={{ fontSize:12,color:"#475569",marginBottom:24 }}>{authMode==="login"?"Sign in to access your ":"Join "}<span style={{ color:"#c9a227" }}>Vegas Vault AI</span>{authMode==="login"?" dashboard.":"and start winning."}</div>
+                  <div style={{ marginBottom:12 }}>
+                    <div style={{ fontSize:9,color:"#475569",letterSpacing:"0.12em",fontWeight:700,marginBottom:6 }}>EMAIL ADDRESS</div>
+                    <input type="email" placeholder="you@example.com" value={authEmail} onChange={e=>setAuthEmail(e.target.value)} style={{ width:"100%",padding:"11px 13px",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:9,color:"#e2e8f0",fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box" }}/>
+                  </div>
+                  <div style={{ marginBottom:18,position:"relative" }}>
+                    <div style={{ fontSize:9,color:"#475569",letterSpacing:"0.12em",fontWeight:700,marginBottom:6 }}>PASSWORD</div>
+                    <input type={showPw?"text":"password"} placeholder="Enter your password" value={authPassword} onChange={e=>setAuthPassword(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleAuthSubmit()} style={{ width:"100%",padding:"11px 40px 11px 13px",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:9,color:"#e2e8f0",fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box" }}/>
+                    <button onClick={()=>setShowPw(!showPw)} style={{ position:"absolute",right:11,top:29,background:"none",border:"none",cursor:"pointer",color:"#3a4a5e",fontSize:14 }}>{showPw?"🙈":"👁"}</button>
+                  </div>
+                  {authError&&<div style={{ marginBottom:12,padding:"9px 13px",background:"rgba(248,113,113,0.08)",border:"1px solid rgba(248,113,113,0.2)",borderRadius:8,fontSize:11,color:"#f87171" }}>{authError}</div>}
+                  {authMsg&&<div style={{ marginBottom:12,padding:"9px 13px",background:"rgba(74,222,128,0.08)",border:"1px solid rgba(74,222,128,0.2)",borderRadius:8,fontSize:11,color:"#4ade80" }}>{authMsg}</div>}
+                  <button onClick={handleAuthSubmit} disabled={authLoading} style={{ width:"100%",padding:"13px 0",background:authLoading?"rgba(201,162,39,0.4)":"linear-gradient(135deg,#c9a227,#8b6d10)",border:"none",borderRadius:11,fontSize:12,fontWeight:700,color:"#000",cursor:authLoading?"not-allowed":"pointer",letterSpacing:"0.08em",fontFamily:"inherit",marginBottom:14 }}>
+                    {authLoading?"Please wait…":authMode==="login"?"LOG IN TO VAULT →":"CREATE ACCOUNT →"}
+                  </button>
+                  <div style={{ textAlign:"center",fontSize:10,color:"#2d3a4a" }}>🔒 Bank-level encryption. Your data is always protected.</div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
