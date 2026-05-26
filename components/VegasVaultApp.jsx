@@ -1,10 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-let _sb = null;
-function getSB() {
-  if (_sb) return _sb;
-  try { const { supabase } = require('@/lib/supabaseClient'); _sb = supabase; return _sb; } catch(e) { return null; }
-}
+import { supabase as _supabase } from '@/lib/supabaseClient';
+function getSB() { return _supabase; }
 
 // ── PROMPT ENGINE ─────────────────────────────────────────────────────────────
 
