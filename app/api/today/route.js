@@ -969,6 +969,77 @@ async function fetchNBAGames(dateParam) {
   }
 }
 
+// ── NFL H2H (Pro Football Reference via ESPN API) ────────────────────────────
+
+async function fetchNFLH2H(awayTeam, homeTeam) {
+  try {
+    // Use ESPN's free API for NFL team schedules/results
+    const ESPN_TEAMS = {
+      "Arizona Cardinals":"ari","Atlanta Falcons":"atl","Baltimore Ravens":"bal",
+      "Buffalo Bills":"buf","Carolina Panthers":"car","Chicago Bears":"chi",
+      "Cincinnati Bengals":"cin","Cleveland Browns":"cle","Dallas Cowboys":"dal",
+      "Denver Broncos":"den","Detroit Lions":"det","Green Bay Packers":"gb",
+      "Houston Texans":"hou","Indianapolis Colts":"ind","Jacksonville Jaguars":"jax",
+      "Kansas City Chiefs":"kc","Las Vegas Raiders":"lv","Los Angeles Chargers":"lac",
+      "Los Angeles Rams":"lar","Miami Dolphins":"mia","Minnesota Vikings":"min",
+      "New England Patriots":"ne","New Orleans Saints":"no","New York Giants":"nyg",
+      "New York Jets":"nyj","Philadelphia Eagles":"phi","Pittsburgh Steelers":"pit",
+      "San Francisco 49ers":"sf","Seattle Seahawks":"sea","Tampa Bay Buccaneers":"tb",
+      "Tennessee Titans":"ten","Washington Commanders":"wsh",
+    };
+
+    const awayAbbr = ESPN_TEAMS[awayTeam];
+    const homeAbbr = ESPN_TEAMS[homeTeam];
+    if (!awayAbbr || !homeAbbr) return `NFL H2H: Check ESPN for ${awayTeam} vs ${homeTeam}`;
+
+    const currentYear = new Date().getFullYear();
+    const seasons = [currentYear - 1, currentYear - 2]; // last 2 seasons
+
+    const results = [];
+    for (const year of seasons) {
+      try {
+        const res = await fetch(
+          `https://site.api.espn.com/apis/site/v2/sports/football/nfl/teams/${homeAbbr}/schedule?season=${year}`,
+          { signal: AbortSignal.timeout(5000), next: { revalidate: 86400 } }
+        );
+        if (!res.ok) continue;
+        const data = await res.json();
+        const events = data.events || [];
+        const matchups = events.filter(e => {
+          const competitors = e.competitions?.[0]?.competitors || [];
+          return competitors.some(c => c.team?.abbreviation?.toLowerCase() === awayAbbr.toLowerCase());
+        });
+
+        if (matchups.length === 0) continue;
+
+        const gameResults = matchups.map(e => {
+          const comp = e.competitions?.[0];
+          const competitors = comp?.competitors || [];
+          const home = competitors.find(c => c.homeAway === 'home');
+          const away = competitors.find(c => c.homeAway === 'away');
+          const homeScore = home?.score;
+          const awayScore = away?.score;
+          const winner = home?.winner ? home?.team?.displayName : away?.team?.displayName;
+          return { date: e.date?.slice(0,10), score: `${away?.team?.displayName} ${awayScore} @ ${home?.team?.displayName} ${homeScore}`, winner };
+        }).filter(g => g.score && !g.score.includes('undefined'));
+
+        if (gameResults.length > 0) {
+          const homeWins = gameResults.filter(g => g.winner === homeTeam).length;
+          const awayWins = gameResults.filter(g => g.winner === awayTeam).length;
+          const lines = gameResults.slice(-3).map(g => `${g.date}: ${g.score} (W: ${g.winner})`);
+          results.push(`${year}: ${homeTeam} ${homeWins}-${awayWins} ${awayTeam} | ${lines.join(' | ')}`);
+        }
+      } catch { continue; }
+    }
+
+    return results.length > 0
+      ? results.join(' || ')
+      : `NFL H2H: Check ESPN for ${awayTeam} vs ${homeTeam} history`;
+  } catch {
+    return `NFL H2H: Check ESPN for ${awayTeam} vs ${homeTeam}`;
+  }
+}
+
 // ── NFL GAMES ─────────────────────────────────────────────────────────────────
 
 function assignNFLSlots(games) {
@@ -1033,7 +1104,7 @@ async function fetchNFLGames(dateParam) {
           awayQBStats: 'N/A', homeQBStats: 'N/A',
           awayOffense: 'Check NFL stats', homeOffense: 'Check NFL stats',
           awayDefense: 'Check NFL stats', homeDefense: 'Check NFL stats',
-          h2hLast5: 'Check NFL H2H history',
+          h2hLast5: await fetchNFLH2H(away, home),
           injuries: 'Check rotowire.com/football/nfl/injury-report.php',
           weather: 'Check game time weather',
           cbsPreview: 'Check CBS Sports for preview',
