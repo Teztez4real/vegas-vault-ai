@@ -775,27 +775,29 @@ export default function VegasVaultApp() {
     const sub   = typeof window !== 'undefined' && localStorage.getItem('vv_subscribed');
     if (admin || sub) setIsSubscribed(true);
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setAuthUser(session.user);
-        if (session.user.email === ADMIN_EMAIL) {
-          localStorage.setItem('vv_admin', '1');
-          setIsSubscribed(true);
+    try {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) {
+          setAuthUser(session.user);
+          if (session.user.email === ADMIN_EMAIL) {
+            localStorage.setItem('vv_admin', '1');
+            setIsSubscribed(true);
+          }
         }
-      }
-    });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
-      if (session?.user) {
-        setAuthUser(session.user);
-        if (session.user.email === ADMIN_EMAIL) {
-          localStorage.setItem('vv_admin', '1');
-          setIsSubscribed(true);
+      });
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+        if (session?.user) {
+          setAuthUser(session.user);
+          if (session.user.email === ADMIN_EMAIL) {
+            localStorage.setItem('vv_admin', '1');
+            setIsSubscribed(true);
+          }
+        } else {
+          setAuthUser(null);
         }
-      } else {
-        setAuthUser(null);
-      }
-    });
-    return () => subscription.unsubscribe();
+      });
+      return () => subscription.unsubscribe();
+    } catch(e) { console.error('Auth init error:', e); }
   }, []);
 
   async function handleAuthSubmit() {
