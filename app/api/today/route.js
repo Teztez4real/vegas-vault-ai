@@ -381,30 +381,57 @@ async function fetchPitcherStats(pitcherId) {
 
 async function fetchMLBH2H(awayTeamId, homeTeamId, awayTeamName, homeTeamName) {
   try {
-    const season = new Date().getFullYear();
-    const res = await fetch(
-      `https://statsapi.mlb.com/api/v1/schedule?sportId=1&season=${season}&teamId=${homeTeamId}&opponentId=${awayTeamId}&gameType=R`,
-      { next: { revalidate: 3600 } }
-    );
-    if (!res.ok) return `No H2H data available — check MLB.com`;
-    const data = await res.json();
-    const games = [];
-    for (const date of data.dates || []) {
-      for (const game of date.games || []) {
-        if (game.status?.abstractGameState === 'Final') {
-          const home = game.teams?.home;
-          const away = game.teams?.away;
-          const winner = home?.isWinner ? home?.team?.name : away?.team?.name;
-          games.push({ date: date.date, score: `${away?.team?.name} ${away?.score ?? '?'} @ ${home?.team?.name} ${home?.score ?? '?'}`, winner });
+    const currentSeason = new Date().getFullYear();
+    const lastSeason = currentSeason - 1;
+
+    // Fetch both this season and last season in parallel
+    const [thisRes, lastRes] = await Promise.all([
+      fetch(`https://statsapi.mlb.com/api/v1/schedule?sportId=1&season=${currentSeason}&teamId=${homeTeamId}&opponentId=${awayTeamId}&gameType=R`, { next: { revalidate: 3600 } }),
+      fetch(`https://statsapi.mlb.com/api/v1/schedule?sportId=1&season=${lastSeason}&teamId=${homeTeamId}&opponentId=${awayTeamId}&gameType=R`, { next: { revalidate: 86400 } }),
+    ]);
+
+    function parseGames(data) {
+      const games = [];
+      for (const date of data.dates || []) {
+        for (const game of date.games || []) {
+          if (game.status?.abstractGameState === 'Final') {
+            const home = game.teams?.home;
+            const away = game.teams?.away;
+            const winner = home?.isWinner ? home?.team?.name : away?.team?.name;
+            games.push({ date: date.date, score: `${away?.team?.name} ${away?.score ?? '?'} @ ${home?.team?.name} ${home?.score ?? '?'}`, winner });
+          }
         }
       }
+      return games;
     }
-    if (games.length === 0) return `No completed H2H games yet this season`;
-    const last5 = games.slice(-5).reverse();
-    const awayWins = games.filter(g => g.winner === awayTeamName).length;
-    const homeWins = games.filter(g => g.winner === homeTeamName).length;
-    const lines = last5.map(g => `${g.date}: ${g.score} (W: ${g.winner})`);
-    return `Season series: ${homeTeamName} ${homeWins}-${awayWins} ${awayTeamName} | Last ${last5.length}: ${lines.join(' | ')}`;
+
+    const thisGames = thisRes.ok ? parseGames(await thisRes.json()) : [];
+    const lastGames = lastRes.ok ? parseGames(await lastRes.json()) : [];
+
+    // Current season summary
+    let result = '';
+    if (thisGames.length > 0) {
+      const awayWins = thisGames.filter(g => g.winner === awayTeamName).length;
+      const homeWins = thisGames.filter(g => g.winner === homeTeamName).length;
+      const last5 = thisGames.slice(-5).reverse();
+      const lines = last5.map(g => `${g.date}: ${g.score} (W: ${g.winner})`);
+      result += `${currentSeason} Season series: ${homeTeamName} ${homeWins}-${awayWins} ${awayTeamName} | Last ${last5.length}: ${lines.join(' | ')}`;
+    } else {
+      result += `${currentSeason}: No completed H2H games yet this season`;
+    }
+
+    // Last season summary
+    if (lastGames.length > 0) {
+      const awayWins = lastGames.filter(g => g.winner === awayTeamName).length;
+      const homeWins = lastGames.filter(g => g.winner === homeTeamName).length;
+      const last5 = lastGames.slice(-5).reverse();
+      const lines = last5.map(g => `${g.date}: ${g.score} (W: ${g.winner})`);
+      result += ` || ${lastSeason} Season series: ${homeTeamName} ${homeWins}-${awayWins} ${awayTeamName} | Last ${Math.min(last5.length,5)}: ${lines.join(' | ')}`;
+    } else {
+      result += ` || ${lastSeason}: No H2H data available`;
+    }
+
+    return result;
   } catch {
     return `H2H unavailable — check MLB.com`;
   }
@@ -758,28 +785,46 @@ async function fetchNBAH2H(awayTeamName, homeTeamName) {
       fetchNBATeamData(homeTeamName),
     ]);
     if (!awayTeam || !homeTeam) return `H2H: Check ESPN for ${awayTeamName} vs ${homeTeamName}`;
-    const season = new Date().getFullYear() - (new Date().getMonth() < 8 ? 1 : 0);
-    const res = await fetch(
-      `https://www.balldontlie.io/api/v1/games?seasons[]=${season}&team_ids[]=${awayTeam.id}&team_ids[]=${homeTeam.id}&per_page=10`,
-      { signal: AbortSignal.timeout(5000) }
-    );
-    if (!res.ok) return `H2H: Check ESPN for ${awayTeamName} vs ${homeTeamName}`;
-    const data = await res.json();
-    const games = (data.data || []).filter(g => g.status === 'Final');
-    if (!games.length) return `No completed H2H games this season for ${awayTeamName} vs ${homeTeamName}`;
-    const awayWins = games.filter(g => {
-      const aScore = g.home_team.id === awayTeam.id ? g.home_team_score : g.visitor_team_score;
-      const hScore = g.home_team.id === homeTeam.id ? g.home_team_score : g.visitor_team_score;
-      return aScore > hScore;
-    }).length;
-    const homeWins = games.length - awayWins;
-    const lines = games.slice(0,5).map(g => {
-      const isHTH = g.home_team.id === homeTeam.id;
-      const hScore = isHTH ? g.home_team_score : g.visitor_team_score;
-      const aScore = isHTH ? g.visitor_team_score : g.home_team_score;
-      return `${g.date?.slice(0,10)}: ${awayTeamName} ${aScore} @ ${homeTeamName} ${hScore}`;
-    });
-    return `Season series: ${homeTeamName} ${homeWins}-${awayWins} ${awayTeamName} | Last ${lines.length}: ${lines.join(' | ')}`;
+    const currentSeason = new Date().getFullYear() - (new Date().getMonth() < 8 ? 1 : 0);
+    const lastSeason = currentSeason - 1;
+
+    // Fetch both seasons in parallel
+    const [thisRes, lastRes] = await Promise.all([
+      fetch(`https://www.balldontlie.io/api/v1/games?seasons[]=${currentSeason}&team_ids[]=${awayTeam.id}&team_ids[]=${homeTeam.id}&per_page=10`, { signal: AbortSignal.timeout(5000) }),
+      fetch(`https://www.balldontlie.io/api/v1/games?seasons[]=${lastSeason}&team_ids[]=${awayTeam.id}&team_ids[]=${homeTeam.id}&per_page=10`, { signal: AbortSignal.timeout(5000) }),
+    ]);
+
+    function parseNBAGames(data, awayId, homeId, awayName, homeName) {
+      const games = (data.data || []).filter(g => g.status === 'Final');
+      if (!games.length) return null;
+      const awayWins = games.filter(g => {
+        const aScore = g.home_team.id === awayId ? g.home_team_score : g.visitor_team_score;
+        const hScore = g.home_team.id === homeId ? g.home_team_score : g.visitor_team_score;
+        return aScore > hScore;
+      }).length;
+      const homeWins = games.length - awayWins;
+      const lines = games.slice(0,5).map(g => {
+        const isHTH = g.home_team.id === homeId;
+        const hScore = isHTH ? g.home_team_score : g.visitor_team_score;
+        const aScore = isHTH ? g.visitor_team_score : g.home_team_score;
+        return `${g.date?.slice(0,10)}: ${awayName} ${aScore} @ ${homeName} ${hScore}`;
+      });
+      return { homeWins, awayWins, lines };
+    }
+
+    const thisData = thisRes.ok ? parseNBAGames(await thisRes.json(), awayTeam.id, homeTeam.id, awayTeamName, homeTeamName) : null;
+    const lastData = lastRes.ok ? parseNBAGames(await lastRes.json(), awayTeam.id, homeTeam.id, awayTeamName, homeTeamName) : null;
+
+    let result = '';
+    if (thisData) {
+      result += `${currentSeason} Series: ${homeTeamName} ${thisData.homeWins}-${thisData.awayWins} ${awayTeamName} | Last ${thisData.lines.length}: ${thisData.lines.join(' | ')}`;
+    } else {
+      result = `No completed H2H games this season for ${awayTeamName} vs ${homeTeamName}`;
+    }
+    if (lastData) {
+      result += ` || ${lastSeason} Series: ${homeTeamName} ${lastData.homeWins}-${lastData.awayWins} ${awayTeamName} | Last ${lastData.lines.length}: ${lastData.lines.join(' | ')}`;
+    }
+    return result;
   } catch { return `H2H: Check ESPN for ${awayTeamName} vs ${homeTeamName}`; }
 }
 
