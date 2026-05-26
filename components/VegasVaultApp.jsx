@@ -1,5 +1,10 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+let _sb = null;
+function getSB() {
+  if (_sb) return _sb;
+  try { const { supabase } = require('@/lib/supabaseClient'); _sb = supabase; return _sb; } catch(e) { return null; }
+}
 
 // ── PROMPT ENGINE ─────────────────────────────────────────────────────────────
 
@@ -772,7 +777,8 @@ export default function VegasVaultApp() {
     const sub   = typeof window !== 'undefined' && localStorage.getItem('vv_subscribed');
     if (admin || sub) setIsSubscribed(true);
     try {
-      const { supabase: sb } = await import('@/lib/supabaseClient');
+      const sb = getSB();
+      if (!sb) return;
       sb.auth.getSession().then(({ data: { session } }) => {
         if (session?.user) {
           setAuthUser(session.user);
@@ -786,13 +792,14 @@ export default function VegasVaultApp() {
         } else { setAuthUser(null); }
       });
       return () => subscription.unsubscribe();
-    } catch(e) { console.error('Auth init:', e); }
+    } catch(e) {}
   }, []);
 
   async function doAuth() {
     setAuthLoading(true); setAuthError('');
     try {
-      const { supabase: sb } = await import('@/lib/supabaseClient');
+      const sb = getSB();
+      if (!sb) { setAuthError('Auth unavailable'); setAuthLoading(false); return; }
       if (authMode === 'signup') {
         const { error } = await sb.auth.signUp({ email: authEmail, password: authPw });
         if (error) { setAuthError(error.message); } else { setAuthMode('plans'); }
@@ -810,14 +817,14 @@ export default function VegasVaultApp() {
   }
 
   async function doSignOut() {
-    try { const { supabase: sb } = await import('@/lib/supabaseClient'); await sb.auth.signOut(); } catch(e) {}
+    try { const sb = getSB(); if (sb) await sb.auth.signOut(); } catch(e) {}
     setAuthUser(null); localStorage.removeItem('vv_admin'); localStorage.removeItem('vv_subscribed'); setIsSubscribed(false);
   }
 
   async function doSubscribe(plan) {
     try {
-      const { supabase: sb } = await import('@/lib/supabaseClient');
-      const { data: { session } } = await sb.auth.getSession();
+      const sb = getSB();
+      const session = sb ? (await sb.auth.getSession()).data?.session : null;
       const res = await fetch('/api/stripe/checkout', { method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+(session?.access_token||'')}, body:JSON.stringify({plan}) });
       const { url } = await res.json();
       if (url) window.location.href = url;
