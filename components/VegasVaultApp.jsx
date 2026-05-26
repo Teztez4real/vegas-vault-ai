@@ -570,8 +570,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
             {isLive ? "🔴 GAME IN PROGRESS — LOCKED" : "⬛ FINAL — ANALYSIS LOCKED"}
           </span>
         </div>
-      ) : (
-        {!isSubscribed ? (
+      ) : !isSubscribed ? (
         <div style={{ position:"relative" }}>
           {/* Blurred buttons */}
           <div style={{ display:"flex",gap:8,filter:"blur(3px)",pointerEvents:"none" }}>
@@ -598,7 +597,6 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
             );
           })}
         </div>
-      )}
       )}
     </div>
   );
