@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import { supabase } from '@/lib/supabaseClient';
 
 // ── PROMPT ENGINE ─────────────────────────────────────────────────────────────
 
@@ -140,6 +141,8 @@ Run the FULL Vegas Vault Tennis AI Model in EXACT order. Return ONLY this JSON:
 
 Return ONLY valid JSON. No preamble, no explanation outside the JSON.`;
 }
+
+const ADMIN_EMAIL = 'battlecortez@gmail.com';
 
 // ── MOCK DATA ─────────────────────────────────────────────────────────────────
 
@@ -756,12 +759,68 @@ export default function VegasVaultApp() {
   const [results, setResults]         = useState({});
   const [liveScores, setLiveScores]   = useState({});
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [authUser, setAuthUser]         = useState(null);
+  const [showAuth, setShowAuth]         = useState(false);
+  const [authMode, setAuthMode]         = useState('login');
+  const [authEmail, setAuthEmail]       = useState('');
+  const [authPw, setAuthPw]             = useState('');
+  const [authLoading, setAuthLoading]   = useState(false);
+  const [authError, setAuthError]       = useState('');
+  const [showPw, setShowPw]             = useState(false);
 
   useEffect(() => {
     const admin = typeof window !== 'undefined' && localStorage.getItem('vv_admin');
-    const sub = typeof window !== 'undefined' && localStorage.getItem('vv_subscribed');
+    const sub   = typeof window !== 'undefined' && localStorage.getItem('vv_subscribed');
     if (admin || sub) setIsSubscribed(true);
+    try {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) {
+          setAuthUser(session.user);
+          if (session.user.email === ADMIN_EMAIL) { localStorage.setItem('vv_admin','1'); setIsSubscribed(true); }
+        }
+      });
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+        if (session?.user) {
+          setAuthUser(session.user);
+          if (session.user.email === ADMIN_EMAIL) { localStorage.setItem('vv_admin','1'); setIsSubscribed(true); }
+        } else { setAuthUser(null); }
+      });
+      return () => subscription.unsubscribe();
+    } catch(e) {}
   }, []);
+
+  async function doAuth() {
+    setAuthLoading(true); setAuthError('');
+    try {
+      if (authMode === 'signup') {
+        const { error } = await supabase.auth.signUp({ email: authEmail, password: authPw });
+        if (error) { setAuthError(error.message); } else { setAuthMode('plans'); }
+      } else {
+        const { data, error } = await supabase.auth.signInWithPassword({ email: authEmail, password: authPw });
+        if (error) { setAuthError(error.message); }
+        else {
+          setAuthUser(data.user);
+          if (data.user?.email === ADMIN_EMAIL) { localStorage.setItem('vv_admin','1'); setIsSubscribed(true); }
+          setShowAuth(false); setAuthEmail(''); setAuthPw('');
+        }
+      }
+    } catch(e) { setAuthError('Something went wrong. Try again.'); }
+    setAuthLoading(false);
+  }
+
+  async function doSignOut() {
+    try { await supabase.auth.signOut(); } catch(e) {}
+    setAuthUser(null); localStorage.removeItem('vv_admin'); localStorage.removeItem('vv_subscribed'); setIsSubscribed(false);
+  }
+
+  async function doSubscribe(plan) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('/api/stripe/checkout', { method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+(session?.access_token||'')}, body:JSON.stringify({plan}) });
+      const { url } = await res.json();
+      if (url) window.location.href = url;
+    } catch(e) {}
+  }
   const [bookmakerCount, setBookmakerCount] = useState(12);
   const [winRate, setWinRate]         = useState(null);
   const [aiConfidence, setAiConfidence] = useState(null);
@@ -947,13 +1006,20 @@ export default function VegasVaultApp() {
           ))}
         </div>
 
-        <div style={{ display:"flex",alignItems:"center",gap:14,padding:"0 18px",flexShrink:0 }}>
-          <span style={{ fontSize:17,color:"#2d3a4a",cursor:"pointer" }}>⌕</span>
-          <span style={{ fontSize:17,color:"#2d3a4a",cursor:"pointer" }}>🔔</span>
-          <div style={{ display:"flex",alignItems:"center",gap:7 }}>
-            <div style={{ width:32,height:32,borderRadius:"50%",background:"linear-gradient(135deg,#c9a227,#8b6d10)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:800,color:"#000" }}>T</div>
-            <span style={{ fontSize:11,color:"#3a4a5e" }}>▼</span>
-          </div>
+        <div style={{ display:"flex",alignItems:"center",gap:10,padding:"0 18px",flexShrink:0 }}>
+          {authUser ? (
+            <div style={{ display:"flex",alignItems:"center",gap:8 }}>
+              {authUser.email===ADMIN_EMAIL&&<span style={{ fontSize:9,fontWeight:700,color:"#c9a227",background:"rgba(201,162,39,0.12)",border:"1px solid rgba(201,162,39,0.3)",borderRadius:4,padding:"2px 7px",letterSpacing:"0.08em" }}>ADMIN</span>}
+              <div style={{ width:32,height:32,borderRadius:"50%",background:"linear-gradient(135deg,#c9a227,#8b6d10)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,color:"#000",cursor:"pointer" }} onClick={()=>window.location.href='/settings'}>
+                {(authUser.email?.[0]||'U').toUpperCase()}
+              </div>
+              <button onClick={doSignOut} style={{ fontSize:10,color:"#475569",background:"transparent",border:"1px solid rgba(255,255,255,0.08)",borderRadius:6,padding:"4px 10px",cursor:"pointer",fontFamily:"inherit" }}>Sign Out</button>
+            </div>
+          ) : (
+            <button onClick={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}} style={{ display:"flex",alignItems:"center",gap:7,background:"linear-gradient(135deg,#c9a227,#8b6d10)",border:"none",borderRadius:8,padding:"7px 16px",fontSize:11,fontWeight:700,color:"#000",cursor:"pointer",letterSpacing:"0.06em",fontFamily:"inherit" }}>
+              🔒 Login / Sign Up
+            </button>
+          )}
         </div>
       </div>
 
@@ -1112,16 +1178,101 @@ export default function VegasVaultApp() {
 
       {/* MOBILE BOTTOM NAV */}
       <div className="vv-bottom-nav">
-        {[{icon:"⊞",lbl:"HOME"},{icon:"📅",lbl:"SLATE"},{icon:"◎",lbl:"ANALYZE"},{icon:"🔒",lbl:"LOCKS"},{icon:"↺",lbl:"HISTORY"}].map((item,i)=>(
-          <div key={i} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"6px 14px",cursor:"pointer",opacity:i===0?1:0.38 }}>
-            <span style={{ fontSize:17,color:i===0?"#c9a227":"#475569" }}>{item.icon}</span>
-            <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.07em",color:i===0?"#c9a227":"#475569" }}>{item.lbl}</span>
+        <div style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"6px 12px",cursor:"pointer" }}>
+          <span style={{ fontSize:17,color:"#c9a227" }}>⊞</span>
+          <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.07em",color:"#c9a227" }}>HOME</span>
+        </div>
+        <div style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"6px 12px",cursor:"pointer",opacity:0.38 }}>
+          <span style={{ fontSize:17,color:"#475569" }}>📅</span>
+          <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.07em",color:"#475569" }}>SLATE</span>
+        </div>
+        {authUser ? (
+          <div onClick={()=>window.location.href='/settings'} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"6px 12px",cursor:"pointer" }}>
+            <div style={{ width:26,height:26,borderRadius:"50%",background:"linear-gradient(135deg,#c9a227,#8b6d10)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:"#000" }}>{(authUser.email?.[0]||'U').toUpperCase()}</div>
+            <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.07em",color:"#c9a227" }}>ACCOUNT</span>
           </div>
-        ))}
+        ) : (
+          <div onClick={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"6px 12px",cursor:"pointer" }}>
+            <span style={{ fontSize:17,color:"#c9a227" }}>🔐</span>
+            <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.07em",color:"#c9a227" }}>LOGIN</span>
+          </div>
+        )}
+        <div onClick={()=>window.location.href='/settings'} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"6px 12px",cursor:"pointer",opacity:0.7 }}>
+          <span style={{ fontSize:17,color:"#475569" }}>⚙</span>
+          <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.07em",color:"#475569" }}>SETTINGS</span>
+        </div>
+        {authUser ? (
+          <div onClick={doSignOut} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"6px 12px",cursor:"pointer",opacity:0.7 }}>
+            <span style={{ fontSize:17,color:"#475569" }}>↩</span>
+            <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.07em",color:"#475569" }}>SIGN OUT</span>
+          </div>
+        ) : (
+          <div style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"6px 12px",opacity:0.38 }}>
+            <span style={{ fontSize:17,color:"#475569" }}>↺</span>
+            <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.07em",color:"#475569" }}>HISTORY</span>
+          </div>
+        )}
       </div>
 
       {activeResult&&activeGame&&(
         <PlayResult result={activeResult} game={activeGame} onClose={()=>{setActiveResult(null);setActiveGame(null);}}/>
+      )}
+
+      {showAuth&&(
+        <div onClick={e=>e.target===e.currentTarget&&setShowAuth(false)} style={{ position:"fixed",inset:0,zIndex:9999,background:"rgba(0,0,0,0.85)",backdropFilter:"blur(20px)",display:"flex",alignItems:"center",justifyContent:"center",padding:16 }}>
+          <div style={{ background:"#0a0d1a",border:"1px solid rgba(255,255,255,0.08)",borderRadius:20,width:"100%",maxWidth:500,maxHeight:"95vh",overflowY:"auto",boxShadow:"0 40px 100px rgba(0,0,0,0.9)" }}>
+            <div style={{ padding:"28px 28px 24px" }}>
+              <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20 }}>
+                <div style={{ display:"flex",gap:0,borderBottom:"1px solid rgba(255,255,255,0.07)" }}>
+                  {["login","signup","plans"].filter(m=>authMode==="plans"?m==="plans":m!=="plans").map(m=>(
+                    <button key={m} onClick={()=>{setAuthMode(m);setAuthError('');}} style={{ padding:"6px 18px",background:"none",border:"none",borderBottom:authMode===m?"2px solid #c9a227":"2px solid transparent",fontSize:11,fontWeight:authMode===m?700:400,color:authMode===m?"#c9a227":"#475569",cursor:"pointer",letterSpacing:"0.08em",fontFamily:"inherit",marginBottom:-1 }}>
+                      {m==="login"?"SIGN IN":m==="signup"?"SIGN UP":"SUBSCRIBE"}
+                    </button>
+                  ))}
+                </div>
+                <button onClick={()=>setShowAuth(false)} style={{ background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:8,width:28,height:28,cursor:"pointer",color:"#64748b",fontSize:13,fontFamily:"inherit" }}>✕</button>
+              </div>
+
+              {authMode==="plans" ? (
+                <div>
+                  <div style={{ fontSize:18,fontWeight:800,color:"#f1f5f9",marginBottom:4 }}>Choose Your Plan</div>
+                  <div style={{ fontSize:12,color:"#475569",marginBottom:22 }}>Unlock full AI analysis on every game.</div>
+                  <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14 }}>
+                    {[{id:"weekly",label:"WEEKLY",price:"$19.99",period:"/week",features:["Full AI model","All games","Auto plays","Trell Rule alerts"],hl:false},{id:"monthly",label:"MONTHLY",price:"$49.99",period:"/month",features:["Everything weekly","Priority generation","Model updates","Early access"],hl:true,badge:"Best Value"}].map(p=>(
+                      <div key={p.id} style={{ background:p.hl?"rgba(201,162,39,0.06)":"rgba(255,255,255,0.02)",border:`1px solid ${p.hl?"rgba(201,162,39,0.3)":"rgba(255,255,255,0.07)"}`,borderRadius:12,padding:"16px 14px",position:"relative" }}>
+                        {p.badge&&<div style={{ position:"absolute",top:-9,left:"50%",transform:"translateX(-50%)",background:"#c9a227",color:"#000",fontSize:8,fontWeight:800,padding:"2px 10px",borderRadius:10,whiteSpace:"nowrap" }}>{p.badge}</div>}
+                        <div style={{ fontSize:10,fontWeight:700,color:p.hl?"#c9a227":"#94a3b8",letterSpacing:"0.1em",marginBottom:6 }}>{p.label}</div>
+                        <div style={{ display:"flex",alignItems:"baseline",gap:3,marginBottom:10 }}><span style={{ fontSize:20,fontWeight:900,color:"#f1f5f9" }}>{p.price}</span><span style={{ fontSize:10,color:"#475569" }}>{p.period}</span></div>
+                        <ul style={{ listStyle:"none",marginBottom:12 }}>{p.features.map((f,i)=><li key={i} style={{ fontSize:10,color:"#64748b",marginBottom:3,display:"flex",gap:6 }}><span style={{ color:"#c9a227" }}>✓</span>{f}</li>)}</ul>
+                        <button onClick={()=>doSubscribe(p.id)} style={{ width:"100%",padding:"8px 0",background:p.hl?"linear-gradient(135deg,#c9a227,#8b6d10)":"rgba(255,255,255,0.05)",border:p.hl?"none":"1px solid rgba(255,255,255,0.1)",borderRadius:8,fontSize:10,fontWeight:700,color:p.hl?"#000":"#94a3b8",cursor:"pointer",fontFamily:"inherit" }}>Subscribe</button>
+                      </div>
+                    ))}
+                  </div>
+                  <button onClick={()=>setShowAuth(false)} style={{ width:"100%",padding:"8px 0",background:"transparent",border:"1px solid rgba(255,255,255,0.07)",borderRadius:8,fontSize:10,color:"#475569",cursor:"pointer",fontFamily:"inherit" }}>Maybe later — continue to dashboard</button>
+                </div>
+              ) : (
+                <div>
+                  <div style={{ fontSize:20,fontWeight:700,color:"#f1f5f9",marginBottom:4 }}>{authMode==="login"?"Welcome back,":"Create your account,"}</div>
+                  <div style={{ fontSize:12,color:"#475569",marginBottom:20 }}>{authMode==="login"?"Sign in to access your ":"Join "}<span style={{ color:"#c9a227" }}>Vegas Vault AI</span>{authMode==="login"?" dashboard.":"and start winning."}</div>
+                  <div style={{ marginBottom:12 }}>
+                    <div style={{ fontSize:9,color:"#475569",letterSpacing:"0.12em",fontWeight:700,marginBottom:5 }}>EMAIL ADDRESS</div>
+                    <input type="email" placeholder="you@example.com" value={authEmail} onChange={e=>setAuthEmail(e.target.value)} style={{ width:"100%",padding:"11px 13px",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:9,color:"#e2e8f0",fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box" }}/>
+                  </div>
+                  <div style={{ marginBottom:16,position:"relative" }}>
+                    <div style={{ fontSize:9,color:"#475569",letterSpacing:"0.12em",fontWeight:700,marginBottom:5 }}>PASSWORD</div>
+                    <input type={showPw?"text":"password"} placeholder="Enter your password" value={authPw} onChange={e=>setAuthPw(e.target.value)} onKeyDown={e=>e.key==="Enter"&&doAuth()} style={{ width:"100%",padding:"11px 40px 11px 13px",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:9,color:"#e2e8f0",fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box" }}/>
+                    <button onClick={()=>setShowPw(!showPw)} style={{ position:"absolute",right:11,top:29,background:"none",border:"none",cursor:"pointer",color:"#3a4a5e",fontSize:14 }}>{showPw?"🙈":"👁"}</button>
+                  </div>
+                  {authError&&<div style={{ marginBottom:12,padding:"9px 13px",background:"rgba(248,113,113,0.08)",border:"1px solid rgba(248,113,113,0.2)",borderRadius:8,fontSize:11,color:"#f87171" }}>{authError}</div>}
+                  <button onClick={doAuth} disabled={authLoading} style={{ width:"100%",padding:"13px 0",background:authLoading?"rgba(201,162,39,0.4)":"linear-gradient(135deg,#c9a227,#8b6d10)",border:"none",borderRadius:11,fontSize:12,fontWeight:700,color:"#000",cursor:authLoading?"not-allowed":"pointer",letterSpacing:"0.08em",fontFamily:"inherit",marginBottom:12 }}>
+                    {authLoading?"Please wait…":authMode==="login"?"LOG IN TO VAULT →":"CREATE ACCOUNT →"}
+                  </button>
+                  <div style={{ textAlign:"center",fontSize:10,color:"#2d3a4a" }}>🔒 Bank-level encryption. Your data is always protected.</div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
