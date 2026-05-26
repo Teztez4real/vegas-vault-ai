@@ -1,6 +1,5 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { supabase } from '@/lib/supabaseClient';
 
 // ── PROMPT ENGINE ─────────────────────────────────────────────────────────────
 
@@ -773,30 +772,32 @@ export default function VegasVaultApp() {
     const sub   = typeof window !== 'undefined' && localStorage.getItem('vv_subscribed');
     if (admin || sub) setIsSubscribed(true);
     try {
-      supabase.auth.getSession().then(({ data: { session } }) => {
+      const { supabase: sb } = await import('@/lib/supabaseClient');
+      sb.auth.getSession().then(({ data: { session } }) => {
         if (session?.user) {
           setAuthUser(session.user);
           if (session.user.email === ADMIN_EMAIL) { localStorage.setItem('vv_admin','1'); setIsSubscribed(true); }
         }
       });
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      const { data: { subscription } } = sb.auth.onAuthStateChange((_e, session) => {
         if (session?.user) {
           setAuthUser(session.user);
           if (session.user.email === ADMIN_EMAIL) { localStorage.setItem('vv_admin','1'); setIsSubscribed(true); }
         } else { setAuthUser(null); }
       });
       return () => subscription.unsubscribe();
-    } catch(e) {}
+    } catch(e) { console.error('Auth init:', e); }
   }, []);
 
   async function doAuth() {
     setAuthLoading(true); setAuthError('');
     try {
+      const { supabase: sb } = await import('@/lib/supabaseClient');
       if (authMode === 'signup') {
-        const { error } = await supabase.auth.signUp({ email: authEmail, password: authPw });
+        const { error } = await sb.auth.signUp({ email: authEmail, password: authPw });
         if (error) { setAuthError(error.message); } else { setAuthMode('plans'); }
       } else {
-        const { data, error } = await supabase.auth.signInWithPassword({ email: authEmail, password: authPw });
+        const { data, error } = await sb.auth.signInWithPassword({ email: authEmail, password: authPw });
         if (error) { setAuthError(error.message); }
         else {
           setAuthUser(data.user);
@@ -809,13 +810,14 @@ export default function VegasVaultApp() {
   }
 
   async function doSignOut() {
-    try { await supabase.auth.signOut(); } catch(e) {}
+    try { const { supabase: sb } = await import('@/lib/supabaseClient'); await sb.auth.signOut(); } catch(e) {}
     setAuthUser(null); localStorage.removeItem('vv_admin'); localStorage.removeItem('vv_subscribed'); setIsSubscribed(false);
   }
 
   async function doSubscribe(plan) {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { supabase: sb } = await import('@/lib/supabaseClient');
+      const { data: { session } } = await sb.auth.getSession();
       const res = await fetch('/api/stripe/checkout', { method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+(session?.access_token||'')}, body:JSON.stringify({plan}) });
       const { url } = await res.json();
       if (url) window.location.href = url;
