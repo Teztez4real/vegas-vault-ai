@@ -367,7 +367,7 @@ function PlayResult({ result, game, onClose }) {
 
 // ── GAME CARD — matches reference image exactly ───────────────────────────────
 
-function GameCard({ game, onGenerate, results, generating, onCardClick, liveScores, isSubscribed }) {
+function GameCard({ game, onGenerate, results, generating, onCardClick, liveScores, isSubscribed, finalized, isQueued }) {
   const resultPublic = results[`${game.id}-PUBLIC`];
   const resultVegas  = results[`${game.id}-VEGAS`];
   const hasAnyResult = resultPublic || resultVegas;
@@ -457,6 +457,12 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
           )}
           {isPostponed && (
             <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.1em",color:"#f87171",background:"rgba(248,113,113,0.12)",padding:"2px 8px",borderRadius:4 }}>⛔ POSTPONED</span>
+          )}
+          {finalized && (finalized[`${game.id}-PUBLIC`] || finalized[`${game.id}-VEGAS`]) && (
+            <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.1em",color:"#c9a227",background:"rgba(201,162,39,0.12)",padding:"2px 8px",borderRadius:4 }}>🔒 FINAL</span>
+          )}
+          {isQueued && !finalized?.[`${game.id}-PUBLIC`] && (
+            <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.1em",color:"#60a5fa",background:"rgba(96,165,250,0.1)",padding:"2px 8px",borderRadius:4 }}>⟳ QUEUED</span>
           )}
         </div>
         <div style={{ display:"flex",alignItems:"center",gap:10 }}>
@@ -596,7 +602,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
             const iv=slot==="VEGAS";
             return(
               <button key={slot} onClick={e=>{e.stopPropagation();onGenerate(game,slot);}} disabled={!!generating} style={{ flex:1,padding:"8px 0",background:isGen?(iv?"rgba(248,113,113,0.1)":"rgba(96,165,250,0.1)"):(hasRes?(iv?"rgba(248,113,113,0.06)":"rgba(96,165,250,0.06)"):"transparent"),border:`1px solid ${(isGen||hasRes)?(iv?"rgba(248,113,113,0.4)":"rgba(96,165,250,0.4)"):(iv?"rgba(248,113,113,0.2)":"rgba(96,165,250,0.2)")}`,borderRadius:8,fontSize:10,fontWeight:600,letterSpacing:"0.06em",color:generating&&!isGen?"#1e2a3a":(iv?"#f87171":"#60a5fa"),cursor:generating?"not-allowed":"pointer",fontFamily:"inherit" }}>
-                {isGen?"ANALYZING…":hasRes?`↻ ${slot}`:`Analyze as ${slot}`}
+                {isGen?"ANALYZING…":hasRes?(finalized?.[key]?"🔒 FINAL":` ↻ ${slot}`):`Analyze as ${slot}`}
               </button>
             );
           })}
@@ -757,7 +763,20 @@ export default function VegasVaultApp() {
   const [oddsFeed, setOddsFeed]       = useState(ODDS_FEED);
   const [marketScanner, setMarketScanner] = useState({ reverseLineMovement:7, sharpMoneyDetected:5, publicHeavy:6, vegasTrapAlert:3 });
   const [insights, setInsights]       = useState(INSIGHTS);
-  const [results, setResults]         = useState({});
+  const [results, setResults] = useState(() => {
+    try {
+      const saved = typeof window !== 'undefined' && localStorage.getItem('vv_results');
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  });
+  const [finalized, setFinalized] = useState(() => {
+    try {
+      const saved = typeof window !== 'undefined' && localStorage.getItem('vv_finalized');
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  });
+  const [preAnalyzing, setPreAnalyzing] = useState(false);
+  const [preAnalyzeQueue, setPreAnalyzeQueue] = useState([]);
   const [liveScores, setLiveScores]   = useState({});
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [authUser, setAuthUser]         = useState(null);
@@ -860,6 +879,91 @@ export default function VegasVaultApp() {
     return()=>clearInterval(t);
   },[]);
 
+  // ── FINALIZATION: re-analyze when lines move, mark FINAL ─────────────────────
+  const lastLineRef = useRef({});
+
+  function sendNotification(title, body) {
+    if (typeof window === 'undefined') return;
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(title, { body, icon: '/favicon.ico' });
+    }
+  }
+
+  function requestNotificationPermission() {
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }
+
+  useEffect(() => {
+    // Ask for notification permission when user first generates a play
+    if (Object.keys(results).length > 0) requestNotificationPermission();
+  }, [results]);
+
+  useEffect(() => {
+    if (!games || games.length === 0) return;
+    const checkInterval = setInterval(async () => {
+      for (const game of games) {
+        // Skip live/final games
+        const live = liveScores[`${game.away}|${game.home}`] || liveScores[`${game.awayAbbr}|${game.homeAbbr}`];
+        if (live?.status === 'Live' || live?.status === 'Final') continue;
+
+        for (const slot of ['PUBLIC', 'VEGAS']) {
+          const key = `${game.id}-${slot}`;
+          const existing = results[key];
+          if (!existing || finalized[key]) continue;
+
+          // Check if line has moved significantly
+          const currentML = game.homeML;
+          const lastML = lastLineRef.current[key];
+          if (lastML && currentML && currentML !== 'N/A') {
+            const current = parseInt(currentML);
+            const last = parseInt(lastML);
+            if (!isNaN(current) && !isNaN(last) && Math.abs(current - last) >= 5) {
+              // Significant line movement — re-analyze and finalize
+              try {
+                const fresh = await generatePlay({ ...game, slot });
+                if (fresh?.summary) {
+                  const finalResult = { ...fresh, finalized: true, finalizedAt: new Date().toISOString() };
+                  setResults(prev => ({ ...prev, [key]: finalResult }));
+                  setFinalized(prev => ({ ...prev, [key]: true }));
+                  const pick = fresh.summary?.pick || 'Pick';
+                  const tier = fresh.summary?.tierLabel || '';
+                  sendNotification(
+                    `🔒 ${tier} FINALIZED — ${game.away} @ ${game.home}`,
+                    `${slot} slot: ${pick} | Line moved ${Math.abs(current - last)} pts`
+                  );
+                }
+              } catch {}
+            }
+          }
+          lastLineRef.current[key] = currentML;
+
+          // Auto-finalize Tier 1 LOCK plays (AI is confident)
+          if (existing?.summary?.tierLabel === 'LOCK' && existing?.summary?.confidence === 'HIGH' && !finalized[key]) {
+            setFinalized(prev => ({ ...prev, [key]: true }));
+            setResults(prev => ({ ...prev, [key]: { ...existing, finalized: true, finalizedAt: new Date().toISOString() } }));
+            sendNotification(
+              `🔒 LOCK FINALIZED — ${game.away} @ ${game.home}`,
+              `${slot}: ${existing.summary?.pick} — AI has high confidence in this play`
+            );
+          }
+        }
+      }
+    }, 5 * 60 * 1000); // check every 5 minutes
+
+    return () => clearInterval(checkInterval);
+  }, [games, results, finalized, liveScores]);
+
+  // ── PERSIST RESULTS TO LOCALSTORAGE ──────────────────────────────────────────
+  useEffect(() => {
+    try { localStorage.setItem('vv_results', JSON.stringify(results)); } catch {}
+  }, [results]);
+
+  useEffect(() => {
+    try { localStorage.setItem('vv_finalized', JSON.stringify(finalized)); } catch {}
+  }, [finalized]);
+
   // ── WIN RATE & AI CONFIDENCE — computed from analyzed results ──────────────
   useEffect(() => {
     const allResults = Object.values(results);
@@ -884,6 +988,44 @@ export default function VegasVaultApp() {
     // Update confidence history for sparkline
     setConfHistory(prev => [...prev.slice(-14), confPct]);
   }, [results]);
+
+  // ── PRE-ANALYSIS: queue games for background analysis ────────────────────────
+  useEffect(() => {
+    if (!games || games.length === 0) return;
+    // Queue upcoming games that haven't been analyzed yet
+    const toAnalyze = [];
+    for (const game of games) {
+      const live = liveScores[`${game.away}|${game.home}`] || liveScores[`${game.awayAbbr}|${game.homeAbbr}`];
+      const isStarted = live?.status === 'Live' || live?.status === 'Final';
+      if (isStarted) continue;
+      for (const slot of ['PUBLIC', 'VEGAS']) {
+        const key = `${game.id}-${slot}`;
+        if (!results[key]) toAnalyze.push({ game, slot, key });
+      }
+    }
+    setPreAnalyzeQueue(toAnalyze);
+  }, [games]);
+
+  // Process pre-analysis queue one at a time
+  useEffect(() => {
+    if (preAnalyzeQueue.length === 0 || preAnalyzing) return;
+    const next = preAnalyzeQueue[0];
+    if (!next || results[next.key]) {
+      setPreAnalyzeQueue(q => q.slice(1));
+      return;
+    }
+    let cancelled = false;
+    setPreAnalyzing(true);
+    generatePlay({ ...next.game, slot: next.slot }).then(result => {
+      if (cancelled) return;
+      setResults(prev => ({ ...prev, [next.key]: result }));
+      setPreAnalyzeQueue(q => q.slice(1));
+      setPreAnalyzing(false);
+    }).catch(() => {
+      if (!cancelled) { setPreAnalyzeQueue(q => q.slice(1)); setPreAnalyzing(false); }
+    });
+    return () => { cancelled = true; };
+  }, [preAnalyzeQueue, preAnalyzing]);
 
   // ── LIVE SCORES — poll every 30s ─────────────────────────────────────────
   useEffect(() => {
@@ -938,7 +1080,7 @@ export default function VegasVaultApp() {
     const d = new Date(selectedDate + 'T12:00:00');
     d.setDate(d.getDate() + offset);
     setSelectedDate(d.toISOString().split('T')[0]);
-    setResults({}); // clear results when changing date
+    setResults({}); localStorage.removeItem('vv_results'); // clear results when changing date
   }
   function formatDisplayDate(dateStr) {
     const d = new Date(dateStr + 'T12:00:00');
@@ -1122,7 +1264,15 @@ export default function VegasVaultApp() {
 
             {/* Slate header */}
             <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
-              <h2 style={{ fontSize:16,fontWeight:700,color:"#f1f5f9" }}>Today's Slate</h2>
+              <div style={{ display:"flex",alignItems:"center",gap:10 }}>
+                <h2 style={{ fontSize:16,fontWeight:700,color:"#f1f5f9" }}>Today's Slate</h2>
+                {preAnalyzeQueue.length > 0 && (
+                  <div style={{ display:"flex",alignItems:"center",gap:5,background:"rgba(96,165,250,0.08)",border:"1px solid rgba(96,165,250,0.2)",borderRadius:6,padding:"2px 8px" }}>
+                    <div style={{ width:5,height:5,borderRadius:"50%",background:"#60a5fa" }}/>
+                    <span style={{ fontSize:9,color:"#60a5fa",fontWeight:600,letterSpacing:"0.06em" }}>AI ANALYZING {preAnalyzeQueue.length} PLAYS</span>
+                  </div>
+                )}
+              </div>
               <div style={{ display:"flex",alignItems:"center",gap:8 }}>
                 <div style={{ display:"flex",alignItems:"center",gap:6 }}>
                 <button onClick={()=>changeDate(-1)} style={{ background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:6,color:"#64748b",fontSize:13,width:28,height:28,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit" }}>‹</button>
@@ -1148,7 +1298,7 @@ export default function VegasVaultApp() {
             ):(
               <div className="vv-cards">
                 {filteredGames.map(game=>(
-                  <GameCard key={game.id} game={game} results={results} generating={generating} onGenerate={handleGenerate} onCardClick={handleCardClick} liveScores={liveScores} isSubscribed={isSubscribed}/>
+                  <GameCard key={game.id} game={game} results={results} generating={generating} onGenerate={handleGenerate} onCardClick={handleCardClick} liveScores={liveScores} isSubscribed={isSubscribed} finalized={finalized} isQueued={preAnalyzeQueue.some(q=>q.game.id===game.id)}/>
                 ))}
               </div>
             )}
