@@ -363,7 +363,7 @@ function PlayResult({ result, game, onClose }) {
 
 // ── GAME CARD — matches reference image exactly ───────────────────────────────
 
-function GameCard({ game, onGenerate, results, generating, onCardClick, liveScores }) {
+function GameCard({ game, onGenerate, results, generating, onCardClick, liveScores, isSubscribed }) {
   const resultPublic = results[`${game.id}-PUBLIC`];
   const resultVegas  = results[`${game.id}-VEGAS`];
   const hasAnyResult = resultPublic || resultVegas;
@@ -571,6 +571,20 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
           </span>
         </div>
       ) : (
+        {!isSubscribed ? (
+        <div style={{ position:"relative" }}>
+          {/* Blurred buttons */}
+          <div style={{ display:"flex",gap:8,filter:"blur(3px)",pointerEvents:"none" }}>
+            <div style={{ flex:1,padding:"9px 0",background:"rgba(96,165,250,0.06)",border:"1px solid rgba(96,165,250,0.2)",borderRadius:8,fontSize:10,fontWeight:600,color:"#60a5fa",textAlign:"center" }}>Analyze as PUBLIC</div>
+            <div style={{ flex:1,padding:"9px 0",background:"rgba(248,113,113,0.06)",border:"1px solid rgba(248,113,113,0.2)",borderRadius:8,fontSize:10,fontWeight:600,color:"#f87171",textAlign:"center" }}>Analyze as VEGAS</div>
+          </div>
+          {/* Lock overlay */}
+          <div onClick={()=>window.location.href='/settings'} style={{ position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",gap:8,background:"rgba(7,9,26,0.8)",borderRadius:8,cursor:"pointer",backdropFilter:"blur(2px)" }}>
+            <span style={{ fontSize:14 }}>🔒</span>
+            <span style={{ fontSize:10,fontWeight:700,color:"#c9a227",letterSpacing:"0.08em" }}>SUBSCRIBE TO UNLOCK</span>
+          </div>
+        </div>
+      ) : (
         <div style={{ display:"flex",gap:8 }}>
           {["PUBLIC","VEGAS"].map(slot=>{
             const key=`${game.id}-${slot}`;
@@ -584,6 +598,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
             );
           })}
         </div>
+      )}
       )}
     </div>
   );
@@ -742,6 +757,13 @@ export default function VegasVaultApp() {
   const [insights, setInsights]       = useState(INSIGHTS);
   const [results, setResults]         = useState({});
   const [liveScores, setLiveScores]   = useState({});
+  const [isSubscribed, setIsSubscribed] = useState(false);
+
+  useEffect(() => {
+    const admin = typeof window !== 'undefined' && localStorage.getItem('vv_admin');
+    const sub = typeof window !== 'undefined' && localStorage.getItem('vv_subscribed');
+    if (admin || sub) setIsSubscribed(true);
+  }, []);
   const [bookmakerCount, setBookmakerCount] = useState(12);
   const [winRate, setWinRate]         = useState(null);
   const [aiConfidence, setAiConfidence] = useState(null);
@@ -1056,7 +1078,7 @@ export default function VegasVaultApp() {
             ):(
               <div className="vv-cards">
                 {filteredGames.map(game=>(
-                  <GameCard key={game.id} game={game} results={results} generating={generating} onGenerate={handleGenerate} onCardClick={handleCardClick} liveScores={liveScores}/>
+                  <GameCard key={game.id} game={game} results={results} generating={generating} onGenerate={handleGenerate} onCardClick={handleCardClick} liveScores={liveScores} isSubscribed={isSubscribed}/>
                 ))}
               </div>
             )}
