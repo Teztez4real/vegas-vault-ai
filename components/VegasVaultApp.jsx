@@ -790,6 +790,7 @@ export default function VegasVaultApp() {
   });
   const [preAnalyzing, setPreAnalyzing] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showOddsMovement, setShowOddsMovement] = useState(false);
   const [betReadyAlerts, setBetReadyAlerts] = useState({});
   const [preAnalyzeQueue, setPreAnalyzeQueue] = useState([]);
   const [liveScores, setLiveScores]   = useState({});
@@ -1351,7 +1352,7 @@ export default function VegasVaultApp() {
         <div className="vv-sidebar" style={{ width:200,background:"rgba(7,9,26,0.99)",borderRight:"1px solid rgba(255,255,255,0.05)",flexDirection:"column",flexShrink:0,overflowY:"auto" }}>
           <div style={{ flex:1,padding:"10px 0" }}>
             {NAV_ITEMS.map((item,i)=>(
-              <div key={i} onClick={()=>{ if(item.label==='HISTORY'){setShowHistory(true);} else if(item.label==='SETTINGS'){window.location.href='/settings';} }} style={{ display:"flex",alignItems:"center",gap:12,padding:"11px 20px",background:item.active?"rgba(201,162,39,0.07)":"transparent",borderLeft:item.active?"2px solid #c9a227":"2px solid transparent",cursor:"pointer" }}>
+              <div key={i} onClick={()=>{ if(item.label==='HISTORY'){setShowHistory(true);} else if(item.label==='ODDS MOVEMENT'){setShowOddsMovement(true);} else if(item.label==='SETTINGS'){window.location.href='/settings';} }} style={{ display:"flex",alignItems:"center",gap:12,padding:"11px 20px",background:item.active?"rgba(201,162,39,0.07)":"transparent",borderLeft:item.active?"2px solid #c9a227":"2px solid transparent",cursor:"pointer" }}>
                 <span style={{ fontSize:13,color:item.active?"#c9a227":"#2d3a4a",width:18,flexShrink:0 }}>{item.icon}</span>
                 <span style={{ fontSize:10,fontWeight:item.active?700:400,color:item.active?"#c9a227":"#3a4a5e",letterSpacing:"0.08em",flex:1 }}>{item.label}</span>
                 {item.arrow&&<span style={{ fontSize:9,color:"#2d3a4a" }}>▶</span>}
@@ -1556,6 +1557,98 @@ export default function VegasVaultApp() {
           isResolved={pickHistory.some(p=>p.key===`${activeGame.id}-${activeGame.slot||'PUBLIC'}`)}
           resolvedResult={pickHistory.find(p=>p.key===`${activeGame.id}-${activeGame.slot||'PUBLIC'}`)?.result}
         />
+      )}
+
+      {/* ── ODDS MOVEMENT PANEL ─────────────────────────────────────────────── */}
+      {showOddsMovement&&(
+        <div style={{ position:"fixed",inset:0,zIndex:9000,display:"flex" }}>
+          <div onClick={()=>setShowOddsMovement(false)} style={{ position:"absolute",inset:0,background:"rgba(0,0,0,0.6)",backdropFilter:"blur(8px)" }}/>
+          <div style={{ position:"relative",marginLeft:"auto",width:"100%",maxWidth:600,height:"100%",background:"#07091a",borderLeft:"1px solid rgba(255,255,255,0.07)",overflowY:"auto",display:"flex",flexDirection:"column" }}>
+
+            {/* Header */}
+            <div style={{ padding:"18px 20px",borderBottom:"1px solid rgba(255,255,255,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:"#07091a",zIndex:10 }}>
+              <div>
+                <div style={{ fontSize:14,fontWeight:700,color:"#f1f5f9",letterSpacing:"0.04em" }}>📊 ODDS MOVEMENT</div>
+                <div style={{ fontSize:10,color:"#3a4a5e",marginTop:2 }}>{games.length} games tracked today</div>
+              </div>
+              <button onClick={()=>setShowOddsMovement(false)} style={{ background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:8,width:32,height:32,cursor:"pointer",color:"#64748b",fontSize:14,fontFamily:"inherit" }}>✕</button>
+            </div>
+
+            {/* Summary bar */}
+            {(()=>{
+              const moving = games.filter(g=>g.lineMovement && g.lineMovement!=="Stable" && g.lineMovement!=="TBD").length;
+              const stable = games.filter(g=>g.lineMovement==="Stable").length;
+              const sharp  = games.filter(g=>{ const lm=(g.lineMovement||"").toLowerCase(); return lm.includes("steam") || lm.includes("sharp") || lm.includes("reverse"); }).length;
+              return (
+                <div style={{ padding:"16px 20px",borderBottom:"1px solid rgba(255,255,255,0.06)",display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12 }}>
+                  {[
+                    { label:"MOVING LINES", value:moving, color:"#c9a227" },
+                    { label:"STABLE",        value:stable, color:"#4ade80" },
+                    { label:"SHARP ACTION",  value:sharp,  color:"#f87171" },
+                  ].map((s,i)=>(
+                    <div key={i} style={{ background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.05)",borderRadius:10,padding:"12px 10px",textAlign:"center" }}>
+                      <div style={{ fontSize:9,color:"#3a4a5e",letterSpacing:"0.1em",marginBottom:4 }}>{s.label}</div>
+                      <div style={{ fontSize:26,fontWeight:800,color:s.color,lineHeight:1 }}>{s.value}</div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+
+            {/* Games list */}
+            <div style={{ flex:1,padding:"14px 20px 40px" }}>
+              {games.length===0 ? (
+                <div style={{ textAlign:"center",padding:"60px 20px" }}>
+                  <div style={{ fontSize:32,marginBottom:12 }}>📊</div>
+                  <div style={{ fontSize:14,fontWeight:600,color:"#2d3a4a" }}>No games loaded yet</div>
+                </div>
+              ) : games.map((game,i)=>{
+                const lm = game.lineMovement || "Stable";
+                const isStable = lm==="Stable";
+                const lmLower = lm.toLowerCase();
+                const isSharp = lmLower.includes("steam")||lmLower.includes("sharp")||lmLower.includes("reverse");
+                const isMoving = !isStable && lm!=="TBD";
+                const borderColor = isSharp?"rgba(248,113,113,0.35)":isMoving?"rgba(201,162,39,0.35)":"rgba(255,255,255,0.05)";
+                const badge = isSharp?{ label:"SHARP",color:"#f87171",bg:"rgba(248,113,113,0.1)" }
+                              :isMoving?{ label:"MOVING",color:"#c9a227",bg:"rgba(201,162,39,0.1)" }
+                              :{ label:"STABLE",color:"#4ade80",bg:"rgba(74,222,128,0.08)" };
+                return (
+                  <div key={game.id||i} style={{ background:"rgba(255,255,255,0.02)",border:`1px solid ${borderColor}`,borderRadius:12,padding:"14px 16px",marginBottom:10 }}>
+                    <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8 }}>
+                      <div style={{ display:"flex",alignItems:"center",gap:8 }}>
+                        <span style={{ fontSize:9,fontWeight:700,color:game.slot==="VEGAS"?"#f87171":"#60a5fa",background:game.slot==="VEGAS"?"rgba(248,113,113,0.1)":"rgba(96,165,250,0.1)",borderRadius:4,padding:"1px 6px",letterSpacing:"0.06em" }}>{game.slot||"PUBLIC"}</span>
+                        <span style={{ fontSize:12,fontWeight:700,color:"#e2e8f0" }}>{game.awayAbbr||game.away?.split(" ").pop()} @ {game.homeAbbr||game.home?.split(" ").pop()}</span>
+                        <span style={{ fontSize:10,color:"#3a4a5e" }}>{game.time}</span>
+                      </div>
+                      <span style={{ fontSize:9,fontWeight:700,color:badge.color,background:badge.bg,borderRadius:4,padding:"2px 8px",letterSpacing:"0.07em" }}>{badge.label}</span>
+                    </div>
+                    {/* ML odds */}
+                    <div style={{ display:"flex",gap:16,marginBottom:8 }}>
+                      <div style={{ flex:1,background:"rgba(255,255,255,0.02)",borderRadius:8,padding:"8px 10px" }}>
+                        <div style={{ fontSize:9,color:"#3a4a5e",letterSpacing:"0.08em",marginBottom:3 }}>{game.awayCity||game.away}</div>
+                        <div style={{ fontSize:16,fontWeight:800,color: (game.awayML||"").startsWith("-")?"#f87171":"#4ade80" }}>{game.awayML||"N/A"}</div>
+                      </div>
+                      <div style={{ display:"flex",alignItems:"center",fontSize:10,color:"#2d3a4a",fontWeight:700 }}>@</div>
+                      <div style={{ flex:1,background:"rgba(255,255,255,0.02)",borderRadius:8,padding:"8px 10px" }}>
+                        <div style={{ fontSize:9,color:"#3a4a5e",letterSpacing:"0.08em",marginBottom:3 }}>{game.homeCity||game.home}</div>
+                        <div style={{ fontSize:16,fontWeight:800,color: (game.homeML||"").startsWith("-")?"#f87171":"#4ade80" }}>{game.homeML||"N/A"}</div>
+                      </div>
+                    </div>
+                    {/* Line movement */}
+                    <div style={{ display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:"rgba(255,255,255,0.02)",borderRadius:8,border:"1px solid rgba(255,255,255,0.04)" }}>
+                      <span style={{ fontSize:11 }}>📈</span>
+                      <span style={{ fontSize:10,color:"#94a3b8",flex:1 }}>{lm}</span>
+                    </div>
+                    {/* Run line */}
+                    {game.runLine && (
+                      <div style={{ marginTop:8,fontSize:10,color:"#3a4a5e" }}>Run Line: <span style={{ color:"#64748b" }}>{game.runLine}</span></div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── HISTORY PANEL ────────────────────────────────────────────────────── */}
