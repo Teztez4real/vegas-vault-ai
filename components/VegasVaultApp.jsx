@@ -377,7 +377,7 @@ function PlayResult({ result, game, onClose, isResolved, resolvedResult }) {
 
 // ── GAME CARD — matches reference image exactly ───────────────────────────────
 
-function GameCard({ game, onGenerate, results, generating, onCardClick, liveScores, isSubscribed, finalized, isQueued, betReady, onShowAuth }) {
+function GameCard({ game, onGenerate, results, generating, onCardClick, liveScores, isSubscribed, finalized, isQueued, betReady, onShowAuth, watchlist, onToggleWatch }) {
   const resultPublic = results[`${game.id}-PUBLIC`];
   const resultVegas  = results[`${game.id}-VEGAS`];
   const hasAnyResult = resultPublic || resultVegas;
@@ -480,7 +480,11 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
         </div>
         <div style={{ display:"flex",alignItems:"center",gap:10 }}>
           <span style={{ fontSize:10,color:"#4a5568",fontVariantNumeric:"tabular-nums" }}>{game.time}</span>
-          <span style={{ fontSize:13,color:"#2a3545",cursor:"pointer",lineHeight:1 }}>☆</span>
+          <span
+            onClick={(e)=>{ e.stopPropagation(); if(onToggleWatch) onToggleWatch(game.id); }}
+            title={watchlist?.includes(game.id) ? "Remove from watchlist" : "Add to watchlist"}
+            style={{ fontSize:14,color:watchlist?.includes(game.id)?"#c9a227":"#2a3545",cursor:"pointer",lineHeight:1,transition:"color 0.15s",userSelect:"none" }}
+          >{watchlist?.includes(game.id)?"★":"☆"}</span>
         </div>
       </div>
 
@@ -770,19 +774,29 @@ function RightPanelContent({ marketScanner, insights, aiConfidence, confHistory 
 
 
 // ── ALERTS VIEW ───────────────────────────────────────────────────────────────
-function AlertsView({ betReadyAlerts, trellAlerts, games, results, pickHistory }) {
+function AlertsView({ betReadyAlerts, trellAlerts, games, results, pickHistory, watchlist }) {
   const allAlerts = [
-    ...Object.entries(betReadyAlerts).map(([key, data]) => ({
-      type: 'BET_READY', key, data,
-      game: games.find(g => key.startsWith(g.id+'-')),
-      slot: key.split('-').pop(),
-      title: '🔔 Bet Ready',
-      color: '#c9a227', bg: 'rgba(201,162,39,0.08)', border: 'rgba(201,162,39,0.25)',
-    })),
-    ...trellAlerts.map((a, i) => ({
-      type: 'TRELL', key: `trell-${i}`, data: a,
-      title: '⚡ Trell Rule Alert', color: '#f87171', bg: 'rgba(248,113,113,0.08)', border: 'rgba(248,113,113,0.25)',
-    })),
+    ...Object.entries(betReadyAlerts)
+      .filter(([key]) => {
+        const game = games.find(g => key.startsWith(g.id+'-'));
+        return game && watchlist.includes(game.id);
+      })
+      .map(([key, data]) => ({
+        type: 'BET_READY', key, data,
+        game: games.find(g => key.startsWith(g.id+'-')),
+        slot: key.split('-').pop(),
+        title: '🔔 Bet Ready',
+        color: '#c9a227', bg: 'rgba(201,162,39,0.08)', border: 'rgba(201,162,39,0.25)',
+      })),
+    ...trellAlerts
+      .filter(a => {
+        if (!a.gameId) return true; // global trell alerts always show
+        return watchlist.includes(a.gameId);
+      })
+      .map((a, i) => ({
+        type: 'TRELL', key: `trell-${i}`, data: a,
+        title: '⚡ Trell Rule Alert', color: '#f87171', bg: 'rgba(248,113,113,0.08)', border: 'rgba(248,113,113,0.25)',
+      })),
   ];
 
   const pendingPicks = pickHistory.filter(p => !p.result);
@@ -855,59 +869,102 @@ function AlertsView({ betReadyAlerts, trellAlerts, games, results, pickHistory }
 }
 
 // ── WATCHLIST VIEW ────────────────────────────────────────────────────────────
-function WatchlistView({ watchlist, setWatchlist, games, results, generating, onGenerate, liveScores, isSubscribed, finalized, onShowAuth }) {
+function WatchlistView({ watchlist, toggleWatch, games, results, finalized }) {
   const watchedGames = games.filter(g => watchlist.includes(g.id));
+  const unwatchedGames = games.filter(g => !watchlist.includes(g.id));
 
-  function removeFromWatchlist(id) {
-    const updated = watchlist.filter(w => w !== id);
-    setWatchlist(updated);
-    try { localStorage.setItem('vv_watchlist', JSON.stringify(updated)); } catch {}
-  }
+  const NOTIF_TYPES = [
+    { icon:'🔔', label:'Bet Ready', desc:'30 min before game starts' },
+    { icon:'⚡', label:'Trell Rule', desc:'Star player in/out' },
+    { icon:'📈', label:'Line Movement', desc:'Sharp money detected' },
+    { icon:'🔒', label:'Finalized Play', desc:'AI locks in the pick' },
+    { icon:'🚨', label:'Injury Alert', desc:'Key player update' },
+  ];
 
   return (
     <div>
-      <div style={{ marginBottom:20 }}>
-        <h1 style={{ fontSize:22,fontWeight:700,color:'#f1f5f9',letterSpacing:'-0.02em',marginBottom:4 }}>☆ Watchlist</h1>
-        <p style={{ fontSize:12,color:'#3a4a5e' }}>{watchedGames.length} games tracked</p>
+      <div style={{ marginBottom:16 }}>
+        <h1 style={{ fontSize:22,fontWeight:700,color:'#f1f5f9',letterSpacing:'-0.02em',marginBottom:4 }}>★ My Games</h1>
+        <p style={{ fontSize:12,color:'#3a4a5e' }}>Choose which games to receive notifications for. AI tracks all games — you only get alerted on yours.</p>
       </div>
 
-      {watchedGames.length === 0 ? (
-        <div style={{ textAlign:'center',padding:'60px 20px',background:'rgba(255,255,255,0.02)',borderRadius:12,border:'1px solid rgba(255,255,255,0.05)' }}>
-          <div style={{ fontSize:32,marginBottom:12 }}>☆</div>
-          <div style={{ fontSize:14,fontWeight:600,color:'#2d3a4a',marginBottom:6 }}>No games in watchlist</div>
-          <div style={{ fontSize:12,color:'#1e2a3a' }}>Click the ☆ on any game card to track it here.</div>
-        </div>
-      ) : watchedGames.map((game, i) => (
-        <div key={game.id} style={{ background:'rgba(255,255,255,0.02)',border:'1px solid rgba(201,162,39,0.2)',borderRadius:12,padding:'14px 16px',marginBottom:10 }}>
-          <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8 }}>
-            <div style={{ display:'flex',alignItems:'center',gap:8 }}>
-              <span style={{ fontSize:9,fontWeight:700,color:game.slot==='VEGAS'?'#f87171':'#60a5fa',background:game.slot==='VEGAS'?'rgba(248,113,113,0.1)':'rgba(96,165,250,0.1)',borderRadius:4,padding:'1px 6px' }}>{game.slot}</span>
-              <span style={{ fontSize:12,fontWeight:700,color:'#e2e8f0' }}>{game.awayAbbr||game.away?.split(' ').pop()} @ {game.homeAbbr||game.home?.split(' ').pop()}</span>
-              <span style={{ fontSize:10,color:'#3a4a5e' }}>{game.time}</span>
-            </div>
-            <button onClick={()=>removeFromWatchlist(game.id)} style={{ background:'transparent',border:'none',color:'#c9a227',fontSize:16,cursor:'pointer',padding:'0 4px' }}>★</button>
-          </div>
-          <div style={{ display:'flex',gap:12,fontSize:10,color:'#3a4a5e' }}>
-            <span>{game.awayML} / {game.homeML}</span>
-            <span style={{ color:'#475569' }}>{game.lineMovement?.slice(0,60)||'No movement data'}</span>
-          </div>
-        </div>
-      ))}
-
-      {/* All games to add */}
-      {games.filter(g=>!watchlist.includes(g.id)).length > 0 && (
-        <div style={{ marginTop:24 }}>
-          <div style={{ fontSize:10,fontWeight:700,color:'#3a4a5e',letterSpacing:'0.1em',marginBottom:10 }}>ADD GAMES</div>
-          {games.filter(g=>!watchlist.includes(g.id)).map((game,i) => (
-            <div key={game.id} style={{ background:'rgba(255,255,255,0.01)',border:'1px solid rgba(255,255,255,0.05)',borderRadius:10,padding:'10px 14px',marginBottom:6,display:'flex',alignItems:'center',justifyContent:'space-between' }}>
+      {/* Notification types legend */}
+      <div style={{ background:'rgba(201,162,39,0.05)',border:'1px solid rgba(201,162,39,0.15)',borderRadius:12,padding:'12px 16px',marginBottom:20 }}>
+        <div style={{ fontSize:9,fontWeight:700,color:'#c9a227',letterSpacing:'0.1em',marginBottom:8 }}>YOU GET NOTIFIED FOR WATCHLISTED GAMES WHEN:</div>
+        <div style={{ display:'flex',flexWrap:'wrap',gap:8 }}>
+          {NOTIF_TYPES.map((n,i) => (
+            <div key={i} style={{ display:'flex',alignItems:'center',gap:5,background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:8,padding:'5px 10px' }}>
+              <span style={{ fontSize:11 }}>{n.icon}</span>
               <div>
-                <span style={{ fontSize:11,fontWeight:600,color:'#94a3b8' }}>{game.away?.split(' ').pop()} @ {game.home?.split(' ').pop()}</span>
-                <span style={{ fontSize:10,color:'#3a4a5e',marginLeft:8 }}>{game.time}</span>
+                <div style={{ fontSize:9,fontWeight:700,color:'#e2e8f0' }}>{n.label}</div>
+                <div style={{ fontSize:8,color:'#3a4a5e' }}>{n.desc}</div>
               </div>
-              <button onClick={()=>{ const updated=[...watchlist,game.id]; setWatchlist(updated); try{localStorage.setItem('vv_watchlist',JSON.stringify(updated));}catch{} }} style={{ background:'rgba(201,162,39,0.08)',border:'1px solid rgba(201,162,39,0.2)',borderRadius:6,padding:'3px 10px',fontSize:10,color:'#c9a227',cursor:'pointer',fontFamily:'inherit' }}>+ Watch</button>
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Watched games */}
+      <div style={{ fontSize:10,fontWeight:700,color:'#c9a227',letterSpacing:'0.1em',marginBottom:10 }}>
+        MY GAMES ({watchedGames.length}) <span style={{ color:'#3a4a5e',fontWeight:400 }}>— notifications ON</span>
+      </div>
+
+      {watchedGames.length === 0 ? (
+        <div style={{ textAlign:'center',padding:'30px 20px',background:'rgba(255,255,255,0.02)',borderRadius:12,border:'1px solid rgba(255,255,255,0.05)',marginBottom:20 }}>
+          <div style={{ fontSize:24,marginBottom:8 }}>☆</div>
+          <div style={{ fontSize:13,fontWeight:600,color:'#2d3a4a',marginBottom:4 }}>No games selected yet</div>
+          <div style={{ fontSize:11,color:'#1e2a3a' }}>Add games below — or tap ☆ on any card from the dashboard.</div>
+        </div>
+      ) : (
+        <div style={{ marginBottom:20 }}>
+          {watchedGames.map((game) => {
+            const hasResult = results[`${game.id}-PUBLIC`] || results[`${game.id}-VEGAS`];
+            const isFin = finalized?.[`${game.id}-PUBLIC`] || finalized?.[`${game.id}-VEGAS`];
+            const lmLower = (game.lineMovement||'').toLowerCase();
+            const isSharp = lmLower.includes('sharp') || lmLower.includes('steam') || lmLower.includes('reverse') || !!game.rlm;
+            return (
+              <div key={game.id} style={{ background:'rgba(201,162,39,0.04)',border:'1px solid rgba(201,162,39,0.25)',borderRadius:12,padding:'14px 16px',marginBottom:8 }}>
+                <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6 }}>
+                  <div style={{ display:'flex',alignItems:'center',gap:8,flexWrap:'wrap' }}>
+                    <span style={{ fontSize:9,fontWeight:700,color:game.slot==='VEGAS'?'#f87171':'#60a5fa',background:game.slot==='VEGAS'?'rgba(248,113,113,0.1)':'rgba(96,165,250,0.1)',borderRadius:4,padding:'1px 6px' }}>{game.sport}·{game.slot}</span>
+                    <span style={{ fontSize:12,fontWeight:700,color:'#f1f5f9' }}>{game.awayAbbr||game.away?.split(' ').pop()} @ {game.homeAbbr||game.home?.split(' ').pop()}</span>
+                    <span style={{ fontSize:10,color:'#3a4a5e' }}>{game.time}</span>
+                  </div>
+                  <button onClick={()=>toggleWatch(game.id)} title="Remove from watchlist" style={{ background:'transparent',border:'none',color:'#c9a227',fontSize:18,cursor:'pointer',lineHeight:1,padding:'0 2px' }}>★</button>
+                </div>
+                {/* Status badges */}
+                <div style={{ display:'flex',gap:6,flexWrap:'wrap' }}>
+                  <span style={{ fontSize:9,color:(game.awayML||'').startsWith('-')?'#f87171':'#4ade80' }}>{game.awayML}</span>
+                  <span style={{ fontSize:9,color:'#2d3a4a' }}>·</span>
+                  <span style={{ fontSize:9,color:(game.homeML||'').startsWith('-')?'#f87171':'#4ade80' }}>{game.homeML}</span>
+                  {isSharp && <span style={{ fontSize:9,fontWeight:700,color:'#f87171',background:'rgba(248,113,113,0.1)',borderRadius:4,padding:'1px 6px' }}>⚡ SHARP</span>}
+                  {hasResult && !isFin && <span style={{ fontSize:9,fontWeight:700,color:'#60a5fa',background:'rgba(96,165,250,0.08)',borderRadius:4,padding:'1px 6px' }}>✓ ANALYZED</span>}
+                  {isFin && <span style={{ fontSize:9,fontWeight:700,color:'#c9a227',background:'rgba(201,162,39,0.1)',borderRadius:4,padding:'1px 6px' }}>🔒 FINALIZED</span>}
+                  <span style={{ fontSize:9,color:'#1e2a3a',marginLeft:'auto' }}>{game.lineMovement?.slice(0,40)||'No data'}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* All other games to add */}
+      {unwatchedGames.length > 0 && (
+        <>
+          <div style={{ fontSize:10,fontWeight:700,color:'#3a4a5e',letterSpacing:'0.1em',marginBottom:10 }}>
+            ALL GAMES ({unwatchedGames.length}) <span style={{ fontWeight:400 }}>— tap to add</span>
+          </div>
+          {unwatchedGames.map((game) => (
+            <div key={game.id} onClick={()=>toggleWatch(game.id)} style={{ background:'rgba(255,255,255,0.01)',border:'1px solid rgba(255,255,255,0.05)',borderRadius:10,padding:'11px 14px',marginBottom:6,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer' }}>
+              <div style={{ display:'flex',alignItems:'center',gap:8,flex:1,minWidth:0 }}>
+                <span style={{ fontSize:9,fontWeight:700,color:game.slot==='VEGAS'?'#f87171':'#60a5fa',background:game.slot==='VEGAS'?'rgba(248,113,113,0.1)':'rgba(96,165,250,0.1)',borderRadius:4,padding:'1px 6px',flexShrink:0 }}>{game.slot}</span>
+                <span style={{ fontSize:11,fontWeight:600,color:'#64748b',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{game.away?.split(' ').pop()} @ {game.home?.split(' ').pop()}</span>
+                <span style={{ fontSize:10,color:'#2d3a4a',flexShrink:0 }}>{game.time}</span>
+              </div>
+              <span style={{ fontSize:16,color:'#2d3a4a',marginLeft:8 }}>☆</span>
+            </div>
+          ))}
+        </>
       )}
     </div>
   );
@@ -1367,6 +1424,9 @@ export default function VegasVaultApp() {
     const checkBetReady = () => {
       const now = Date.now();
       for (const game of games) {
+        // Only notify for games the client watchlisted
+        if (!watchlist.includes(game.id)) continue;
+
         // Skip started games
         const live = liveScores[`${game.away}|${game.home}`] || liveScores[`${game.awayAbbr}|${game.homeAbbr}`];
         if (live?.status === 'Live' || live?.status === 'Final') continue;
@@ -1407,7 +1467,7 @@ export default function VegasVaultApp() {
     checkBetReady();
     const interval = setInterval(checkBetReady, 60000); // check every minute
     return () => clearInterval(interval);
-  }, [games, results, liveScores, betReadyAlerts]);
+  }, [games, results, liveScores, betReadyAlerts, watchlist]);
 
   // ── AUTO-RESOLVE PICKS FROM LIVE SCORES ──────────────────────────────────────
   useEffect(() => {
@@ -1497,6 +1557,14 @@ export default function VegasVaultApp() {
     }
   }
 
+  function toggleWatch(gameId) {
+    setWatchlist(prev => {
+      const updated = prev.includes(gameId) ? prev.filter(id => id !== gameId) : [...prev, gameId];
+      try { localStorage.setItem('vv_watchlist', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+  }
+
   async function sendNotification(title, body) {
     if (typeof window === 'undefined') return;
     await requestNotificationPermission();
@@ -1528,6 +1596,9 @@ export default function VegasVaultApp() {
     if (!games || games.length === 0) return;
     const checkInterval = setInterval(async () => {
       for (const game of games) {
+        // Only send notifications for watchlisted games (AI still tracks all games)
+        const isWatchlisted = watchlist.includes(game.id);
+
         // Skip live/final games
         const live = liveScores[`${game.away}|${game.home}`] || liveScores[`${game.awayAbbr}|${game.homeAbbr}`];
         if (live?.status === 'Live' || live?.status === 'Final') continue;
@@ -1553,10 +1624,13 @@ export default function VegasVaultApp() {
                   setFinalized(prev => ({ ...prev, [key]: true }));
                   const pick = fresh.summary?.pick || 'Pick';
                   const tier = fresh.summary?.tierLabel || '';
-                  sendNotification(
-                    `🔒 ${tier} FINALIZED — ${game.away} @ ${game.home}`,
-                    `${slot} slot: ${pick} | Line moved ${Math.abs(current - last)} pts`
-                  );
+                  // Only push notification if game is in client's watchlist
+                  if (isWatchlisted) {
+                    sendNotification(
+                      `🔒 ${tier} FINALIZED — ${game.away} @ ${game.home}`,
+                      `${slot} slot: ${pick} | Line moved ${Math.abs(current - last)} pts`
+                    );
+                  }
                 }
               } catch {}
             }
@@ -1567,17 +1641,19 @@ export default function VegasVaultApp() {
           if (existing?.summary?.tierLabel === 'LOCK' && existing?.summary?.confidence === 'HIGH' && !finalized[key]) {
             setFinalized(prev => ({ ...prev, [key]: true }));
             setResults(prev => ({ ...prev, [key]: { ...existing, finalized: true, finalizedAt: new Date().toISOString() } }));
-            sendNotification(
-              `🔒 LOCK FINALIZED — ${game.away} @ ${game.home}`,
-              `${slot}: ${existing.summary?.pick} — AI has high confidence in this play`
-            );
+            if (isWatchlisted) {
+              sendNotification(
+                `🔒 LOCK FINALIZED — ${game.away} @ ${game.home}`,
+                `${slot}: ${existing.summary?.pick} — AI has high confidence in this play`
+              );
+            }
           }
         }
       }
     }, 5 * 60 * 1000); // check every 5 minutes
 
     return () => clearInterval(checkInterval);
-  }, [games, results, finalized, liveScores]);
+  }, [games, results, finalized, liveScores, watchlist]);
 
   // ── PERSIST RESULTS TO LOCALSTORAGE ──────────────────────────────────────────
   useEffect(() => {
@@ -1771,7 +1847,11 @@ export default function VegasVaultApp() {
         <div className="vv-nav-center" style={{ flex:1,justifyContent:"center" }}>
           {[
             {t:"DASHBOARD",icon:null},
-            {t:"ALERTS",icon:"🔔",badge:()=>Object.keys(betReadyAlerts).length+trellAlerts.length||3},
+            {t:"ALERTS",icon:"🔔",badge:()=>{
+              const wr = Object.keys(betReadyAlerts).filter(k=>{ const g=games.find(g=>k.startsWith(g.id+'-')); return g&&watchlist.includes(g.id); }).length;
+              const wt = trellAlerts.filter(a=>!a.gameId||watchlist.includes(a.gameId)).length;
+              return wr+wt;
+            }},
             {t:"WATCHLIST",icon:"☆",badge:()=>watchlist.length||0},
           ].map((tab,i)=>{
             const isActive = activeTab===tab.t;
@@ -1853,9 +1933,9 @@ export default function VegasVaultApp() {
 
             {/* ── VIEW ROUTER ── */}
             {activeTab==='ALERTS' ? (
-              <AlertsView betReadyAlerts={betReadyAlerts} trellAlerts={trellAlerts} games={games} results={results} pickHistory={pickHistory}/>
+              <AlertsView betReadyAlerts={betReadyAlerts} trellAlerts={trellAlerts} games={games} results={results} pickHistory={pickHistory} watchlist={watchlist}/>
             ) : activeTab==='WATCHLIST' ? (
-              <WatchlistView watchlist={watchlist} setWatchlist={setWatchlist} games={games} results={results} generating={generating} onGenerate={handleGenerate} liveScores={liveScores} isSubscribed={isSubscribed} finalized={finalized} onShowAuth={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}}/>
+              <WatchlistView watchlist={watchlist} toggleWatch={toggleWatch} games={games} results={results} finalized={finalized}/>
             ) : activeNav==='SHARP MONEY' ? (
               <SharpMoneyView games={games} marketScanner={marketScanner}/>
             ) : activeNav==='VAULT LOCKS' ? (
@@ -1963,7 +2043,7 @@ export default function VegasVaultApp() {
             ):(
               <div className="vv-cards">
                 {filteredGames.map(game=>(
-                  <GameCard key={game.id} game={game} results={results} generating={generating} onGenerate={handleGenerate} onCardClick={handleCardClick} liveScores={liveScores} isSubscribed={isSubscribed} finalized={finalized} isQueued={preAnalyzeQueue.some(q=>q.game.id===game.id)} betReady={betReadyAlerts[`${game.id}-PUBLIC`]||betReadyAlerts[`${game.id}-VEGAS`]} onShowAuth={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}}/>
+                  <GameCard key={game.id} game={game} results={results} generating={generating} onGenerate={handleGenerate} onCardClick={handleCardClick} liveScores={liveScores} isSubscribed={isSubscribed} finalized={finalized} isQueued={preAnalyzeQueue.some(q=>q.game.id===game.id)} betReady={betReadyAlerts[`${game.id}-PUBLIC`]||betReadyAlerts[`${game.id}-VEGAS`]} onShowAuth={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}} watchlist={watchlist} onToggleWatch={toggleWatch}/>
                 ))}
               </div>
             )}
