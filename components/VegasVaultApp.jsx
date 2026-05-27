@@ -292,7 +292,7 @@ function ScamPlayBlock({ scam }) {
 
 // ── PLAY RESULT MODAL ─────────────────────────────────────────────────────────
 
-function PlayResult({ result, game, onClose }) {
+function PlayResult({ result, game, onClose, onMarkResult, isResolved, resolvedResult }) {
   const [expanded, setExpanded] = useState(false);
   const tier = TIER_STYLES[result.summary.tier] || TIER_STYLES["3"];
   const conf = CONF_STYLES[result.summary.confidence] || CONF_STYLES.MEDIUM;
@@ -342,6 +342,22 @@ function PlayResult({ result, game, onClose }) {
         <div style={{ margin:"0 22px 18px",padding:"14px 16px",background:"rgba(201,162,39,0.04)",border:"1px solid rgba(201,162,39,0.12)",borderRadius:10 }}>
           <div style={{ fontSize:9,fontWeight:700,letterSpacing:"0.12em",color:"#c9a227",marginBottom:8 }}>FINAL VERDICT</div>
           <p style={{ fontSize:13,color:"#e2e8f0",lineHeight:1.75,margin:0 }}>{result.finalVerdict}</p>
+
+          {/* Manual result tracking */}
+          <div style={{ marginTop:16,display:"flex",alignItems:"center",gap:8 }}>
+            <span style={{ fontSize:10,color:"#3a4a5e",letterSpacing:"0.06em" }}>RESULT:</span>
+            {isResolved ? (
+              <span style={{ fontSize:11,fontWeight:700,color:resolvedResult==='win'?"#4ade80":"#f87171",background:resolvedResult==='win'?"rgba(74,222,128,0.1)":"rgba(248,113,113,0.1)",border:`1px solid ${resolvedResult==='win'?"rgba(74,222,128,0.3)":"rgba(248,113,113,0.3)"}`,borderRadius:6,padding:"3px 10px" }}>
+                {resolvedResult==='win'?"✅ WIN":"❌ LOSS"}
+              </span>
+            ) : (
+              <>
+                <button onClick={()=>onMarkResult('win')} style={{ fontSize:10,fontWeight:700,color:"#4ade80",background:"rgba(74,222,128,0.08)",border:"1px solid rgba(74,222,128,0.25)",borderRadius:6,padding:"4px 12px",cursor:"pointer",fontFamily:"inherit" }}>✅ WIN</button>
+                <button onClick={()=>onMarkResult('loss')} style={{ fontSize:10,fontWeight:700,color:"#f87171",background:"rgba(248,113,113,0.08)",border:"1px solid rgba(248,113,113,0.25)",borderRadius:6,padding:"4px 12px",cursor:"pointer",fontFamily:"inherit" }}>❌ LOSS</button>
+                <span style={{ fontSize:9,color:"#2d3a4a" }}>Mark to track win rate</span>
+              </>
+            )}
+          </div>
         </div>
         <div style={{ padding:"0 22px 18px" }}>
           <button onClick={()=>setExpanded(!expanded)} style={{ width:"100%",padding:"11px",background:expanded?"rgba(201,162,39,0.06)":"rgba(255,255,255,0.03)",border:`1px solid ${expanded?"rgba(201,162,39,0.2)":"rgba(255,255,255,0.07)"}`,borderRadius:10,fontSize:12,fontWeight:500,color:expanded?"#c9a227":"#64748b",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,fontFamily:"inherit" }}>
@@ -811,6 +827,22 @@ export default function VegasVaultApp() {
     } catch(e) {}
   }, []);
 
+  function markResult(key, result) {
+    const existing = pickHistory.find(p => p.key === key);
+    if (existing) return; // already resolved
+    const pick = results[key];
+    if (!pick) return;
+    const entry = {
+      key, result,
+      pick: pick.summary?.pick || 'Unknown',
+      betType: pick.summary?.betType || 'ML',
+      game: activeGame ? `${activeGame.away} @ ${activeGame.home}` : 'Unknown',
+      resolvedAt: new Date().toISOString(),
+      date: activeGame?.date || new Date().toISOString().split('T')[0],
+    };
+    setPickHistory(prev => [...prev, entry]);
+  }
+
   async function doAuth() {
     setAuthLoading(true); setAuthError('');
     try {
@@ -847,7 +879,13 @@ export default function VegasVaultApp() {
     } catch(e) {}
   }
   const [bookmakerCount, setBookmakerCount] = useState(12);
-  const [winRate, setWinRate]         = useState(null);
+  const [winRate, setWinRate] = useState(null);
+  const [pickHistory, setPickHistory] = useState(() => {
+    try {
+      const saved = typeof window !== 'undefined' && localStorage.getItem('vv_pick_history');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
   const [aiConfidence, setAiConfidence] = useState(null);
   const [confHistory, setConfHistory] = useState([]);
   const [generating, setGenerating]   = useState(null);
@@ -878,6 +916,77 @@ export default function VegasVaultApp() {
     const t=setInterval(()=>setTime(new Date()),1000);
     return()=>clearInterval(t);
   },[]);
+
+  // ── AUTO-RESOLVE PICKS FROM LIVE SCORES ──────────────────────────────────────
+  useEffect(() => {
+    if (!games || Object.keys(liveScores).length === 0) return;
+    for (const game of games) {
+      const liveKey1 = `${game.away}|${game.home}`;
+      const liveKey2 = `${game.awayAbbr}|${game.homeAbbr}`;
+      const live = liveScores[liveKey1] || liveScores[liveKey2];
+      if (!live || live.status !== 'Final') continue;
+
+      for (const slot of ['PUBLIC', 'VEGAS']) {
+        const key = `${game.id}-${slot}`;
+        const pick = results[key];
+        if (!pick?.summary?.pick) continue;
+
+        // Check if already resolved
+        const alreadyResolved = pickHistory.some(p => p.key === key);
+        if (alreadyResolved) continue;
+
+        // Determine win/loss based on pick vs final score
+        const pickTeam = pick.summary.pick;
+        const betType = pick.summary.betType || 'ML';
+        const awayScore = live.awayScore;
+        const homeScore = live.homeScore;
+        if (awayScore === null || homeScore === null) continue;
+
+        const awayWon = awayScore > homeScore;
+        const homeWon = homeScore > awayScore;
+        const margin = Math.abs(homeScore - awayScore);
+        const awayTeamWon = awayWon;
+        const homeTeamWon = homeWon;
+        const pickIsAway = pickTeam === game.away || game.away?.includes(pickTeam) || pickTeam?.includes(game.away?.split(' ').pop());
+        const pickIsHome = !pickIsAway;
+
+        let result = null;
+        if (betType === 'ML') {
+          result = (pickIsAway && awayTeamWon) || (pickIsHome && homeTeamWon) ? 'win' : 'loss';
+        } else if (betType.includes('-1.5') || betType.includes('run line')) {
+          result = (pickIsAway && awayTeamWon && margin >= 2) || (pickIsHome && homeTeamWon && margin >= 2) ? 'win' : 'loss';
+        } else if (betType.includes('+1.5')) {
+          result = (pickIsAway && (awayTeamWon || margin <= 1)) || (pickIsHome && (homeTeamWon || margin <= 1)) ? 'win' : 'loss';
+        } else if (betType.toUpperCase().includes('OVER')) {
+          const total = parseFloat(betType.replace(/[^0-9.]/g, ''));
+          result = (awayScore + homeScore) > total ? 'win' : 'loss';
+        } else if (betType.toUpperCase().includes('UNDER')) {
+          const total = parseFloat(betType.replace(/[^0-9.]/g, ''));
+          result = (awayScore + homeScore) < total ? 'win' : 'loss';
+        } else {
+          result = (pickIsAway && awayTeamWon) || (pickIsHome && homeTeamWon) ? 'win' : 'loss';
+        }
+
+        if (result) {
+          const historyEntry = {
+            key, slot, game: `${game.away} @ ${game.home}`,
+            pick: pickTeam, betType, result,
+            score: `${game.awayAbbr} ${awayScore} - ${homeScore} ${game.homeAbbr}`,
+            resolvedAt: new Date().toISOString(),
+            date: game.date,
+          };
+          setPickHistory(prev => [...prev, historyEntry]);
+
+          // Notification
+          const emoji = result === 'win' ? '✅' : '❌';
+          sendNotification(
+            `${emoji} ${result.toUpperCase()} — ${game.away} @ ${game.home}`,
+            `${slot} pick: ${pickTeam} ${betType} | Final: ${game.awayAbbr} ${awayScore}-${homeScore} ${game.homeAbbr}`
+          );
+        }
+      }
+    }
+  }, [liveScores, games]);
 
   // ── FINALIZATION: re-analyze when lines move, mark FINAL ─────────────────────
   const lastLineRef = useRef({});
@@ -987,30 +1096,31 @@ export default function VegasVaultApp() {
     try { localStorage.setItem('vv_finalized', JSON.stringify(finalized)); } catch {}
   }, [finalized]);
 
-  // ── WIN RATE & AI CONFIDENCE — computed from analyzed results ──────────────
+  // Persist pick history
+  useEffect(() => {
+    try { localStorage.setItem('vv_pick_history', JSON.stringify(pickHistory)); } catch {}
+  }, [pickHistory]);
+
+  // ── WIN RATE & AI CONFIDENCE ──────────────────────────────────────────────────
   useEffect(() => {
     const allResults = Object.values(results);
-    if (allResults.length === 0) { setWinRate(null); setAiConfidence(null); return; }
+    if (allResults.length === 0) { setAiConfidence(null); return; }
 
-    // AI Confidence = % of results that are Tier 1 or 2 (not PASS/Tier3)
+    // AI Confidence = % of results that are Tier 1 or 2
     const strongPicks = allResults.filter(r => r.summary?.tier === '1' || r.summary?.tier === '2').length;
     const confPct = Math.round((strongPicks / allResults.length) * 100);
     setAiConfidence(confPct);
-
-    // Confidence level label
-    // Win rate: track HIGH confidence picks — assume 68% base, adjust by tier distribution
-    const locks = allResults.filter(r => r.summary?.tier === '1').length;
-    const t2 = allResults.filter(r => r.summary?.tier === '2').length;
-    const passes = allResults.filter(r => r.summary?.tier === 'PASS').length;
-    const playable = allResults.length - passes;
-    if (playable > 0) {
-      const adjRate = Math.round(65 + (locks * 5) + (t2 * 2) - (passes * 3));
-      setWinRate(Math.min(Math.max(adjRate, 50), 85));
-    }
-
-    // Update confidence history for sparkline
     setConfHistory(prev => [...prev.slice(-14), confPct]);
   }, [results]);
+
+  // Win rate = real results from pick history (last 7 days)
+  useEffect(() => {
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const recent = pickHistory.filter(p => p.resolvedAt && new Date(p.resolvedAt).getTime() > sevenDaysAgo);
+    if (recent.length === 0) { setWinRate(null); return; }
+    const wins = recent.filter(p => p.result === 'win').length;
+    setWinRate(Math.round((wins / recent.length) * 100));
+  }, [pickHistory]);
 
   // ── PRE-ANALYSIS: queue games for background analysis ────────────────────────
   useEffect(() => {
@@ -1394,7 +1504,17 @@ export default function VegasVaultApp() {
       </div>
 
       {activeResult&&activeGame&&(
-        <PlayResult result={activeResult} game={activeGame} onClose={()=>{setActiveResult(null);setActiveGame(null);}}/>
+        <PlayResult
+          result={activeResult}
+          game={activeGame}
+          onClose={()=>{setActiveResult(null);setActiveGame(null);}}
+          onMarkResult={(r)=>{
+            const key=`${activeGame.id}-${activeGame.slot||'PUBLIC'}`;
+            markResult(key,r);
+          }}
+          isResolved={pickHistory.some(p=>p.key===`${activeGame.id}-${activeGame.slot||'PUBLIC'}`)}
+          resolvedResult={pickHistory.find(p=>p.key===`${activeGame.id}-${activeGame.slot||'PUBLIC'}`)?.result}
+        />
       )}
 
       {showAuth&&(
