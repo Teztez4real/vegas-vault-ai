@@ -1949,6 +1949,9 @@ export default function VegasVaultApp() {
     if (toAnalyze.length > 0) setPreAnalyzeQueue(toAnalyze);
   }, [games]);
 
+  // Track whether analysis-complete notification has been sent today
+  const analysisDoneNotifKey = `vv_analysis_notif_${selectedDate}`;
+
   // Process pre-analysis queue one at a time
   useEffect(() => {
     if (preAnalyzeQueue.length === 0 || preAnalyzing) return;
@@ -1961,7 +1964,32 @@ export default function VegasVaultApp() {
     setPreAnalyzing(true);
     generatePlay({ ...next.game, slot: next.slot }).then(result => {
       if (cancelled) return;
-      setResults(prev => ({ ...prev, [next.key]: result }));
+      if (!result.summary) result.summary = { tier:'3', tierLabel:'Tier 3', pick:'No Pick', betType:'N/A', confidence:'LOW', verdict:'Analysis incomplete.', isScamPlay:false, slot:next.slot };
+      setResults(prev => {
+        const updated = { ...prev, [next.key]: result };
+        // Check if this was the last game — fire notification
+        if (preAnalyzeQueue.length === 1) {
+          const alreadyNotified = typeof window !== 'undefined' && localStorage.getItem(analysisDoneNotifKey);
+          if (!alreadyNotified) {
+            // Count locks and tier 2s across all results
+            const allResults = Object.values(updated);
+            const locks  = allResults.filter(r => r?.summary?.tier === '1').length;
+            const tier2s = allResults.filter(r => r?.summary?.tier === '2').length;
+            const passes = allResults.filter(r => r?.summary?.tier === 'PASS' || r?.summary?.tier === '3').length;
+            let body = '';
+            if (locks > 0) body = `🔒 ${locks} LOCK${locks>1?'S':''} identified`;
+            if (tier2s > 0) body += `${body?' · ':''}⭐ ${tier2s} Tier 2 play${tier2s>1?'s':''}`;
+            if (passes > 0) body += `${body?' · ':''}${passes} pass${passes>1?'es':''}`;
+            if (!body) body = `${allResults.length} games analyzed — open the app to see plays`;
+            sendNotification(
+              "✅ Vegas Vault AI — Analysis Complete",
+              body || `Today's ${allResults.length} games have been analyzed. Check your plays.`
+            );
+            try { localStorage.setItem(analysisDoneNotifKey, '1'); } catch {}
+          }
+        }
+        return updated;
+      });
       setPreAnalyzeQueue(q => q.slice(1));
       setPreAnalyzing(false);
     }).catch(() => {
