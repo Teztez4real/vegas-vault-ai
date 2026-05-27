@@ -812,7 +812,7 @@ function TopPlayBanner({ topPlay, loading, results, isSubscribed, onShowAuth, on
   const scamPlay = topPlay.result?.scamPlay || topPlay.result?.analysis?.scamPlay;
 
   return (
-    <div style={{ background:`linear-gradient(135deg,rgba(201,162,39,0.1),rgba(201,162,39,0.04))`,border:'1px solid rgba(201,162,39,0.4)',borderRadius:14,marginBottom:20,overflow:'hidden' }}>
+    <div className="vv-top-play" style={{ background:`linear-gradient(135deg,rgba(201,162,39,0.1),rgba(201,162,39,0.04))`,border:'1px solid rgba(201,162,39,0.4)',borderRadius:14,marginBottom:20,overflow:'hidden' }}>
 
       {/* Header */}
       <div style={{ padding:'14px 18px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap' }}>
@@ -838,7 +838,7 @@ function TopPlayBanner({ topPlay, loading, results, isSubscribed, onShowAuth, on
       </div>
 
       {/* Game info */}
-      <div style={{ padding:'0 18px 14px',borderBottom:'1px solid rgba(201,162,39,0.15)' }}>
+      <div style={{ padding:'0 14px 14px',borderBottom:'1px solid rgba(201,162,39,0.15)' }}>
         <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8 }}>
           <div>
             <div style={{ fontSize:16,fontWeight:800,color:'#f1f5f9',letterSpacing:'-0.01em' }}>
@@ -2090,13 +2090,19 @@ export default function VegasVaultApp() {
         }
         @media(max-width:700px){
           .vv-sidebar{display:none!important;}
-          .vv-bottom-nav{display:flex!important;position:fixed;bottom:0;left:0;right:0;height:58px;background:rgba(7,9,26,0.97);border-top:1px solid rgba(255,255,255,0.08);z-index:200;align-items:center;justify-content:space-around;backdrop-filter:blur(20px);}
+          .vv-bottom-nav{display:flex!important;position:fixed;bottom:0;left:0;right:0;height:60px;background:rgba(7,9,26,0.98);border-top:1px solid rgba(255,255,255,0.08);z-index:200;align-items:center;justify-content:space-around;backdrop-filter:blur(20px);padding:0 4px;}
           .vv-cards{grid-template-columns:1fr!important;}
           .vv-stats{grid-template-columns:repeat(2,1fr)!important;}
+          .vv-top-play{margin-left:-2px!important;margin-right:-2px!important;}
+          .vv-top-play-grid{grid-template-columns:1fr!important;}
           .vv-nav-center{display:none!important;}
           .vv-ticker-lbl{display:none!important;}
           .vv-nav-logo span.lbl{display:none!important;}
-          .vv-main-inner{padding:12px 12px 74px!important;}
+          .vv-main-inner{padding:10px 10px 78px!important;}
+          .vv-top-nav-actions{gap:4px!important;}
+          .vv-admin-btns{display:none!important;}
+          .vv-slate-header{flex-wrap:wrap!important;gap:6px!important;}
+          .vv-today-title{font-size:14px!important;white-space:nowrap;}
         }
       `}</style>
 
@@ -2136,9 +2142,11 @@ export default function VegasVaultApp() {
         <div style={{ display:"flex",alignItems:"center",gap:10,padding:"0 18px",flexShrink:0 }}>
           {authUser ? (
             <div style={{ display:"flex",alignItems:"center",gap:8 }}>
-              {authUser.email===ADMIN_EMAIL&&<span style={{ fontSize:9,fontWeight:700,color:"#c9a227",background:"rgba(201,162,39,0.12)",border:"1px solid rgba(201,162,39,0.3)",borderRadius:4,padding:"2px 7px",letterSpacing:"0.08em" }}>ADMIN</span>}
-              {authUser.email===ADMIN_EMAIL&&<button onClick={()=>{ if(window.confirm('Clear all analyzed plays and start over?')){ clearAllPlays(); }}} style={{ fontSize:9,fontWeight:700,color:"#f87171",background:"rgba(248,113,113,0.08)",border:"1px solid rgba(248,113,113,0.25)",borderRadius:4,padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",letterSpacing:"0.06em" }}>↺ CLEAR PLAYS</button>}
-              {authUser.email===ADMIN_EMAIL&&<button onClick={testNotification} style={{ fontSize:9,fontWeight:700,color:"#4ade80",background:"rgba(74,222,128,0.08)",border:"1px solid rgba(74,222,128,0.25)",borderRadius:4,padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",letterSpacing:"0.06em" }}>🔔 TEST NOTIF</button>}
+              {authUser.email===ADMIN_EMAIL&&<span className="vv-admin-btns" style={{ display:"flex",alignItems:"center",gap:5 }}>
+                <span style={{ fontSize:9,fontWeight:700,color:"#c9a227",background:"rgba(201,162,39,0.12)",border:"1px solid rgba(201,162,39,0.3)",borderRadius:4,padding:"2px 7px",letterSpacing:"0.08em" }}>ADMIN</span>
+                <button onClick={()=>{ if(window.confirm('Clear all analyzed plays and start over?')){ clearAllPlays(); }}} style={{ fontSize:9,fontWeight:700,color:"#f87171",background:"rgba(248,113,113,0.08)",border:"1px solid rgba(248,113,113,0.25)",borderRadius:4,padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",letterSpacing:"0.06em" }}>↺ CLEAR PLAYS</button>
+                <button onClick={testNotification} style={{ fontSize:9,fontWeight:700,color:"#4ade80",background:"rgba(74,222,128,0.08)",border:"1px solid rgba(74,222,128,0.25)",borderRadius:4,padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",letterSpacing:"0.06em" }}>🔔 TEST NOTIF</button>
+              </span>}
               <div style={{ width:32,height:32,borderRadius:"50%",background:"linear-gradient(135deg,#c9a227,#8b6d10)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,color:"#000",cursor:"pointer" }} onClick={()=>window.location.href='/settings'}>
                 {(authUser.email?.[0]||'U').toUpperCase()}
               </div>
@@ -2290,7 +2298,7 @@ export default function VegasVaultApp() {
             {/* Slate header */}
             <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
               <div style={{ display:"flex",alignItems:"center",gap:10 }}>
-                <h2 style={{ fontSize:16,fontWeight:700,color:"#f1f5f9" }}>Today's Slate</h2>
+                <h2 className="vv-today-title" style={{ fontSize:16,fontWeight:700,color:"#f1f5f9",whiteSpace:"nowrap" }}>Today's Slate</h2>
                 {preAnalyzeQueue.length > 0 && (
                   <div style={{ display:"flex",alignItems:"center",gap:5,background:"rgba(96,165,250,0.08)",border:"1px solid rgba(96,165,250,0.2)",borderRadius:6,padding:"2px 8px" }}>
                     <div style={{ width:5,height:5,borderRadius:"50%",background:"#60a5fa" }}/>
@@ -2374,34 +2382,26 @@ export default function VegasVaultApp() {
 
       {/* MOBILE BOTTOM NAV */}
       <div className="vv-bottom-nav">
-        <div style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"6px 12px",cursor:"pointer" }}>
-          <span style={{ fontSize:17,color:"#c9a227" }}>⊞</span>
-          <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.07em",color:"#c9a227" }}>HOME</span>
-        </div>
-        <div style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"6px 12px",cursor:"pointer",opacity:0.38 }}>
-          <span style={{ fontSize:17,color:"#475569" }}>📅</span>
-          <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.07em",color:"#475569" }}>SLATE</span>
-        </div>
-        {authUser ? (
-          <div onClick={()=>window.location.href='/settings'} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"6px 12px",cursor:"pointer" }}>
-            <div style={{ width:26,height:26,borderRadius:"50%",background:"linear-gradient(135deg,#c9a227,#8b6d10)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:"#000" }}>{(authUser.email?.[0]||'U').toUpperCase()}</div>
-            <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.07em",color:"#c9a227" }}>ACCOUNT</span>
+        {[
+          { icon:'⊞', label:'HOME', action:()=>{ setActiveTab('DASHBOARD'); setActiveNav('DASHBOARD'); }, active: activeTab==='DASHBOARD' && activeNav==='DASHBOARD' },
+          { icon:'📅', label:'SLATE', action:()=>setActiveNav("TODAY'S SLATE"), active: activeNav==="TODAY'S SLATE" },
+          { icon:'📊', label:'ODDS', action:()=>setShowOddsMovement(true), active:false },
+          { icon:'⚙',  label:'SETTINGS', action:()=>window.location.href='/settings', active:false },
+          { icon:'↺',  label:'HISTORY', action:()=>setShowHistory(true), active:false, badge: pickHistory.length > 0 },
+        ].map((item,i) => (
+          <div key={i} onClick={item.action} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:2,padding:"6px 8px",cursor:"pointer",flex:1,position:"relative" }}>
+            <span style={{ fontSize:18,color:item.active?"#c9a227":"#475569" }}>{item.icon}</span>
+            {item.badge && <div style={{ position:"absolute",top:4,right:'25%',width:7,height:7,borderRadius:"50%",background:"#c9a227" }}/>}
+            <span style={{ fontSize:8,fontWeight:item.active?700:500,letterSpacing:"0.06em",color:item.active?"#c9a227":"#475569" }}>{item.label}</span>
           </div>
-        ) : (
-          <div onClick={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"6px 12px",cursor:"pointer" }}>
-            <span style={{ fontSize:17,color:"#c9a227" }}>🔐</span>
-            <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.07em",color:"#c9a227" }}>LOGIN</span>
+        ))}
+        {/* Login button replaces last item when not logged in */}
+        {!authUser && (
+          <div onClick={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}} style={{ position:"absolute",right:8,display:"flex",flexDirection:"column",alignItems:"center",gap:2,padding:"6px 8px",cursor:"pointer" }}>
+            <span style={{ fontSize:18,color:"#c9a227" }}>🔐</span>
+            <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.06em",color:"#c9a227" }}>LOGIN</span>
           </div>
         )}
-        <div onClick={()=>window.location.href='/settings'} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"6px 12px",cursor:"pointer",opacity:0.7 }}>
-          <span style={{ fontSize:17,color:"#475569" }}>⚙</span>
-          <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.07em",color:"#475569" }}>SETTINGS</span>
-        </div>
-        <div onClick={()=>setShowHistory(true)} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"6px 12px",cursor:"pointer",position:"relative" }}>
-          <span style={{ fontSize:17,color:"#475569" }}>↺</span>
-          {pickHistory.length > 0 && <div style={{ position:"absolute",top:4,right:6,width:8,height:8,borderRadius:"50%",background:"#c9a227" }}/>}
-          <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.07em",color:"#475569" }}>HISTORY</span>
-        </div>
       </div>
 
       {activeResult&&activeGame&&(
