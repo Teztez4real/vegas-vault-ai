@@ -1563,32 +1563,36 @@ export default function VegasVaultApp() {
       {showOddsMovement&&(
         <div style={{ position:"fixed",inset:0,zIndex:9000,display:"flex" }}>
           <div onClick={()=>setShowOddsMovement(false)} style={{ position:"absolute",inset:0,background:"rgba(0,0,0,0.6)",backdropFilter:"blur(8px)" }}/>
-          <div style={{ position:"relative",marginLeft:"auto",width:"100%",maxWidth:600,height:"100%",background:"#07091a",borderLeft:"1px solid rgba(255,255,255,0.07)",overflowY:"auto",display:"flex",flexDirection:"column" }}>
+          <div style={{ position:"relative",marginLeft:"auto",width:"100%",maxWidth:620,height:"100%",background:"#07091a",borderLeft:"1px solid rgba(255,255,255,0.07)",overflowY:"auto",display:"flex",flexDirection:"column" }}>
 
             {/* Header */}
             <div style={{ padding:"18px 20px",borderBottom:"1px solid rgba(255,255,255,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:"#07091a",zIndex:10 }}>
               <div>
                 <div style={{ fontSize:14,fontWeight:700,color:"#f1f5f9",letterSpacing:"0.04em" }}>📊 ODDS MOVEMENT</div>
-                <div style={{ fontSize:10,color:"#3a4a5e",marginTop:2 }}>{games.length} games tracked today</div>
+                <div style={{ fontSize:10,color:"#3a4a5e",marginTop:2 }}>Live DraftKings vs Pinnacle · {games.length} games today</div>
               </div>
               <button onClick={()=>setShowOddsMovement(false)} style={{ background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:8,width:32,height:32,cursor:"pointer",color:"#64748b",fontSize:14,fontFamily:"inherit" }}>✕</button>
             </div>
 
             {/* Summary bar */}
             {(()=>{
-              const moving = games.filter(g=>g.lineMovement && g.lineMovement!=="Stable" && g.lineMovement!=="TBD").length;
-              const stable = games.filter(g=>g.lineMovement==="Stable").length;
-              const sharp  = games.filter(g=>{ const lm=(g.lineMovement||"").toLowerCase(); return lm.includes("steam") || lm.includes("sharp") || lm.includes("reverse"); }).length;
+              const mlbGames = games.filter(g=>g.sport==="MLB");
+              const moving = mlbGames.filter(g=>g.lineMovement && !g.lineMovement.includes("stable") && !g.lineMovement.includes("Stable") && g.lineMovement!=="TBD" && g.lineMovement!=="Odds API not connected").length;
+              const sharp  = mlbGames.filter(g=>(g.lineMovement||"").includes("SHARP SIGNAL") || (g.rlm)).length;
+              const posEV  = mlbGames.filter(g=>g.homeEV > 0 || g.awayEV > 0).length;
+              const stable = mlbGames.filter(g=>(g.lineMovement||"").toLowerCase().includes("stable")).length;
               return (
-                <div style={{ padding:"16px 20px",borderBottom:"1px solid rgba(255,255,255,0.06)",display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12 }}>
+                <div style={{ padding:"14px 20px",borderBottom:"1px solid rgba(255,255,255,0.06)",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10 }}>
                   {[
-                    { label:"MOVING LINES", value:moving, color:"#c9a227" },
-                    { label:"STABLE",        value:stable, color:"#4ade80" },
-                    { label:"SHARP ACTION",  value:sharp,  color:"#f87171" },
+                    { label:"MOVING", value:moving, color:"#c9a227", sub:"lines" },
+                    { label:"SHARP",  value:sharp,  color:"#f87171", sub:"signals" },
+                    { label:"+EV",    value:posEV,  color:"#4ade80", sub:"spots" },
+                    { label:"STABLE", value:stable, color:"#475569", sub:"lines" },
                   ].map((s,i)=>(
-                    <div key={i} style={{ background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.05)",borderRadius:10,padding:"12px 10px",textAlign:"center" }}>
-                      <div style={{ fontSize:9,color:"#3a4a5e",letterSpacing:"0.1em",marginBottom:4 }}>{s.label}</div>
-                      <div style={{ fontSize:26,fontWeight:800,color:s.color,lineHeight:1 }}>{s.value}</div>
+                    <div key={i} style={{ background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.05)",borderRadius:10,padding:"10px 8px",textAlign:"center" }}>
+                      <div style={{ fontSize:8,color:"#3a4a5e",letterSpacing:"0.1em",marginBottom:3 }}>{s.label}</div>
+                      <div style={{ fontSize:24,fontWeight:800,color:s.color,lineHeight:1 }}>{s.value}</div>
+                      <div style={{ fontSize:8,color:"#2d3a4a",marginTop:2 }}>{s.sub}</div>
                     </div>
                   ))}
                 </div>
@@ -1603,45 +1607,86 @@ export default function VegasVaultApp() {
                   <div style={{ fontSize:14,fontWeight:600,color:"#2d3a4a" }}>No games loaded yet</div>
                 </div>
               ) : games.map((game,i)=>{
-                const lm = game.lineMovement || "Stable";
-                const isStable = lm==="Stable";
+                const lm = game.lineMovement || "No data";
                 const lmLower = lm.toLowerCase();
-                const isSharp = lmLower.includes("steam")||lmLower.includes("sharp")||lmLower.includes("reverse");
-                const isMoving = !isStable && lm!=="TBD";
-                const borderColor = isSharp?"rgba(248,113,113,0.35)":isMoving?"rgba(201,162,39,0.35)":"rgba(255,255,255,0.05)";
-                const badge = isSharp?{ label:"SHARP",color:"#f87171",bg:"rgba(248,113,113,0.1)" }
-                              :isMoving?{ label:"MOVING",color:"#c9a227",bg:"rgba(201,162,39,0.1)" }
-                              :{ label:"STABLE",color:"#4ade80",bg:"rgba(74,222,128,0.08)" };
+                const isSharp   = lm.includes("SHARP SIGNAL") || !!game.rlm;
+                const isMoving  = lm.includes("moved toward") && !isSharp;
+                const isStable  = lmLower.includes("stable");
+                const hasEV     = game.homeEV > 0 || game.awayEV > 0;
+
+                const borderColor = isSharp?"rgba(248,113,113,0.4)":isMoving?"rgba(201,162,39,0.35)":hasEV?"rgba(74,222,128,0.25)":"rgba(255,255,255,0.05)";
+                const badge = isSharp ? { label:"⚡ SHARP",color:"#f87171",bg:"rgba(248,113,113,0.12)" }
+                            : isMoving? { label:"📈 MOVING",color:"#c9a227",bg:"rgba(201,162,39,0.1)" }
+                            : hasEV   ? { label:"+EV",color:"#4ade80",bg:"rgba(74,222,128,0.08)" }
+                            : { label:"STABLE",color:"#475569",bg:"rgba(255,255,255,0.04)" };
+
+                // Opening vs current movement arrows
+                const awayOpen = game.openingAwayML;
+                const homeOpen = game.openingHomeML;
+                const awayCur  = game.awayML;
+                const homeCur  = game.homeML;
+                const awayMoved = awayOpen && awayCur && awayOpen!=="N/A" && awayCur!=="N/A" && awayOpen!==awayCur;
+                const homeMoved = homeOpen && homeCur && homeOpen!=="N/A" && homeCur!=="N/A" && homeOpen!==homeCur;
+
+                // EV display
+                const homeEVStr = game.homeEV != null ? (game.homeEV > 0 ? `+${game.homeEV}%` : `${game.homeEV}%`) : null;
+                const awayEVStr = game.awayEV != null ? (game.awayEV > 0 ? `+${game.awayEV}%` : `${game.awayEV}%`) : null;
+                const homeEVColor = game.homeEV > 0 ? "#4ade80" : game.homeEV < 0 ? "#f87171" : "#475569";
+                const awayEVColor = game.awayEV > 0 ? "#4ade80" : game.awayEV < 0 ? "#f87171" : "#475569";
+
                 return (
                   <div key={game.id||i} style={{ background:"rgba(255,255,255,0.02)",border:`1px solid ${borderColor}`,borderRadius:12,padding:"14px 16px",marginBottom:10 }}>
-                    <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8 }}>
-                      <div style={{ display:"flex",alignItems:"center",gap:8 }}>
-                        <span style={{ fontSize:9,fontWeight:700,color:game.slot==="VEGAS"?"#f87171":"#60a5fa",background:game.slot==="VEGAS"?"rgba(248,113,113,0.1)":"rgba(96,165,250,0.1)",borderRadius:4,padding:"1px 6px",letterSpacing:"0.06em" }}>{game.slot||"PUBLIC"}</span>
+
+                    {/* Top row: matchup + badge */}
+                    <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10 }}>
+                      <div style={{ display:"flex",alignItems:"center",gap:8,flexWrap:"wrap" }}>
+                        <span style={{ fontSize:9,fontWeight:700,color:game.slot==="VEGAS"?"#f87171":"#60a5fa",background:game.slot==="VEGAS"?"rgba(248,113,113,0.1)":"rgba(96,165,250,0.1)",borderRadius:4,padding:"1px 6px",letterSpacing:"0.06em" }}>{game.sport||"MLB"} · {game.slot||"PUBLIC"}</span>
                         <span style={{ fontSize:12,fontWeight:700,color:"#e2e8f0" }}>{game.awayAbbr||game.away?.split(" ").pop()} @ {game.homeAbbr||game.home?.split(" ").pop()}</span>
                         <span style={{ fontSize:10,color:"#3a4a5e" }}>{game.time}</span>
                       </div>
-                      <span style={{ fontSize:9,fontWeight:700,color:badge.color,background:badge.bg,borderRadius:4,padding:"2px 8px",letterSpacing:"0.07em" }}>{badge.label}</span>
+                      <span style={{ fontSize:9,fontWeight:700,color:badge.color,background:badge.bg,borderRadius:4,padding:"2px 8px",letterSpacing:"0.07em",whiteSpace:"nowrap" }}>{badge.label}</span>
                     </div>
-                    {/* ML odds */}
-                    <div style={{ display:"flex",gap:16,marginBottom:8 }}>
-                      <div style={{ flex:1,background:"rgba(255,255,255,0.02)",borderRadius:8,padding:"8px 10px" }}>
-                        <div style={{ fontSize:9,color:"#3a4a5e",letterSpacing:"0.08em",marginBottom:3 }}>{game.awayCity||game.away}</div>
-                        <div style={{ fontSize:16,fontWeight:800,color: (game.awayML||"").startsWith("-")?"#f87171":"#4ade80" }}>{game.awayML||"N/A"}</div>
+
+                    {/* ML: Open → Current with movement indicator */}
+                    <div style={{ display:"grid",gridTemplateColumns:"1fr 24px 1fr",gap:6,marginBottom:8 }}>
+                      {/* Away */}
+                      <div style={{ background:"rgba(255,255,255,0.02)",borderRadius:8,padding:"8px 10px" }}>
+                        <div style={{ fontSize:9,color:"#3a4a5e",letterSpacing:"0.07em",marginBottom:3 }}>{game.awayAbbr||game.away?.split(" ").pop()}</div>
+                        <div style={{ display:"flex",alignItems:"baseline",gap:6 }}>
+                          {awayMoved && <span style={{ fontSize:10,color:"#475569",textDecoration:"line-through" }}>{awayOpen}</span>}
+                          <span style={{ fontSize:16,fontWeight:800,color:(awayCur||"").startsWith("-")?"#f87171":"#4ade80" }}>{awayCur||"N/A"}</span>
+                          {awayMoved && <span style={{ fontSize:10 }}>{parseInt(awayCur)>parseInt(awayOpen)?"▲":"▼"}</span>}
+                        </div>
+                        {awayEVStr && <div style={{ fontSize:9,fontWeight:700,color:awayEVColor,marginTop:2 }}>EV {awayEVStr}</div>}
                       </div>
-                      <div style={{ display:"flex",alignItems:"center",fontSize:10,color:"#2d3a4a",fontWeight:700 }}>@</div>
-                      <div style={{ flex:1,background:"rgba(255,255,255,0.02)",borderRadius:8,padding:"8px 10px" }}>
-                        <div style={{ fontSize:9,color:"#3a4a5e",letterSpacing:"0.08em",marginBottom:3 }}>{game.homeCity||game.home}</div>
-                        <div style={{ fontSize:16,fontWeight:800,color: (game.homeML||"").startsWith("-")?"#f87171":"#4ade80" }}>{game.homeML||"N/A"}</div>
+                      <div style={{ display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#2d3a4a",fontWeight:700 }}>@</div>
+                      {/* Home */}
+                      <div style={{ background:"rgba(255,255,255,0.02)",borderRadius:8,padding:"8px 10px" }}>
+                        <div style={{ fontSize:9,color:"#3a4a5e",letterSpacing:"0.07em",marginBottom:3 }}>{game.homeAbbr||game.home?.split(" ").pop()}</div>
+                        <div style={{ display:"flex",alignItems:"baseline",gap:6 }}>
+                          {homeMoved && <span style={{ fontSize:10,color:"#475569",textDecoration:"line-through" }}>{homeOpen}</span>}
+                          <span style={{ fontSize:16,fontWeight:800,color:(homeCur||"").startsWith("-")?"#f87171":"#4ade80" }}>{homeCur||"N/A"}</span>
+                          {homeMoved && <span style={{ fontSize:10 }}>{parseInt(homeCur)>parseInt(homeOpen)?"▲":"▼"}</span>}
+                        </div>
+                        {homeEVStr && <div style={{ fontSize:9,fontWeight:700,color:homeEVColor,marginTop:2 }}>EV {homeEVStr}</div>}
                       </div>
                     </div>
-                    {/* Line movement */}
-                    <div style={{ display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:"rgba(255,255,255,0.02)",borderRadius:8,border:"1px solid rgba(255,255,255,0.04)" }}>
-                      <span style={{ fontSize:11 }}>📈</span>
-                      <span style={{ fontSize:10,color:"#94a3b8",flex:1 }}>{lm}</span>
+
+                    {/* Line movement summary */}
+                    <div style={{ padding:"8px 10px",background:isSharp?"rgba(248,113,113,0.06)":isMoving?"rgba(201,162,39,0.05)":"rgba(255,255,255,0.02)",borderRadius:8,border:`1px solid ${isSharp?"rgba(248,113,113,0.15)":isMoving?"rgba(201,162,39,0.1)":"rgba(255,255,255,0.04)"}`,marginBottom:game.rlm||game.runLine?8:0 }}>
+                      <span style={{ fontSize:10,color:isSharp?"#f87171":isMoving?"#c9a227":"#64748b" }}>{lm}</span>
                     </div>
-                    {/* Run line */}
-                    {game.runLine && (
-                      <div style={{ marginTop:8,fontSize:10,color:"#3a4a5e" }}>Run Line: <span style={{ color:"#64748b" }}>{game.runLine}</span></div>
+
+                    {/* RLM alert */}
+                    {game.rlm && (
+                      <div style={{ padding:"6px 10px",background:"rgba(248,113,113,0.08)",borderRadius:6,border:"1px solid rgba(248,113,113,0.2)",marginBottom:4 }}>
+                        <span style={{ fontSize:10,fontWeight:700,color:"#f87171" }}>⚡ SHARP SIDE: {game.rlm}</span>
+                      </div>
+                    )}
+
+                    {/* Run line / spread */}
+                    {game.runLine && game.runLine!=="N/A" && (
+                      <div style={{ fontSize:9,color:"#3a4a5e",marginTop:4 }}>Spread: <span style={{ color:"#475569" }}>{game.runLine}</span></div>
                     )}
                   </div>
                 );
