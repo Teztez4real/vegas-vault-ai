@@ -1758,22 +1758,23 @@ export default function VegasVaultApp() {
         .then(r => r.json())
         .then(data => {
           if (!data.movements) return;
-          // Patch lineMovement, rlm, homeEV, awayEV, openingHomeML, openingAwayML on each game
           setGames(prev => prev.map(game => {
-            // Try both key formats: "Away|Home" and "Away|Home|date"
-            const shortKey = `${game.away}|${game.home}`;
-            const dateKey  = `${game.away}|${game.home}|${selectedDate}`;
-            const movement = data.movements[shortKey] || data.movements[dateKey];
-            if (!movement || !movement.lineMovement) return game;
+            const key = `${game.away}|${game.home}`;
+            const mv  = data.movements[key];
+            if (!mv) return game;
+            // Build formatted opening ML strings
+            const fmtN = (n) => n == null ? null : (n > 0 ? `+${n}` : `${n}`);
             return {
               ...game,
-              lineMovement:    movement.lineMovement,
-              rlm:             movement.rlm ?? game.rlm,
-              openingHomeML:   movement.openHome ? (movement.openHome > 0 ? `+${movement.openHome}` : `${movement.openHome}`) : game.openingHomeML,
-              openingAwayML:   movement.openAway ? (movement.openAway > 0 ? `+${movement.openAway}` : `${movement.openAway}`) : game.openingAwayML,
-              homeDiff:        movement.homeDiff,
-              awayDiff:        movement.awayDiff,
-              moveType:        movement.moveType,
+              lineMovement:  mv.lineMovement  || game.lineMovement,
+              rlm:           mv.rlm           ?? game.rlm,
+              moveType:      mv.moveType      || game.moveType,
+              homeDiff:      mv.homeDiff      ?? game.homeDiff,
+              awayDiff:      mv.awayDiff      ?? game.awayDiff,
+              openingHomeML: fmtN(mv.openHome) || mv.openHome || game.openingHomeML,
+              openingAwayML: fmtN(mv.openAway) || mv.openAway || game.openingAwayML,
+              pinHomeML:     mv.pinHomeML     || game.pinHomeML,
+              dkHomeML:      mv.dkHomeML      || game.dkHomeML,
             };
           }));
         })

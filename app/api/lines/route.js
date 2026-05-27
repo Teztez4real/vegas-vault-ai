@@ -1,135 +1,150 @@
 /**
- * /api/lines
+ * /api/lines — Real line movement tracking
  * 
- * Called by the frontend every 5 minutes to get fresh line movement data.
- * Returns enriched movement per game — opening vs current with full history.
+ * Strategy:
+ * 1. Fetch current odds from SharpAPI (all books)
+ * 2. Store first-seen odds as opening lines in Supabase (via lineTracker)
+ * 3. Detect true movement: current vs stored opening
+ * 4. Also compare DraftKings vs Pinnacle as a real-time sharp indicator
  * 
+ * Called by frontend every 5 minutes.
  * GET /api/lines?date=YYYY-MM-DD&sport=mlb
  */
 
 import { NextResponse } from 'next/server';
-import { trackLines } from '@/lib/lineTracker';
+import { trackLines, purgeOld } from '@/lib/lineTracker';
 
 function todayStr() {
   return new Date().toISOString().split('T')[0];
 }
 
 function fmt(price) {
-  return price != null ? (price > 0 ? `+${price}` : `${price}`) : 'N/A';
+  if (price == null) return 'N/A';
+  return price > 0 ? `+${price}` : `${price}`;
 }
 
-// ── FETCH CURRENT ODDS (same SharpAPI logic as today/route.js) ─────────────
+// ── FETCH ALL BOOKS (to compare sharp vs public) ──────────────────────────────
 
-async function fetchCurrentOdds(sportKey) {
+async function fetchAllBooks(sportKey) {
   const sharpKey = process.env.SHARPAPI_KEY;
+  const games = {};
+
   if (sharpKey) {
     try {
-      const leagueMap = {
-        'baseball_mlb': 'mlb',
-        'basketball_nba': 'nba',
-        'americanfootball_nfl': 'nfl',
-      };
+      const leagueMap = { 'baseball_mlb': 'mlb', 'basketball_nba': 'nba', 'americanfootball_nfl': 'nfl' };
       const league = leagueMap[sportKey];
-      if (!league) return [];
+      if (!league) return games;
 
-      const [mlRes, rlRes] = await Promise.all([
-        fetch(`https://api.sharpapi.io/api/v1/odds?league=${league}&market=moneyline`, {
-          headers: { 'X-API-Key': sharpKey }, cache: 'no-store',
-        }),
-        league === 'mlb'
-          ? fetch(`https://api.sharpapi.io/api/v1/odds?league=${league}&market=run_line`, {
-              headers: { 'X-API-Key': sharpKey }, cache: 'no-store',
-            })
-          : Promise.resolve({ json: async () => ({ data: [] }) }),
-      ]);
+      const res = await fetch(`https://api.sharpapi.io/api/v1/odds?league=${league}&market=moneyline`, {
+        headers: { 'X-API-Key': sharpKey }, cache: 'no-store',
+      });
+      const rows = (await res.json()).data || [];
+      if (!rows.length) throw new Error('No rows');
 
-      const mlRows = (await mlRes.json()).data || [];
-      const rlRows = (await rlRes.json()).data || [];
-      const allRows = [...mlRows, ...rlRows];
-      if (!allRows.length) throw new Error('No rows');
-
-      // Group by event
-      const eventMap = {};
-      const preferredBooks = ['draftkings', 'fanduel', 'betmgm', 'pinnacle', 'caesars'];
-
-      for (const row of allRows) {
-        const home = row.home_team;
-        const away = row.away_team;
-        if (!home || !away) continue;
+      for (const row of rows) {
+        const { home_team: home, away_team: away, sportsbook, odds_american: odds, event_start_time } = row;
+        if (!home || !away || odds == null) continue;
         const key = `${away}|${home}`;
-        if (!eventMap[key]) eventMap[key] = { home, away, commenceTime: row.event_start_time, books: {} };
-        const book = (row.sportsbook || '').toLowerCase();
-        if (!eventMap[key].books[book]) eventMap[key].books[book] = {};
-        const mt = (row.market_type || '').toLowerCase();
-        const sel = row.selection || '';
-        const odds = row.odds_american;
-        const line = row.line;
+        if (!games[key]) games[key] = { away, home, commenceTime: event_start_time, books: {} };
+        const book = (sportsbook || '').toLowerCase();
+        if (!games[key].books[book]) games[key].books[book] = {};
         const homeWord = home.split(' ').pop().toLowerCase();
-        const isHome = sel.toLowerCase().includes(homeWord) || sel === home;
-
-        if (mt === 'moneyline') {
-          if (!eventMap[key].books[book].h2h) eventMap[key].books[book].h2h = {};
-          if (isHome) eventMap[key].books[book].h2h.homeML = odds;
-          else eventMap[key].books[book].h2h.awayML = odds;
-        } else if (mt === 'run_line' || mt.includes('spread')) {
-          if (!eventMap[key].books[book].spread) eventMap[key].books[book].spread = {};
-          if (isHome) { eventMap[key].books[book].spread.homePoint = line; eventMap[key].books[book].spread.homeOdds = odds; }
-          else { eventMap[key].books[book].spread.awayPoint = line; eventMap[key].books[book].spread.awayOdds = odds; }
-        }
+        const isHome = (row.selection || '').toLowerCase().includes(homeWord) || row.selection === home;
+        if (isHome) games[key].books[book].homeML = odds;
+        else games[key].books[book].awayML = odds;
       }
 
-      return Object.entries(eventMap).map(([key, event]) => {
-        // Pick best book
-        let bookData = null;
-        for (const preferred of preferredBooks) {
-          const found = Object.entries(event.books).find(([b]) => b.includes(preferred));
-          if (found?.[1]?.h2h) { bookData = found[1]; break; }
-        }
-        if (!bookData) bookData = Object.values(event.books).find(b => b.h2h);
-        if (!bookData?.h2h) return null;
-
-        return {
-          key,
-          away: event.away,
-          home: event.home,
-          homeML: fmt(bookData.h2h.homeML),
-          awayML: fmt(bookData.h2h.awayML),
-          homeRL: bookData.spread?.homePoint,
-          awayRL: bookData.spread?.awayPoint,
-          commenceTime: event.commenceTime,
-        };
-      }).filter(Boolean);
-
+      console.log(`Lines: SharpAPI returned ${Object.keys(games).length} games`);
+      return games;
     } catch (err) {
-      console.error('Lines API SharpAPI error:', err.message);
+      console.error('Lines SharpAPI error:', err.message);
     }
   }
 
-  // Fallback: The Odds API
+  // Fallback: The Odds API — fetch all bookmakers
   const apiKey = process.env.ODDS_API_KEY;
-  if (!apiKey) return [];
+  if (!apiKey) return games;
   try {
     const res = await fetch(
-      `https://api.the-odds-api.com/v4/sports/${sportKey}/odds?regions=us&markets=h2h,spreads&oddsFormat=american&apiKey=${apiKey}`,
+      `https://api.the-odds-api.com/v4/sports/${sportKey}/odds?regions=us,eu&markets=h2h&oddsFormat=american&bookmakers=draftkings,fanduel,betmgm,pinnacle,bet365,caesars,pointsbet&apiKey=${apiKey}`,
       { cache: 'no-store' }
     );
     const data = await res.json();
-    if (!Array.isArray(data)) return [];
-    return data.map(game => {
-      const bk = game.bookmakers?.find(b => b.key === 'draftkings') || game.bookmakers?.[0];
-      const h2h = bk?.markets?.find(m => m.key === 'h2h');
-      const spreads = bk?.markets?.find(m => m.key === 'spreads');
-      return {
-        key: `${game.away_team}|${game.home_team}`,
-        away: game.away_team,
-        home: game.home_team,
-        homeML: fmt(h2h?.outcomes?.find(o => o.name === game.home_team)?.price),
-        awayML: fmt(h2h?.outcomes?.find(o => o.name === game.away_team)?.price),
-        homeRL: spreads?.outcomes?.find(o => o.name === game.home_team)?.point,
-        commenceTime: game.commence_time,
-      };
-    }).filter(g => g.homeML !== 'N/A');
-  } catch { return []; }
+    if (!Array.isArray(data)) return games;
+
+    for (const event of data) {
+      const key = `${event.away_team}|${event.home_team}`;
+      games[key] = { away: event.away_team, home: event.home_team, commenceTime: event.commence_time, books: {} };
+      for (const bk of (event.bookmakers || [])) {
+        const h2h = bk.markets?.find(m => m.key === 'h2h');
+        if (!h2h) continue;
+        const homeML = h2h.outcomes?.find(o => o.name === event.home_team)?.price;
+        const awayML = h2h.outcomes?.find(o => o.name === event.away_team)?.price;
+        if (homeML != null) games[key].books[bk.key] = { homeML, awayML };
+      }
+    }
+    console.log(`Lines: OddsAPI returned ${Object.keys(games).length} games`);
+  } catch (err) {
+    console.error('Lines OddsAPI error:', err.message);
+  }
+
+  return games;
+}
+
+// ── BUILD GAME LIST WITH BEST ODDS ────────────────────────────────────────────
+
+function buildGames(gamesMap) {
+  const preferredBooks = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'pinnacle', 'pointsbet', 'bet365'];
+  return Object.entries(gamesMap).map(([key, event]) => {
+    // Best public book for current ML
+    let bestBook = null;
+    for (const name of preferredBooks) {
+      const found = Object.entries(event.books).find(([b]) => b.includes(name));
+      if (found?.[1]?.homeML != null) { bestBook = found[1]; break; }
+    }
+    if (!bestBook) {
+      const first = Object.values(event.books).find(b => b.homeML != null);
+      if (first) bestBook = first;
+    }
+    if (!bestBook) return null;
+
+    // Pinnacle specifically (sharpest book — moves first)
+    const pinEntry = Object.entries(event.books).find(([b]) => b.includes('pinnacle'));
+    const pinBook  = pinEntry?.[1];
+
+    // DraftKings specifically (biggest public book)
+    const dkEntry  = Object.entries(event.books).find(([b]) => b.includes('draftkings'));
+    const dkBook   = dkEntry?.[1];
+
+    // Real-time sharp indicator: if Pinnacle and DK differ significantly, sharp money has moved
+    let sharpSignal = null;
+    if (pinBook?.homeML != null && dkBook?.homeML != null) {
+      const diff = Math.abs(pinBook.homeML - dkBook.homeML);
+      if (diff >= 8) {
+        // Pinnacle more negative on home = sharp on home; more positive = sharp on away
+        const sharpOnHome = pinBook.homeML < dkBook.homeML;
+        sharpSignal = {
+          side: sharpOnHome ? event.home : event.away,
+          diff,
+          pinHome: pinBook.homeML,
+          dkHome: dkBook.homeML,
+        };
+      }
+    }
+
+    return {
+      key,
+      away: event.away,
+      home: event.home,
+      homeML: fmt(bestBook.homeML),
+      awayML: fmt(bestBook.awayML),
+      commenceTime: event.commenceTime,
+      pinHomeML: pinBook?.homeML,
+      dkHomeML: dkBook?.homeML,
+      sharpSignal,
+      allBooks: event.books,
+    };
+  }).filter(Boolean);
 }
 
 // ── HANDLER ───────────────────────────────────────────────────────────────────
@@ -137,50 +152,62 @@ async function fetchCurrentOdds(sportKey) {
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const dateParam = searchParams.get('date') || todayStr();
-  const sport = (searchParams.get('sport') || 'mlb').toLowerCase();
-
-  const sportKeyMap = {
-    mlb: 'baseball_mlb',
-    nba: 'basketball_nba',
-    nfl: 'americanfootball_nfl',
-  };
-  const sportKey = sportKeyMap[sport] || 'baseball_mlb';
+  const sport     = (searchParams.get('sport') || 'mlb').toLowerCase();
+  const sportKeyMap = { mlb: 'baseball_mlb', nba: 'basketball_nba', nfl: 'americanfootball_nfl' };
+  const sportKey  = sportKeyMap[sport] || 'baseball_mlb';
 
   try {
-    // Fetch current odds
-    const currentOdds = await fetchCurrentOdds(sportKey);
-    if (!currentOdds.length) {
-      return NextResponse.json({ movements: {}, count: 0, fetchedAt: new Date().toISOString() });
+    await purgeOld(dateParam);
+
+    // Fetch all books
+    const gamesMap = await fetchAllBooks(sportKey);
+    if (!Object.keys(gamesMap).length) {
+      return NextResponse.json({ movements: {}, summary: { sharp: 0, moving: 0, stable: 0, total: 0 }, fetchedAt: new Date().toISOString() });
     }
 
-    // Track lines (stores openings, computes movement)
-    const movements = await trackLines(currentOdds, sport.toUpperCase(), dateParam);
+    const gamesList = buildGames(gamesMap);
+    if (!gamesList.length) {
+      return NextResponse.json({ movements: {}, summary: { sharp: 0, moving: 0, stable: 0, total: 0 }, fetchedAt: new Date().toISOString() });
+    }
 
-    // Build response: per-game movement enriched with current odds
-    const enriched = {};
-    for (const game of currentOdds) {
-      const gameKey = `${game.away}|${game.home}|${dateParam}`;
-      const movement = movements[gameKey] || {};
-      enriched[game.key] = {
+    // Track opening lines + compute movement (stored opening vs current)
+    const tracked = await trackLines(gamesList, sport.toUpperCase(), dateParam);
+
+    // Merge tracked movement with real-time sharp signal
+    const movements = {};
+    for (const game of gamesList) {
+      const mv = tracked[game.key] || {};
+
+      // If sharp signal exists between Pinnacle and DK, upgrade the movement description
+      if (game.sharpSignal && (mv.moveType === 'STABLE' || !mv.moveType)) {
+        const sig = game.sharpSignal;
+        mv.lineMovement = `🟠 SHARP — Pinnacle vs DK spread ${sig.diff}pts on ${sig.side} (Pin Home ${fmt(sig.pinHome)} / DK Home ${fmt(sig.dkHome)})${mv.lineMovement ? ' | ' + mv.lineMovement : ''}`;
+        mv.rlm = sig.side;
+        mv.moveType = 'SHARP';
+      }
+
+      movements[game.key] = {
         away: game.away,
         home: game.home,
         homeML: game.homeML,
         awayML: game.awayML,
-        homeRL: game.homeRL,
         commenceTime: game.commenceTime,
-        ...movement,
+        pinHomeML: fmt(game.pinHomeML),
+        dkHomeML: fmt(game.dkHomeML),
+        ...mv,
       };
     }
 
-    // Summary stats
-    const allMovements = Object.values(enriched);
-    const sharpCount  = allMovements.filter(m => m.moveType === 'SHARP').length;
-    const movingCount = allMovements.filter(m => m.moveType === 'MOVING').length;
-    const stableCount = allMovements.filter(m => m.moveType === 'STABLE' || m.moveType === 'OPENING').length;
-
+    // Summary
+    const vals = Object.values(movements);
     return NextResponse.json({
-      movements: enriched,
-      summary: { sharp: sharpCount, moving: movingCount, stable: stableCount, total: allMovements.length },
+      movements,
+      summary: {
+        sharp:   vals.filter(m => m.moveType === 'SHARP' || m.moveType === 'STEAM').length,
+        moving:  vals.filter(m => m.moveType === 'MOVING').length,
+        stable:  vals.filter(m => m.moveType === 'STABLE' || m.moveType === 'OPENING').length,
+        total:   vals.length,
+      },
       sport: sport.toUpperCase(),
       date: dateParam,
       fetchedAt: new Date().toISOString(),
