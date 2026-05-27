@@ -768,6 +768,452 @@ function RightPanelContent({ marketScanner, insights, aiConfidence, confHistory 
   );
 }
 
+
+// ── ALERTS VIEW ───────────────────────────────────────────────────────────────
+function AlertsView({ betReadyAlerts, trellAlerts, games, results, pickHistory }) {
+  const allAlerts = [
+    ...Object.entries(betReadyAlerts).map(([key, data]) => ({
+      type: 'BET_READY', key, data,
+      game: games.find(g => key.startsWith(g.id+'-')),
+      slot: key.split('-').pop(),
+      title: '🔔 Bet Ready',
+      color: '#c9a227', bg: 'rgba(201,162,39,0.08)', border: 'rgba(201,162,39,0.25)',
+    })),
+    ...trellAlerts.map((a, i) => ({
+      type: 'TRELL', key: `trell-${i}`, data: a,
+      title: '⚡ Trell Rule Alert', color: '#f87171', bg: 'rgba(248,113,113,0.08)', border: 'rgba(248,113,113,0.25)',
+    })),
+  ];
+
+  const pendingPicks = pickHistory.filter(p => !p.result);
+  const recentWins = pickHistory.filter(p => p.result==='win').slice(-3);
+
+  return (
+    <div>
+      <div style={{ marginBottom:20 }}>
+        <h1 style={{ fontSize:22,fontWeight:700,color:'#f1f5f9',letterSpacing:'-0.02em',marginBottom:4 }}>🔔 Alerts</h1>
+        <p style={{ fontSize:12,color:'#3a4a5e' }}>{allAlerts.length} active alerts · {pendingPicks.length} pending picks</p>
+      </div>
+
+      {allAlerts.length === 0 && (
+        <div style={{ textAlign:'center',padding:'60px 20px',background:'rgba(255,255,255,0.02)',borderRadius:12,border:'1px solid rgba(255,255,255,0.05)',marginBottom:16 }}>
+          <div style={{ fontSize:32,marginBottom:12 }}>🔕</div>
+          <div style={{ fontSize:14,fontWeight:600,color:'#2d3a4a',marginBottom:6 }}>No active alerts</div>
+          <div style={{ fontSize:12,color:'#1e2a3a' }}>Alerts fire when games are about to start,<br/>Trell Rule activates, or sharp money moves.</div>
+        </div>
+      )}
+
+      {allAlerts.map((alert, i) => (
+        <div key={alert.key} style={{ background:alert.bg,border:`1px solid ${alert.border}`,borderRadius:12,padding:'14px 16px',marginBottom:10 }}>
+          <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:6 }}>
+            <span style={{ fontSize:12,fontWeight:700,color:alert.color }}>{alert.title}</span>
+          </div>
+          {alert.game && <div style={{ fontSize:12,color:'#e2e8f0',fontWeight:600 }}>{alert.game.away} @ {alert.game.home}</div>}
+          {alert.data?.message && <div style={{ fontSize:11,color:'#94a3b8',marginTop:4 }}>{alert.data.message}</div>}
+          {alert.type==='BET_READY' && alert.game && (
+            <div style={{ fontSize:11,color:'#94a3b8',marginTop:4 }}>{alert.slot} slot · {alert.game.time}</div>
+          )}
+          {alert.type==='TRELL' && typeof alert.data === 'object' && (
+            <div style={{ fontSize:11,color:'#94a3b8',marginTop:4 }}>{alert.data.team} — {alert.data.note}</div>
+          )}
+        </div>
+      ))}
+
+      {/* Recent Wins */}
+      {recentWins.length > 0 && (
+        <div style={{ marginTop:24 }}>
+          <div style={{ fontSize:10,fontWeight:700,color:'#3a4a5e',letterSpacing:'0.1em',marginBottom:10 }}>RECENT WINS</div>
+          {recentWins.reverse().map((p,i) => (
+            <div key={i} style={{ background:'rgba(74,222,128,0.04)',border:'1px solid rgba(74,222,128,0.15)',borderRadius:10,padding:'10px 14px',marginBottom:8,display:'flex',justifyContent:'space-between',alignItems:'center' }}>
+              <div>
+                <div style={{ fontSize:11,fontWeight:600,color:'#e2e8f0' }}>{p.pick}</div>
+                <div style={{ fontSize:10,color:'#3a4a5e' }}>{p.game} · {p.slot}</div>
+              </div>
+              <div style={{ fontSize:13,fontWeight:800,color:'#4ade80' }}>✅ WIN</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Pending Picks */}
+      {pendingPicks.length > 0 && (
+        <div style={{ marginTop:24 }}>
+          <div style={{ fontSize:10,fontWeight:700,color:'#3a4a5e',letterSpacing:'0.1em',marginBottom:10 }}>PENDING PICKS ({pendingPicks.length})</div>
+          {pendingPicks.map((p,i) => (
+            <div key={i} style={{ background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:10,padding:'10px 14px',marginBottom:8,display:'flex',justifyContent:'space-between',alignItems:'center' }}>
+              <div>
+                <div style={{ fontSize:11,fontWeight:600,color:'#e2e8f0' }}>{p.pick}</div>
+                <div style={{ fontSize:10,color:'#3a4a5e' }}>{p.game} · {p.slot}</div>
+              </div>
+              <div style={{ fontSize:11,color:'#3a4a5e',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:6,padding:'4px 10px' }}>PENDING</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── WATCHLIST VIEW ────────────────────────────────────────────────────────────
+function WatchlistView({ watchlist, setWatchlist, games, results, generating, onGenerate, liveScores, isSubscribed, finalized, onShowAuth }) {
+  const watchedGames = games.filter(g => watchlist.includes(g.id));
+
+  function removeFromWatchlist(id) {
+    const updated = watchlist.filter(w => w !== id);
+    setWatchlist(updated);
+    try { localStorage.setItem('vv_watchlist', JSON.stringify(updated)); } catch {}
+  }
+
+  return (
+    <div>
+      <div style={{ marginBottom:20 }}>
+        <h1 style={{ fontSize:22,fontWeight:700,color:'#f1f5f9',letterSpacing:'-0.02em',marginBottom:4 }}>☆ Watchlist</h1>
+        <p style={{ fontSize:12,color:'#3a4a5e' }}>{watchedGames.length} games tracked</p>
+      </div>
+
+      {watchedGames.length === 0 ? (
+        <div style={{ textAlign:'center',padding:'60px 20px',background:'rgba(255,255,255,0.02)',borderRadius:12,border:'1px solid rgba(255,255,255,0.05)' }}>
+          <div style={{ fontSize:32,marginBottom:12 }}>☆</div>
+          <div style={{ fontSize:14,fontWeight:600,color:'#2d3a4a',marginBottom:6 }}>No games in watchlist</div>
+          <div style={{ fontSize:12,color:'#1e2a3a' }}>Click the ☆ on any game card to track it here.</div>
+        </div>
+      ) : watchedGames.map((game, i) => (
+        <div key={game.id} style={{ background:'rgba(255,255,255,0.02)',border:'1px solid rgba(201,162,39,0.2)',borderRadius:12,padding:'14px 16px',marginBottom:10 }}>
+          <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8 }}>
+            <div style={{ display:'flex',alignItems:'center',gap:8 }}>
+              <span style={{ fontSize:9,fontWeight:700,color:game.slot==='VEGAS'?'#f87171':'#60a5fa',background:game.slot==='VEGAS'?'rgba(248,113,113,0.1)':'rgba(96,165,250,0.1)',borderRadius:4,padding:'1px 6px' }}>{game.slot}</span>
+              <span style={{ fontSize:12,fontWeight:700,color:'#e2e8f0' }}>{game.awayAbbr||game.away?.split(' ').pop()} @ {game.homeAbbr||game.home?.split(' ').pop()}</span>
+              <span style={{ fontSize:10,color:'#3a4a5e' }}>{game.time}</span>
+            </div>
+            <button onClick={()=>removeFromWatchlist(game.id)} style={{ background:'transparent',border:'none',color:'#c9a227',fontSize:16,cursor:'pointer',padding:'0 4px' }}>★</button>
+          </div>
+          <div style={{ display:'flex',gap:12,fontSize:10,color:'#3a4a5e' }}>
+            <span>{game.awayML} / {game.homeML}</span>
+            <span style={{ color:'#475569' }}>{game.lineMovement?.slice(0,60)||'No movement data'}</span>
+          </div>
+        </div>
+      ))}
+
+      {/* All games to add */}
+      {games.filter(g=>!watchlist.includes(g.id)).length > 0 && (
+        <div style={{ marginTop:24 }}>
+          <div style={{ fontSize:10,fontWeight:700,color:'#3a4a5e',letterSpacing:'0.1em',marginBottom:10 }}>ADD GAMES</div>
+          {games.filter(g=>!watchlist.includes(g.id)).map((game,i) => (
+            <div key={game.id} style={{ background:'rgba(255,255,255,0.01)',border:'1px solid rgba(255,255,255,0.05)',borderRadius:10,padding:'10px 14px',marginBottom:6,display:'flex',alignItems:'center',justifyContent:'space-between' }}>
+              <div>
+                <span style={{ fontSize:11,fontWeight:600,color:'#94a3b8' }}>{game.away?.split(' ').pop()} @ {game.home?.split(' ').pop()}</span>
+                <span style={{ fontSize:10,color:'#3a4a5e',marginLeft:8 }}>{game.time}</span>
+              </div>
+              <button onClick={()=>{ const updated=[...watchlist,game.id]; setWatchlist(updated); try{localStorage.setItem('vv_watchlist',JSON.stringify(updated));}catch{} }} style={{ background:'rgba(201,162,39,0.08)',border:'1px solid rgba(201,162,39,0.2)',borderRadius:6,padding:'3px 10px',fontSize:10,color:'#c9a227',cursor:'pointer',fontFamily:'inherit' }}>+ Watch</button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── SHARP MONEY VIEW ──────────────────────────────────────────────────────────
+function SharpMoneyView({ games, marketScanner }) {
+  const sharpGames = games.filter(g => {
+    const lm = (g.lineMovement||'').toLowerCase();
+    return lm.includes('sharp') || lm.includes('steam') || lm.includes('reverse') || g.rlm;
+  });
+  const movingGames = games.filter(g => {
+    const lm = g.lineMovement||'';
+    return lm.includes('moved toward') && !sharpGames.includes(g);
+  });
+
+  return (
+    <div>
+      <div style={{ marginBottom:20 }}>
+        <h1 style={{ fontSize:22,fontWeight:700,color:'#f1f5f9',letterSpacing:'-0.02em',marginBottom:4 }}>💰 Sharp Money</h1>
+        <p style={{ fontSize:12,color:'#3a4a5e' }}>Real-time sharp action · DraftKings vs Pinnacle</p>
+      </div>
+
+      {/* Market Scanner Stats */}
+      <div style={{ display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:10,marginBottom:20 }}>
+        {[
+          { label:'SHARP SIGNALS', value:marketScanner.sharpMoneyDetected, color:'#f87171', icon:'⚡' },
+          { label:'REVERSE LINE', value:marketScanner.reverseLineMovement, color:'#c9a227', icon:'↩' },
+          { label:'PUBLIC HEAVY', value:marketScanner.publicHeavy, color:'#60a5fa', icon:'👥' },
+          { label:'VEGAS TRAPS', value:marketScanner.vegasTrapAlert, color:'#a78bfa', icon:'🎰' },
+        ].map((s,i) => (
+          <div key={i} style={{ background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.05)',borderRadius:12,padding:'14px 16px' }}>
+            <div style={{ fontSize:9,color:'#3a4a5e',letterSpacing:'0.1em',marginBottom:6 }}>{s.icon} {s.label}</div>
+            <div style={{ fontSize:28,fontWeight:800,color:s.color,lineHeight:1 }}>{s.value}</div>
+            <div style={{ fontSize:9,color:'#2d3a4a',marginTop:2 }}>games today</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Sharp games */}
+      {sharpGames.length > 0 && (
+        <>
+          <div style={{ fontSize:10,fontWeight:700,color:'#f87171',letterSpacing:'0.1em',marginBottom:10 }}>⚡ SHARP ACTION DETECTED</div>
+          {sharpGames.map((game,i) => (
+            <div key={game.id||i} style={{ background:'rgba(248,113,113,0.06)',border:'1px solid rgba(248,113,113,0.25)',borderRadius:12,padding:'14px 16px',marginBottom:10 }}>
+              <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6 }}>
+                <div style={{ display:'flex',alignItems:'center',gap:8 }}>
+                  <span style={{ fontSize:9,fontWeight:700,color:game.slot==='VEGAS'?'#f87171':'#60a5fa',background:game.slot==='VEGAS'?'rgba(248,113,113,0.1)':'rgba(96,165,250,0.1)',borderRadius:4,padding:'1px 6px' }}>{game.slot}</span>
+                  <span style={{ fontSize:12,fontWeight:700,color:'#e2e8f0' }}>{game.awayAbbr||game.away?.split(' ').pop()} @ {game.homeAbbr||game.home?.split(' ').pop()}</span>
+                  <span style={{ fontSize:10,color:'#3a4a5e' }}>{game.time}</span>
+                </div>
+                <span style={{ fontSize:9,fontWeight:700,color:'#f87171',background:'rgba(248,113,113,0.1)',borderRadius:4,padding:'2px 8px' }}>⚡ SHARP</span>
+              </div>
+              {game.rlm && <div style={{ fontSize:11,fontWeight:700,color:'#f87171',marginBottom:4 }}>Sharp side: {game.rlm}</div>}
+              <div style={{ fontSize:10,color:'#94a3b8' }}>{game.lineMovement}</div>
+              {(game.homeEV > 0 || game.awayEV > 0) && (
+                <div style={{ marginTop:6,fontSize:10 }}>
+                  {game.awayEV > 0 && <span style={{ color:'#4ade80',marginRight:12 }}>+EV: {game.away?.split(' ').pop()} +{game.awayEV}%</span>}
+                  {game.homeEV > 0 && <span style={{ color:'#4ade80' }}>+EV: {game.home?.split(' ').pop()} +{game.homeEV}%</span>}
+                </div>
+              )}
+            </div>
+          ))}
+        </>
+      )}
+
+      {/* Moving lines */}
+      {movingGames.length > 0 && (
+        <>
+          <div style={{ fontSize:10,fontWeight:700,color:'#c9a227',letterSpacing:'0.1em',marginBottom:10,marginTop:20 }}>📈 LINE MOVEMENT</div>
+          {movingGames.map((game,i) => (
+            <div key={game.id||i} style={{ background:'rgba(201,162,39,0.05)',border:'1px solid rgba(201,162,39,0.2)',borderRadius:12,padding:'14px 16px',marginBottom:10 }}>
+              <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:6 }}>
+                <span style={{ fontSize:12,fontWeight:700,color:'#e2e8f0' }}>{game.awayAbbr||game.away?.split(' ').pop()} @ {game.homeAbbr||game.home?.split(' ').pop()}</span>
+                <span style={{ fontSize:10,color:'#3a4a5e' }}>{game.time}</span>
+              </div>
+              <div style={{ fontSize:10,color:'#94a3b8' }}>{game.lineMovement}</div>
+            </div>
+          ))}
+        </>
+      )}
+
+      {sharpGames.length === 0 && movingGames.length === 0 && (
+        <div style={{ textAlign:'center',padding:'40px 20px',background:'rgba(255,255,255,0.02)',borderRadius:12,border:'1px solid rgba(255,255,255,0.05)' }}>
+          <div style={{ fontSize:28,marginBottom:10 }}>💰</div>
+          <div style={{ fontSize:13,color:'#2d3a4a' }}>No sharp signals detected yet.<br/>Lines are stable across all games.</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── VAULT LOCKS VIEW ──────────────────────────────────────────────────────────
+function VaultLocksView({ results, games, finalized }) {
+  const locks = Object.entries(results)
+    .filter(([key, val]) => val && (val.includes('Tier 1') || val.includes('LOCK') || val.includes('🔒')))
+    .map(([key, val]) => {
+      const [gameId, slot] = key.split('-');
+      const game = games.find(g => String(g.id) === gameId);
+      return { key, slot, game, analysis: val };
+    });
+
+  // Extract pick line from analysis
+  function extractPick(analysis) {
+    const lines = analysis.split('\n');
+    for (const line of lines) {
+      if (line.includes('FINAL PICK') || line.includes('Final Pick') || line.includes('BET:') || line.includes('PLAY:')) {
+        return line.replace(/[*#]/g,'').trim().slice(0,80);
+      }
+    }
+    return 'See full analysis';
+  }
+
+  return (
+    <div>
+      <div style={{ marginBottom:20 }}>
+        <h1 style={{ fontSize:22,fontWeight:700,color:'#f1f5f9',letterSpacing:'-0.02em',marginBottom:4 }}>🔒 Vault Locks</h1>
+        <p style={{ fontSize:12,color:'#3a4a5e' }}>{locks.length} Tier 1 locks identified today</p>
+      </div>
+
+      {locks.length === 0 ? (
+        <div style={{ textAlign:'center',padding:'60px 20px',background:'rgba(255,255,255,0.02)',borderRadius:12,border:'1px solid rgba(255,255,255,0.05)' }}>
+          <div style={{ fontSize:32,marginBottom:12 }}>🔒</div>
+          <div style={{ fontSize:14,fontWeight:600,color:'#2d3a4a',marginBottom:6 }}>No locks generated yet</div>
+          <div style={{ fontSize:12,color:'#1e2a3a' }}>Generate game analyses — Tier 1 picks appear here automatically.</div>
+        </div>
+      ) : locks.map((lock,i) => (
+        <div key={lock.key} style={{ background:'rgba(201,162,39,0.06)',border:'1px solid rgba(201,162,39,0.3)',borderRadius:12,padding:'16px',marginBottom:12 }}>
+          <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:8 }}>
+            <span style={{ fontSize:16 }}>🔒</span>
+            <span style={{ fontSize:9,fontWeight:700,color:lock.slot==='VEGAS'?'#f87171':'#60a5fa',background:lock.slot==='VEGAS'?'rgba(248,113,113,0.1)':'rgba(96,165,250,0.1)',borderRadius:4,padding:'1px 6px' }}>{lock.slot}</span>
+            {lock.game && <span style={{ fontSize:12,fontWeight:700,color:'#f1f5f9' }}>{lock.game.away?.split(' ').pop()} @ {lock.game.home?.split(' ').pop()}</span>}
+            {lock.game && <span style={{ fontSize:10,color:'#3a4a5e' }}>{lock.game.time}</span>}
+          </div>
+          <div style={{ fontSize:12,fontWeight:700,color:'#c9a227',marginBottom:6 }}>{extractPick(lock.analysis)}</div>
+          {finalized?.[lock.key] && <span style={{ fontSize:9,color:'#475569',background:'rgba(255,255,255,0.04)',borderRadius:4,padding:'2px 6px' }}>FINALIZED</span>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── TODAY'S SLATE VIEW ────────────────────────────────────────────────────────
+function TodaySlateView({ games, results, generating, onGenerate, liveScores, isSubscribed, finalized, onShowAuth, preAnalyzeQueue, betReadyAlerts }) {
+  const [sportFilter, setSportFilter] = React.useState('ALL');
+  const sports = ['ALL', ...new Set(games.map(g=>g.sport).filter(Boolean))];
+  const filtered = sportFilter==='ALL' ? games : games.filter(g=>g.sport===sportFilter);
+
+  return (
+    <div>
+      <div style={{ marginBottom:16 }}>
+        <h1 style={{ fontSize:22,fontWeight:700,color:'#f1f5f9',letterSpacing:'-0.02em',marginBottom:4 }}>📅 Today\'s Slate</h1>
+        <p style={{ fontSize:12,color:'#3a4a5e' }}>{games.length} games · full schedule</p>
+      </div>
+      <div style={{ display:'flex',gap:6,marginBottom:16,flexWrap:'wrap' }}>
+        {sports.map(s => (
+          <button key={s} onClick={()=>setSportFilter(s)} style={{ padding:'5px 14px',background:sportFilter===s?'rgba(201,162,39,0.15)':'transparent',border:`1px solid ${sportFilter===s?'rgba(201,162,39,0.4)':'rgba(255,255,255,0.08)'}`,borderRadius:20,fontSize:10,fontWeight:sportFilter===s?700:400,color:sportFilter===s?'#c9a227':'#3a4a5e',cursor:'pointer',fontFamily:'inherit',letterSpacing:'0.06em' }}>{s}</button>
+        ))}
+      </div>
+      <div style={{ display:'grid',gap:10 }}>
+        {filtered.map(game => (
+          <div key={game.id} style={{ background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:12,padding:'14px 16px' }}>
+            <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8 }}>
+              <div style={{ display:'flex',alignItems:'center',gap:8 }}>
+                <span style={{ fontSize:9,fontWeight:700,color:game.slot==='VEGAS'?'#f87171':'#60a5fa',background:game.slot==='VEGAS'?'rgba(248,113,113,0.1)':'rgba(96,165,250,0.1)',borderRadius:4,padding:'1px 6px' }}>{game.sport}·{game.slot}</span>
+                <span style={{ fontSize:12,fontWeight:700,color:'#e2e8f0' }}>{game.away?.split(' ').pop()} @ {game.home?.split(' ').pop()}</span>
+              </div>
+              <span style={{ fontSize:10,color:'#3a4a5e' }}>{game.time}</span>
+            </div>
+            <div style={{ display:'flex',gap:16,fontSize:10,color:'#475569' }}>
+              <span>Away ML: <span style={{ color:(game.awayML||'').startsWith('-')?'#f87171':'#4ade80' }}>{game.awayML||'N/A'}</span></span>
+              <span>Home ML: <span style={{ color:(game.homeML||'').startsWith('-')?'#f87171':'#4ade80' }}>{game.homeML||'N/A'}</span></span>
+              {game.runLine && game.runLine!=='N/A' && <span>RL: {game.runLine.slice(0,20)}</span>}
+            </div>
+            {game.homePitcher && game.homePitcher!=='TBD' && (
+              <div style={{ marginTop:6,fontSize:10,color:'#3a4a5e' }}>SP: {game.awayPitcher} vs {game.homePitcher}</div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── AI ANALYZER VIEW ──────────────────────────────────────────────────────────
+function AIAnalyzerView({ games, results, generating, onGenerate, isSubscribed }) {
+  const analyzed = games.filter(g => results[`${g.id}-PUBLIC`] || results[`${g.id}-VEGAS`]);
+  const pending = games.filter(g => !results[`${g.id}-PUBLIC`] && !results[`${g.id}-VEGAS`]);
+
+  return (
+    <div>
+      <div style={{ marginBottom:20 }}>
+        <h1 style={{ fontSize:22,fontWeight:700,color:'#f1f5f9',letterSpacing:'-0.02em',marginBottom:4 }}>◎ AI Analyzer</h1>
+        <p style={{ fontSize:12,color:'#3a4a5e' }}>{analyzed.length} analyzed · {pending.length} pending</p>
+      </div>
+
+      {/* Progress */}
+      <div style={{ background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:12,padding:'16px',marginBottom:20 }}>
+        <div style={{ display:'flex',justifyContent:'space-between',marginBottom:8 }}>
+          <span style={{ fontSize:10,color:'#3a4a5e',letterSpacing:'0.08em' }}>ANALYSIS PROGRESS</span>
+          <span style={{ fontSize:10,color:'#c9a227',fontWeight:700 }}>{games.length>0?Math.round((analyzed.length/games.length)*100):0}%</span>
+        </div>
+        <div style={{ height:4,background:'rgba(255,255,255,0.04)',borderRadius:2 }}>
+          <div style={{ height:'100%',width:games.length?`${Math.min(100,(analyzed.length/games.length)*100)}%`:'0%',background:'linear-gradient(90deg,#8b6d10,#c9a227)',borderRadius:2,transition:'width 0.4s' }}/>
+        </div>
+        <div style={{ display:'flex',gap:16,marginTop:10,fontSize:10,color:'#3a4a5e' }}>
+          <span>✅ {analyzed.length} analyzed</span>
+          <span>⏳ {pending.length} pending</span>
+          <span>🎮 {games.length} total</span>
+        </div>
+      </div>
+
+      {analyzed.length > 0 && (
+        <>
+          <div style={{ fontSize:10,fontWeight:700,color:'#3a4a5e',letterSpacing:'0.1em',marginBottom:10 }}>ANALYZED GAMES</div>
+          {analyzed.map((game,i) => {
+            const pubRes = results[`${game.id}-PUBLIC`];
+            const vegRes = results[`${game.id}-VEGAS`];
+            const isTier1 = (pubRes||vegRes||'').includes('Tier 1') || (pubRes||vegRes||'').includes('LOCK');
+            return (
+              <div key={game.id} style={{ background:'rgba(255,255,255,0.02)',border:`1px solid ${isTier1?'rgba(201,162,39,0.3)':'rgba(255,255,255,0.06)'}`,borderRadius:12,padding:'14px 16px',marginBottom:10 }}>
+                <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6 }}>
+                  <div style={{ display:'flex',alignItems:'center',gap:8 }}>
+                    {isTier1 && <span style={{ fontSize:12 }}>🔒</span>}
+                    <span style={{ fontSize:12,fontWeight:700,color:'#e2e8f0' }}>{game.away?.split(' ').pop()} @ {game.home?.split(' ').pop()}</span>
+                    <span style={{ fontSize:10,color:'#3a4a5e' }}>{game.time}</span>
+                  </div>
+                  <div style={{ display:'flex',gap:6 }}>
+                    {pubRes && <span style={{ fontSize:9,background:'rgba(96,165,250,0.1)',border:'1px solid rgba(96,165,250,0.2)',borderRadius:4,padding:'1px 6px',color:'#60a5fa' }}>PUBLIC ✓</span>}
+                    {vegRes && <span style={{ fontSize:9,background:'rgba(248,113,113,0.1)',border:'1px solid rgba(248,113,113,0.2)',borderRadius:4,padding:'1px 6px',color:'#f87171' }}>VEGAS ✓</span>}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </>
+      )}
+
+      {pending.length > 0 && (
+        <>
+          <div style={{ fontSize:10,fontWeight:700,color:'#3a4a5e',letterSpacing:'0.1em',marginBottom:10,marginTop:analyzed.length>0?20:0 }}>AWAITING ANALYSIS</div>
+          {pending.map((game,i) => (
+            <div key={game.id} style={{ background:'rgba(255,255,255,0.01)',border:'1px solid rgba(255,255,255,0.04)',borderRadius:12,padding:'14px 16px',marginBottom:8,display:'flex',alignItems:'center',justifyContent:'space-between' }}>
+              <div style={{ display:'flex',alignItems:'center',gap:8 }}>
+                <span style={{ fontSize:9,fontWeight:700,color:game.slot==='VEGAS'?'#f87171':'#60a5fa',background:game.slot==='VEGAS'?'rgba(248,113,113,0.1)':'rgba(96,165,250,0.1)',borderRadius:4,padding:'1px 6px' }}>{game.slot}</span>
+                <span style={{ fontSize:11,fontWeight:600,color:'#94a3b8' }}>{game.away?.split(' ').pop()} @ {game.home?.split(' ').pop()}</span>
+                <span style={{ fontSize:10,color:'#3a4a5e' }}>{game.time}</span>
+              </div>
+              {isSubscribed && (
+                <div style={{ display:'flex',gap:6 }}>
+                  <button onClick={()=>onGenerate(game,'PUBLIC')} disabled={!!generating} style={{ padding:'5px 10px',background:'rgba(96,165,250,0.06)',border:'1px solid rgba(96,165,250,0.2)',borderRadius:6,fontSize:9,color:'#60a5fa',cursor:generating?'not-allowed':'pointer',fontFamily:'inherit' }}>PUBLIC</button>
+                  <button onClick={()=>onGenerate(game,'VEGAS')} disabled={!!generating} style={{ padding:'5px 10px',background:'rgba(248,113,113,0.06)',border:'1px solid rgba(248,113,113,0.2)',borderRadius:6,fontSize:9,color:'#f87171',cursor:generating?'not-allowed':'pointer',fontFamily:'inherit' }}>VEGAS</button>
+                </div>
+              )}
+            </div>
+          ))}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── PROPS AI VIEW ─────────────────────────────────────────────────────────────
+function PropsAIView({ games, isSubscribed }) {
+  const propTypes = ['Player HR', 'Pitcher Ks', 'Player Hits', 'RBI Props', 'First 5 Innings', 'Team Totals'];
+
+  return (
+    <div>
+      <div style={{ marginBottom:20 }}>
+        <h1 style={{ fontSize:22,fontWeight:700,color:'#f1f5f9',letterSpacing:'-0.02em',marginBottom:4 }}>◇ Props AI</h1>
+        <p style={{ fontSize:12,color:'#3a4a5e' }}>Player props & alternate lines analysis</p>
+      </div>
+
+      <div style={{ background:'rgba(201,162,39,0.06)',border:'1px solid rgba(201,162,39,0.2)',borderRadius:12,padding:'16px',marginBottom:20 }}>
+        <div style={{ fontSize:11,fontWeight:700,color:'#c9a227',marginBottom:6 }}>🚧 Coming Soon</div>
+        <div style={{ fontSize:12,color:'#64748b' }}>Props AI is being built out. It will analyze player props, first-inning lines, team totals, and alternate spreads using the Vegas Vault model.</div>
+      </div>
+
+      <div style={{ display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:10 }}>
+        {propTypes.map((prop,i) => (
+          <div key={i} style={{ background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.05)',borderRadius:10,padding:'14px',textAlign:'center',opacity:0.5 }}>
+            <div style={{ fontSize:11,fontWeight:700,color:'#475569',marginBottom:4 }}>{prop}</div>
+            <div style={{ fontSize:9,color:'#2d3a4a',letterSpacing:'0.08em' }}>COMING SOON</div>
+          </div>
+        ))}
+      </div>
+
+      {games.length > 0 && (
+        <div style={{ marginTop:20 }}>
+          <div style={{ fontSize:10,fontWeight:700,color:'#3a4a5e',letterSpacing:'0.1em',marginBottom:10 }}>TODAY\'S GAMES ({games.length})</div>
+          {games.filter(g=>g.sport==='MLB').slice(0,6).map((game,i) => (
+            <div key={game.id||i} style={{ background:'rgba(255,255,255,0.01)',border:'1px solid rgba(255,255,255,0.04)',borderRadius:10,padding:'10px 14px',marginBottom:6,display:'flex',justifyContent:'space-between',alignItems:'center' }}>
+              <span style={{ fontSize:11,color:'#64748b' }}>{game.away?.split(' ').pop()} @ {game.home?.split(' ').pop()}</span>
+              <div style={{ display:'flex',gap:6 }}>
+                {['HR','Ks','Hits'].map(t => (
+                  <span key={t} style={{ fontSize:9,background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:4,padding:'2px 6px',color:'#2d3a4a' }}>{t}</span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── MAIN APP ──────────────────────────────────────────────────────────────────
 
 export default function VegasVaultApp() {
@@ -791,6 +1237,11 @@ export default function VegasVaultApp() {
   const [preAnalyzing, setPreAnalyzing] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showOddsMovement, setShowOddsMovement] = useState(false);
+  const [activeNav, setActiveNav] = useState('DASHBOARD');
+  const [activeTab, setActiveTab] = useState('DASHBOARD');
+  const [watchlist, setWatchlist] = useState(() => {
+    try { const s = typeof window!=='undefined' && localStorage.getItem('vv_watchlist'); return s ? JSON.parse(s) : []; } catch { return []; }
+  });
   const [betReadyAlerts, setBetReadyAlerts] = useState({});
   const [preAnalyzeQueue, setPreAnalyzeQueue] = useState([]);
   const [liveScores, setLiveScores]   = useState({});
@@ -1318,14 +1769,21 @@ export default function VegasVaultApp() {
         </div>
 
         <div className="vv-nav-center" style={{ flex:1,justifyContent:"center" }}>
-          {[{t:"DASHBOARD",active:true},{t:"ALERTS",badge:3,active:false},{t:"WATCHLIST",badge:7,active:false}].map((tab,i)=>(
-            <div key={i} style={{ padding:"0 22px",height:52,display:"flex",alignItems:"center",gap:7,fontSize:11,fontWeight:tab.active?700:400,color:tab.active?"#c9a227":"#3a4a5e",borderBottom:tab.active?"2px solid #c9a227":"2px solid transparent",cursor:"pointer",letterSpacing:"0.07em",whiteSpace:"nowrap" }}>
-              {i===1&&<span style={{ fontSize:11 }}>🔔</span>}
-              {i===2&&<span style={{ fontSize:11 }}>☆</span>}
-              {tab.t}
-              {tab.badge&&<span style={{ background:"rgba(201,162,39,0.15)",border:"1px solid rgba(201,162,39,0.3)",borderRadius:10,padding:"1px 6px",fontSize:9,color:"#c9a227",fontWeight:700 }}>{tab.badge}</span>}
-            </div>
-          ))}
+          {[
+            {t:"DASHBOARD",icon:null},
+            {t:"ALERTS",icon:"🔔",badge:()=>Object.keys(betReadyAlerts).length+trellAlerts.length||3},
+            {t:"WATCHLIST",icon:"☆",badge:()=>watchlist.length||0},
+          ].map((tab,i)=>{
+            const isActive = activeTab===tab.t;
+            const badgeVal = tab.badge ? tab.badge() : 0;
+            return (
+              <div key={i} onClick={()=>setActiveTab(tab.t)} style={{ padding:"0 22px",height:52,display:"flex",alignItems:"center",gap:7,fontSize:11,fontWeight:isActive?700:400,color:isActive?"#c9a227":"#3a4a5e",borderBottom:isActive?"2px solid #c9a227":"2px solid transparent",cursor:"pointer",letterSpacing:"0.07em",whiteSpace:"nowrap" }}>
+                {tab.icon&&<span style={{ fontSize:11 }}>{tab.icon}</span>}
+                {tab.t}
+                {badgeVal>0&&<span style={{ background:"rgba(201,162,39,0.15)",border:"1px solid rgba(201,162,39,0.3)",borderRadius:10,padding:"1px 6px",fontSize:9,color:"#c9a227",fontWeight:700 }}>{badgeVal}</span>}
+              </div>
+            );
+          })}
         </div>
 
         <div style={{ display:"flex",alignItems:"center",gap:10,padding:"0 18px",flexShrink:0 }}>
@@ -1352,7 +1810,12 @@ export default function VegasVaultApp() {
         <div className="vv-sidebar" style={{ width:200,background:"rgba(7,9,26,0.99)",borderRight:"1px solid rgba(255,255,255,0.05)",flexDirection:"column",flexShrink:0,overflowY:"auto" }}>
           <div style={{ flex:1,padding:"10px 0" }}>
             {NAV_ITEMS.map((item,i)=>(
-              <div key={i} onClick={()=>{ if(item.label==='HISTORY'){setShowHistory(true);} else if(item.label==='ODDS MOVEMENT'){setShowOddsMovement(true);} else if(item.label==='SETTINGS'){window.location.href='/settings';} }} style={{ display:"flex",alignItems:"center",gap:12,padding:"11px 20px",background:item.active?"rgba(201,162,39,0.07)":"transparent",borderLeft:item.active?"2px solid #c9a227":"2px solid transparent",cursor:"pointer" }}>
+              <div key={i} onClick={()=>{
+                if(item.label==='HISTORY'){setShowHistory(true);}
+                else if(item.label==='ODDS MOVEMENT'){setShowOddsMovement(true);}
+                else if(item.label==='SETTINGS'){window.location.href='/settings';}
+                else { setActiveNav(item.label); setActiveTab('DASHBOARD'); }
+              }} style={{ display:"flex",alignItems:"center",gap:12,padding:"11px 20px",background:activeNav===item.label?"rgba(201,162,39,0.07)":"transparent",borderLeft:activeNav===item.label?"2px solid #c9a227":"2px solid transparent",cursor:"pointer" }}>
                 <span style={{ fontSize:13,color:item.active?"#c9a227":"#2d3a4a",width:18,flexShrink:0 }}>{item.icon}</span>
                 <span style={{ fontSize:10,fontWeight:item.active?700:400,color:item.active?"#c9a227":"#3a4a5e",letterSpacing:"0.08em",flex:1 }}>{item.label}</span>
                 {item.arrow&&<span style={{ fontSize:9,color:"#2d3a4a" }}>▶</span>}
@@ -1388,6 +1851,23 @@ export default function VegasVaultApp() {
 
           <div className="vv-main-inner" style={{ padding:"18px 18px 28px",flex:1 }}>
 
+            {/* ── VIEW ROUTER ── */}
+            {activeTab==='ALERTS' ? (
+              <AlertsView betReadyAlerts={betReadyAlerts} trellAlerts={trellAlerts} games={games} results={results} pickHistory={pickHistory}/>
+            ) : activeTab==='WATCHLIST' ? (
+              <WatchlistView watchlist={watchlist} setWatchlist={setWatchlist} games={games} results={results} generating={generating} onGenerate={handleGenerate} liveScores={liveScores} isSubscribed={isSubscribed} finalized={finalized} onShowAuth={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}}/>
+            ) : activeNav==='SHARP MONEY' ? (
+              <SharpMoneyView games={games} marketScanner={marketScanner}/>
+            ) : activeNav==='VAULT LOCKS' ? (
+              <VaultLocksView results={results} games={games} finalized={finalized}/>
+            ) : activeNav==='AI ANALYZER' ? (
+              <AIAnalyzerView games={games} results={results} generating={generating} onGenerate={handleGenerate} isSubscribed={isSubscribed}/>
+            ) : activeNav==='TODAY'S SLATE' ? (
+              <TodaySlateView games={games} results={results} generating={generating} onGenerate={handleGenerate} liveScores={liveScores} isSubscribed={isSubscribed} finalized={finalized} onShowAuth={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}} preAnalyzeQueue={preAnalyzeQueue} betReadyAlerts={betReadyAlerts}/>
+            ) : activeNav==='PROPS AI' ? (
+              <PropsAIView games={games} isSubscribed={isSubscribed}/>
+            ) : (
+            <>
             {/* Greeting */}
             <div style={{ marginBottom:18 }}>
               <h1 style={{ fontSize:22,fontWeight:700,color:"#f1f5f9",letterSpacing:"-0.02em",marginBottom:4 }}>{greeting}, Teztez4real.</h1>
@@ -1505,9 +1985,13 @@ export default function VegasVaultApp() {
             )}
 
             {/* Stacked right panel (tablet/mobile) */}
+            {(activeTab==='DASHBOARD' && activeNav==='DASHBOARD') && (
             <div className="vv-right-stacked" style={{ marginTop:16,background:"#0b0f20",border:"1px solid rgba(255,255,255,0.06)",borderRadius:12,padding:16 }}>
               <RightPanelContent marketScanner={marketScanner} insights={insights} aiConfidence={aiConfidence} confHistory={confHistory}/>
             </div>
+            )}
+            </>
+            )}
           </div>
         </div>
 
