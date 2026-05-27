@@ -2137,32 +2137,31 @@ export default function VegasVaultApp() {
         ::-webkit-scrollbar{width:3px;}::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:2px;}
         button{font-family:inherit;}
         @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.35;}}
-        /* Universal layout — mobile-first for everyone */
+        /* Same mobile layout on all screen sizes — no sidebar, bottom nav always on */
         .vv-sidebar{display:none;}
         .vv-right{display:none;}
         .vv-right-stacked{display:none;}
-        .vv-bottom-nav{display:flex;position:fixed;bottom:0;left:0;right:0;height:60px;background:rgba(7,9,26,0.98);border-top:1px solid rgba(255,255,255,0.08);z-index:200;align-items:center;justify-content:space-around;backdrop-filter:blur(20px);padding:0 4px;}
-        .vv-cards{grid-template-columns:1fr;}
-        .vv-main-inner{padding:10px 10px 78px!important;}
-        .vv-admin-btns{display:none;}
-        /* Universal layout — same experience on all screen sizes */
+        .vv-bottom-nav{display:flex!important;position:fixed;bottom:0;left:0;right:0;height:60px;background:rgba(7,9,26,0.98);border-top:1px solid rgba(255,255,255,0.08);z-index:200;align-items:center;justify-content:space-around;backdrop-filter:blur(20px);padding:0 4px;}
         .vv-cards{display:grid;grid-template-columns:1fr;gap:10px;}
         .vv-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:18px;}
         .vv-nav-center{display:none;}
         .vv-ticker-lbl{display:none;}
-        /* Logo text always visible */
         .vv-today-title{font-size:14px;white-space:nowrap;}
-        /* Progressive enhancement for wider screens */
+        .vv-main-inner{padding:10px 10px 78px!important;}
+        .vv-admin-btns{display:none!important;}
+        /* Wider screens: more breathing room, same layout */
         @media(min-width:520px){
           .vv-stats{grid-template-columns:repeat(3,1fr)!important;}
+          .vv-main-inner{padding:14px 16px 78px!important;}
         }
         @media(min-width:768px){
           .vv-stats{grid-template-columns:repeat(5,1fr)!important;}
           .vv-main-inner{padding:18px 24px 78px!important;}
+          .vv-admin-btns{display:flex!important;}
         }
         @media(min-width:1024px){
           .vv-cards{grid-template-columns:repeat(2,1fr)!important;}
-          .vv-main-inner{max-width:860px;margin:0 auto;padding:20px 28px 78px!important;}
+          .vv-main-inner{max-width:900px;margin:0 auto;padding:20px 28px 78px!important;}
         }
       `}</style>
 
@@ -2199,21 +2198,22 @@ export default function VegasVaultApp() {
           })}
         </div>
 
-        <div style={{ display:"flex",alignItems:"center",gap:8,padding:"0 14px",flexShrink:0,marginLeft:"auto" }}>
-          {/* Admin tools — only visible to admin */}
-          {authUser?.email===ADMIN_EMAIL && (
-            <div style={{ display:"flex",alignItems:"center",gap:6 }}>
-              <button onClick={()=>{ if(window.confirm('Clear all analyzed plays and start over?')){ clearAllPlays(); }}} style={{ fontSize:9,fontWeight:700,color:"#f87171",background:"rgba(248,113,113,0.08)",border:"1px solid rgba(248,113,113,0.2)",borderRadius:6,padding:"4px 9px",cursor:"pointer",fontFamily:"inherit" }}>↺ CLEAR</button>
-              <button onClick={testNotification} style={{ fontSize:9,fontWeight:700,color:"#4ade80",background:"rgba(74,222,128,0.08)",border:"1px solid rgba(74,222,128,0.2)",borderRadius:6,padding:"4px 9px",cursor:"pointer",fontFamily:"inherit" }}>🔔 TEST</button>
-            </div>
-          )}
+        <div style={{ display:"flex",alignItems:"center",gap:8,padding:"0 12px",flexShrink:0,minWidth:0 }}>
           {authUser ? (
-            <div style={{ width:34,height:34,borderRadius:"50%",background:"linear-gradient(135deg,#c9a227,#8b6d10)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,color:"#000",cursor:"pointer",flexShrink:0 }} onClick={()=>window.location.href='/settings'}>
-              {(authUser.email?.[0]||'U').toUpperCase()}
+            <div style={{ display:"flex",alignItems:"center",gap:8 }}>
+              {authUser.email===ADMIN_EMAIL&&<span className="vv-admin-btns" style={{ display:"flex",alignItems:"center",gap:5 }}>
+                <span style={{ fontSize:9,fontWeight:700,color:"#c9a227",background:"rgba(201,162,39,0.12)",border:"1px solid rgba(201,162,39,0.3)",borderRadius:4,padding:"2px 7px",letterSpacing:"0.08em" }}>ADMIN</span>
+                <button onClick={()=>{ if(window.confirm('Clear all analyzed plays and start over?')){ clearAllPlays(); }}} style={{ fontSize:9,fontWeight:700,color:"#f87171",background:"rgba(248,113,113,0.08)",border:"1px solid rgba(248,113,113,0.25)",borderRadius:4,padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",letterSpacing:"0.06em" }}>↺ CLEAR PLAYS</button>
+                <button onClick={testNotification} style={{ fontSize:9,fontWeight:700,color:"#4ade80",background:"rgba(74,222,128,0.08)",border:"1px solid rgba(74,222,128,0.25)",borderRadius:4,padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",letterSpacing:"0.06em" }}>🔔 TEST NOTIF</button>
+              </span>}
+              <div style={{ width:32,height:32,borderRadius:"50%",background:"linear-gradient(135deg,#c9a227,#8b6d10)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,color:"#000",cursor:"pointer" }} onClick={()=>window.location.href='/settings'}>
+                {(authUser.email?.[0]||'U').toUpperCase()}
+              </div>
+              <button onClick={doSignOut} style={{ fontSize:10,color:"#475569",background:"transparent",border:"1px solid rgba(255,255,255,0.08)",borderRadius:6,padding:"4px 10px",cursor:"pointer",fontFamily:"inherit" }}>Sign Out</button>
             </div>
           ) : (
-            <button onClick={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}} style={{ display:"flex",alignItems:"center",gap:6,background:"linear-gradient(135deg,#c9a227,#8b6d10)",border:"none",borderRadius:8,padding:"7px 14px",fontSize:11,fontWeight:700,color:"#000",cursor:"pointer",letterSpacing:"0.06em",fontFamily:"inherit",whiteSpace:"nowrap" }}>
-              🔒 Login
+            <button onClick={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}} style={{ display:"flex",alignItems:"center",gap:7,background:"linear-gradient(135deg,#c9a227,#8b6d10)",border:"none",borderRadius:8,padding:"7px 16px",fontSize:11,fontWeight:700,color:"#000",cursor:"pointer",letterSpacing:"0.06em",fontFamily:"inherit" }}>
+              🔒 Login / Sign Up
             </button>
           )}
         </div>
@@ -2256,8 +2256,7 @@ export default function VegasVaultApp() {
         {/* MAIN */}
         <div style={{ flex:1,overflowY:"auto",display:"flex",flexDirection:"column",minWidth:0 }}>
 
-          {/* Odds ticker — admin only */}
-          {authUser?.email===ADMIN_EMAIL && (
+          {/* Odds ticker */}
           <div style={{ borderBottom:"1px solid rgba(255,255,255,0.05)",background:"rgba(9,12,28,0.9)" }}>
             <div style={{ display:"flex",alignItems:"center" }}>
               <div style={{ padding:"8px 16px",fontSize:9,fontWeight:700,letterSpacing:"0.12em",color:"#c9a227",borderRight:"1px solid rgba(255,255,255,0.05)",whiteSpace:"nowrap",flexShrink:0 }}>LIVE ODDS FEED</div>
@@ -2265,7 +2264,6 @@ export default function VegasVaultApp() {
               <div style={{ padding:"0 14px",flexShrink:0 }}><Sparkline color="#3b82f6" width={56} height={22}/></div>
             </div>
           </div>
-          )}
 
           <div className="vv-main-inner" style={{ padding:"18px 18px 28px",flex:1,minWidth:0,overflowX:"hidden" }}>
 
