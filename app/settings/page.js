@@ -3,10 +3,19 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 
 export default function SettingsPage() {
+  const ADMIN_EMAIL = 'battlecortez@gmail.com';
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [subLoading, setSubLoading] = useState(null);
   const [portalLoading, setPortalLoading] = useState(false);
+
+  // Slot pattern state
+  const [slotDate, setSlotDate] = useState(new Date().toISOString().split('T')[0]);
+  const [slotPattern, setSlotPattern] = useState([]);
+  const [slotNote, setSlotNote] = useState('');
+  const [slotCount, setSlotCount] = useState(15);
+  const [slotSaving, setSlotSaving] = useState(false);
+  const [slotMsg, setSlotMsg] = useState('');
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -14,6 +23,66 @@ export default function SettingsPage() {
       setLoading(false);
     });
   }, []);
+
+  // Load existing pattern when date changes
+  useEffect(() => {
+    fetch(`/api/slot-pattern?date=${slotDate}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.pattern?.length) {
+          setSlotPattern(data.pattern);
+          setSlotCount(data.pattern.length);
+          setSlotNote(data.note || '');
+        } else {
+          setSlotPattern([]);
+        }
+      }).catch(() => {});
+  }, [slotDate]);
+
+  // Build pattern array when count changes
+  useEffect(() => {
+    setSlotPattern(prev => {
+      const arr = [...prev];
+      while (arr.length < slotCount) arr.push('PUBLIC');
+      return arr.slice(0, slotCount);
+    });
+  }, [slotCount]);
+
+  async function saveSlotPattern() {
+    setSlotSaving(true);
+    setSlotMsg('');
+    try {
+      const { data: { session: s } } = await supabase.auth.getSession();
+      const res = await fetch('/api/slot-pattern', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: slotDate, pattern: slotPattern, note: slotNote, token: s?.access_token }),
+      });
+      const data = await res.json();
+      if (data.success) setSlotMsg('✅ Pattern saved! Games will reload with new slots.');
+      else setSlotMsg('❌ ' + (data.error || 'Save failed'));
+    } catch (e) {
+      setSlotMsg('❌ ' + e.message);
+    }
+    setSlotSaving(false);
+  }
+
+  function toggleSlot(i) {
+    setSlotPattern(prev => {
+      const arr = [...prev];
+      arr[i] = arr[i] === 'VEGAS' ? 'PUBLIC' : 'VEGAS';
+      return arr;
+    });
+  }
+
+  function applyShorthand(str) {
+    // Parse shorthand like "V PP VVVV PP VV PP V P"
+    const pattern = str.toUpperCase().replace(/\s+/g, '').split('').map(c => c === 'V' ? 'VEGAS' : 'PUBLIC');
+    if (pattern.length > 0) {
+      setSlotPattern(pattern);
+      setSlotCount(pattern.length);
+    }
+  }
 
   async function handleSubscribe(plan) {
     setSubLoading(plan);
@@ -117,6 +186,93 @@ export default function SettingsPage() {
             </div>
           </div>
         </div>
+
+        {/* Slot Pattern — Admin Only */}
+        {session?.user?.email === ADMIN_EMAIL && (
+          <div style={{ marginBottom:24 }}>
+            <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.12em', color:'#c9a227', marginBottom:16 }}>🎰 DAILY SLOT PATTERN</div>
+            <div style={{ background:'#0b0f1e', border:'1px solid rgba(255,255,255,0.07)', borderRadius:14, padding:'20px', overflow:'hidden' }}>
+
+              {/* Date + game count */}
+              <div style={{ display:'flex', gap:12, marginBottom:16, flexWrap:'wrap' }}>
+                <div style={{ flex:1, minWidth:140 }}>
+                  <div style={{ fontSize:9, color:'#3a4a5e', letterSpacing:'0.1em', marginBottom:6 }}>DATE</div>
+                  <input type="date" value={slotDate} onChange={e => setSlotDate(e.target.value)}
+                    style={{ width:'100%', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, padding:'8px 12px', fontSize:12, color:'#f1f5f9', fontFamily:'inherit', boxSizing:'border-box' }}/>
+                </div>
+                <div style={{ width:90 }}>
+                  <div style={{ fontSize:9, color:'#3a4a5e', letterSpacing:'0.1em', marginBottom:6 }}>GAMES</div>
+                  <input type="number" min={1} max={30} value={slotCount} onChange={e => setSlotCount(parseInt(e.target.value)||15)}
+                    style={{ width:'100%', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, padding:'8px 12px', fontSize:12, color:'#f1f5f9', fontFamily:'inherit', boxSizing:'border-box' }}/>
+                </div>
+              </div>
+
+              {/* Shorthand input */}
+              <div style={{ marginBottom:16 }}>
+                <div style={{ fontSize:9, color:'#3a4a5e', letterSpacing:'0.1em', marginBottom:6 }}>SHORTHAND (e.g. V PP VVVV PP VV PP V P)</div>
+                <div style={{ display:'flex', gap:8 }}>
+                  <input
+                    placeholder="V PP VVVV PP VV PP V P"
+                    onKeyDown={e => { if(e.key==='Enter') applyShorthand(e.target.value); }}
+                    style={{ flex:1, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, padding:'8px 12px', fontSize:12, color:'#f1f5f9', fontFamily:'inherit' }}
+                  />
+                  <button
+                    onClick={e => applyShorthand(e.target.previousSibling.value)}
+                    style={{ background:'rgba(201,162,39,0.1)', border:'1px solid rgba(201,162,39,0.3)', borderRadius:8, padding:'8px 14px', fontSize:11, fontWeight:700, color:'#c9a227', cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap' }}>
+                    Apply
+                  </button>
+                </div>
+                <div style={{ fontSize:9, color:'#2d3a4a', marginTop:4 }}>V = Vegas, P = Public · spaces optional · press Enter or Apply</div>
+              </div>
+
+              {/* Visual grid */}
+              <div style={{ marginBottom:16 }}>
+                <div style={{ fontSize:9, color:'#3a4a5e', letterSpacing:'0.1em', marginBottom:8 }}>PATTERN (tap to toggle)</div>
+                <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+                  {slotPattern.map((slot, i) => (
+                    <button key={i} onClick={() => toggleSlot(i)} style={{
+                      width:44, height:44, borderRadius:8, border:'none', cursor:'pointer', fontFamily:'inherit',
+                      background: slot === 'VEGAS' ? 'rgba(248,113,113,0.15)' : 'rgba(96,165,250,0.15)',
+                      color: slot === 'VEGAS' ? '#f87171' : '#60a5fa',
+                      fontSize:9, fontWeight:700, letterSpacing:'0.05em',
+                      display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:1,
+                      outline: slot === 'VEGAS' ? '1px solid rgba(248,113,113,0.4)' : '1px solid rgba(96,165,250,0.3)',
+                    }}>
+                      <span style={{ fontSize:11 }}>{slot === 'VEGAS' ? 'V' : 'P'}</span>
+                      <span style={{ fontSize:7, opacity:0.6 }}>#{i+1}</span>
+                    </button>
+                  ))}
+                </div>
+                <div style={{ marginTop:8, fontSize:10, color:'#475569' }}>
+                  {slotPattern.filter(s=>s==='VEGAS').length}V · {slotPattern.filter(s=>s==='PUBLIC').length}P · {slotPattern.length} total
+                  &nbsp;·&nbsp;
+                  <span style={{ color:'#c9a227', letterSpacing:'0.04em' }}>
+                    {slotPattern.map(s=>s==='VEGAS'?'V':'P').join('')}
+                  </span>
+                </div>
+              </div>
+
+              {/* Note */}
+              <div style={{ marginBottom:16 }}>
+                <div style={{ fontSize:9, color:'#3a4a5e', letterSpacing:'0.1em', marginBottom:6 }}>NOTE (optional)</div>
+                <input value={slotNote} onChange={e => setSlotNote(e.target.value)} placeholder="e.g. Wednesday — algorithm verified"
+                  style={{ width:'100%', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, padding:'8px 12px', fontSize:12, color:'#f1f5f9', fontFamily:'inherit', boxSizing:'border-box' }}/>
+              </div>
+
+              {/* Save */}
+              <button onClick={saveSlotPattern} disabled={slotSaving || slotPattern.length === 0}
+                style={{ width:'100%', padding:'11px 0', background:'linear-gradient(135deg,#c9a227,#8b6d10)', border:'none', borderRadius:8, fontSize:12, fontWeight:700, color:'#000', cursor:slotSaving?'not-allowed':'pointer', letterSpacing:'0.06em', fontFamily:'inherit', opacity:slotSaving?0.7:1 }}>
+                {slotSaving ? 'Saving...' : `Save Pattern for ${slotDate}`}
+              </button>
+
+              {slotMsg && (
+                <div style={{ marginTop:10, fontSize:11, color: slotMsg.startsWith('✅') ? '#4ade80' : '#f87171', textAlign:'center' }}>
+                  {slotMsg}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Account section */}
         <div style={{ marginBottom:24 }}>

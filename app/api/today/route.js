@@ -39,20 +39,28 @@ function assignMLBSlots(games) {
 
   if (games.length === 0) return games;
 
-  // ── MANUAL OVERRIDE ───────────────────────────────────────────────────────
-  // If a known pattern is set for today, apply it directly by index.
-  // Format: 'YYYY-MM-DD': ['VEGAS','PUBLIC','PUBLIC',...]
-  const MANUAL_PATTERNS = {
-    '2026-05-27': ['VEGAS','PUBLIC','PUBLIC','VEGAS','VEGAS','VEGAS','VEGAS','PUBLIC','PUBLIC','VEGAS','VEGAS','PUBLIC','PUBLIC','VEGAS','PUBLIC'],
-  };
+  // ── SUPABASE PATTERN OVERRIDE ────────────────────────────────────────────
+  // Admin sets the daily pattern via Settings page — stored in slot_patterns table
   const todayKey = new Date().toISOString().split('T')[0];
-  if (MANUAL_PATTERNS[todayKey] && games.length === MANUAL_PATTERNS[todayKey].length) {
-    console.log(`Using manual slot pattern for ${todayKey}`);
-    return games.map((g, i) => ({ ...g, slot: MANUAL_PATTERNS[todayKey][i] }));
-  }
-  // If game count doesn't match, fall through to algorithm
-  if (MANUAL_PATTERNS[todayKey]) {
-    console.warn(`Manual pattern for ${todayKey} has ${MANUAL_PATTERNS[todayKey].length} slots but ${games.length} games — falling back to algorithm`);
+  try {
+    const { createClient } = await import('@supabase/supabase-js');
+    const sb = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY,
+      { auth: { persistSession: false } }
+    );
+    const { data } = await sb.from('slot_patterns').select('pattern').eq('date', todayKey).maybeSingle();
+    if (data?.pattern && Array.isArray(data.pattern)) {
+      if (data.pattern.length === games.length) {
+        console.log(`Using admin slot pattern for ${todayKey}:`, data.pattern.map(s=>s[0]).join(''));
+        return games.map((g, i) => ({ ...g, slot: data.pattern[i] }));
+      } else {
+        console.warn(`Admin pattern has ${data.pattern.length} slots but ${games.length} games — padding/trimming`);
+        return games.map((g, i) => ({ ...g, slot: data.pattern[i] || data.pattern[data.pattern.length-1] || 'PUBLIC' }));
+      }
+    }
+  } catch (e) {
+    console.warn('Could not fetch slot pattern from Supabase:', e.message);
   }
 
   // Round game time to nearest 15-minute bucket for grouping
