@@ -34,10 +34,51 @@ export async function POST(request) {
     });
     const text = message.content.map(b => b.text || '').join('');
     const clean = text.replace(/```json|```/g, '').trim();
-    const result = JSON.parse(clean);
+
+    let result;
+    try {
+      result = JSON.parse(clean);
+    } catch (parseErr) {
+      console.error('JSON parse error:', parseErr.message, '— raw:', clean.slice(0, 200));
+      // Return a valid fallback structure so the card doesn't crash
+      result = {
+        summary: {
+          tier: '3',
+          tierLabel: 'Tier 3',
+          pick: 'Parse Error',
+          betType: 'N/A',
+          confidence: 'LOW',
+          verdict: 'AI response could not be parsed. Please re-analyze.',
+          isScamPlay: false,
+          slot: 'PUBLIC',
+        },
+        parseError: true,
+        rawText: clean.slice(0, 500),
+      };
+    }
+
+    // Ensure summary always exists
+    if (!result.summary) {
+      result.summary = {
+        tier: '3', tierLabel: 'Tier 3', pick: 'No Pick',
+        betType: 'N/A', confidence: 'LOW',
+        verdict: 'Analysis incomplete — please re-analyze.',
+        isScamPlay: false, slot: 'PUBLIC',
+      };
+    }
+
     return NextResponse.json(result);
   } catch (err) {
     console.error('Generate error:', err.message);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    // Return valid structure on total failure
+    return NextResponse.json({
+      summary: {
+        tier: '3', tierLabel: 'Tier 3', pick: 'Error',
+        betType: 'N/A', confidence: 'LOW',
+        verdict: `Analysis failed: ${err.message}. Please re-analyze.`,
+        isScamPlay: false, slot: 'PUBLIC',
+      },
+      error: err.message,
+    });
   }
 }

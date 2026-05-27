@@ -294,6 +294,7 @@ function ScamPlayBlock({ scam }) {
 
 function PlayResult({ result, game, onClose, isResolved, resolvedResult }) {
   const [expanded, setExpanded] = useState(false);
+  if (!result?.summary) return null;
   const tier = TIER_STYLES[result.summary.tier] || TIER_STYLES["3"];
   const conf = CONF_STYLES[result.summary.confidence] || CONF_STYLES.MEDIUM;
   const a = result.analysis;
@@ -382,7 +383,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
   const resultVegas  = results[`${game.id}-VEGAS`];
   const hasAnyResult = resultPublic || resultVegas;
   const bestResult   = resultVegas || resultPublic;
-  const tier = bestResult ? (TIER_STYLES[bestResult.summary.tier] || TIER_STYLES["3"]) : null;
+  const tier = bestResult?.summary ? (TIER_STYLES[bestResult.summary.tier] || TIER_STYLES["3"]) : null;
   const isTennis = game.sport === "Tennis";
   const isLock = tier?.label === "LOCK";
 
@@ -467,6 +468,10 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
           )}
           {isPostponed && (
             <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.1em",color:"#f87171",background:"rgba(248,113,113,0.12)",padding:"2px 8px",borderRadius:4 }}>⛔ POSTPONED</span>
+          )}
+          {/* Error badge — shown when analysis failed or couldn't parse */}
+          {hasAnyResult && (bestResult?.error || bestResult?.parseError) && (
+            <span style={{ fontSize:9,fontWeight:700,color:"#f87171",background:"rgba(248,113,113,0.1)",border:"1px solid rgba(248,113,113,0.3)",borderRadius:4,padding:"2px 8px",letterSpacing:"0.06em" }}>⚠ RE-ANALYZE</span>
           )}
           {betReady && !gameStarted && (
             <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.1em",color:"#000",background:"linear-gradient(135deg,#c9a227,#f59e0b)",padding:"2px 10px",borderRadius:4,animation:"pulse 1.5s infinite" }}>🎯 BET NOW</span>
@@ -564,6 +569,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
         <div style={{ display:"flex",gap:6,marginBottom:10 }}>
           {[["PUBLIC",resultPublic],["VEGAS",resultVegas]].map(([slot,result])=>{
             if(!result)return null;
+            if (!result?.summary) return null;
             const ts=TIER_STYLES[result.summary.tier]||TIER_STYLES["3"];
             const iv=slot==="VEGAS";
             return(
@@ -1801,9 +1807,30 @@ export default function VegasVaultApp() {
     setGenerating(key); setError(null);
     try{
       const result=await generatePlay({...game,slot});
+      // Ensure result always has a valid summary before storing
+      if (!result.summary) {
+        result.summary = {
+          tier:'3', tierLabel:'Tier 3', pick:'No Pick',
+          betType:'N/A', confidence:'LOW',
+          verdict:'Analysis returned no summary. Please re-analyze.',
+          isScamPlay:false, slot,
+        };
+      }
       setResults(prev=>({...prev,[key]:result}));
-      setActiveResult(result); setActiveGame({...game,slot});
-    }catch{ setError("Generation failed. Check your Anthropic API key in Vercel environment variables."); }
+      // Only open the modal if analysis has real content
+      if (!result.error && !result.parseError) {
+        setActiveResult(result); setActiveGame({...game,slot});
+      }
+    }catch(e){
+      setError(`Generation failed: ${e.message}`);
+      // Store an error result so the card shows something
+      const errResult = {
+        summary:{ tier:'3', tierLabel:'Tier 3', pick:'Failed', betType:'N/A', confidence:'LOW',
+          verdict:`Analysis failed: ${e.message}. Tap to re-analyze.`, isScamPlay:false, slot },
+        error: e.message,
+      };
+      setResults(prev=>({...prev,[key]:errResult}));
+    }
     finally{ setGenerating(null); }
   }
 
