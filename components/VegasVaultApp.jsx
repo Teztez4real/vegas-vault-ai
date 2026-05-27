@@ -786,7 +786,7 @@ function TopPlayBanner({ topPlay, loading, results, isSubscribed, onShowAuth, on
   if (loading && !topPlay) {
     return (
       <div style={{ background:'linear-gradient(135deg,rgba(201,162,39,0.08),rgba(201,162,39,0.03))',border:'1px solid rgba(201,162,39,0.3)',borderRadius:14,padding:'16px 20px',marginBottom:20,display:'flex',alignItems:'center',gap:12 }}>
-        <div style={{ width:28,height:28,borderRadius:'50%',border:'2px solid rgba(201,162,39,0.3)',borderTopColor:'#c9a227',animation:'spin 0.8s linear infinite',flexShrink:0 }}/>
+        <div style={{ width:28,height:28,borderRadius:'50%',border:'2px solid rgba(201,162,39,0.3)',borderTop:'2px solid #c9a227',animation:'spin 0.8s linear infinite',flexShrink:0 }}/>
         <div>
           <div style={{ fontSize:11,fontWeight:700,color:'#c9a227',letterSpacing:'0.08em' }}>⭐ TOP PLAY OF THE DAY</div>
           <div style={{ fontSize:11,color:'#3a4a5e',marginTop:2 }}>AI is analyzing the best game for today...</div>
@@ -1562,26 +1562,6 @@ export default function VegasVaultApp() {
 
   useEffect(()=>{
     setLoading(true);
-    // Fetch top play of the day (auto-analyzed, cached)
-    setTopPlayLoading(true);
-    fetch(`/api/topplay?date=${selectedDate}`)
-      .then(r=>r.json())
-      .then(data => {
-        if (data.topPlay?.result) {
-          setTopPlay(data.topPlay);
-          // Auto-inject into results so the card shows as analyzed
-          const tp = data.topPlay;
-          const gameKey = tp.game_key; // "Away|Home"
-          setResults(prev => {
-            const updated = {...prev};
-            // Find the matching game and set both slots
-            return updated;
-          });
-        }
-      })
-      .catch(() => {})
-      .finally(() => setTopPlayLoading(false));
-
     fetch(`/api/today?date=${selectedDate}`).then(r=>r.json())
       .then(data=>{
         const loadedGames = data.games||MOCK_GAMES;
@@ -1592,19 +1572,25 @@ export default function VegasVaultApp() {
         if (data.insights?.length) setInsights(data.insights);
         if (data.bookmakerCount > 0) setBookmakerCount(data.bookmakerCount);
         setLoading(false);
-        // Inject top play result into results state once we have game IDs
-        setTopPlay(prev => {
-          if (!prev?.result) return prev;
-          const [away, home] = (prev.game_key||'').split('|');
-          const matchingGame = loadedGames.find(g =>
-            g.away === away && g.home === home
-          );
-          if (matchingGame) {
-            const key = `${matchingGame.id}-${prev.slot}`;
-            setResults(r => ({ ...r, [key]: prev.result }));
-          }
-          return prev;
-        });
+
+        // Fetch top play after games are loaded (non-blocking, safe)
+        setTopPlayLoading(true);
+        fetch(`/api/topplay?date=${selectedDate}`)
+          .then(r => r.ok ? r.json() : null)
+          .then(data => {
+            if (!data?.topPlay?.result) return;
+            const tp = data.topPlay;
+            setTopPlay(tp);
+            // Inject analysis into results state
+            const [away, home] = (tp.game_key||'').split('|');
+            const matchingGame = loadedGames.find(g => g.away===away && g.home===home);
+            if (matchingGame) {
+              const key = `${matchingGame.id}-${tp.slot}`;
+              setResults(prev => ({ ...prev, [key]: tp.result }));
+            }
+          })
+          .catch(() => {})
+          .finally(() => setTopPlayLoading(false));
       })
       .catch(()=>{setGames(MOCK_GAMES);setLoading(false);});
   },[selectedDate]);
@@ -2068,6 +2054,7 @@ export default function VegasVaultApp() {
     <div style={{ fontFamily:"'DM Mono','Courier New',monospace",background:"#07091a",minHeight:"100vh",color:"#e2e8f0",display:"flex",flexDirection:"column" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap');
+        @keyframes spin { to { transform: rotate(360deg); } }
         *{box-sizing:border-box;margin:0;padding:0;}
         body{background:#07091a;overflow-x:hidden;}
         ::-webkit-scrollbar{width:3px;}::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:2px;}

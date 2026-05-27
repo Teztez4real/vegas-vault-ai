@@ -218,14 +218,23 @@ export async function GET(request) {
     }
   }
 
-  // No cache — fetch today's games and select top play
+  // No cache — fetch today's games directly via the today API URL
   try {
-    const gamesRes = await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL || 'https://vegas-vault-ai-l6jk.vercel.app'}/api/today?date=${dateParam}`,
-      { cache: 'no-store' }
-    );
-    const gamesData = await gamesRes.json();
-    const games = gamesData.games || [];
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vegas-vault-ai-l6jk.vercel.app';
+    let games = [];
+    try {
+      const gamesRes = await fetch(`${baseUrl}/api/today?date=${dateParam}`, {
+        cache: 'no-store',
+        headers: { 'x-internal': '1' },
+        signal: AbortSignal.timeout(25000), // 25s timeout
+      });
+      if (gamesRes.ok) {
+        const gamesData = await gamesRes.json();
+        games = gamesData.games || [];
+      }
+    } catch (fetchErr) {
+      console.error('Top play: could not fetch games:', fetchErr.message);
+    }
 
     if (!games.length) {
       return NextResponse.json({ error: 'No games available', topPlay: null });
