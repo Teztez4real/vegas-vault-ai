@@ -203,15 +203,21 @@ async function fetchOdds(sportKey) {
         const openHomeML = pinData?.h2h?.homeML;
         const openAwayML = pinData?.h2h?.awayML;
 
+        // Compare DraftKings vs FanDuel for real-time sharp signal
+        const fdData = Object.entries(event.books).find(([b]) => b.toLowerCase().includes('fanduel'))?.[1];
         let lineMovement = 'Line stable';
         let rlm = null;
-        if (openHomeML && homeML && openHomeML !== homeML) {
-          const diff = homeML - openHomeML;
-          const dir = diff > 0 ? 'moved toward home' : 'moved toward away';
-          lineMovement = `DraftKings ${fmt(homeML)} vs Pinnacle ${fmt(openHomeML)} (${dir}, ${Math.abs(diff)} pts)`;
-          // Rough RLM detection: if line moved toward away but home team is heavily bet
-          rlm = diff < -5 ? event.away : diff > 5 ? event.home : null;
-          if (rlm) lineMovement += ` | ⚡ SHARP SIGNAL: Line moved toward ${rlm}`;
+        if (dkData?.h2h?.homeML != null && fdData?.h2h?.homeML != null) {
+          const dkHome = dkData.h2h.homeML;
+          const fdHome = fdData.h2h.homeML;
+          const diff = Math.abs(dkHome - fdHome);
+          if (diff >= 6) {
+            const sharpSide = dkHome < fdHome ? event.home : event.away;
+            rlm = sharpSide;
+            lineMovement = `🟠 SHARP — DK ${fmt(dkHome)} vs FD ${fmt(fdHome)} (${diff}pt gap on ${sharpSide.split(' ').pop()})`;
+          } else {
+            lineMovement = `Line stable. DK Home ${fmt(dkHome)} / FD Home ${fmt(fdHome)}`;
+          }
         } else if (homeML) {
           lineMovement = `Line stable. Home ${fmt(homeML)} / Away ${fmt(awayML)}`;
         }

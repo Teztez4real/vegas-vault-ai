@@ -108,27 +108,44 @@ function buildGames(gamesMap) {
     }
     if (!bestBook) return null;
 
-    // Pinnacle specifically (sharpest book — moves first)
-    const pinEntry = Object.entries(event.books).find(([b]) => b.includes('pinnacle'));
-    const pinBook  = pinEntry?.[1];
-
-    // DraftKings specifically (biggest public book)
+    // DraftKings
     const dkEntry  = Object.entries(event.books).find(([b]) => b.includes('draftkings'));
     const dkBook   = dkEntry?.[1];
 
-    // Real-time sharp indicator: if Pinnacle and DK differ significantly, sharp money has moved
+    // FanDuel
+    const fdEntry  = Object.entries(event.books).find(([b]) => b.includes('fanduel'));
+    const fdBook   = fdEntry?.[1];
+
+    // Sharp signal: FanDuel vs DraftKings disagreement
+    // These two books update at slightly different speeds — a gap of 6+ pts means
+    // one book has already adjusted to sharp action the other hasn't caught yet
     let sharpSignal = null;
-    if (pinBook?.homeML != null && dkBook?.homeML != null) {
-      const diff = Math.abs(pinBook.homeML - dkBook.homeML);
-      if (diff >= 8) {
-        // Pinnacle more negative on home = sharp on home; more positive = sharp on away
-        const sharpOnHome = pinBook.homeML < dkBook.homeML;
+    const bookA = dkBook?.homeML != null ? dkBook : null;
+    const bookB = fdBook?.homeML != null ? fdBook : null;
+
+    if (bookA && bookB) {
+      const diff = Math.abs(bookA.homeML - bookB.homeML);
+      if (diff >= 6) {
+        // Whichever book has the more negative home ML has already priced in the sharp action
+        const sharpOnHome = Math.min(bookA.homeML, bookB.homeML) === bookA.homeML
+          ? bookA.homeML < bookB.homeML
+          : bookB.homeML < bookA.homeML;
+        // Actually: more negative = more favored = sharp money pushed it
+        const minHome = Math.min(bookA.homeML, bookB.homeML);
+        const isSharpHome = minHome === (bookA.homeML < bookB.homeML ? bookA.homeML : bookB.homeML);
         sharpSignal = {
-          side: sharpOnHome ? event.home : event.away,
+          side: (bookA.homeML < bookB.homeML ? bookA.homeML : bookB.homeML) < 0
+            ? (Math.min(bookA.homeML, bookB.homeML) === bookA.homeML && dkBook ? event.home : event.home)
+            : event.away,
           diff,
-          pinHome: pinBook.homeML,
-          dkHome: dkBook.homeML,
+          dkHome: dkBook?.homeML,
+          fdHome: fdBook?.homeML,
+          note: `DK ${fmt(dkBook?.homeML)} vs FD ${fmt(fdBook?.homeML)}`,
         };
+        // Simplify: if DK has more negative home than FD, sharp on home; else sharp on away
+        sharpSignal.side = (dkBook?.homeML != null && fdBook?.homeML != null)
+          ? (dkBook.homeML < fdBook.homeML ? event.home : event.away)
+          : event.home;
       }
     }
 
@@ -139,8 +156,8 @@ function buildGames(gamesMap) {
       homeML: fmt(bestBook.homeML),
       awayML: fmt(bestBook.awayML),
       commenceTime: event.commenceTime,
-      pinHomeML: pinBook?.homeML,
       dkHomeML: dkBook?.homeML,
+      fdHomeML: fdBook?.homeML,
       sharpSignal,
       allBooks: event.books,
     };
@@ -192,9 +209,9 @@ export async function GET(request) {
       const mv = tracked[game.key] || {};
 
       // If sharp signal exists between Pinnacle and DK, upgrade the movement description
-      if (game.sharpSignal && (mv.moveType === 'STABLE' || !mv.moveType)) {
+      if (game.sharpSignal && (mv.moveType === 'STABLE' || mv.moveType === 'OPENING' || !mv.moveType)) {
         const sig = game.sharpSignal;
-        mv.lineMovement = `🟠 SHARP — Pinnacle vs DK spread ${sig.diff}pts on ${sig.side} (Pin Home ${fmt(sig.pinHome)} / DK Home ${fmt(sig.dkHome)})${mv.lineMovement ? ' | ' + mv.lineMovement : ''}`;
+        mv.lineMovement = `🟠 SHARP — Book disagreement ${sig.diff}pts on ${sig.side} (${sig.note})${mv.lineMovement ? ' | ' + mv.lineMovement : ''}`;
         mv.rlm = sig.side;
         mv.moveType = 'SHARP';
       }
@@ -205,8 +222,8 @@ export async function GET(request) {
         homeML: game.homeML,
         awayML: game.awayML,
         commenceTime: game.commenceTime,
-        pinHomeML: fmt(game.pinHomeML),
         dkHomeML: fmt(game.dkHomeML),
+        fdHomeML: fmt(game.fdHomeML),
         ...mv,
       };
     }
