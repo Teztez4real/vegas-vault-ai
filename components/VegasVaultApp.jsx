@@ -1351,7 +1351,7 @@ export default function VegasVaultApp() {
         <div className="vv-sidebar" style={{ width:200,background:"rgba(7,9,26,0.99)",borderRight:"1px solid rgba(255,255,255,0.05)",flexDirection:"column",flexShrink:0,overflowY:"auto" }}>
           <div style={{ flex:1,padding:"10px 0" }}>
             {NAV_ITEMS.map((item,i)=>(
-              <div key={i} style={{ display:"flex",alignItems:"center",gap:12,padding:"11px 20px",background:item.active?"rgba(201,162,39,0.07)":"transparent",borderLeft:item.active?"2px solid #c9a227":"2px solid transparent",cursor:"pointer" }}>
+              <div key={i} onClick={()=>{ if(item.label==='HISTORY'){setShowHistory(true);} else if(item.label==='SETTINGS'){window.location.href='/settings';} }} style={{ display:"flex",alignItems:"center",gap:12,padding:"11px 20px",background:item.active?"rgba(201,162,39,0.07)":"transparent",borderLeft:item.active?"2px solid #c9a227":"2px solid transparent",cursor:"pointer" }}>
                 <span style={{ fontSize:13,color:item.active?"#c9a227":"#2d3a4a",width:18,flexShrink:0 }}>{item.icon}</span>
                 <span style={{ fontSize:10,fontWeight:item.active?700:400,color:item.active?"#c9a227":"#3a4a5e",letterSpacing:"0.08em",flex:1 }}>{item.label}</span>
                 {item.arrow&&<span style={{ fontSize:9,color:"#2d3a4a" }}>▶</span>}
