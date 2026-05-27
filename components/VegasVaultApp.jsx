@@ -1936,6 +1936,9 @@ export default function VegasVaultApp() {
   // ── AUTO-ANALYSIS: queue every game by its assigned slot ───────────────────
   useEffect(() => {
     if (!games || games.length === 0) return;
+    // Only queue if slots are assigned — wait for slot pattern to load
+    const slotsAssigned = games.some(g => g.slot === 'PUBLIC' || g.slot === 'VEGAS');
+    if (!slotsAssigned) return;
     const toAnalyze = [];
     for (const game of games) {
       if (!game.slot || (game.slot !== 'PUBLIC' && game.slot !== 'VEGAS')) continue;
@@ -1945,28 +1948,41 @@ export default function VegasVaultApp() {
       const key = `${game.id}-${game.slot}`;
       if (!results[key]) toAnalyze.push({ game, slot: game.slot, key });
     }
-    if (toAnalyze.length > 0) setPreAnalyzeQueue(toAnalyze);
-  }, [games]);
+    // Replace queue with current unanalyzed games
+    setPreAnalyzeQueue(toAnalyze);
+  }, [games, selectedDate]);
 
   // Track whether analysis-complete notification has been sent today
   const analysisDoneNotifKey = `vv_analysis_notif_${selectedDate}`;
 
-  // Process pre-analysis queue one at a time
+  // Process pre-analysis queue — 2 at a time for speed
+  const BATCH_SIZE = 2;
   useEffect(() => {
     if (preAnalyzeQueue.length === 0 || preAnalyzing) return;
-    const next = preAnalyzeQueue[0];
-    if (!next || results[next.key]) {
-      setPreAnalyzeQueue(q => q.slice(1));
-      return;
-    }
+    // Skip already-analyzed games at front of queue
+    const pending = preAnalyzeQueue.filter(item => !results[item.key]);
+    if (pending.length === 0) { setPreAnalyzeQueue([]); return; }
+
     let cancelled = false;
     setPreAnalyzing(true);
-    generatePlay({ ...next.game, slot: next.slot }).then(result => {
+    const batch = pending.slice(0, BATCH_SIZE);
+
+    Promise.all(batch.map(item =>
+      generatePlay({ ...item.game, slot: item.slot })
+        .then(result => {
+          if (!result.summary) result.summary = { tier:'3', tierLabel:'Tier 3', pick:'No Pick', betType:'N/A', confidence:'LOW', verdict:'Analysis incomplete.', isScamPlay:false, slot:item.slot };
+          return { key: item.key, result };
+        })
+        .catch(() => null)
+    )).then(outcomes => {
       if (cancelled) return;
-      if (!result.summary) result.summary = { tier:'3', tierLabel:'Tier 3', pick:'No Pick', betType:'N/A', confidence:'LOW', verdict:'Analysis incomplete.', isScamPlay:false, slot:next.slot };
+      const valid = outcomes.filter(Boolean);
       setResults(prev => {
-        const updated = { ...prev, [next.key]: result };
-        if (preAnalyzeQueue.length === 1) {
+        const updated = { ...prev };
+        valid.forEach(({ key, result }) => { updated[key] = result; });
+        // Fire completion notification when nothing left
+        const remaining = pending.length - batch.length;
+        if (remaining === 0) {
           const alreadyNotified = typeof window !== 'undefined' && localStorage.getItem(analysisDoneNotifKey);
           if (!alreadyNotified) {
             const allResults = Object.values(updated);
@@ -1986,10 +2002,8 @@ export default function VegasVaultApp() {
         }
         return updated;
       });
-      setPreAnalyzeQueue(q => q.slice(1));
+      setPreAnalyzeQueue(q => q.filter(item => !batch.find(b => b.key === item.key)));
       setPreAnalyzing(false);
-    }).catch(() => {
-      if (!cancelled) { setPreAnalyzeQueue(q => q.slice(1)); setPreAnalyzing(false); }
     });
     return () => { cancelled = true; };
   }, [preAnalyzeQueue, preAnalyzing]);
