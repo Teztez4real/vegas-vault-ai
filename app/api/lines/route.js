@@ -108,44 +108,42 @@ function buildGames(gamesMap) {
     }
     if (!bestBook) return null;
 
-    // DraftKings
+    // BetOnline = sharp book (moves first with sharp money)
+    const bolEntry = Object.entries(event.books).find(([b]) => b.includes('betonline') || b.includes('betus') || b.includes('bovada'));
+    const bolBook  = bolEntry?.[1];
+
+    // DraftKings = biggest public book
     const dkEntry  = Object.entries(event.books).find(([b]) => b.includes('draftkings'));
     const dkBook   = dkEntry?.[1];
 
-    // FanDuel
+    // FanDuel = secondary public book
     const fdEntry  = Object.entries(event.books).find(([b]) => b.includes('fanduel'));
     const fdBook   = fdEntry?.[1];
 
-    // Sharp signal: FanDuel vs DraftKings disagreement
-    // These two books update at slightly different speeds — a gap of 6+ pts means
-    // one book has already adjusted to sharp action the other hasn't caught yet
+    // Sharp signal: BetOnline vs DraftKings
+    // BetOnline accepts sharp action and adjusts fast — when it diverges from DK, that's real
+    // Threshold: 5pts (lower than DK/FD because BOL is a true sharp book)
     let sharpSignal = null;
-    const bookA = dkBook?.homeML != null ? dkBook : null;
-    const bookB = fdBook?.homeML != null ? fdBook : null;
 
-    if (bookA && bookB) {
-      const diff = Math.abs(bookA.homeML - bookB.homeML);
-      if (diff >= 6) {
-        // Whichever book has the more negative home ML has already priced in the sharp action
-        const sharpOnHome = Math.min(bookA.homeML, bookB.homeML) === bookA.homeML
-          ? bookA.homeML < bookB.homeML
-          : bookB.homeML < bookA.homeML;
-        // Actually: more negative = more favored = sharp money pushed it
-        const minHome = Math.min(bookA.homeML, bookB.homeML);
-        const isSharpHome = minHome === (bookA.homeML < bookB.homeML ? bookA.homeML : bookB.homeML);
+    const sharpBook  = bolBook?.homeML != null ? bolBook : fdBook;  // BOL preferred, FD fallback
+    const publicBook = dkBook?.homeML != null ? dkBook : null;
+    const sharpName  = bolBook?.homeML != null ? 'BOL' : 'FD';
+    const publicName = 'DK';
+
+    if (sharpBook && publicBook) {
+      const diff = Math.abs(sharpBook.homeML - publicBook.homeML);
+      const threshold = bolBook?.homeML != null ? 5 : 7; // tighter threshold for true sharp book
+      if (diff >= threshold) {
+        // Sharp book more negative on home = sharp money on home
+        const sharpOnHome = sharpBook.homeML < publicBook.homeML;
+        const sharpSide   = sharpOnHome ? event.home : event.away;
         sharpSignal = {
-          side: (bookA.homeML < bookB.homeML ? bookA.homeML : bookB.homeML) < 0
-            ? (Math.min(bookA.homeML, bookB.homeML) === bookA.homeML && dkBook ? event.home : event.home)
-            : event.away,
+          side: sharpSide,
           diff,
-          dkHome: dkBook?.homeML,
-          fdHome: fdBook?.homeML,
-          note: `DK ${fmt(dkBook?.homeML)} vs FD ${fmt(fdBook?.homeML)}`,
+          sharpML: sharpBook.homeML,
+          publicML: publicBook.homeML,
+          note: `${sharpName} ${fmt(sharpBook.homeML)} vs ${publicName} ${fmt(publicBook.homeML)}`,
         };
-        // Simplify: if DK has more negative home than FD, sharp on home; else sharp on away
-        sharpSignal.side = (dkBook?.homeML != null && fdBook?.homeML != null)
-          ? (dkBook.homeML < fdBook.homeML ? event.home : event.away)
-          : event.home;
       }
     }
 
@@ -156,8 +154,9 @@ function buildGames(gamesMap) {
       homeML: fmt(bestBook.homeML),
       awayML: fmt(bestBook.awayML),
       commenceTime: event.commenceTime,
-      dkHomeML: dkBook?.homeML,
-      fdHomeML: fdBook?.homeML,
+      bolHomeML: bolBook?.homeML,
+      dkHomeML:  dkBook?.homeML,
+      fdHomeML:  fdBook?.homeML,
       sharpSignal,
       allBooks: event.books,
     };
@@ -211,7 +210,7 @@ export async function GET(request) {
       // If sharp signal exists between Pinnacle and DK, upgrade the movement description
       if (game.sharpSignal && (mv.moveType === 'STABLE' || mv.moveType === 'OPENING' || !mv.moveType)) {
         const sig = game.sharpSignal;
-        mv.lineMovement = `🟠 SHARP — Book disagreement ${sig.diff}pts on ${sig.side} (${sig.note})${mv.lineMovement ? ' | ' + mv.lineMovement : ''}`;
+        mv.lineMovement = `🟠 SHARP — ${sig.note} (${sig.diff}pt gap on ${sig.side.split(' ').pop()})${mv.lineMovement && !mv.lineMovement.includes('stable') ? ' | ' + mv.lineMovement : ''}`;
         mv.rlm = sig.side;
         mv.moveType = 'SHARP';
       }
@@ -222,8 +221,9 @@ export async function GET(request) {
         homeML: game.homeML,
         awayML: game.awayML,
         commenceTime: game.commenceTime,
-        dkHomeML: fmt(game.dkHomeML),
-        fdHomeML: fmt(game.fdHomeML),
+        bolHomeML: fmt(game.bolHomeML),
+        dkHomeML:  fmt(game.dkHomeML),
+        fdHomeML:  fmt(game.fdHomeML),
         ...mv,
       };
     }

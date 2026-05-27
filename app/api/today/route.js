@@ -203,20 +203,25 @@ async function fetchOdds(sportKey) {
         const openHomeML = pinData?.h2h?.homeML;
         const openAwayML = pinData?.h2h?.awayML;
 
-        // Compare DraftKings vs FanDuel for real-time sharp signal
-        const fdData = Object.entries(event.books).find(([b]) => b.toLowerCase().includes('fanduel'))?.[1];
+        // Sharp signal: BetOnline (sharp book) vs DraftKings (public book)
+        const fdData  = Object.entries(event.books).find(([b]) => b.toLowerCase().includes('fanduel'))?.[1];
+        const bolData = Object.entries(event.books).find(([b]) => b.toLowerCase().includes('betonline') || b.toLowerCase().includes('betus') || b.toLowerCase().includes('bovada'))?.[1];
+        const sharpData  = bolData?.h2h ? bolData : fdData;  // BOL preferred
+        const sharpLabel = bolData?.h2h ? 'BOL' : 'FD';
+        const threshold  = bolData?.h2h ? 5 : 7;
+
         let lineMovement = 'Line stable';
         let rlm = null;
-        if (dkData?.h2h?.homeML != null && fdData?.h2h?.homeML != null) {
-          const dkHome = dkData.h2h.homeML;
-          const fdHome = fdData.h2h.homeML;
-          const diff = Math.abs(dkHome - fdHome);
-          if (diff >= 6) {
-            const sharpSide = dkHome < fdHome ? event.home : event.away;
+        if (sharpData?.h2h?.homeML != null && dkData?.h2h?.homeML != null) {
+          const sharpHome = sharpData.h2h.homeML;
+          const dkHome    = dkData.h2h.homeML;
+          const diff = Math.abs(sharpHome - dkHome);
+          if (diff >= threshold) {
+            const sharpSide = sharpHome < dkHome ? event.home : event.away;
             rlm = sharpSide;
-            lineMovement = `🟠 SHARP — DK ${fmt(dkHome)} vs FD ${fmt(fdHome)} (${diff}pt gap on ${sharpSide.split(' ').pop()})`;
+            lineMovement = `🟠 SHARP — ${sharpLabel} ${fmt(sharpHome)} vs DK ${fmt(dkHome)} (${diff}pt gap on ${sharpSide.split(' ').pop()})`;
           } else {
-            lineMovement = `Line stable. DK Home ${fmt(dkHome)} / FD Home ${fmt(fdHome)}`;
+            lineMovement = `Line stable. ${sharpLabel} Home ${fmt(sharpHome)} / DK Home ${fmt(dkHome)}`;
           }
         } else if (homeML) {
           lineMovement = `Line stable. Home ${fmt(homeML)} / Away ${fmt(awayML)}`;
