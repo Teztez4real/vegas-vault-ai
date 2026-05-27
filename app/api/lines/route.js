@@ -170,6 +170,19 @@ export async function GET(request) {
       return NextResponse.json({ movements: {}, summary: { sharp: 0, moving: 0, stable: 0, total: 0 }, fetchedAt: new Date().toISOString() });
     }
 
+    // Debug: log which books are present per game
+    const debug = searchParams.get('debug') === '1';
+    if (debug) {
+      const bookSample = Object.entries(gamesMap).slice(0, 3).map(([key, g]) => ({
+        game: key,
+        books: Object.keys(g.books),
+        pinnaclePresent: Object.keys(g.books).some(b => b.includes('pinnacle')),
+        dkPresent: Object.keys(g.books).some(b => b.includes('draftkings')),
+      }));
+      console.log('DEBUG books:', JSON.stringify(bookSample));
+      if (debug) return NextResponse.json({ debug: bookSample, gameCount: Object.keys(gamesMap).length });
+    }
+
     // Track opening lines + compute movement (stored opening vs current)
     const tracked = await trackLines(gamesList, sport.toUpperCase(), dateParam);
 
@@ -218,3 +231,5 @@ export async function GET(request) {
     return NextResponse.json({ error: err.message, movements: {} }, { status: 500 });
   }
 }
+
+// DEBUG endpoint — add ?debug=1 to see raw book data
