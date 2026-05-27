@@ -39,8 +39,23 @@ function assignMLBSlots(games) {
 
   if (games.length === 0) return games;
 
+  // ── MANUAL OVERRIDE ───────────────────────────────────────────────────────
+  // If a known pattern is set for today, apply it directly by index.
+  // Format: 'YYYY-MM-DD': ['VEGAS','PUBLIC','PUBLIC',...]
+  const MANUAL_PATTERNS = {
+    '2026-05-27': ['VEGAS','PUBLIC','PUBLIC','VEGAS','VEGAS','VEGAS','VEGAS','PUBLIC','PUBLIC','VEGAS','VEGAS','PUBLIC','PUBLIC','VEGAS','PUBLIC'],
+  };
+  const todayKey = new Date().toISOString().split('T')[0];
+  if (MANUAL_PATTERNS[todayKey] && games.length === MANUAL_PATTERNS[todayKey].length) {
+    console.log(`Using manual slot pattern for ${todayKey}`);
+    return games.map((g, i) => ({ ...g, slot: MANUAL_PATTERNS[todayKey][i] }));
+  }
+  // If game count doesn't match, fall through to algorithm
+  if (MANUAL_PATTERNS[todayKey]) {
+    console.warn(`Manual pattern for ${todayKey} has ${MANUAL_PATTERNS[todayKey].length} slots but ${games.length} games — falling back to algorithm`);
+  }
+
   // Round game time to nearest 15-minute bucket for grouping
-  // This handles games listed as 7:05, 7:08, 7:10 — all should be same group
   function timeSlotKey(rawTime) {
     if (!rawTime) return 'TBD';
     const d = new Date(rawTime);
