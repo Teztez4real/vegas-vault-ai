@@ -31,7 +31,11 @@ function fmt(price) {
 // 6. Last game different time slot = switch
 // 7. Last game same time slot = hold
 
-function assignMLBSlots(games) {
+function assignMLBSlots(games, adminPattern = null) {
+  // If admin set a pattern today, apply it directly
+  if (adminPattern && Array.isArray(adminPattern)) {
+    return games.map((g, i) => ({ ...g, slot: adminPattern[i] || adminPattern[adminPattern.length-1] || 'PUBLIC' }));
+  }
   const dayOfWeek = new Date().getDay();
   const publicDays = [1, 3, 5];
   const dayBase = publicDays.includes(dayOfWeek) ? 'PUBLIC' : 'VEGAS';
@@ -39,29 +43,7 @@ function assignMLBSlots(games) {
 
   if (games.length === 0) return games;
 
-  // ── SUPABASE PATTERN OVERRIDE ────────────────────────────────────────────
-  // Admin sets the daily pattern via Settings page — stored in slot_patterns table
-  const todayKey = new Date().toISOString().split('T')[0];
-  try {
-    const { createClient } = await import('@supabase/supabase-js');
-    const sb = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY,
-      { auth: { persistSession: false } }
-    );
-    const { data } = await sb.from('slot_patterns').select('pattern').eq('date', todayKey).maybeSingle();
-    if (data?.pattern && Array.isArray(data.pattern)) {
-      if (data.pattern.length === games.length) {
-        console.log(`Using admin slot pattern for ${todayKey}:`, data.pattern.map(s=>s[0]).join(''));
-        return games.map((g, i) => ({ ...g, slot: data.pattern[i] }));
-      } else {
-        console.warn(`Admin pattern has ${data.pattern.length} slots but ${games.length} games — padding/trimming`);
-        return games.map((g, i) => ({ ...g, slot: data.pattern[i] || data.pattern[data.pattern.length-1] || 'PUBLIC' }));
-      }
-    }
-  } catch (e) {
-    console.warn('Could not fetch slot pattern from Supabase:', e.message);
-  }
+  // Pattern override applied externally — see assignMLBSlotsWithPattern below
 
   // Round game time to nearest 15-minute bucket for grouping
   function timeSlotKey(rawTime) {
@@ -1188,7 +1170,26 @@ export async function GET(request) {
     );
 
     mlbGamesRaw.sort((a, b) => new Date(a.rawTime) - new Date(b.rawTime));
-    const mlbGames = assignMLBSlots(mlbGamesRaw);
+
+    // Fetch admin slot pattern from Supabase
+    let adminPattern = null;
+    try {
+      const { createClient } = require('@supabase/supabase-js');
+      const sb = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY,
+        { auth: { persistSession: false } }
+      );
+      const { data } = await sb.from('slot_patterns').select('pattern').eq('date', dateParam).maybeSingle();
+      if (data?.pattern?.length) {
+        adminPattern = data.pattern;
+        console.log(`Admin slot pattern for ${dateParam}:`, data.pattern.map(s=>s[0]).join(''));
+      }
+    } catch (e) {
+      console.warn('Slot pattern fetch failed:', e.message);
+    }
+
+    const mlbGames = assignMLBSlots(mlbGamesRaw, adminPattern);
 
     // Log slot assignments for verification
     console.log('SLOT ASSIGNMENTS:', mlbGames.map(g =>
