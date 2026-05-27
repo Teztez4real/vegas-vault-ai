@@ -804,9 +804,7 @@ export default function VegasVaultApp() {
   const [showPw, setShowPw]             = useState(false);
 
   useEffect(() => {
-    const admin = typeof window !== 'undefined' && localStorage.getItem('vv_admin');
-    const sub   = typeof window !== 'undefined' && localStorage.getItem('vv_subscribed');
-    if (admin || sub) setIsSubscribed(true);
+    // Don't pre-set from localStorage — let Supabase session be the source of truth
     try {
       const sb = getSB();
       if (!sb) return;
