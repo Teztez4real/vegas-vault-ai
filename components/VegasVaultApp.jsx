@@ -780,7 +780,7 @@ function RightPanelContent({ marketScanner, insights, aiConfidence, confHistory 
 
 
 // ── TOP PLAY BANNER ──────────────────────────────────────────────────────────
-function TopPlayBanner({ topPlay, loading, results, isSubscribed, onShowAuth, onForceRefresh, isAdmin }) {
+function TopPlayBanner({ topPlay, loading, results, games, pickHistory, isSubscribed, onShowAuth, onForceRefresh, isAdmin }) {
   const [expanded, setExpanded] = useState(false);
 
   if (loading && !topPlay) {
@@ -803,6 +803,14 @@ function TopPlayBanner({ topPlay, loading, results, isSubscribed, onShowAuth, on
   const isVegas = topPlay.slot === 'VEGAS';
   const slotColor = isVegas ? '#f87171' : '#60a5fa';
   const slotBg    = isVegas ? 'rgba(248,113,113,0.1)' : 'rgba(96,165,250,0.1)';
+
+  // Look up win/loss result from pickHistory
+  const [tpAway, tpHome] = (topPlay.game_key||'').split('|');
+  const matchingGame = games?.find(g => g.away === tpAway && g.home === tpHome);
+  const tpHistoryEntry = pickHistory?.find(p =>
+    matchingGame && p.key === `${matchingGame.id}-${topPlay.slot}` && p.result
+  );
+  const tpResult = tpHistoryEntry?.result || null; // 'win' | 'loss' | null
   const tierColors = { '1':'#c9a227', '2':'#60a5fa', '3':'#475569', 'PASS':'#f87171' };
   const tierColor  = tierColors[summary.tier] || '#c9a227';
   const isPass     = summary.tier === 'PASS' || summary.tier === '3';
@@ -826,6 +834,12 @@ function TopPlayBanner({ topPlay, loading, results, isSubscribed, onShowAuth, on
             {summary.tier === '1' ? '🔒 LOCK' : `Tier ${summary.tier}`}
           </span>}
           {isPass && <span style={{ fontSize:9,fontWeight:700,color:'#f87171',background:'rgba(248,113,113,0.1)',borderRadius:4,padding:'2px 8px' }}>🚫 NO PLAY</span>}
+          {tpResult === 'win' && (
+            <span style={{ fontSize:11,fontWeight:800,color:'#4ade80',background:'rgba(74,222,128,0.12)',border:'1px solid rgba(74,222,128,0.4)',borderRadius:6,padding:'3px 10px' }}>✅ WIN</span>
+          )}
+          {tpResult === 'loss' && (
+            <span style={{ fontSize:11,fontWeight:800,color:'#f87171',background:'rgba(248,113,113,0.12)',border:'1px solid rgba(248,113,113,0.4)',borderRadius:6,padding:'3px 10px' }}>❌ LOSS</span>
+          )}
         </div>
         <div style={{ display:'flex',alignItems:'center',gap:8 }}>
           {isAdmin && (
@@ -2231,6 +2245,8 @@ export default function VegasVaultApp() {
                 topPlay={topPlay}
                 loading={topPlayLoading}
                 results={results}
+                games={games}
+                pickHistory={pickHistory}
                 isSubscribed={isSubscribed}
                 onShowAuth={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}}
                 onForceRefresh={async ()=>{
