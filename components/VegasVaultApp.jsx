@@ -779,6 +779,161 @@ function RightPanelContent({ marketScanner, insights, aiConfidence, confHistory 
 }
 
 
+// ── TOP PLAY BANNER ──────────────────────────────────────────────────────────
+function TopPlayBanner({ topPlay, loading, results, isSubscribed, onShowAuth, onForceRefresh, isAdmin }) {
+  const [expanded, setExpanded] = React.useState(false);
+
+  if (loading && !topPlay) {
+    return (
+      <div style={{ background:'linear-gradient(135deg,rgba(201,162,39,0.08),rgba(201,162,39,0.03))',border:'1px solid rgba(201,162,39,0.3)',borderRadius:14,padding:'16px 20px',marginBottom:20,display:'flex',alignItems:'center',gap:12 }}>
+        <div style={{ width:28,height:28,borderRadius:'50%',border:'2px solid rgba(201,162,39,0.3)',borderTopColor:'#c9a227',animation:'spin 0.8s linear infinite',flexShrink:0 }}/>
+        <div>
+          <div style={{ fontSize:11,fontWeight:700,color:'#c9a227',letterSpacing:'0.08em' }}>⭐ TOP PLAY OF THE DAY</div>
+          <div style={{ fontSize:11,color:'#3a4a5e',marginTop:2 }}>AI is analyzing the best game for today...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!topPlay?.result) return null;
+
+  const summary = topPlay.result?.summary;
+  if (!summary) return null;
+
+  const isVegas = topPlay.slot === 'VEGAS';
+  const slotColor = isVegas ? '#f87171' : '#60a5fa';
+  const slotBg    = isVegas ? 'rgba(248,113,113,0.1)' : 'rgba(96,165,250,0.1)';
+  const tierColors = { '1':'#c9a227', '2':'#60a5fa', '3':'#475569', 'PASS':'#f87171' };
+  const tierColor  = tierColors[summary.tier] || '#c9a227';
+  const isPass     = summary.tier === 'PASS' || summary.tier === '3';
+
+  // Extract final verdict — look in multiple places
+  const verdict = topPlay.result?.finalVerdict || topPlay.result?.analysis?.finalVerdict || summary.verdict || '';
+  const scamPlay = topPlay.result?.scamPlay || topPlay.result?.analysis?.scamPlay;
+
+  return (
+    <div style={{ background:`linear-gradient(135deg,rgba(201,162,39,0.1),rgba(201,162,39,0.04))`,border:'1px solid rgba(201,162,39,0.4)',borderRadius:14,marginBottom:20,overflow:'hidden' }}>
+
+      {/* Header */}
+      <div style={{ padding:'14px 18px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap' }}>
+        <div style={{ display:'flex',alignItems:'center',gap:10 }}>
+          <div style={{ background:'rgba(201,162,39,0.15)',border:'1px solid rgba(201,162,39,0.4)',borderRadius:8,padding:'4px 10px',display:'flex',alignItems:'center',gap:5 }}>
+            <span style={{ fontSize:12 }}>⭐</span>
+            <span style={{ fontSize:9,fontWeight:800,color:'#c9a227',letterSpacing:'0.12em' }}>TOP PLAY</span>
+          </div>
+          <span style={{ fontSize:9,fontWeight:700,color:slotColor,background:slotBg,borderRadius:4,padding:'2px 8px',letterSpacing:'0.08em' }}>{topPlay.slot}</span>
+          {!isPass && <span style={{ fontSize:9,fontWeight:700,color:tierColor,background:'rgba(201,162,39,0.08)',borderRadius:4,padding:'2px 8px' }}>
+            {summary.tier === '1' ? '🔒 LOCK' : `Tier ${summary.tier}`}
+          </span>}
+          {isPass && <span style={{ fontSize:9,fontWeight:700,color:'#f87171',background:'rgba(248,113,113,0.1)',borderRadius:4,padding:'2px 8px' }}>🚫 NO PLAY</span>}
+        </div>
+        <div style={{ display:'flex',alignItems:'center',gap:8 }}>
+          {isAdmin && (
+            <button onClick={onForceRefresh} style={{ background:'transparent',border:'1px solid rgba(255,255,255,0.1)',borderRadius:6,padding:'4px 10px',fontSize:9,color:'#3a4a5e',cursor:'pointer',fontFamily:'inherit' }}>↺ Re-analyze</button>
+          )}
+          <button onClick={()=>setExpanded(e=>!e)} style={{ background:'transparent',border:'none',color:'#c9a227',fontSize:16,cursor:'pointer',padding:'0 4px' }}>
+            {expanded ? '▲' : '▼'}
+          </button>
+        </div>
+      </div>
+
+      {/* Game info */}
+      <div style={{ padding:'0 18px 14px',borderBottom:'1px solid rgba(201,162,39,0.15)' }}>
+        <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8 }}>
+          <div>
+            <div style={{ fontSize:16,fontWeight:800,color:'#f1f5f9',letterSpacing:'-0.01em' }}>
+              {topPlay.away_abbr||topPlay.away?.split(' ').pop()} @ {topPlay.home_abbr||topPlay.home?.split(' ').pop()}
+            </div>
+            <div style={{ fontSize:10,color:'#3a4a5e',marginTop:2 }}>{topPlay.time} · {topPlay.away_ml} / {topPlay.home_ml}</div>
+          </div>
+          {!isPass && (
+            <div style={{ background:'rgba(201,162,39,0.1)',border:'1px solid rgba(201,162,39,0.3)',borderRadius:10,padding:'10px 16px',textAlign:'center' }}>
+              <div style={{ fontSize:9,color:'#3a4a5e',letterSpacing:'0.1em',marginBottom:3 }}>THE PLAY</div>
+              <div style={{ fontSize:14,fontWeight:800,color:'#c9a227' }}>{summary.pick}</div>
+              <div style={{ fontSize:10,color:'#94a3b8',marginTop:1 }}>{summary.betType}</div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Verdict preview — always visible */}
+      {verdict && !isPass && (
+        <div style={{ padding:'12px 18px',borderBottom:expanded?'1px solid rgba(201,162,39,0.1)':'none' }}>
+          <div style={{ fontSize:11,color:'#94a3b8',lineHeight:1.6 }}>
+            {expanded ? verdict : verdict.slice(0,180) + (verdict.length > 180 ? '...' : '')}
+          </div>
+        </div>
+      )}
+      {isPass && (
+        <div style={{ padding:'12px 18px' }}>
+          <div style={{ fontSize:11,color:'#f87171',lineHeight:1.6 }}>{verdict || 'No clear edge identified for today. Best play is to sit out.'}</div>
+        </div>
+      )}
+
+      {/* Expanded — full analysis */}
+      {expanded && !isPass && (
+        <div style={{ padding:'14px 18px',background:'rgba(0,0,0,0.2)' }}>
+          {scamPlay && (
+            <div style={{ marginBottom:14 }}>
+              <div style={{ fontSize:9,fontWeight:700,color:isVegas?'#f87171':'#60a5fa',letterSpacing:'0.1em',marginBottom:6 }}>
+                {isVegas ? '🎰 SCAM PLAY BREAKDOWN' : '📋 ANALYSIS'}
+              </div>
+              {scamPlay.whyItLooksWrong && (
+                <div style={{ marginBottom:8 }}>
+                  <div style={{ fontSize:9,color:'#f87171',fontWeight:700,marginBottom:3 }}>❌ WHY IT LOOKS WRONG:</div>
+                  <div style={{ fontSize:11,color:'#94a3b8',lineHeight:1.5 }}>{scamPlay.whyItLooksWrong}</div>
+                </div>
+              )}
+              {scamPlay.whyItsActuallyCorrect && (
+                <div>
+                  <div style={{ fontSize:9,color:'#4ade80',fontWeight:700,marginBottom:3 }}>✅ WHY IT'S ACTUALLY CORRECT:</div>
+                  <div style={{ fontSize:11,color:'#94a3b8',lineHeight:1.5 }}>{scamPlay.whyItsActuallyCorrect}</div>
+                </div>
+              )}
+            </div>
+          )}
+          {/* Game script */}
+          {summary.gameScript && (
+            <div style={{ marginBottom:10,padding:'8px 12px',background:'rgba(255,255,255,0.02)',borderRadius:8,border:'1px solid rgba(255,255,255,0.05)' }}>
+              <div style={{ fontSize:9,color:'#3a4a5e',letterSpacing:'0.08em',marginBottom:3 }}>GAME SCRIPT</div>
+              <div style={{ fontSize:11,color:'#94a3b8' }}>{summary.gameScript}</div>
+            </div>
+          )}
+          {/* Key stats */}
+          <div style={{ display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8 }}>
+            {summary.confidence && (
+              <div style={{ background:'rgba(255,255,255,0.02)',borderRadius:8,padding:'8px',textAlign:'center' }}>
+                <div style={{ fontSize:8,color:'#3a4a5e',marginBottom:2 }}>CONFIDENCE</div>
+                <div style={{ fontSize:11,fontWeight:700,color:summary.confidence==='HIGH'?'#4ade80':summary.confidence==='MEDIUM'?'#c9a227':'#f87171' }}>{summary.confidence}</div>
+              </div>
+            )}
+            {summary.betType && (
+              <div style={{ background:'rgba(255,255,255,0.02)',borderRadius:8,padding:'8px',textAlign:'center' }}>
+                <div style={{ fontSize:8,color:'#3a4a5e',marginBottom:2 }}>BET TYPE</div>
+                <div style={{ fontSize:11,fontWeight:700,color:'#e2e8f0' }}>{summary.betType}</div>
+              </div>
+            )}
+            {topPlay.slot && (
+              <div style={{ background:'rgba(255,255,255,0.02)',borderRadius:8,padding:'8px',textAlign:'center' }}>
+                <div style={{ fontSize:8,color:'#3a4a5e',marginBottom:2 }}>SLOT</div>
+                <div style={{ fontSize:11,fontWeight:700,color:slotColor }}>{topPlay.slot}</div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Locked for non-subscribers */}
+      {!isSubscribed && !isPass && (
+        <div onClick={onShowAuth} style={{ padding:'10px 18px',background:'rgba(0,0,0,0.3)',display:'flex',alignItems:'center',justifyContent:'center',gap:8,cursor:'pointer',borderTop:'1px solid rgba(201,162,39,0.15)' }}>
+          <span style={{ fontSize:11 }}>🔒</span>
+          <span style={{ fontSize:10,fontWeight:700,color:'#c9a227',letterSpacing:'0.06em' }}>SUBSCRIBE TO SEE FULL ANALYSIS</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── ALERTS VIEW ───────────────────────────────────────────────────────────────
 function AlertsView({ betReadyAlerts, trellAlerts, games, results, pickHistory, watchlist }) {
   const allAlerts = [
@@ -1300,6 +1455,8 @@ export default function VegasVaultApp() {
   const [preAnalyzing, setPreAnalyzing] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showOddsMovement, setShowOddsMovement] = useState(false);
+  const [topPlay, setTopPlay] = useState(null);
+  const [topPlayLoading, setTopPlayLoading] = useState(false);
   const [activeNav, setActiveNav] = useState('DASHBOARD');
   const [activeTab, setActiveTab] = useState('DASHBOARD');
   const [watchlist, setWatchlist] = useState(() => {
@@ -1405,15 +1562,49 @@ export default function VegasVaultApp() {
 
   useEffect(()=>{
     setLoading(true);
+    // Fetch top play of the day (auto-analyzed, cached)
+    setTopPlayLoading(true);
+    fetch(`/api/topplay?date=${selectedDate}`)
+      .then(r=>r.json())
+      .then(data => {
+        if (data.topPlay?.result) {
+          setTopPlay(data.topPlay);
+          // Auto-inject into results so the card shows as analyzed
+          const tp = data.topPlay;
+          const gameKey = tp.game_key; // "Away|Home"
+          setResults(prev => {
+            const updated = {...prev};
+            // Find the matching game and set both slots
+            return updated;
+          });
+        }
+      })
+      .catch(() => {})
+      .finally(() => setTopPlayLoading(false));
+
     fetch(`/api/today?date=${selectedDate}`).then(r=>r.json())
       .then(data=>{
-        setGames(data.games||MOCK_GAMES);
+        const loadedGames = data.games||MOCK_GAMES;
+        setGames(loadedGames);
         setTrellAlerts(data.trellAlerts||[]);
         if (data.oddsFeed?.length) setOddsFeed(data.oddsFeed);
         if (data.marketScanner) setMarketScanner(data.marketScanner);
         if (data.insights?.length) setInsights(data.insights);
         if (data.bookmakerCount > 0) setBookmakerCount(data.bookmakerCount);
         setLoading(false);
+        // Inject top play result into results state once we have game IDs
+        setTopPlay(prev => {
+          if (!prev?.result) return prev;
+          const [away, home] = (prev.game_key||'').split('|');
+          const matchingGame = loadedGames.find(g =>
+            g.away === away && g.home === home
+          );
+          if (matchingGame) {
+            const key = `${matchingGame.id}-${prev.slot}`;
+            setResults(r => ({ ...r, [key]: prev.result }));
+          }
+          return prev;
+        });
       })
       .catch(()=>{setGames(MOCK_GAMES);setLoading(false);});
   },[selectedDate]);
@@ -2023,6 +2214,28 @@ export default function VegasVaultApp() {
               <PropsAIView games={games} isSubscribed={isSubscribed}/>
             ) : (
             <>
+            {/* TOP PLAY OF THE DAY */}
+            {(topPlay || topPlayLoading) && (
+              <TopPlayBanner
+                topPlay={topPlay}
+                loading={topPlayLoading}
+                results={results}
+                isSubscribed={isSubscribed}
+                onShowAuth={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}}
+                onForceRefresh={async ()=>{
+                  setTopPlayLoading(true);
+                  try {
+                    const {data:{session:s}} = await supabase.auth.getSession();
+                    await fetch('/api/topplay',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:s?.access_token,date:selectedDate})});
+                    const res = await fetch(`/api/topplay?date=${selectedDate}&force=1`);
+                    const data = await res.json();
+                    if(data.topPlay) setTopPlay(data.topPlay);
+                  } catch{}
+                  setTopPlayLoading(false);
+                }}
+                isAdmin={authUser?.email==='battlecortez@gmail.com'}
+              />
+            )}
             {/* Greeting */}
             <div style={{ marginBottom:18 }}>
               <h1 style={{ fontSize:22,fontWeight:700,color:"#f1f5f9",letterSpacing:"-0.02em",marginBottom:4 }}>{greeting}, Teztez4real.</h1>
