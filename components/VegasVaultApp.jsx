@@ -851,97 +851,110 @@ function TopPlayBanner({ topPlay, loading, results, games, pickHistory, isSubscr
         </div>
       </div>
 
-      {/* Game info */}
+      {/* Game info — always visible */}
       <div style={{ padding:'0 14px 14px',borderBottom:'1px solid rgba(201,162,39,0.15)' }}>
-        <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8 }}>
-          <div>
-            <div style={{ fontSize:16,fontWeight:800,color:'#f1f5f9',letterSpacing:'-0.01em' }}>
-              {topPlay.away_abbr||topPlay.away?.split(' ').pop()} @ {topPlay.home_abbr||topPlay.home?.split(' ').pop()}
-            </div>
-            <div style={{ fontSize:10,color:'#3a4a5e',marginTop:2 }}>{topPlay.time} · {topPlay.away_ml} / {topPlay.home_ml}</div>
-          </div>
-          {!isPass && (
-            <div style={{ background:'rgba(201,162,39,0.1)',border:'1px solid rgba(201,162,39,0.3)',borderRadius:10,padding:'10px 16px',textAlign:'center' }}>
-              <div style={{ fontSize:9,color:'#3a4a5e',letterSpacing:'0.1em',marginBottom:3 }}>THE PLAY</div>
-              <div style={{ fontSize:14,fontWeight:800,color:'#c9a227' }}>{summary.pick}</div>
-              <div style={{ fontSize:10,color:'#94a3b8',marginTop:1 }}>{summary.betType}</div>
-            </div>
-          )}
+        <div style={{ fontSize:16,fontWeight:800,color:'#f1f5f9',letterSpacing:'-0.01em' }}>
+          {topPlay.away_abbr||topPlay.away?.split(' ').pop()} @ {topPlay.home_abbr||topPlay.home?.split(' ').pop()}
         </div>
+        <div style={{ fontSize:10,color:'#3a4a5e',marginTop:2 }}>{topPlay.time}</div>
       </div>
 
-      {/* Verdict preview — always visible */}
-      {verdict && !isPass && (
-        <div style={{ padding:'12px 18px',borderBottom:expanded?'1px solid rgba(201,162,39,0.1)':'none' }}>
-          <div style={{ fontSize:11,color:'#94a3b8',lineHeight:1.6 }}>
-            {expanded ? verdict : verdict.slice(0,180) + (verdict.length > 180 ? '...' : '')}
-          </div>
-        </div>
-      )}
-      {isPass && (
-        <div style={{ padding:'12px 18px' }}>
-          <div style={{ fontSize:11,color:'#f87171',lineHeight:1.6 }}>{verdict || 'No clear edge identified for today. Best play is to sit out.'}</div>
-        </div>
-      )}
-
-      {/* Expanded — full analysis */}
-      {expanded && !isPass && (
-        <div style={{ padding:'14px 18px',background:'rgba(0,0,0,0.2)' }}>
-          {scamPlay && (
-            <div style={{ marginBottom:14 }}>
-              <div style={{ fontSize:9,fontWeight:700,color:isVegas?'#f87171':'#60a5fa',letterSpacing:'0.1em',marginBottom:6 }}>
-                {isVegas ? '🎰 SCAM PLAY BREAKDOWN' : '📋 ANALYSIS'}
+      {/* SUBSCRIBED — full content */}
+      {isSubscribed ? (
+        <>
+          {!isPass && (
+            <div style={{ padding:'12px 14px',borderBottom:'1px solid rgba(201,162,39,0.1)',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap' }}>
+              <div style={{ background:'rgba(201,162,39,0.1)',border:'1px solid rgba(201,162,39,0.3)',borderRadius:10,padding:'10px 16px',textAlign:'center',minWidth:120 }}>
+                <div style={{ fontSize:9,color:'#3a4a5e',letterSpacing:'0.1em',marginBottom:3 }}>THE PLAY</div>
+                <div style={{ fontSize:14,fontWeight:800,color:'#c9a227' }}>{summary.pick}</div>
+                <div style={{ fontSize:10,color:'#94a3b8',marginTop:1 }}>{summary.betType}</div>
               </div>
-              {scamPlay.whyItLooksWrong && (
-                <div style={{ marginBottom:8 }}>
-                  <div style={{ fontSize:9,color:'#f87171',fontWeight:700,marginBottom:3 }}>❌ WHY IT LOOKS WRONG:</div>
-                  <div style={{ fontSize:11,color:'#94a3b8',lineHeight:1.5 }}>{scamPlay.whyItLooksWrong}</div>
-                </div>
-              )}
-              {scamPlay.whyItsActuallyCorrect && (
-                <div>
-                  <div style={{ fontSize:9,color:'#4ade80',fontWeight:700,marginBottom:3 }}>✅ WHY IT'S ACTUALLY CORRECT:</div>
-                  <div style={{ fontSize:11,color:'#94a3b8',lineHeight:1.5 }}>{scamPlay.whyItsActuallyCorrect}</div>
+              {tpResult && (
+                <div style={{ fontSize:20,fontWeight:900,color:tpResult==='win'?'#4ade80':'#f87171' }}>
+                  {tpResult==='win' ? '✅ WIN' : '❌ LOSS'}
                 </div>
               )}
             </div>
           )}
-          {/* Game script */}
-          {summary.gameScript && (
-            <div style={{ marginBottom:10,padding:'8px 12px',background:'rgba(255,255,255,0.02)',borderRadius:8,border:'1px solid rgba(255,255,255,0.05)' }}>
-              <div style={{ fontSize:9,color:'#3a4a5e',letterSpacing:'0.08em',marginBottom:3 }}>GAME SCRIPT</div>
-              <div style={{ fontSize:11,color:'#94a3b8' }}>{summary.gameScript}</div>
+
+          {/* Verdict */}
+          {verdict && !isPass && (
+            <div style={{ padding:'12px 14px',borderBottom:expanded?'1px solid rgba(201,162,39,0.1)':'none' }}>
+              <div style={{ fontSize:11,color:'#94a3b8',lineHeight:1.6 }}>
+                {expanded ? verdict : verdict.slice(0,200)+(verdict.length>200?'...':'')}
+              </div>
             </div>
           )}
-          {/* Key stats */}
-          <div style={{ display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8 }}>
-            {summary.confidence && (
-              <div style={{ background:'rgba(255,255,255,0.02)',borderRadius:8,padding:'8px',textAlign:'center' }}>
-                <div style={{ fontSize:8,color:'#3a4a5e',marginBottom:2 }}>CONFIDENCE</div>
-                <div style={{ fontSize:11,fontWeight:700,color:summary.confidence==='HIGH'?'#4ade80':summary.confidence==='MEDIUM'?'#c9a227':'#f87171' }}>{summary.confidence}</div>
-              </div>
-            )}
-            {summary.betType && (
-              <div style={{ background:'rgba(255,255,255,0.02)',borderRadius:8,padding:'8px',textAlign:'center' }}>
-                <div style={{ fontSize:8,color:'#3a4a5e',marginBottom:2 }}>BET TYPE</div>
-                <div style={{ fontSize:11,fontWeight:700,color:'#e2e8f0' }}>{summary.betType}</div>
-              </div>
-            )}
-            {topPlay.slot && (
-              <div style={{ background:'rgba(255,255,255,0.02)',borderRadius:8,padding:'8px',textAlign:'center' }}>
-                <div style={{ fontSize:8,color:'#3a4a5e',marginBottom:2 }}>SLOT</div>
-                <div style={{ fontSize:11,fontWeight:700,color:slotColor }}>{topPlay.slot}</div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+          {isPass && (
+            <div style={{ padding:'12px 14px' }}>
+              <div style={{ fontSize:11,color:'#f87171',lineHeight:1.6 }}>{verdict||'No clear edge today. Best play is to sit out.'}</div>
+            </div>
+          )}
 
-      {/* Locked for non-subscribers */}
-      {!isSubscribed && !isPass && (
-        <div onClick={onShowAuth} style={{ padding:'10px 18px',background:'rgba(0,0,0,0.3)',display:'flex',alignItems:'center',justifyContent:'center',gap:8,cursor:'pointer',borderTop:'1px solid rgba(201,162,39,0.15)' }}>
-          <span style={{ fontSize:11 }}>🔒</span>
-          <span style={{ fontSize:10,fontWeight:700,color:'#c9a227',letterSpacing:'0.06em' }}>SUBSCRIBE TO SEE FULL ANALYSIS</span>
+          {/* Expanded full analysis */}
+          {expanded && !isPass && (
+            <div style={{ padding:'14px',background:'rgba(0,0,0,0.2)' }}>
+              {scamPlay && (
+                <div style={{ marginBottom:14 }}>
+                  <div style={{ fontSize:9,fontWeight:700,color:isVegas?'#f87171':'#60a5fa',letterSpacing:'0.1em',marginBottom:6 }}>
+                    {isVegas?'🎰 SCAM PLAY BREAKDOWN':'📋 ANALYSIS'}
+                  </div>
+                  {scamPlay.whyItLooksWrong && (
+                    <div style={{ marginBottom:8 }}>
+                      <div style={{ fontSize:9,color:'#f87171',fontWeight:700,marginBottom:3 }}>❌ WHY IT LOOKS WRONG:</div>
+                      <div style={{ fontSize:11,color:'#94a3b8',lineHeight:1.5 }}>{scamPlay.whyItLooksWrong}</div>
+                    </div>
+                  )}
+                  {scamPlay.whyItsActuallyCorrect && (
+                    <div>
+                      <div style={{ fontSize:9,color:'#4ade80',fontWeight:700,marginBottom:3 }}>✅ WHY IT'S ACTUALLY CORRECT:</div>
+                      <div style={{ fontSize:11,color:'#94a3b8',lineHeight:1.5 }}>{scamPlay.whyItsActuallyCorrect}</div>
+                    </div>
+                  )}
+                </div>
+              )}
+              {summary.gameScript && (
+                <div style={{ marginBottom:10,padding:'8px 12px',background:'rgba(255,255,255,0.02)',borderRadius:8,border:'1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ fontSize:9,color:'#3a4a5e',letterSpacing:'0.08em',marginBottom:3 }}>GAME SCRIPT</div>
+                  <div style={{ fontSize:11,color:'#94a3b8' }}>{summary.gameScript}</div>
+                </div>
+              )}
+              <div style={{ display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8 }}>
+                {summary.confidence && (
+                  <div style={{ background:'rgba(255,255,255,0.02)',borderRadius:8,padding:'8px',textAlign:'center' }}>
+                    <div style={{ fontSize:8,color:'#3a4a5e',marginBottom:2 }}>CONFIDENCE</div>
+                    <div style={{ fontSize:11,fontWeight:700,color:summary.confidence==='HIGH'?'#4ade80':summary.confidence==='MEDIUM'?'#c9a227':'#f87171' }}>{summary.confidence}</div>
+                  </div>
+                )}
+                {summary.betType && (
+                  <div style={{ background:'rgba(255,255,255,0.02)',borderRadius:8,padding:'8px',textAlign:'center' }}>
+                    <div style={{ fontSize:8,color:'#3a4a5e',marginBottom:2 }}>BET TYPE</div>
+                    <div style={{ fontSize:11,fontWeight:700,color:'#e2e8f0' }}>{summary.betType}</div>
+                  </div>
+                )}
+                {topPlay.slot && (
+                  <div style={{ background:'rgba(255,255,255,0.02)',borderRadius:8,padding:'8px',textAlign:'center' }}>
+                    <div style={{ fontSize:8,color:'#3a4a5e',marginBottom:2 }}>SLOT</div>
+                    <div style={{ fontSize:11,fontWeight:700,color:slotColor }}>{topPlay.slot}</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </>
+      ) : (
+        /* NON-SUBSCRIBER — locked */
+        <div onClick={onShowAuth} style={{ padding:'20px 14px',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:10,cursor:'pointer',background:'rgba(0,0,0,0.25)' }}>
+          <div style={{ display:'flex',alignItems:'center',gap:8 }}>
+            <span style={{ fontSize:22 }}>🔒</span>
+            <div>
+              <div style={{ fontSize:13,fontWeight:800,color:'#c9a227',letterSpacing:'0.04em' }}>Subscribe to Unlock</div>
+              <div style={{ fontSize:11,color:'#3a4a5e',marginTop:2 }}>Get the Top Play + all game analysis</div>
+            </div>
+          </div>
+          <div style={{ background:'linear-gradient(135deg,#c9a227,#8b6d10)',borderRadius:8,padding:'8px 24px',fontSize:11,fontWeight:700,color:'#000',letterSpacing:'0.06em' }}>
+            SUBSCRIBE NOW
+          </div>
         </div>
       )}
     </div>
