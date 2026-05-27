@@ -882,21 +882,44 @@ export default function VegasVaultApp() {
   // ── FINALIZATION: re-analyze when lines move, mark FINAL ─────────────────────
   const lastLineRef = useRef({});
 
-  function sendNotification(title, body) {
-    if (typeof window === 'undefined') return;
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification(title, { body, icon: '/favicon.ico' });
+  // ── SERVICE WORKER + PUSH NOTIFICATIONS ──────────────────────────────────────
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+    // Register service worker for mobile push
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  }, []);
+
+  async function requestNotificationPermission() {
+    if (typeof window === 'undefined' || !('Notification' in window)) return;
+    if (Notification.permission === 'default') {
+      await Notification.requestPermission();
     }
   }
 
-  function requestNotificationPermission() {
-    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
+  async function sendNotification(title, body) {
+    if (typeof window === 'undefined') return;
+    await requestNotificationPermission();
+    if (Notification.permission !== 'granted') return;
+    // Use service worker notification if available (works on mobile)
+    if ('serviceWorker' in navigator) {
+      const reg = await navigator.serviceWorker.ready.catch(() => null);
+      if (reg?.showNotification) {
+        await reg.showNotification(title, {
+          body,
+          icon: '/favicon.ico',
+          badge: '/favicon.ico',
+          vibrate: [200, 100, 200],
+          tag: 'vv-play',
+          requireInteraction: false,
+        });
+        return;
+      }
     }
+    // Fallback: standard browser notification
+    new Notification(title, { body, icon: '/favicon.ico' });
   }
 
   useEffect(() => {
-    // Ask for notification permission when user first generates a play
     if (Object.keys(results).length > 0) requestNotificationPermission();
   }, [results]);
 
