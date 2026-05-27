@@ -604,12 +604,11 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
           </span>
         </div>
       ) : !isSubscribed ? (
-        <div onClick={()=>{ if(onShowAuth) onShowAuth(); else window.location.href='/settings'; }} style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"10px 0",background:"rgba(7,9,26,0.6)",border:"1px solid rgba(201,162,39,0.2)",borderRadius:8,cursor:"pointer",backdropFilter:"blur(2px)" }}>
+        <div onClick={()=>{ if(onShowAuth) onShowAuth(); else window.location.href='/settings'; }} style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"10px 0",background:"rgba(7,9,26,0.6)",border:"1px solid rgba(201,162,39,0.2)",borderRadius:8,cursor:"pointer" }}>
           <span style={{ fontSize:13 }}>🔒</span>
           <span style={{ fontSize:10,fontWeight:700,color:"#c9a227",letterSpacing:"0.08em" }}>SUBSCRIBE TO UNLOCK</span>
         </div>
       ) : (
-        /* Auto-analyzed — show status only */
         (() => {
           const key = `${game.id}-${game.slot}`;
           const isGen = generating === key;
@@ -1967,11 +1966,9 @@ export default function VegasVaultApp() {
       if (!result.summary) result.summary = { tier:'3', tierLabel:'Tier 3', pick:'No Pick', betType:'N/A', confidence:'LOW', verdict:'Analysis incomplete.', isScamPlay:false, slot:next.slot };
       setResults(prev => {
         const updated = { ...prev, [next.key]: result };
-        // Check if this was the last game — fire notification
         if (preAnalyzeQueue.length === 1) {
           const alreadyNotified = typeof window !== 'undefined' && localStorage.getItem(analysisDoneNotifKey);
           if (!alreadyNotified) {
-            // Count locks and tier 2s across all results
             const allResults = Object.values(updated);
             const locks  = allResults.filter(r => r?.summary?.tier === '1').length;
             const tier2s = allResults.filter(r => r?.summary?.tier === '2').length;
@@ -1980,7 +1977,6 @@ export default function VegasVaultApp() {
             if (locks > 0) body = `🔒 ${locks} LOCK${locks>1?'S':''} identified`;
             if (tier2s > 0) body += `${body?' · ':''}⭐ ${tier2s} Tier 2 play${tier2s>1?'s':''}`;
             if (passes > 0) body += `${body?' · ':''}${passes} pass${passes>1?'es':''}`;
-            if (!body) body = `${allResults.length} games analyzed — open the app to see plays`;
             sendNotification(
               "✅ Vegas Vault AI — Analysis Complete",
               body || `Today's ${allResults.length} games have been analyzed. Check your plays.`
@@ -2127,7 +2123,7 @@ export default function VegasVaultApp() {
   const greeting = hour<12?"Good morning":hour<17?"Good afternoon":"Good evening";
 
   return (
-    <div style={{ fontFamily:"'DM Mono','Courier New',monospace",background:"#07091a",minHeight:"100vh",color:"#e2e8f0",display:"flex",flexDirection:"column",overflowX:"hidden",maxWidth:"100vw" }}>
+    <div style={{ fontFamily:"'DM Mono','Courier New',monospace",background:"#07091a",minHeight:"100vh",color:"#e2e8f0",display:"flex",flexDirection:"column" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap');
         @keyframes spin { to { transform: rotate(360deg); } }
@@ -2137,31 +2133,34 @@ export default function VegasVaultApp() {
         ::-webkit-scrollbar{width:3px;}::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:2px;}
         button{font-family:inherit;}
         @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.35;}}
-        /* Same mobile layout on all screen sizes — no sidebar, bottom nav always on */
-        .vv-sidebar{display:none;}
-        .vv-right{display:none;}
+        .vv-sidebar{display:flex;}
+        .vv-right{display:flex;flex-direction:column;}
         .vv-right-stacked{display:none;}
-        .vv-bottom-nav{display:flex!important;position:fixed;bottom:0;left:0;right:0;height:60px;background:rgba(7,9,26,0.98);border-top:1px solid rgba(255,255,255,0.08);z-index:200;align-items:center;justify-content:space-around;backdrop-filter:blur(20px);padding:0 4px;}
-        .vv-cards{display:grid;grid-template-columns:1fr;gap:10px;}
-        .vv-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:18px;}
-        .vv-nav-center{display:none;}
-        .vv-ticker-lbl{display:none;}
-        .vv-today-title{font-size:14px;white-space:nowrap;}
-        .vv-main-inner{padding:10px 10px 78px!important;}
-        .vv-admin-btns{display:none!important;}
-        /* Wider screens: more breathing room, same layout */
-        @media(min-width:520px){
+        .vv-bottom-nav{display:none;}
+        .vv-cards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+        .vv-stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px;}
+        .vv-nav-center{display:flex;}
+        .vv-ticker-lbl{display:block;}
+        @media(max-width:1100px){
           .vv-stats{grid-template-columns:repeat(3,1fr)!important;}
-          .vv-main-inner{padding:14px 16px 78px!important;}
+          .vv-right{display:none!important;}
+          .vv-right-stacked{display:block!important;}
         }
-        @media(min-width:768px){
-          .vv-stats{grid-template-columns:repeat(5,1fr)!important;}
-          .vv-main-inner{padding:18px 24px 78px!important;}
-          .vv-admin-btns{display:flex!important;}
-        }
-        @media(min-width:1024px){
-          .vv-cards{grid-template-columns:repeat(2,1fr)!important;}
-          .vv-main-inner{max-width:900px;margin:0 auto;padding:20px 28px 78px!important;}
+        @media(max-width:700px){
+          .vv-sidebar{display:none!important;}
+          .vv-bottom-nav{display:flex!important;position:fixed;bottom:0;left:0;right:0;height:60px;background:rgba(7,9,26,0.98);border-top:1px solid rgba(255,255,255,0.08);z-index:200;align-items:center;justify-content:space-around;backdrop-filter:blur(20px);padding:0 4px;}
+          .vv-cards{grid-template-columns:1fr!important;}
+          .vv-stats{grid-template-columns:repeat(2,1fr)!important;}
+          .vv-top-play{margin-left:-2px!important;margin-right:-2px!important;}
+          .vv-top-play-grid{grid-template-columns:1fr!important;}
+          .vv-nav-center{display:none!important;}
+          .vv-ticker-lbl{display:none!important;}
+          .vv-nav-logo span.lbl{display:none!important;}
+          .vv-main-inner{padding:10px 10px 78px!important;}
+          .vv-top-nav-actions{gap:4px!important;}
+          .vv-admin-btns{display:none!important;}
+          .vv-slate-header{flex-wrap:wrap!important;gap:6px!important;}
+          .vv-today-title{font-size:14px!important;white-space:nowrap;}
         }
       `}</style>
 
@@ -2198,7 +2197,7 @@ export default function VegasVaultApp() {
           })}
         </div>
 
-        <div style={{ display:"flex",alignItems:"center",gap:8,padding:"0 12px",flexShrink:0,minWidth:0 }}>
+        <div style={{ display:"flex",alignItems:"center",gap:10,padding:"0 18px",flexShrink:0 }}>
           {authUser ? (
             <div style={{ display:"flex",alignItems:"center",gap:8 }}>
               {authUser.email===ADMIN_EMAIL&&<span className="vv-admin-btns" style={{ display:"flex",alignItems:"center",gap:5 }}>
@@ -2220,7 +2219,7 @@ export default function VegasVaultApp() {
       </div>
 
       {/* ── BODY ── */}
-      <div style={{ display:"flex",flex:1,minHeight:0,overflow:"hidden" }}>
+      <div style={{ display:"flex",flex:1,minHeight:0 }}>
 
         {/* LEFT SIDEBAR */}
         <div className="vv-sidebar" style={{ width:200,background:"rgba(7,9,26,0.99)",borderRight:"1px solid rgba(255,255,255,0.05)",flexDirection:"column",flexShrink:0,overflowY:"auto" }}>
@@ -2259,13 +2258,13 @@ export default function VegasVaultApp() {
           {/* Odds ticker */}
           <div style={{ borderBottom:"1px solid rgba(255,255,255,0.05)",background:"rgba(9,12,28,0.9)" }}>
             <div style={{ display:"flex",alignItems:"center" }}>
-              <div style={{ padding:"8px 16px",fontSize:9,fontWeight:700,letterSpacing:"0.12em",color:"#c9a227",borderRight:"1px solid rgba(255,255,255,0.05)",whiteSpace:"nowrap",flexShrink:0 }}>LIVE ODDS FEED</div>
+              <div className="vv-ticker-lbl" style={{ padding:"8px 16px",fontSize:9,fontWeight:700,letterSpacing:"0.12em",color:"#c9a227",borderRight:"1px solid rgba(255,255,255,0.05)",whiteSpace:"nowrap",flexShrink:0 }}>LIVE ODDS FEED</div>
               <div style={{ flex:1,overflow:"hidden",padding:"8px 0" }}><OddsTicker feed={oddsFeed}/></div>
               <div style={{ padding:"0 14px",flexShrink:0 }}><Sparkline color="#3b82f6" width={56} height={22}/></div>
             </div>
           </div>
 
-          <div className="vv-main-inner" style={{ padding:"18px 18px 28px",flex:1,minWidth:0,overflowX:"hidden" }}>
+          <div className="vv-main-inner" style={{ padding:"18px 18px 28px",flex:1 }}>
 
             {/* ── VIEW ROUTER ── */}
             {activeTab==='ALERTS' ? (
@@ -2290,8 +2289,6 @@ export default function VegasVaultApp() {
                 topPlay={topPlay}
                 loading={topPlayLoading}
                 results={results}
-                games={games}
-                pickHistory={pickHistory}
                 isSubscribed={isSubscribed}
                 onShowAuth={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}}
                 onForceRefresh={async ()=>{
