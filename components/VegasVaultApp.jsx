@@ -1751,6 +1751,41 @@ export default function VegasVaultApp() {
     return () => clearInterval(interval);
   }, [selectedDate]);
 
+  // ── LINE MOVEMENT POLLING — every 5 minutes ───────────────────────────────
+  useEffect(() => {
+    function fetchLines() {
+      fetch(`/api/lines?date=${selectedDate}&sport=mlb`)
+        .then(r => r.json())
+        .then(data => {
+          if (!data.movements) return;
+          // Patch lineMovement, rlm, homeEV, awayEV, openingHomeML, openingAwayML on each game
+          setGames(prev => prev.map(game => {
+            // Try both key formats: "Away|Home" and "Away|Home|date"
+            const shortKey = `${game.away}|${game.home}`;
+            const dateKey  = `${game.away}|${game.home}|${selectedDate}`;
+            const movement = data.movements[shortKey] || data.movements[dateKey];
+            if (!movement || !movement.lineMovement) return game;
+            return {
+              ...game,
+              lineMovement:    movement.lineMovement,
+              rlm:             movement.rlm ?? game.rlm,
+              openingHomeML:   movement.openHome ? (movement.openHome > 0 ? `+${movement.openHome}` : `${movement.openHome}`) : game.openingHomeML,
+              openingAwayML:   movement.openAway ? (movement.openAway > 0 ? `+${movement.openAway}` : `${movement.openAway}`) : game.openingAwayML,
+              homeDiff:        movement.homeDiff,
+              awayDiff:        movement.awayDiff,
+              moveType:        movement.moveType,
+            };
+          }));
+        })
+        .catch(() => {}); // fail silently — don't break the UI
+    }
+
+    // Initial fetch after games load
+    const initTimeout = setTimeout(fetchLines, 3000);
+    const linesInterval = setInterval(fetchLines, 5 * 60 * 1000); // every 5 min
+    return () => { clearTimeout(initTimeout); clearInterval(linesInterval); };
+  }, [selectedDate]);
+
   const generated = Object.keys(results).length;
   const FILTERS = ["ALL","MLB","NBA","NFL"];
   const filteredGames = games.filter(g=>{
