@@ -292,7 +292,7 @@ function ScamPlayBlock({ scam }) {
 
 // ── PLAY RESULT MODAL ─────────────────────────────────────────────────────────
 
-function PlayResult({ result, game, onClose, onMarkResult, isResolved, resolvedResult }) {
+function PlayResult({ result, game, onClose, isResolved, resolvedResult }) {
   const [expanded, setExpanded] = useState(false);
   const tier = TIER_STYLES[result.summary.tier] || TIER_STYLES["3"];
   const conf = CONF_STYLES[result.summary.confidence] || CONF_STYLES.MEDIUM;
@@ -343,21 +343,15 @@ function PlayResult({ result, game, onClose, onMarkResult, isResolved, resolvedR
           <div style={{ fontSize:9,fontWeight:700,letterSpacing:"0.12em",color:"#c9a227",marginBottom:8 }}>FINAL VERDICT</div>
           <p style={{ fontSize:13,color:"#e2e8f0",lineHeight:1.75,margin:0 }}>{result.finalVerdict}</p>
 
-          {/* Manual result tracking */}
-          <div style={{ marginTop:16,display:"flex",alignItems:"center",gap:8 }}>
-            <span style={{ fontSize:10,color:"#3a4a5e",letterSpacing:"0.06em" }}>RESULT:</span>
-            {isResolved ? (
-              <span style={{ fontSize:11,fontWeight:700,color:resolvedResult==='win'?"#4ade80":"#f87171",background:resolvedResult==='win'?"rgba(74,222,128,0.1)":"rgba(248,113,113,0.1)",border:`1px solid ${resolvedResult==='win'?"rgba(74,222,128,0.3)":"rgba(248,113,113,0.3)"}`,borderRadius:6,padding:"3px 10px" }}>
+          {/* Auto-resolved result */}
+          {isResolved && (
+            <div style={{ marginTop:14,display:"flex",alignItems:"center",gap:8 }}>
+              <span style={{ fontSize:11,fontWeight:700,color:resolvedResult==='win'?"#4ade80":"#f87171",background:resolvedResult==='win'?"rgba(74,222,128,0.1)":"rgba(248,113,113,0.1)",border:`1px solid ${resolvedResult==='win'?"rgba(74,222,128,0.3)":"rgba(248,113,113,0.3)"}`,borderRadius:8,padding:"5px 14px" }}>
                 {resolvedResult==='win'?"✅ WIN":"❌ LOSS"}
               </span>
-            ) : (
-              <>
-                <button onClick={()=>onMarkResult('win')} style={{ fontSize:10,fontWeight:700,color:"#4ade80",background:"rgba(74,222,128,0.08)",border:"1px solid rgba(74,222,128,0.25)",borderRadius:6,padding:"4px 12px",cursor:"pointer",fontFamily:"inherit" }}>✅ WIN</button>
-                <button onClick={()=>onMarkResult('loss')} style={{ fontSize:10,fontWeight:700,color:"#f87171",background:"rgba(248,113,113,0.08)",border:"1px solid rgba(248,113,113,0.25)",borderRadius:6,padding:"4px 12px",cursor:"pointer",fontFamily:"inherit" }}>❌ LOSS</button>
-                <span style={{ fontSize:9,color:"#2d3a4a" }}>Mark to track win rate</span>
-              </>
-            )}
-          </div>
+              <span style={{ fontSize:10,color:"#2d3a4a" }}>Auto-graded from final score</span>
+            </div>
+          )}
         </div>
         <div style={{ padding:"0 22px 18px" }}>
           <button onClick={()=>setExpanded(!expanded)} style={{ width:"100%",padding:"11px",background:expanded?"rgba(201,162,39,0.06)":"rgba(255,255,255,0.03)",border:`1px solid ${expanded?"rgba(201,162,39,0.2)":"rgba(255,255,255,0.07)"}`,borderRadius:10,fontSize:12,fontWeight:500,color:expanded?"#c9a227":"#64748b",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,fontFamily:"inherit" }}>
@@ -827,22 +821,6 @@ export default function VegasVaultApp() {
       return () => subscription.unsubscribe();
     } catch(e) {}
   }, []);
-
-  function markResult(key, result) {
-    const existing = pickHistory.find(p => p.key === key);
-    if (existing) return; // already resolved
-    const pick = results[key];
-    if (!pick) return;
-    const entry = {
-      key, result,
-      pick: pick.summary?.pick || 'Unknown',
-      betType: pick.summary?.betType || 'ML',
-      game: activeGame ? `${activeGame.away} @ ${activeGame.home}` : 'Unknown',
-      resolvedAt: new Date().toISOString(),
-      date: activeGame?.date || new Date().toISOString().split('T')[0],
-    };
-    setPickHistory(prev => [...prev, entry]);
-  }
 
   async function doAuth() {
     setAuthLoading(true); setAuthError('');
@@ -1503,10 +1481,6 @@ export default function VegasVaultApp() {
           result={activeResult}
           game={activeGame}
           onClose={()=>{setActiveResult(null);setActiveGame(null);}}
-          onMarkResult={(r)=>{
-            const key=`${activeGame.id}-${activeGame.slot||'PUBLIC'}`;
-            markResult(key,r);
-          }}
           isResolved={pickHistory.some(p=>p.key===`${activeGame.id}-${activeGame.slot||'PUBLIC'}`)}
           resolvedResult={pickHistory.find(p=>p.key===`${activeGame.id}-${activeGame.slot||'PUBLIC'}`)?.result}
         />
