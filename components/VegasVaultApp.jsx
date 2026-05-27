@@ -792,6 +792,7 @@ export default function VegasVaultApp() {
     } catch { return {}; }
   });
   const [preAnalyzing, setPreAnalyzing] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [preAnalyzeQueue, setPreAnalyzeQueue] = useState([]);
   const [liveScores, setLiveScores]   = useState({});
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -1496,8 +1497,9 @@ export default function VegasVaultApp() {
             <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.07em",color:"#475569" }}>SIGN OUT</span>
           </div>
         ) : (
-          <div style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"6px 12px",opacity:0.38 }}>
+          <div onClick={()=>setShowHistory(true)} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"6px 12px",cursor:"pointer",opacity:0.7,position:"relative" }}>
             <span style={{ fontSize:17,color:"#475569" }}>↺</span>
+            {pickHistory.length > 0 && <div style={{ position:"absolute",top:4,right:8,width:8,height:8,borderRadius:"50%",background:"#c9a227" }}/>}
             <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.07em",color:"#475569" }}>HISTORY</span>
           </div>
         )}
@@ -1515,6 +1517,99 @@ export default function VegasVaultApp() {
           isResolved={pickHistory.some(p=>p.key===`${activeGame.id}-${activeGame.slot||'PUBLIC'}`)}
           resolvedResult={pickHistory.find(p=>p.key===`${activeGame.id}-${activeGame.slot||'PUBLIC'}`)?.result}
         />
+      )}
+
+      {/* ── HISTORY PANEL ────────────────────────────────────────────────────── */}
+      {showHistory&&(
+        <div style={{ position:"fixed",inset:0,zIndex:9000,display:"flex" }}>
+          {/* Backdrop */}
+          <div onClick={()=>setShowHistory(false)} style={{ position:"absolute",inset:0,background:"rgba(0,0,0,0.6)",backdropFilter:"blur(8px)" }}/>
+          {/* Panel */}
+          <div style={{ position:"relative",marginLeft:"auto",width:"100%",maxWidth:560,height:"100%",background:"#07091a",borderLeft:"1px solid rgba(255,255,255,0.07)",overflowY:"auto",display:"flex",flexDirection:"column" }}>
+
+            {/* Header */}
+            <div style={{ padding:"18px 20px",borderBottom:"1px solid rgba(255,255,255,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:"#07091a",zIndex:10 }}>
+              <div>
+                <div style={{ fontSize:14,fontWeight:700,color:"#f1f5f9",letterSpacing:"0.04em" }}>MY PICKS HISTORY</div>
+                <div style={{ fontSize:10,color:"#3a4a5e",marginTop:2 }}>{pickHistory.length} total picks tracked</div>
+              </div>
+              <button onClick={()=>setShowHistory(false)} style={{ background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:8,width:32,height:32,cursor:"pointer",color:"#64748b",fontSize:14,fontFamily:"inherit" }}>✕</button>
+            </div>
+
+            {/* Stats bar */}
+            {pickHistory.length > 0 && (()=>{
+              const wins = pickHistory.filter(p=>p.result==='win').length;
+              const losses = pickHistory.filter(p=>p.result==='loss').length;
+              const total = wins + losses;
+              const rate = total > 0 ? Math.round((wins/total)*100) : 0;
+              const sevenDays = pickHistory.filter(p=>p.resolvedAt && Date.now()-new Date(p.resolvedAt).getTime() < 7*86400000);
+              const w7 = sevenDays.filter(p=>p.result==='win').length;
+              const l7 = sevenDays.filter(p=>p.result==='loss').length;
+              const r7 = (w7+l7) > 0 ? Math.round((w7/(w7+l7))*100) : 0;
+              return (
+                <div style={{ padding:"16px 20px",borderBottom:"1px solid rgba(255,255,255,0.06)",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12 }}>
+                  {[
+                    { label:"ALL TIME", value:`${rate}%`, sub:`${wins}W-${losses}L`, color: rate>=60?"#4ade80":rate>=50?"#fbbf24":"#f87171" },
+                    { label:"LAST 7D", value:`${r7}%`, sub:`${w7}W-${l7}L`, color: r7>=60?"#4ade80":r7>=50?"#fbbf24":"#f87171" },
+                    { label:"TOTAL PICKS", value:total, sub:"tracked", color:"#94a3b8" },
+                    { label:"BEST STREAK", value:(()=>{ let s=0,m=0; for(const p of [...pickHistory].reverse()){ if(p.result==='win'){s++;m=Math.max(m,s);}else s=0;} return m; })()+"W", sub:"in a row", color:"#c9a227" },
+                  ].map((stat,i)=>(
+                    <div key={i} style={{ background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.05)",borderRadius:10,padding:"12px 10px",textAlign:"center" }}>
+                      <div style={{ fontSize:9,color:"#3a4a5e",letterSpacing:"0.1em",marginBottom:4 }}>{stat.label}</div>
+                      <div style={{ fontSize:22,fontWeight:800,color:stat.color,lineHeight:1 }}>{stat.value}</div>
+                      <div style={{ fontSize:9,color:"#2d3a4a",marginTop:3 }}>{stat.sub}</div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+
+            {/* Picks list */}
+            <div style={{ flex:1,padding:"12px 20px 100px" }}>
+              {pickHistory.length === 0 ? (
+                <div style={{ textAlign:"center",padding:"60px 20px" }}>
+                  <div style={{ fontSize:32,marginBottom:12 }}>📊</div>
+                  <div style={{ fontSize:14,fontWeight:600,color:"#2d3a4a",marginBottom:6 }}>No picks tracked yet</div>
+                  <div style={{ fontSize:12,color:"#1e2a3a" }}>Generate plays and mark them Win or Loss<br/>to start tracking your performance.</div>
+                </div>
+              ) : (
+                [...pickHistory].reverse().map((pick, i) => {
+                  const isWin = pick.result === 'win';
+                  const isLoss = pick.result === 'loss';
+                  const isPending = !pick.result;
+                  return (
+                    <div key={i} style={{ background:"rgba(255,255,255,0.02)",border:`1px solid ${isWin?"rgba(74,222,128,0.2)":isLoss?"rgba(248,113,113,0.2)":"rgba(255,255,255,0.05)"}`,borderRadius:12,padding:"14px 16px",marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center",gap:12 }}>
+                      <div style={{ flex:1,minWidth:0 }}>
+                        <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:4,flexWrap:"wrap" }}>
+                          <span style={{ fontSize:10,fontWeight:700,color:pick.slot==="VEGAS"?"#f87171":"#60a5fa",background:pick.slot==="VEGAS"?"rgba(248,113,113,0.1)":"rgba(96,165,250,0.1)",borderRadius:4,padding:"1px 6px",letterSpacing:"0.06em" }}>{pick.slot||"PUBLIC"}</span>
+                          <span style={{ fontSize:11,fontWeight:600,color:"#e2e8f0",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>{pick.pick}</span>
+                          <span style={{ fontSize:10,color:"#475569" }}>{pick.betType}</span>
+                        </div>
+                        <div style={{ fontSize:11,color:"#3a4a5e",marginBottom:2 }}>{pick.game}</div>
+                        {pick.score && <div style={{ fontSize:10,color:"#2d3a4a" }}>Final: {pick.score}</div>}
+                        <div style={{ fontSize:9,color:"#1e2a3a",marginTop:4 }}>{pick.resolvedAt ? new Date(pick.resolvedAt).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : pick.date}</div>
+                      </div>
+                      <div style={{ flexShrink:0,textAlign:"center" }}>
+                        {isWin && <div style={{ fontSize:13,fontWeight:800,color:"#4ade80",background:"rgba(74,222,128,0.1)",border:"1px solid rgba(74,222,128,0.3)",borderRadius:8,padding:"6px 14px" }}>✅ WIN</div>}
+                        {isLoss && <div style={{ fontSize:13,fontWeight:800,color:"#f87171",background:"rgba(248,113,113,0.1)",border:"1px solid rgba(248,113,113,0.3)",borderRadius:8,padding:"6px 14px" }}>❌ LOSS</div>}
+                        {isPending && <div style={{ fontSize:11,color:"#3a4a5e",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:8,padding:"6px 14px" }}>PENDING</div>}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Clear history button */}
+            {pickHistory.length > 0 && (
+              <div style={{ padding:"12px 20px",borderTop:"1px solid rgba(255,255,255,0.05)",position:"sticky",bottom:0,background:"#07091a" }}>
+                <button onClick={()=>{ if(window.confirm('Clear all pick history?')){ setPickHistory([]); localStorage.removeItem('vv_pick_history'); }}} style={{ width:"100%",padding:"10px 0",background:"rgba(248,113,113,0.06)",border:"1px solid rgba(248,113,113,0.15)",borderRadius:8,fontSize:11,color:"#f87171",cursor:"pointer",fontFamily:"inherit",letterSpacing:"0.06em" }}>
+                  Clear History
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {showAuth&&(
