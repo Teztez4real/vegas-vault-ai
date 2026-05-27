@@ -61,33 +61,8 @@ async function fetchAllBooks(sportKey) {
     }
   }
 
-  // Fallback: The Odds API — fetch all bookmakers
-  const apiKey = process.env.ODDS_API_KEY;
-  if (!apiKey) return games;
-  try {
-    const res = await fetch(
-      `https://api.the-odds-api.com/v4/sports/${sportKey}/odds?regions=us,eu&markets=h2h&oddsFormat=american&bookmakers=draftkings,fanduel,betmgm,pinnacle,bet365,caesars,pointsbet&apiKey=${apiKey}`,
-      { cache: 'no-store' }
-    );
-    const data = await res.json();
-    if (!Array.isArray(data)) return games;
-
-    for (const event of data) {
-      const key = `${event.away_team}|${event.home_team}`;
-      games[key] = { away: event.away_team, home: event.home_team, commenceTime: event.commence_time, books: {} };
-      for (const bk of (event.bookmakers || [])) {
-        const h2h = bk.markets?.find(m => m.key === 'h2h');
-        if (!h2h) continue;
-        const homeML = h2h.outcomes?.find(o => o.name === event.home_team)?.price;
-        const awayML = h2h.outcomes?.find(o => o.name === event.away_team)?.price;
-        if (homeML != null) games[key].books[bk.key] = { homeML, awayML };
-      }
-    }
-    console.log(`Lines: OddsAPI returned ${Object.keys(games).length} games`);
-  } catch (err) {
-    console.error('Lines OddsAPI error:', err.message);
-  }
-
+  // SharpAPI is the only odds source — no Odds API fallback
+  console.warn('SharpAPI returned no data for lines, sportKey:', sportKey);
   return games;
 }
 

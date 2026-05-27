@@ -286,62 +286,15 @@ async function fetchOdds(sportKey) {
       console.log(`SharpAPI: ${Object.keys(oddsMap).length} games, ${bookmakerSet.size} books`);
       return { oddsMap, bookmakerCount: bookmakerSet.size };
     } catch (err) {
-      console.error('SharpAPI error:', err.message);
+      console.error(`SharpAPI error for ${sportKey}:`, err.message);
     }
+  } else {
+    console.error('SHARPAPI_KEY not set — no odds data available');
   }
 
-  // ── FALLBACK: THE ODDS API ────────────────────────────────────────────────
-  const apiKey = process.env.ODDS_API_KEY;
-  if (!apiKey) return { oddsMap: {}, bookmakerCount: 0 };
-  try {
-    const res = await fetch(
-      `https://api.the-odds-api.com/v4/sports/${sportKey}/odds?regions=us&markets=h2h,spreads,totals&oddsFormat=american&apiKey=${apiKey}`,
-      { cache: 'no-store' }
-    );
-    const data = await res.json();
-    if (!Array.isArray(data)) return { oddsMap: {}, bookmakerCount: 0 };
-    const oddsMap = {};
-    const bookmakerSet = new Set();
-    for (const game of data) {
-      game.bookmakers?.forEach(b => bookmakerSet.add(b.key));
-      const key = `${game.away_team}|${game.home_team}`;
-      const bookmaker = game.bookmakers?.find(b => b.key === 'draftkings') || game.bookmakers?.[0];
-      const h2h = bookmaker?.markets?.find(m => m.key === 'h2h');
-      const spreads = bookmaker?.markets?.find(m => m.key === 'spreads');
-      const totals = bookmaker?.markets?.find(m => m.key === 'totals');
-      const homeML = h2h?.outcomes?.find(o => o.name === game.home_team)?.price;
-      const awayML = h2h?.outcomes?.find(o => o.name === game.away_team)?.price;
-      const homeSpread = spreads?.outcomes?.find(o => o.name === game.home_team);
-      const awaySpread = spreads?.outcomes?.find(o => o.name === game.away_team);
-      const total = totals?.outcomes?.[0]?.point;
-      const openBook = game.bookmakers?.[game.bookmakers.length - 1];
-      const openH2h = openBook?.markets?.find(m => m.key === 'h2h');
-      const openHomeML = openH2h?.outcomes?.find(o => o.name === game.home_team)?.price;
-      const openAwayML = openH2h?.outcomes?.find(o => o.name === game.away_team)?.price;
-      let lineMovement = 'No significant movement';
-      if (openHomeML && homeML && openHomeML !== homeML) {
-        const diff = homeML - openHomeML;
-        lineMovement = `Home opened ${fmt(openHomeML)}, now ${fmt(homeML)} (${diff > 0 ? 'moved toward home' : 'moved toward away'}, ${Math.abs(diff)} pts).`;
-      } else if (homeML) {
-        lineMovement = `Line stable. Home ${fmt(homeML)} / Away ${fmt(awayML)}.`;
-      }
-      oddsMap[key] = {
-        homeML: fmt(homeML), awayML: fmt(awayML),
-        openingHomeML: fmt(openHomeML), openingAwayML: fmt(openAwayML),
-        spread: homeSpread ? `${game.home_team} ${homeSpread.point > 0 ? '+' : ''}${homeSpread.point} / ${game.away_team} ${awaySpread?.point > 0 ? '+' : ''}${awaySpread?.point}` : 'N/A',
-        runLine: homeSpread ? `Home ${homeSpread.point > 0 ? '+' : ''}${homeSpread.point} (${fmt(homeSpread.price)}) / Away ${awaySpread?.point > 0 ? '+' : ''}${awaySpread?.point} (${fmt(awaySpread?.price)})` : 'N/A',
-        total: total ? `${total}` : 'N/A',
-        lineMovement,
-        betPercentage: 'N/A',
-        moneyPercentage: 'N/A',
-        commenceTime: game.commence_time,
-      };
-    }
-    return { oddsMap, bookmakerCount: bookmakerSet.size };
-  } catch (err) {
-    console.error(`Odds API fallback error:`, err.message);
-    return { oddsMap: {}, bookmakerCount: 0 };
-  }
+  // SharpAPI is the only odds source — no fallback
+  console.warn(`SharpAPI returned no usable data for ${sportKey} — check SHARPAPI_KEY and enabled books`);
+  return { oddsMap: {}, bookmakerCount: 0 };
 }
 
 // ── MLB STATS API ─────────────────────────────────────────────────────────────
@@ -658,7 +611,36 @@ async function assembleMLBGame(g, oddsMap) {
   const homePitcher = g.teams.home.probablePitcher;
   const awayPitcher = g.teams.away.probablePitcher;
   const oddsKey = `${away.name}|${home.name}`;
-  const odds = oddsMap[oddsKey] || {};
+
+  // Fuzzy match: try exact first, then city/nickname partial match
+  function findOdds(awayName, homeName) {
+    // Exact match
+    if (oddsMap[`${awayName}|${homeName}`]) return oddsMap[`${awayName}|${homeName}`];
+    // Try matching by last word (team nickname) e.g. "Blue Jays" matches "Toronto Blue Jays"
+    const awayNick = awayName.split(' ').pop().toLowerCase();
+    const homeNick = homeName.split(' ').pop().toLowerCase();
+    for (const [key, val] of Object.entries(oddsMap)) {
+      if (key.startsWith('_')) continue;
+      const [k_away, k_home] = key.split('|');
+      if (!k_away || !k_home) continue;
+      const kAwayNick = k_away.split(' ').pop().toLowerCase();
+      const kHomeNick = k_home.split(' ').pop().toLowerCase();
+      if (kAwayNick === awayNick && kHomeNick === homeNick) return val;
+    }
+    // Try city match e.g. "Toronto" in "Toronto Blue Jays"
+    for (const [key, val] of Object.entries(oddsMap)) {
+      if (key.startsWith('_')) continue;
+      const [k_away, k_home] = key.split('|');
+      if (!k_away || !k_home) continue;
+      const awayMatch = k_away.toLowerCase().includes(awayNick) || awayName.toLowerCase().includes(k_away.split(' ').pop().toLowerCase());
+      const homeMatch = k_home.toLowerCase().includes(homeNick) || homeName.toLowerCase().includes(k_home.split(' ').pop().toLowerCase());
+      if (awayMatch && homeMatch) return val;
+    }
+    return null;
+  }
+
+  const odds = findOdds(away.name, home.name) || {};
+  if (!odds.homeML) console.warn(`No odds found for ${away.name} @ ${home.name} — tried key: ${oddsKey}`);
   const [
     homeRecord, awayRecord, homePitcherStats, awayPitcherStats, cbsPreview,
     weather, umpire, homeLineupData, awayLineupData,
@@ -1076,8 +1058,6 @@ function assignNFLSlots(games) {
 }
 
 async function fetchNFLGames(dateParam) {
-  const apiKey = process.env.ODDS_API_KEY;
-  if (!apiKey) return [];
   try {
     // Check if NFL season is active (September through February)
     const month = new Date().getMonth() + 1; // 1-12
