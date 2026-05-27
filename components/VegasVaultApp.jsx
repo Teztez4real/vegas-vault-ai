@@ -377,7 +377,7 @@ function PlayResult({ result, game, onClose, isResolved, resolvedResult }) {
 
 // ── GAME CARD — matches reference image exactly ───────────────────────────────
 
-function GameCard({ game, onGenerate, results, generating, onCardClick, liveScores, isSubscribed, finalized, isQueued }) {
+function GameCard({ game, onGenerate, results, generating, onCardClick, liveScores, isSubscribed, finalized, isQueued, betReady }) {
   const resultPublic = results[`${game.id}-PUBLIC`];
   const resultVegas  = results[`${game.id}-VEGAS`];
   const hasAnyResult = resultPublic || resultVegas;
@@ -468,10 +468,13 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
           {isPostponed && (
             <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.1em",color:"#f87171",background:"rgba(248,113,113,0.12)",padding:"2px 8px",borderRadius:4 }}>⛔ POSTPONED</span>
           )}
-          {finalized && (finalized[`${game.id}-PUBLIC`] || finalized[`${game.id}-VEGAS`]) && (
+          {betReady && !gameStarted && (
+            <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.1em",color:"#000",background:"linear-gradient(135deg,#c9a227,#f59e0b)",padding:"2px 10px",borderRadius:4,animation:"pulse 1.5s infinite" }}>🎯 BET NOW</span>
+          )}
+          {!betReady && finalized && (finalized[`${game.id}-PUBLIC`] || finalized[`${game.id}-VEGAS`]) && (
             <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.1em",color:"#c9a227",background:"rgba(201,162,39,0.12)",padding:"2px 8px",borderRadius:4 }}>🔒 FINAL</span>
           )}
-          {isQueued && !finalized?.[`${game.id}-PUBLIC`] && (
+          {!betReady && isQueued && !finalized?.[`${game.id}-PUBLIC`] && (
             <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.1em",color:"#60a5fa",background:"rgba(96,165,250,0.1)",padding:"2px 8px",borderRadius:4 }}>⟳ QUEUED</span>
           )}
         </div>
@@ -787,6 +790,7 @@ export default function VegasVaultApp() {
   });
   const [preAnalyzing, setPreAnalyzing] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [betReadyAlerts, setBetReadyAlerts] = useState({});
   const [preAnalyzeQueue, setPreAnalyzeQueue] = useState([]);
   const [liveScores, setLiveScores]   = useState({});
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -895,6 +899,55 @@ export default function VegasVaultApp() {
     const t=setInterval(()=>setTime(new Date()),1000);
     return()=>clearInterval(t);
   },[]);
+
+  // ── BET READY ALERTS — 30 min before game, Tier 1 & 2 picks ─────────────────
+  useEffect(() => {
+    if (!games || Object.keys(results).length === 0) return;
+
+    const checkBetReady = () => {
+      const now = Date.now();
+      for (const game of games) {
+        // Skip started games
+        const live = liveScores[`${game.away}|${game.home}`] || liveScores[`${game.awayAbbr}|${game.homeAbbr}`];
+        if (live?.status === 'Live' || live?.status === 'Final') continue;
+
+        // Check if game starts in 30 mins or less
+        if (!game.rawTime) continue;
+        const gameTime = new Date(game.rawTime).getTime();
+        const minsUntil = (gameTime - now) / 60000;
+        if (minsUntil > 30 || minsUntil < 0) continue;
+
+        for (const slot of ['PUBLIC', 'VEGAS']) {
+          const key = `${game.id}-${slot}`;
+          const pick = results[key];
+          if (!pick?.summary) continue;
+
+          // Only Tier 1 and Tier 2
+          const tier = pick.summary.tier;
+          if (tier !== '1' && tier !== '2') continue;
+          if (pick.summary.tierLabel === 'PASS') continue;
+
+          // Skip if already alerted
+          if (betReadyAlerts[key]) continue;
+
+          // Mark as bet ready
+          setBetReadyAlerts(prev => ({ ...prev, [key]: true }));
+
+          // Send notification
+          const tierLabel = tier === '1' ? '🔒 LOCK' : '⭐ Tier 2';
+          const minsStr = Math.round(minsUntil);
+          sendNotification(
+            `${tierLabel} — BET NOW: ${game.away} @ ${game.home}`,
+            `${slot} pick: ${pick.summary.pick} ${pick.summary.betType} | Game starts in ${minsStr} min`
+          );
+        }
+      }
+    };
+
+    checkBetReady();
+    const interval = setInterval(checkBetReady, 60000); // check every minute
+    return () => clearInterval(interval);
+  }, [games, results, liveScores, betReadyAlerts]);
 
   // ── AUTO-RESOLVE PICKS FROM LIVE SCORES ──────────────────────────────────────
   useEffect(() => {
@@ -1404,13 +1457,24 @@ export default function VegasVaultApp() {
 
             {error&&<div style={{ background:"rgba(248,113,113,0.05)",border:"1px solid rgba(248,113,113,0.2)",borderRadius:10,padding:"10px 14px",fontSize:12,color:"#f87171",marginBottom:14 }}>{error}</div>}
 
+            {/* BET NOW ALERT BANNER */}
+            {Object.keys(betReadyAlerts).length > 0 && (
+              <div style={{ marginBottom:12,background:"linear-gradient(135deg,rgba(201,162,39,0.12),rgba(245,158,11,0.08))",border:"1px solid rgba(201,162,39,0.35)",borderRadius:12,padding:"12px 16px",display:"flex",alignItems:"center",gap:12 }}>
+                <span style={{ fontSize:22 }}>🎯</span>
+                <div>
+                  <div style={{ fontSize:12,fontWeight:800,color:"#c9a227",letterSpacing:"0.06em" }}>BETS READY TO PLACE</div>
+                  <div style={{ fontSize:11,color:"#8b6d10",marginTop:2 }}>{Object.keys(betReadyAlerts).length} pick{Object.keys(betReadyAlerts).length>1?'s':''} starting within 30 minutes — check your cards below</div>
+                </div>
+              </div>
+            )}
+
             {/* Game cards */}
             {loading?(
               <div style={{ textAlign:"center",padding:"60px 0",fontSize:11,color:"#2d3a4a",letterSpacing:"0.1em" }}>LOADING SLATE…</div>
             ):(
               <div className="vv-cards">
                 {filteredGames.map(game=>(
-                  <GameCard key={game.id} game={game} results={results} generating={generating} onGenerate={handleGenerate} onCardClick={handleCardClick} liveScores={liveScores} isSubscribed={isSubscribed} finalized={finalized} isQueued={preAnalyzeQueue.some(q=>q.game.id===game.id)}/>
+                  <GameCard key={game.id} game={game} results={results} generating={generating} onGenerate={handleGenerate} onCardClick={handleCardClick} liveScores={liveScores} isSubscribed={isSubscribed} finalized={finalized} isQueued={preAnalyzeQueue.some(q=>q.game.id===game.id)} betReady={betReadyAlerts[`${game.id}-PUBLIC`]||betReadyAlerts[`${game.id}-VEGAS`]}/>
                 ))}
               </div>
             )}
