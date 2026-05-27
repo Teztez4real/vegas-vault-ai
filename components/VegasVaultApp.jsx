@@ -1491,18 +1491,11 @@ export default function VegasVaultApp() {
           <span style={{ fontSize:17,color:"#475569" }}>⚙</span>
           <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.07em",color:"#475569" }}>SETTINGS</span>
         </div>
-        {authUser ? (
-          <div onClick={doSignOut} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"6px 12px",cursor:"pointer",opacity:0.7 }}>
-            <span style={{ fontSize:17,color:"#475569" }}>↩</span>
-            <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.07em",color:"#475569" }}>SIGN OUT</span>
-          </div>
-        ) : (
-          <div onClick={()=>setShowHistory(true)} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"6px 12px",cursor:"pointer",opacity:0.7,position:"relative" }}>
-            <span style={{ fontSize:17,color:"#475569" }}>↺</span>
-            {pickHistory.length > 0 && <div style={{ position:"absolute",top:4,right:8,width:8,height:8,borderRadius:"50%",background:"#c9a227" }}/>}
-            <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.07em",color:"#475569" }}>HISTORY</span>
-          </div>
-        )}
+        <div onClick={()=>setShowHistory(true)} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"6px 12px",cursor:"pointer",position:"relative" }}>
+          <span style={{ fontSize:17,color:"#475569" }}>↺</span>
+          {pickHistory.length > 0 && <div style={{ position:"absolute",top:4,right:6,width:8,height:8,borderRadius:"50%",background:"#c9a227" }}/>}
+          <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.07em",color:"#475569" }}>HISTORY</span>
+        </div>
       </div>
 
       {activeResult&&activeGame&&(
