@@ -604,32 +604,40 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
           </span>
         </div>
       ) : !isSubscribed ? (
-        <div style={{ position:"relative" }}>
-          {/* Blurred buttons */}
-          <div style={{ display:"flex",gap:8,filter:"blur(3px)",pointerEvents:"none" }}>
-            <div style={{ flex:1,padding:"9px 0",background:"rgba(96,165,250,0.06)",border:"1px solid rgba(96,165,250,0.2)",borderRadius:8,fontSize:10,fontWeight:600,color:"#60a5fa",textAlign:"center" }}>Analyze as PUBLIC</div>
-            <div style={{ flex:1,padding:"9px 0",background:"rgba(248,113,113,0.06)",border:"1px solid rgba(248,113,113,0.2)",borderRadius:8,fontSize:10,fontWeight:600,color:"#f87171",textAlign:"center" }}>Analyze as VEGAS</div>
-          </div>
-          {/* Lock overlay */}
-          <div onClick={()=>{ if(onShowAuth) onShowAuth(); else window.location.href='/settings'; }} style={{ position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",gap:8,background:"rgba(7,9,26,0.8)",borderRadius:8,cursor:"pointer",backdropFilter:"blur(2px)" }}>
-            <span style={{ fontSize:14 }}>🔒</span>
-            <span style={{ fontSize:10,fontWeight:700,color:"#c9a227",letterSpacing:"0.08em" }}>SUBSCRIBE TO UNLOCK</span>
-          </div>
+        <div onClick={()=>{ if(onShowAuth) onShowAuth(); else window.location.href='/settings'; }} style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"10px 0",background:"rgba(7,9,26,0.6)",border:"1px solid rgba(201,162,39,0.2)",borderRadius:8,cursor:"pointer",backdropFilter:"blur(2px)" }}>
+          <span style={{ fontSize:13 }}>🔒</span>
+          <span style={{ fontSize:10,fontWeight:700,color:"#c9a227",letterSpacing:"0.08em" }}>SUBSCRIBE TO UNLOCK</span>
         </div>
       ) : (
-        <div style={{ display:"flex",gap:8 }}>
-          {["PUBLIC","VEGAS"].map(slot=>{
-            const key=`${game.id}-${slot}`;
-            const isGen=generating===key;
-            const hasRes=!!results[key];
-            const iv=slot==="VEGAS";
-            return(
-              <button key={slot} onClick={e=>{e.stopPropagation();onGenerate(game,slot);}} disabled={!!generating} style={{ flex:1,padding:"8px 0",background:isGen?(iv?"rgba(248,113,113,0.1)":"rgba(96,165,250,0.1)"):(hasRes?(iv?"rgba(248,113,113,0.06)":"rgba(96,165,250,0.06)"):"transparent"),border:`1px solid ${(isGen||hasRes)?(iv?"rgba(248,113,113,0.4)":"rgba(96,165,250,0.4)"):(iv?"rgba(248,113,113,0.2)":"rgba(96,165,250,0.2)")}`,borderRadius:8,fontSize:10,fontWeight:600,letterSpacing:"0.06em",color:generating&&!isGen?"#1e2a3a":(iv?"#f87171":"#60a5fa"),cursor:generating?"not-allowed":"pointer",fontFamily:"inherit" }}>
-                {isGen?"ANALYZING…":hasRes?(finalized?.[key]?"🔒 FINAL":` ↻ ${slot}`):`Analyze as ${slot}`}
-              </button>
-            );
-          })}
-        </div>
+        /* Auto-analyzed — show status only */
+        (() => {
+          const key = `${game.id}-${game.slot}`;
+          const isGen = generating === key;
+          const hasRes = !!results[key];
+          const isVeg = game.slot === 'VEGAS';
+          const slotColor = isVeg ? '#f87171' : '#60a5fa';
+          const slotBg = isVeg ? 'rgba(248,113,113,0.08)' : 'rgba(96,165,250,0.08)';
+          const slotBorder = isVeg ? 'rgba(248,113,113,0.25)' : 'rgba(96,165,250,0.25)';
+          if (isGen) return (
+            <div style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"10px 0",background:slotBg,border:`1px solid ${slotBorder}`,borderRadius:8 }}>
+              <div style={{ width:12,height:12,borderRadius:"50%",border:`2px solid ${slotBorder}`,borderTop:`2px solid ${slotColor}`,animation:"spin 0.8s linear infinite" }}/>
+              <span style={{ fontSize:10,fontWeight:600,color:slotColor,letterSpacing:"0.06em" }}>ANALYZING {game.slot}…</span>
+            </div>
+          );
+          if (hasRes) return (
+            <div style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"9px 0",background:slotBg,border:`1px solid ${slotBorder}`,borderRadius:8 }}>
+              <span style={{ fontSize:9,fontWeight:700,color:slotColor,letterSpacing:"0.08em" }}>
+                {finalized?.[key] ? `🔒 ${game.slot} — FINAL` : `✓ ${game.slot} — ANALYZED`}
+              </span>
+            </div>
+          );
+          return (
+            <div style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"9px 0",background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:8 }}>
+              <div style={{ width:8,height:8,borderRadius:"50%",background:"#c9a227",animation:"pulse 1.5s ease-in-out infinite" }}/>
+              <span style={{ fontSize:9,fontWeight:600,color:"#3a4a5e",letterSpacing:"0.08em" }}>QUEUED FOR ANALYSIS</span>
+            </div>
+          );
+        })()
       )}
     </div>
   );
@@ -1926,21 +1934,19 @@ export default function VegasVaultApp() {
     setWinRate(Math.round((wins / recent.length) * 100));
   }, [pickHistory]);
 
-  // ── PRE-ANALYSIS: queue games for background analysis ────────────────────────
+  // ── AUTO-ANALYSIS: queue every game by its assigned slot ───────────────────
   useEffect(() => {
     if (!games || games.length === 0) return;
-    // Queue upcoming games that haven't been analyzed yet
     const toAnalyze = [];
     for (const game of games) {
+      if (!game.slot || (game.slot !== 'PUBLIC' && game.slot !== 'VEGAS')) continue;
       const live = liveScores[`${game.away}|${game.home}`] || liveScores[`${game.awayAbbr}|${game.homeAbbr}`];
       const isStarted = live?.status === 'Live' || live?.status === 'Final';
       if (isStarted) continue;
-      for (const slot of ['PUBLIC', 'VEGAS']) {
-        const key = `${game.id}-${slot}`;
-        if (!results[key]) toAnalyze.push({ game, slot, key });
-      }
+      const key = `${game.id}-${game.slot}`;
+      if (!results[key]) toAnalyze.push({ game, slot: game.slot, key });
     }
-    setPreAnalyzeQueue(toAnalyze);
+    if (toAnalyze.length > 0) setPreAnalyzeQueue(toAnalyze);
   }, [games]);
 
   // Process pre-analysis queue one at a time
@@ -2097,6 +2103,7 @@ export default function VegasVaultApp() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap');
         @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
         *{box-sizing:border-box;margin:0;padding:0;}
         body{background:#07091a;overflow-x:hidden;}
         ::-webkit-scrollbar{width:3px;}::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:2px;}
