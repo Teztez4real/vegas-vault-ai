@@ -2289,6 +2289,8 @@ export default function VegasVaultApp() {
                 topPlay={topPlay}
                 loading={topPlayLoading}
                 results={results}
+                games={games}
+                pickHistory={pickHistory}
                 isSubscribed={isSubscribed}
                 onShowAuth={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}}
                 onForceRefresh={async ()=>{
