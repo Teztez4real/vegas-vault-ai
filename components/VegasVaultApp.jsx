@@ -1563,6 +1563,17 @@ export default function VegasVaultApp() {
     }
   }
 
+  function clearAllPlays() {
+    setResults({});
+    setFinalized({});
+    setPreAnalyzeQueue([]);
+    setBetReadyAlerts({});
+    try {
+      localStorage.removeItem('vv_results');
+      localStorage.removeItem('vv_finalized');
+    } catch {}
+  }
+
   function toggleWatch(gameId) {
     setWatchlist(prev => {
       const updated = prev.includes(gameId) ? prev.filter(id => id !== gameId) : [...prev, gameId];
@@ -1933,6 +1944,7 @@ export default function VegasVaultApp() {
           {authUser ? (
             <div style={{ display:"flex",alignItems:"center",gap:8 }}>
               {authUser.email===ADMIN_EMAIL&&<span style={{ fontSize:9,fontWeight:700,color:"#c9a227",background:"rgba(201,162,39,0.12)",border:"1px solid rgba(201,162,39,0.3)",borderRadius:4,padding:"2px 7px",letterSpacing:"0.08em" }}>ADMIN</span>}
+              {authUser.email===ADMIN_EMAIL&&<button onClick={()=>{ if(window.confirm('Clear all analyzed plays and start over?')){ clearAllPlays(); }}} style={{ fontSize:9,fontWeight:700,color:"#f87171",background:"rgba(248,113,113,0.08)",border:"1px solid rgba(248,113,113,0.25)",borderRadius:4,padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",letterSpacing:"0.06em" }}>↺ CLEAR PLAYS</button>}
               <div style={{ width:32,height:32,borderRadius:"50%",background:"linear-gradient(135deg,#c9a227,#8b6d10)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,color:"#000",cursor:"pointer" }} onClick={()=>window.location.href='/settings'}>
                 {(authUser.email?.[0]||'U').toUpperCase()}
               </div>
