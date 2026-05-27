@@ -377,7 +377,7 @@ function PlayResult({ result, game, onClose, isResolved, resolvedResult }) {
 
 // ── GAME CARD — matches reference image exactly ───────────────────────────────
 
-function GameCard({ game, onGenerate, results, generating, onCardClick, liveScores, isSubscribed, finalized, isQueued, betReady }) {
+function GameCard({ game, onGenerate, results, generating, onCardClick, liveScores, isSubscribed, finalized, isQueued, betReady, onShowAuth }) {
   const resultPublic = results[`${game.id}-PUBLIC`];
   const resultVegas  = results[`${game.id}-VEGAS`];
   const hasAnyResult = resultPublic || resultVegas;
@@ -601,7 +601,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
             <div style={{ flex:1,padding:"9px 0",background:"rgba(248,113,113,0.06)",border:"1px solid rgba(248,113,113,0.2)",borderRadius:8,fontSize:10,fontWeight:600,color:"#f87171",textAlign:"center" }}>Analyze as VEGAS</div>
           </div>
           {/* Lock overlay */}
-          <div onClick={()=>window.location.href='/settings'} style={{ position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",gap:8,background:"rgba(7,9,26,0.8)",borderRadius:8,cursor:"pointer",backdropFilter:"blur(2px)" }}>
+          <div onClick={()=>{ if(onShowAuth) onShowAuth(); else window.location.href='/settings'; }} style={{ position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",gap:8,background:"rgba(7,9,26,0.8)",borderRadius:8,cursor:"pointer",backdropFilter:"blur(2px)" }}>
             <span style={{ fontSize:14 }}>🔒</span>
             <span style={{ fontSize:10,fontWeight:700,color:"#c9a227",letterSpacing:"0.08em" }}>SUBSCRIBE TO UNLOCK</span>
           </div>
@@ -820,7 +820,17 @@ export default function VegasVaultApp() {
         if (session?.user) {
           setAuthUser(session.user);
           if (session.user.email === ADMIN_EMAIL) { localStorage.setItem('vv_admin','1'); setIsSubscribed(true); }
-        } else { setAuthUser(null); }
+          else {
+            const sub = typeof window !== 'undefined' && localStorage.getItem('vv_subscribed');
+            if (sub) setIsSubscribed(true);
+          }
+        } else {
+          setAuthUser(null);
+          // Keep subscribed if localStorage flags still present (e.g. active Stripe sub)
+          const admin = typeof window !== 'undefined' && localStorage.getItem('vv_admin');
+          const sub   = typeof window !== 'undefined' && localStorage.getItem('vv_subscribed');
+          if (!admin && !sub) setIsSubscribed(false);
+        }
       });
       return () => subscription.unsubscribe();
     } catch(e) {}
@@ -1474,7 +1484,7 @@ export default function VegasVaultApp() {
             ):(
               <div className="vv-cards">
                 {filteredGames.map(game=>(
-                  <GameCard key={game.id} game={game} results={results} generating={generating} onGenerate={handleGenerate} onCardClick={handleCardClick} liveScores={liveScores} isSubscribed={isSubscribed} finalized={finalized} isQueued={preAnalyzeQueue.some(q=>q.game.id===game.id)} betReady={betReadyAlerts[`${game.id}-PUBLIC`]||betReadyAlerts[`${game.id}-VEGAS`]}/>
+                  <GameCard key={game.id} game={game} results={results} generating={generating} onGenerate={handleGenerate} onCardClick={handleCardClick} liveScores={liveScores} isSubscribed={isSubscribed} finalized={finalized} isQueued={preAnalyzeQueue.some(q=>q.game.id===game.id)} betReady={betReadyAlerts[`${game.id}-PUBLIC`]||betReadyAlerts[`${game.id}-VEGAS`]} onShowAuth={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}}/>
                 ))}
               </div>
             )}
