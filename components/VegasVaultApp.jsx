@@ -1862,7 +1862,7 @@ export default function VegasVaultApp() {
               <VaultLocksView results={results} games={games} finalized={finalized}/>
             ) : activeNav==='AI ANALYZER' ? (
               <AIAnalyzerView games={games} results={results} generating={generating} onGenerate={handleGenerate} isSubscribed={isSubscribed}/>
-            ) : activeNav==='TODAY'S SLATE' ? (
+            ) : activeNav==="TODAY'S SLATE" ? (
               <TodaySlateView games={games} results={results} generating={generating} onGenerate={handleGenerate} liveScores={liveScores} isSubscribed={isSubscribed} finalized={finalized} onShowAuth={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}} preAnalyzeQueue={preAnalyzeQueue} betReadyAlerts={betReadyAlerts}/>
             ) : activeNav==='PROPS AI' ? (
               <PropsAIView games={games} isSubscribed={isSubscribed}/>
