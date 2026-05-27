@@ -39,15 +39,28 @@ function assignMLBSlots(games) {
 
   if (games.length === 0) return games;
 
-  // Group games by time slot
+  // Round game time to nearest 15-minute bucket for grouping
+  // This handles games listed as 7:05, 7:08, 7:10 — all should be same group
+  function timeSlotKey(rawTime) {
+    if (!rawTime) return 'TBD';
+    const d = new Date(rawTime);
+    const minutes = d.getUTCHours() * 60 + d.getUTCMinutes();
+    const bucket = Math.round(minutes / 15) * 15;
+    return String(bucket);
+  }
+
+  // Group games by 15-min bucket
   const timeGroups = [];
   let currentGroup = [games[0]];
+  let currentKey = timeSlotKey(games[0].rawTime);
   for (let i = 1; i < games.length; i++) {
-    if (games[i].rawTime === games[i - 1].rawTime) {
+    const key = timeSlotKey(games[i].rawTime);
+    if (key === currentKey) {
       currentGroup.push(games[i]);
     } else {
       timeGroups.push(currentGroup);
       currentGroup = [games[i]];
+      currentKey = key;
     }
   }
   timeGroups.push(currentGroup);
@@ -1153,6 +1166,11 @@ export async function GET(request) {
 
     mlbGamesRaw.sort((a, b) => new Date(a.rawTime) - new Date(b.rawTime));
     const mlbGames = assignMLBSlots(mlbGamesRaw);
+
+    // Log slot assignments for verification
+    console.log('SLOT ASSIGNMENTS:', mlbGames.map(g =>
+      `${g.slot[0]}:${g.away.split(' ').pop()}@${g.home.split(' ').pop()}(${g.time})`
+    ).join(' | '));
     const allGames = [...mlbGames, ...nbaGames, ...nflGames];
 
     // ── LIVE AI INSIGHTS from real line movement data ────────────────────────
