@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { supabase as _supabase } from '@/lib/supabaseClient';
 function getSB() { return _supabase; }
 
@@ -781,7 +781,7 @@ function RightPanelContent({ marketScanner, insights, aiConfidence, confHistory 
 
 // ── TOP PLAY BANNER ──────────────────────────────────────────────────────────
 function TopPlayBanner({ topPlay, loading, results, isSubscribed, onShowAuth, onForceRefresh, isAdmin }) {
-  const [expanded, setExpanded] = React.useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   if (loading && !topPlay) {
     return (
@@ -1270,7 +1270,7 @@ function VaultLocksView({ results, games, finalized }) {
 
 // ── TODAY'S SLATE VIEW ────────────────────────────────────────────────────────
 function TodaySlateView({ games, results, generating, onGenerate, liveScores, isSubscribed, finalized, onShowAuth, preAnalyzeQueue, betReadyAlerts }) {
-  const [sportFilter, setSportFilter] = React.useState('ALL');
+  const [sportFilter, setSportFilter] = useState('ALL');
   const sports = ['ALL', ...new Set(games.map(g=>g.sport).filter(Boolean))];
   const filtered = sportFilter==='ALL' ? games : games.filter(g=>g.sport===sportFilter);
 
