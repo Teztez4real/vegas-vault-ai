@@ -1934,22 +1934,27 @@ export default function VegasVaultApp() {
   }, [pickHistory]);
 
   // ── AUTO-ANALYSIS: queue every game by its assigned slot ───────────────────
+  // Track if we've queued for today already — prevents re-queue on every liveScores poll
+  const queuedDateRef = useRef(null);
+
   useEffect(() => {
     if (!games || games.length === 0) return;
-    // Only queue if slots are assigned — wait for slot pattern to load
+    // Only queue once per date — don't re-queue just because liveScores updated
+    if (queuedDateRef.current === selectedDate) return;
+    // Wait for slots to be assigned
     const slotsAssigned = games.some(g => g.slot === 'PUBLIC' || g.slot === 'VEGAS');
     if (!slotsAssigned) return;
+
     const toAnalyze = [];
     for (const game of games) {
       if (!game.slot || (game.slot !== 'PUBLIC' && game.slot !== 'VEGAS')) continue;
-      const live = liveScores[`${game.away}|${game.home}`] || liveScores[`${game.awayAbbr}|${game.homeAbbr}`];
-      const isStarted = live?.status === 'Live' || live?.status === 'Final';
-      if (isStarted) continue;
       const key = `${game.id}-${game.slot}`;
       if (!results[key]) toAnalyze.push({ game, slot: game.slot, key });
     }
-    // Replace queue with current unanalyzed games
-    setPreAnalyzeQueue(toAnalyze);
+    if (toAnalyze.length > 0) {
+      queuedDateRef.current = selectedDate;
+      setPreAnalyzeQueue(toAnalyze);
+    }
   }, [games, selectedDate]);
 
   // Track whether analysis-complete notification has been sent today

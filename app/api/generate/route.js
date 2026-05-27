@@ -22,12 +22,13 @@ export async function POST(request) {
         {
           role: 'user',
           content: prompt + `\n\nCRITICAL INSTRUCTIONS:
-1. You MUST return a complete JSON analysis for every game regardless of missing data.
-2. If odds say N/A or Odds API not connected — estimate based on records and matchup. Do NOT refuse.
-3. If H2H says "See MLB Stats" — use records and recent form to infer H2H advantage.
-4. If injuries say "Check rotowire" — assume both teams are healthy unless stated otherwise.
+1. You MUST return a complete JSON object — no exceptions, no plain text responses.
+2. If odds say N/A — estimate based on records and matchup context.
+3. If H2H says "See MLB Stats" — use records and recent form to infer advantage.
+4. If injuries say "Check rotowire" — assume both teams healthy unless stated otherwise.
 5. If lineup says "Not yet confirmed" — analyze based on typical lineup depth and season stats.
-6. NEVER say data is missing. ALWAYS make a full pick with complete analysis.
+6. NEVER return plain text. ALWAYS return valid JSON.
+7. If the analysis does not support a confident play — tier MUST be PASS. Do not force a pick.
 7. Return valid JSON only. No preamble.`
         }
       ],
