@@ -1,9 +1,38 @@
 'use client';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 
 export default function SettingsPage() {
   const ADMIN_EMAIL = 'battlecortez@gmail.com';
+  const [notifStatus, setNotifStatus] = useState('unknown');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setNotifStatus(Notification.permission);
+    }
+  }, []);
+
+  async function enableNotifications() {
+    if (!('Notification' in window)) {
+      alert('This browser does not support notifications. Try Chrome or Safari on iOS 16.4+.');
+      return;
+    }
+    const result = await Notification.requestPermission();
+    setNotifStatus(result);
+    if (result === 'granted') {
+      // Send test notification
+      if ('serviceWorker' in navigator) {
+        const reg = await navigator.serviceWorker.ready.catch(() => null);
+        if (reg?.showNotification) {
+          reg.showNotification('✅ Vegas Vault AI', {
+            body: 'Notifications enabled! You will be alerted for your watchlisted games.',
+            icon: '/favicon.ico',
+            vibrate: [200, 100, 200],
+          });
+        }
+      }
+    }
+  }
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [subLoading, setSubLoading] = useState(null);
@@ -273,6 +302,52 @@ export default function SettingsPage() {
             </div>
           </div>
         )}
+
+        {/* Notifications */}
+        <div style={{ marginBottom:24 }}>
+          <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.12em', color:'#c9a227', marginBottom:16 }}>🔔 NOTIFICATIONS</div>
+          <div style={{ background:'#0b0f1e', border:'1px solid rgba(255,255,255,0.07)', borderRadius:14, padding:'20px' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16, flexWrap:'wrap', gap:12 }}>
+              <div>
+                <div style={{ fontSize:13, fontWeight:600, color:'#e2e8f0', marginBottom:4 }}>Push Notifications</div>
+                <div style={{ fontSize:11, color:'#3a4a5e' }}>Get alerted for your watchlisted games</div>
+              </div>
+              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                <span style={{ fontSize:10, fontWeight:700,
+                  color: notifStatus==='granted' ? '#4ade80' : notifStatus==='denied' ? '#f87171' : '#c9a227',
+                  background: notifStatus==='granted' ? 'rgba(74,222,128,0.1)' : notifStatus==='denied' ? 'rgba(248,113,113,0.1)' : 'rgba(201,162,39,0.1)',
+                  border: `1px solid ${notifStatus==='granted' ? 'rgba(74,222,128,0.3)' : notifStatus==='denied' ? 'rgba(248,113,113,0.3)' : 'rgba(201,162,39,0.3)'}`,
+                  borderRadius:6, padding:'3px 10px'
+                }}>
+                  {notifStatus==='granted' ? '✓ ENABLED' : notifStatus==='denied' ? '✗ BLOCKED' : '○ NOT SET'}
+                </span>
+              </div>
+            </div>
+
+            {notifStatus !== 'granted' && notifStatus !== 'denied' && (
+              <button onClick={enableNotifications} style={{ width:'100%', padding:'11px', background:'linear-gradient(135deg,#c9a227,#8b6d10)', border:'none', borderRadius:8, fontSize:12, fontWeight:700, color:'#000', cursor:'pointer', letterSpacing:'0.06em', fontFamily:'inherit' }}>
+                Enable Notifications
+              </button>
+            )}
+            {notifStatus === 'denied' && (
+              <div style={{ padding:'12px', background:'rgba(248,113,113,0.06)', border:'1px solid rgba(248,113,113,0.2)', borderRadius:8, fontSize:11, color:'#f87171', lineHeight:1.6 }}>
+                Notifications are blocked by your browser.<br/>
+                <strong>iOS:</strong> Settings → Safari → [this site] → Notifications → Allow<br/>
+                <strong>Android:</strong> Tap the lock icon in the address bar → Notifications → Allow
+              </div>
+            )}
+            {notifStatus === 'granted' && (
+              <div style={{ fontSize:11, color:'#3a4a5e', lineHeight:1.6 }}>
+                You will receive alerts for:<br/>
+                🔔 Bet ready (30 min before game) · ⚡ Trell Rule · 📈 Sharp money · 🔒 Finalized plays · 🚨 Injuries
+              </div>
+            )}
+
+            <div style={{ marginTop:12, padding:'10px 14px', background:'rgba(255,255,255,0.02)', borderRadius:8, fontSize:10, color:'#2d3a4a', lineHeight:1.5 }}>
+              <strong style={{ color:'#3a4a5e' }}>Note:</strong> iOS 16.4+ requires the site to be added to your Home Screen for notifications to work. Open in Safari → Share → Add to Home Screen.
+            </div>
+          </div>
+        </div>
 
         {/* Account section */}
         <div style={{ marginBottom:24 }}>
