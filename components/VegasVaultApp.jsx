@@ -1594,6 +1594,8 @@ export default function VegasVaultApp() {
   const [time, setTime]               = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [hasSlotPattern, setHasSlotPattern] = useState(false);
+  // Clear topPlay immediately if no slot pattern on mount
+  useEffect(() => { if (!hasSlotPattern) setTopPlay(null); }, [hasSlotPattern]);
 
   useEffect(()=>{
     setLoading(true);
@@ -2352,7 +2354,7 @@ export default function VegasVaultApp() {
             </div>
 
             {/* TOP PLAY OF THE DAY */}
-            {hasSlotPattern && selectedDate === new Date().toISOString().split("T")[0] && (topPlay || topPlayLoading) && (
+            {hasSlotPattern === true && selectedDate === new Date().toISOString().split("T")[0] && (topPlay || topPlayLoading) && (
               <TopPlayBanner
                 topPlay={topPlay}
                 loading={topPlayLoading}
