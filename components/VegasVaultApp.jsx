@@ -1378,7 +1378,7 @@ function AIAnalyzerView({ games, results, generating, onGenerate, isSubscribed }
           {analyzed.map((game,i) => {
             const pubRes = results[`${game.id}-PUBLIC`];
             const vegRes = results[`${game.id}-VEGAS`];
-            const isTier1 = (pubRes||vegRes||'').includes('Tier 1') || (pubRes||vegRes||'').includes('LOCK');
+            const _r = typeof (pubRes||vegRes) === 'string' ? (pubRes||vegRes) : JSON.stringify(pubRes||vegRes||''); const isTier1 = _r.includes('Tier 1') || _r.includes('LOCK');
             return (
               <div key={game.id} style={{ background:'rgba(255,255,255,0.02)',border:`1px solid ${isTier1?'rgba(201,162,39,0.3)':'rgba(255,255,255,0.06)'}`,borderRadius:12,padding:'14px 16px',marginBottom:10 }}>
                 <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6 }}>
