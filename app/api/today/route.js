@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { assignNBASlots } from '@/lib/nbaModel';
+import { createClient } from '@supabase/supabase-js';
 
 // ── UTILITIES ─────────────────────────────────────────────────────────────────
 
@@ -678,7 +679,6 @@ export async function GET(request) {
     // Fetch MLB slot pattern from Supabase
     let mlbPattern = null;
     try {
-      const { createClient } = require('@supabase/supabase-js');
       const sb = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL,
         process.env.SUPABASE_SERVICE_ROLE_KEY,
@@ -702,8 +702,7 @@ export async function GET(request) {
     // Fetch NFL slot pattern and apply
     let nflPattern = null;
     try {
-      const { createClient: cc2 } = require('@supabase/supabase-js');
-      const sb2 = cc2(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+      const sb2 = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
       const { data: nd } = await sb2.from('slot_patterns').select('pattern').eq('date', dateParam).eq('sport', 'nfl').maybeSingle();
       if (nd?.pattern?.length) nflPattern = nd.pattern;
     } catch {}
@@ -712,8 +711,7 @@ export async function GET(request) {
     // Fetch NBA slot pattern and apply
     let nbaPattern = null;
     try {
-      const { createClient: cc3 } = require('@supabase/supabase-js');
-      const sb3 = cc3(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+      const sb3 = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
       const { data: nd2 } = await sb3.from('slot_patterns').select('pattern').eq('date', dateParam).eq('sport', 'nba').maybeSingle();
       if (nd2?.pattern?.length) nbaPattern = nd2.pattern;
     } catch {}
