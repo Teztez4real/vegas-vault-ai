@@ -121,7 +121,7 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   try {
     const dateParam = searchParams.get('date') || todayStr();
-  const [scheduleGames, mlbOddsResult, nbaGames, nflGames] = await Promise.all([
+  const [scheduleGames, mlbOddsResult, nbaGamesRaw, nflGamesRaw] = await Promise.all([
       fetchMLBSchedule(dateParam),
       fetchOdds('baseball_mlb'),
       fetchNBAGames(dateParam),
@@ -158,7 +158,7 @@ export async function GET(request) {
 
     // Log slot assignments for verification
     console.log('SLOT ASSIGNMENTS:', mlbGames.map(g =>
-      `${g.slot[0]}:${g.away.split(' ').pop()}@${g.home.split(' ').pop()}(${g.time})`
+      `${(g.slot||'?')[0]}:${g.away.split(' ').pop()}@${g.home.split(' ').pop()}(${g.time})`
     ).join(' | '));
     // Fetch NFL slot pattern and apply
     let nflPattern = null;
