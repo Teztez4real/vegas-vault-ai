@@ -2179,7 +2179,7 @@ export default function VegasVaultApp() {
           .vv-nav-logo span.lbl{display:none!important;}
           .vv-main-inner{padding:10px 10px 78px!important;}
           .vv-top-nav-actions{gap:4px!important;}
-          .vv-admin-btns{display:none!important;}
+          .vv-admin-btns{display:flex!important;gap:4px!important;flex-wrap:wrap;}
           .vv-slate-header{flex-wrap:wrap!important;gap:6px!important;}
           .vv-today-title{font-size:14px!important;white-space:nowrap;}
         }
