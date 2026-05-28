@@ -331,7 +331,8 @@ export async function POST(request) {
       `${process.env.NEXT_PUBLIC_APP_URL || 'https://vegas-vault-ai-l6jk.vercel.app'}/api/topplay?date=${dateParam}&force=1`,
       { cache: 'no-store' }
     );
-    return res;
+    const data = await res.json();
+    return NextResponse.json(data);
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
