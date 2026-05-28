@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { assignNBASlots } from '@/lib/nbaModel';
-import { fetchMLBSchedule, assembleMLBGame, fetchOdds } from '@/lib/dataLayer';
 
 // ── UTILITIES ─────────────────────────────────────────────────────────────────
 

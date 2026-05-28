@@ -1,19 +1,41 @@
 import { NextResponse } from 'next/server';
 
-async function fetchLiveScores() {
+export async function GET(request) {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const { searchParams } = new URL(request.url);
+    const date = searchParams.get('date') || new Date().toISOString().split('T')[0];
+
     const res = await fetch(
-      `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${today}&hydrate=linescore,team`,
+      `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${date}&hydrate=linescore,team`,
       { cache: 'no-store' }
     );
-    if (!res.ok) return [];
+    if (!res.ok) return NextResponse.json({ scores: [], fetchedAt: new Date().toISOString() });
+
     const data = await res.json();
-    const games = [];
-    for (const date of data.dates || []) {
-      for (const game of date.games || []) {
+    const scores = [];
+
+    for (const d of data.dates || []) {
+      for (const game of d.games || []) {
         const linescore = game.linescore || {};
-        games.push({
+        const abstractState = game.status?.abstractGameState; // Preview, Live, Final
+        const detailedState = game.status?.detailedState;    // Scheduled, In Progress, Final, Postponed, Delayed, etc.
+        const codedState = game.status?.statusCode;
+
+        // Determine display status
+        let displayStatus = detailedState || abstractState || 'Scheduled';
+        let isDelayed = false;
+        let isPostponed = false;
+
+        if (detailedState?.toLowerCase().includes('delay') || codedState === 'DI' || codedState === 'DC') {
+          isDelayed = true;
+          displayStatus = 'Delayed';
+        }
+        if (detailedState?.toLowerCase().includes('postpone') || codedState === 'PW' || codedState === 'PO') {
+          isPostponed = true;
+          displayStatus = 'Postponed';
+        }
+
+        scores.push({
           gamePk: game.gamePk,
           away: game.teams?.away?.team?.name,
           home: game.teams?.home?.team?.name,
@@ -21,23 +43,26 @@ async function fetchLiveScores() {
           homeAbbr: game.teams?.home?.team?.abbreviation,
           awayScore: linescore.teams?.away?.runs ?? null,
           homeScore: linescore.teams?.home?.runs ?? null,
+          awayHits: linescore.teams?.away?.hits ?? null,
+          homeHits: linescore.teams?.home?.hits ?? null,
+          awayErrors: linescore.teams?.away?.errors ?? null,
+          homeErrors: linescore.teams?.home?.errors ?? null,
           inning: linescore.currentInning ?? null,
           inningHalf: linescore.inningHalf ?? null,
           outs: linescore.outs ?? null,
-          status: game.status?.abstractGameState,
-          detailedState: game.status?.detailedState,
+          status: abstractState,
+          detailedState: displayStatus,
+          isDelayed,
+          isPostponed,
           startTime: game.gameDate,
+          date: d.date,
         });
       }
     }
-    return games;
+
+    return NextResponse.json({ scores, fetchedAt: new Date().toISOString() });
   } catch (err) {
     console.error('Live scores error:', err.message);
-    return [];
+    return NextResponse.json({ scores: [], fetchedAt: new Date().toISOString() });
   }
-}
-
-export async function GET() {
-  const scores = await fetchLiveScores();
-  return NextResponse.json({ scores, fetchedAt: new Date().toISOString() });
 }
