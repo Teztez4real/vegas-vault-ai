@@ -48,10 +48,9 @@ function scoreGame(game) {
     return { score: -999, reasons, disqualifiers };
   }
 
-  // No slot = skip
-  if (!game.slot || (game.slot !== 'PUBLIC' && game.slot !== 'VEGAS')) {
-    disqualifiers.push('No slot assigned');
-    return { score: -999, reasons, disqualifiers };
+  // Slot bonus — if slot is assigned, add clarity bonus
+  if (game.slot === 'PUBLIC' || game.slot === 'VEGAS') {
+    score += 5;
   }
 
   // No pitcher data = weaker candidate
