@@ -731,9 +731,28 @@ export default function VegasVaultApp() {
   const [error, setError]             = useState(null);
   const [loading, setLoading]         = useState(true);
   const [time, setTime]               = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+
+  function changeDate(offset) {
+    const d = new Date(selectedDate + 'T12:00:00');
+    d.setDate(d.getDate() + offset);
+    setSelectedDate(d.toISOString().split('T')[0]);
+    setResults({});
+  }
+  function formatDisplayDate(dateStr) {
+    const today = new Date().toISOString().split('T')[0];
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+    if (dateStr === today) return 'Today';
+    if (dateStr === yesterday) return 'Yesterday';
+    if (dateStr === tomorrow) return 'Tomorrow';
+    const d = new Date(dateStr + 'T12:00:00');
+    return d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+  }
 
   useEffect(()=>{
-    fetch("/api/today").then(r=>r.json())
+    setLoading(true);
+    fetch(`/api/today?date=${selectedDate}`).then(r=>r.json())
       .then(data=>{
         setGames(data.games||MOCK_GAMES);
         setTrellAlerts(data.trellAlerts||[]);
@@ -744,7 +763,7 @@ export default function VegasVaultApp() {
         setLoading(false);
       })
       .catch(()=>{setGames(MOCK_GAMES);setLoading(false);});
-  },[]);
+  },[selectedDate]);
 
   useEffect(()=>{
     const t=setInterval(()=>setTime(new Date()),1000);
@@ -984,10 +1003,11 @@ export default function VegasVaultApp() {
 
             {/* Slate header */}
             <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
-              <h2 style={{ fontSize:16,fontWeight:700,color:"#f1f5f9" }}>Today's Slate</h2>
-              <div style={{ display:"flex",alignItems:"center",gap:8 }}>
-                <div style={{ fontSize:11,color:"#3a4a5e",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:6,padding:"4px 10px" }}>{today} ▾</div>
-                <span style={{ fontSize:14,color:"#2d3a4a",cursor:"pointer" }}>⊟</span>
+              <h2 style={{ fontSize:16,fontWeight:700,color:"#f1f5f9" }}>{formatDisplayDate(selectedDate)}'s Slate</h2>
+              <div style={{ display:"flex",alignItems:"center",gap:6 }}>
+                <button onClick={()=>changeDate(-1)} style={{ background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:6,color:"#94a3b8",fontSize:16,width:30,height:30,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center" }}>‹</button>
+                <div style={{ fontSize:11,color:"#c9a227",background:"rgba(201,162,39,0.08)",border:"1px solid rgba(201,162,39,0.2)",borderRadius:6,padding:"4px 12px",minWidth:80,textAlign:"center" }}>{formatDisplayDate(selectedDate)}</div>
+                <button onClick={()=>changeDate(1)} style={{ background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:6,color:"#94a3b8",fontSize:16,width:30,height:30,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center" }}>›</button>
               </div>
             </div>
 
