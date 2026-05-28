@@ -115,6 +115,134 @@ async function fetchNFLGames(dateParam) {
   }
 }
 
+
+// ── MLB ────────────────────────────────────────────────────────────────────────
+
+async function fetchMLBSchedule(date) {
+  const dateStr = date || todayStr();
+  const res = await fetch(
+    `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${dateStr}&hydrate=team,probablePitcher,linescore`,
+    { cache: 'no-store' }
+  );
+  const data = await res.json();
+  const dateEntry = data.dates?.find(d => d.date === dateStr) || data.dates?.[0];
+  return dateEntry?.games || [];
+}
+
+async function fetchOdds(sport) {
+  try {
+    const res = await fetch(
+      `https://api.the-odds-api.com/v4/sports/${sport}/odds/?apiKey=${process.env.ODDS_API_KEY}&regions=us&markets=h2h,spreads,totals&oddsFormat=american`,
+      { cache: 'no-store' }
+    );
+    if (!res.ok) return { oddsMap: {}, bookmakerCount: 0 };
+    const data = await res.json();
+    const oddsMap = {};
+    let bookmakerCount = 0;
+    data.forEach(game => {
+      const away = game.away_team;
+      const home = game.home_team;
+      const key = `${away}@${home}`;
+      let awayML = 'N/A', homeML = 'N/A', spread = 'N/A', total = 'N/A';
+      let openingAwayML = 'N/A', openingHomeML = 'N/A';
+      game.bookmakers?.forEach(bm => {
+        bookmakerCount++;
+        bm.markets?.forEach(mkt => {
+          if (mkt.key === 'h2h') {
+            mkt.outcomes?.forEach(o => {
+              if (o.name === away) awayML = fmt(o.price);
+              if (o.name === home) homeML = fmt(o.price);
+            });
+          }
+          if (mkt.key === 'spreads') {
+            mkt.outcomes?.forEach(o => {
+              if (o.name === home) spread = o.point > 0 ? `+${o.point}` : `${o.point}`;
+            });
+          }
+          if (mkt.key === 'totals') {
+            mkt.outcomes?.forEach(o => {
+              if (o.name === 'Over') total = o.point;
+            });
+          }
+        });
+      });
+      oddsMap[key] = { awayML, homeML, spread, total, openingAwayML, openingHomeML };
+    });
+    return { oddsMap, bookmakerCount };
+  } catch { return { oddsMap: {}, bookmakerCount: 0 }; }
+}
+
+async function assembleMLBGame(game, oddsMap) {
+  try {
+    const away = game.teams?.away?.team?.name || 'Away';
+    const home = game.teams?.home?.team?.name || 'Home';
+    const key = `${away}@${home}`;
+    const odds = oddsMap[key] || {};
+    return {
+      id: game.gamePk,
+      sport: 'MLB',
+      away, home,
+      awayAbbr: game.teams?.away?.team?.abbreviation || away.slice(0,3).toUpperCase(),
+      homeAbbr: game.teams?.home?.team?.abbreviation || home.slice(0,3).toUpperCase(),
+      time: formatTime(game.gameDate),
+      rawTime: game.gameDate,
+      awayML: odds.awayML || 'N/A',
+      homeML: odds.homeML || 'N/A',
+      openingAwayML: odds.openingAwayML || 'N/A',
+      openingHomeML: odds.openingHomeML || 'N/A',
+      spread: odds.spread || 'N/A',
+      total: odds.total || 'N/A',
+      awayRecord: `${game.teams?.away?.leagueRecord?.wins||0}-${game.teams?.away?.leagueRecord?.losses||0}`,
+      homeRecord: `${game.teams?.home?.leagueRecord?.wins||0}-${game.teams?.home?.leagueRecord?.losses||0}`,
+      awayPitcher: game.teams?.away?.probablePitcher?.fullName || 'TBD',
+      homePitcher: game.teams?.home?.probablePitcher?.fullName || 'TBD',
+      slot: 'PUBLIC',
+    };
+  } catch { return null; }
+}
+
+async function fetchNBAGames(date) {
+  try {
+    const month = new Date().getMonth() + 1;
+    if (month >= 7 && month <= 9) return [];
+    const res = await fetch(
+      `https://api.the-odds-api.com/v4/sports/basketball_nba/odds/?apiKey=${process.env.ODDS_API_KEY}&regions=us&markets=h2h,spreads,totals&oddsFormat=american`,
+      { cache: 'no-store' }
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.map((game, i) => {
+      const away = game.away_team;
+      const home = game.home_team;
+      let awayML = 'N/A', homeML = 'N/A', spread = 'N/A', total = 'N/A';
+      game.bookmakers?.[0]?.markets?.forEach(mkt => {
+        if (mkt.key === 'h2h') mkt.outcomes?.forEach(o => {
+          if (o.name === away) awayML = fmt(o.price);
+          if (o.name === home) homeML = fmt(o.price);
+        });
+        if (mkt.key === 'spreads') mkt.outcomes?.forEach(o => {
+          if (o.name === home) spread = o.point > 0 ? `+${o.point}` : `${o.point}`;
+        });
+        if (mkt.key === 'totals') mkt.outcomes?.forEach(o => {
+          if (o.name === 'Over') total = o.point;
+        });
+      });
+      return {
+        id: 3000 + i, sport: 'NBA',
+        away, home,
+        awayAbbr: away.split(' ').pop().slice(0,3).toUpperCase(),
+        homeAbbr: home.split(' ').pop().slice(0,3).toUpperCase(),
+        time: formatTime(game.commence_time),
+        rawTime: game.commence_time,
+        awayML, homeML, spread, total,
+        openingAwayML: 'N/A', openingHomeML: 'N/A',
+        awayRecord: 'N/A', homeRecord: 'N/A',
+        slot: 'PUBLIC',
+      };
+    });
+  } catch { return []; }
+}
+
 // ── MAIN HANDLER ──────────────────────────────────────────────────────────────
 
 export async function GET(request) {
