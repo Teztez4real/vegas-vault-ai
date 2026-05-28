@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { assignNBASlots } from '@/lib/nbaModel';
+import { createClient } from '@supabase/supabase-js';
 
 // ── UTILITIES ─────────────────────────────────────────────────────────────────
 
@@ -178,14 +179,21 @@ async function assembleMLBGame(game, oddsMap) {
     const home = game.teams?.home?.team?.name || 'Home';
     const key = `${away}@${home}`;
     const odds = oddsMap[key] || {};
+    const status = game.status?.abstractGameState || '';
+    const isFinal = status === 'Final';
+    const awayScore = game.teams?.away?.score;
+    const homeScore = game.teams?.home?.score;
     return {
       id: game.gamePk,
       sport: 'MLB',
       away, home,
       awayAbbr: game.teams?.away?.team?.abbreviation || away.slice(0,3).toUpperCase(),
       homeAbbr: game.teams?.home?.team?.abbreviation || home.slice(0,3).toUpperCase(),
-      time: formatTime(game.gameDate),
+      time: isFinal ? `Final${awayScore != null ? ': ' + awayScore + '-' + homeScore : ''}` : formatTime(game.gameDate),
       rawTime: game.gameDate,
+      awayScore: awayScore ?? null,
+      homeScore: homeScore ?? null,
+      isFinal,
       awayML: odds.awayML || 'N/A',
       homeML: odds.homeML || 'N/A',
       openingAwayML: odds.openingAwayML || 'N/A',
@@ -249,11 +257,13 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   try {
     const dateParam = searchParams.get('date') || todayStr();
-  const [scheduleGames, mlbOddsResult, nbaGamesRaw, nflGamesRaw] = await Promise.all([
+    const isPast = dateParam < todayStr();
+
+    const [scheduleGames, mlbOddsResult, nbaGamesRaw, nflGamesRaw] = await Promise.all([
       fetchMLBSchedule(dateParam),
-      fetchOdds('baseball_mlb'),
-      fetchNBAGames(dateParam),
-      fetchNFLGames(dateParam),
+      isPast ? Promise.resolve({ oddsMap: {}, bookmakerCount: 0 }) : fetchOdds('baseball_mlb'),
+      isPast ? Promise.resolve([]) : fetchNBAGames(dateParam),
+      isPast ? Promise.resolve([]) : fetchNFLGames(dateParam),
     ]);
     const mlbOdds = mlbOddsResult.oddsMap || mlbOddsResult;
     const mlbBookmakerCount = mlbOddsResult.bookmakerCount || 0;
@@ -267,7 +277,6 @@ export async function GET(request) {
     // Fetch MLB slot pattern from Supabase
     let mlbPattern = null;
     try {
-      const { createClient } = require('@supabase/supabase-js');
       const sb = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL,
         process.env.SUPABASE_SERVICE_ROLE_KEY,
@@ -291,8 +300,7 @@ export async function GET(request) {
     // Fetch NFL slot pattern and apply
     let nflPattern = null;
     try {
-      const { createClient: cc2 } = require('@supabase/supabase-js');
-      const sb2 = cc2(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+      const sb2 = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
       const { data: nd } = await sb2.from('slot_patterns').select('pattern').eq('date', dateParam).eq('sport', 'nfl').maybeSingle();
       if (nd?.pattern?.length) nflPattern = nd.pattern;
     } catch {}
@@ -301,8 +309,7 @@ export async function GET(request) {
     // Fetch NBA slot pattern and apply
     let nbaPattern = null;
     try {
-      const { createClient: cc3 } = require('@supabase/supabase-js');
-      const sb3 = cc3(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+      const sb3 = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
       const { data: nd2 } = await sb3.from('slot_patterns').select('pattern').eq('date', dateParam).eq('sport', 'nba').maybeSingle();
       if (nd2?.pattern?.length) nbaPattern = nd2.pattern;
     } catch {}
