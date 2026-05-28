@@ -569,6 +569,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
         <div style={{ display:"flex",gap:6,marginBottom:10 }}>
           {[["PUBLIC",resultPublic],["VEGAS",resultVegas]].map(([slot,result])=>{
             if(!result)return null;
+            if(game.slot && slot !== game.slot) return null;
             if (!result?.summary) return null;
             const ts=TIER_STYLES[result.summary.tier]||TIER_STYLES["3"];
             const iv=slot==="VEGAS";
