@@ -2303,30 +2303,6 @@ export default function VegasVaultApp() {
               <PropsAIView games={games} isSubscribed={isSubscribed}/>
             ) : (
             <>
-            {/* TOP PLAY OF THE DAY */}
-            {(topPlay || topPlayLoading) && selectedDate === new Date().toISOString().split("T")[0] && (
-              <TopPlayBanner
-                topPlay={topPlay}
-                loading={topPlayLoading}
-                results={results}
-                games={games}
-                pickHistory={pickHistory}
-                isSubscribed={isSubscribed}
-                onShowAuth={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}}
-                onForceRefresh={async ()=>{
-                  setTopPlayLoading(true);
-                  try {
-                    const {data:{session:s}} = await supabase.auth.getSession();
-                    await fetch('/api/topplay',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:s?.access_token,date:selectedDate})});
-                    const res = await fetch(`/api/topplay?date=${selectedDate}&force=1`);
-                    const data = await res.json();
-                    if(data.topPlay) setTopPlay(data.topPlay);
-                  } catch{}
-                  setTopPlayLoading(false);
-                }}
-                isAdmin={authUser?.email==='battlecortez@gmail.com'}
-              />
-            )}
             {/* Greeting */}
             <div style={{ marginBottom:18 }}>
               <h1 style={{ fontSize:22,fontWeight:700,color:"#f1f5f9",letterSpacing:"-0.02em",marginBottom:4 }}>{greeting}, Teztez4real.</h1>
@@ -2374,6 +2350,31 @@ export default function VegasVaultApp() {
                 </div>
               </div>
             </div>
+
+            {/* TOP PLAY OF THE DAY */}
+            {hasSlotPattern && selectedDate === new Date().toISOString().split("T")[0] && (topPlay || topPlayLoading) && (
+              <TopPlayBanner
+                topPlay={topPlay}
+                loading={topPlayLoading}
+                results={results}
+                games={games}
+                pickHistory={pickHistory}
+                isSubscribed={isSubscribed}
+                onShowAuth={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}}
+                onForceRefresh={async ()=>{
+                  setTopPlayLoading(true);
+                  try {
+                    const {data:{session:s}} = await supabase.auth.getSession();
+                    await fetch('/api/topplay',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:s?.access_token,date:selectedDate})});
+                    const res = await fetch(`/api/topplay?date=${selectedDate}&force=1`);
+                    const data = await res.json();
+                    if(data.topPlay) setTopPlay(data.topPlay);
+                  } catch{}
+                  setTopPlayLoading(false);
+                }}
+                isAdmin={authUser?.email==='battlecortez@gmail.com'}
+              />
+            )}
 
             {/* Slate header */}
             <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
