@@ -40,6 +40,7 @@ export default function SettingsPage() {
 
   // Slot pattern state
   const [slotDate, setSlotDate] = useState(new Date().toISOString().split('T')[0]);
+  const [slotSport, setSlotSport] = useState('mlb');
   const [slotPattern, setSlotPattern] = useState([]);
   const [slotNote, setSlotNote] = useState('');
   const [slotCount, setSlotCount] = useState(15);
@@ -55,7 +56,7 @@ export default function SettingsPage() {
 
   // Load existing pattern when date changes
   useEffect(() => {
-    fetch(`/api/slot-pattern?date=${slotDate}`)
+    fetch(`/api/slot-pattern?date=${slotDate}&sport=${slotSport}`)
       .then(r => r.json())
       .then(data => {
         if (data.pattern?.length) {
@@ -66,7 +67,7 @@ export default function SettingsPage() {
           setSlotPattern([]);
         }
       }).catch(() => {});
-  }, [slotDate]);
+  }, [slotDate, slotSport]);
 
   // Build pattern array when count changes
   useEffect(() => {
@@ -85,7 +86,7 @@ export default function SettingsPage() {
       const res = await fetch('/api/slot-pattern', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date: slotDate, pattern: slotPattern, note: slotNote, token: s?.access_token }),
+        body: JSON.stringify({ date: slotDate, sport: slotSport, pattern: slotPattern, note: slotNote, token: s?.access_token }),
       });
       const data = await res.json();
       if (data.success) setSlotMsg('✅ Pattern saved! Games will reload with new slots.');
@@ -230,6 +231,15 @@ export default function SettingsPage() {
                     style={{ width:'100%', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, padding:'8px 12px', fontSize:12, color:'#f1f5f9', fontFamily:'inherit', boxSizing:'border-box' }}/>
                 </div>
                 <div style={{ width:90 }}>
+                  <div style={{ fontSize:9, color:'#3a4a5e', letterSpacing:'0.1em', marginBottom:6 }}>SPORT</div>
+                  <select value={slotSport} onChange={e => { setSlotSport(e.target.value); setSlotPattern([]); setSlotNote(''); }}
+                    style={{ width:'100%', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, padding:'8px 10px', fontSize:12, color:'#f1f5f9', fontFamily:'inherit', boxSizing:'border-box' }}>
+                    <option value="mlb">MLB</option>
+                    <option value="nba">NBA</option>
+                    <option value="nfl">NFL</option>
+                  </select>
+                </div>
+              <div style={{ width:90 }}>
                   <div style={{ fontSize:9, color:'#3a4a5e', letterSpacing:'0.1em', marginBottom:6 }}>GAMES</div>
                   <input type="number" min={1} max={30} value={slotCount} onChange={e => setSlotCount(parseInt(e.target.value)||15)}
                     style={{ width:'100%', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, padding:'8px 12px', fontSize:12, color:'#f1f5f9', fontFamily:'inherit', boxSizing:'border-box' }}/>
@@ -291,7 +301,7 @@ export default function SettingsPage() {
               {/* Save */}
               <button onClick={saveSlotPattern} disabled={slotSaving || slotPattern.length === 0}
                 style={{ width:'100%', padding:'11px 0', background:'linear-gradient(135deg,#c9a227,#8b6d10)', border:'none', borderRadius:8, fontSize:12, fontWeight:700, color:'#000', cursor:slotSaving?'not-allowed':'pointer', letterSpacing:'0.06em', fontFamily:'inherit', opacity:slotSaving?0.7:1 }}>
-                {slotSaving ? 'Saving...' : `Save Pattern for ${slotDate}`}
+                {slotSaving ? 'Saving...' : `Save ${slotSport.toUpperCase()} Pattern for ${slotDate}`}
               </button>
 
               {slotMsg && (

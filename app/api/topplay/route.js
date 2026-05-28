@@ -197,6 +197,12 @@ export async function GET(request) {
 
   const sb = getAdmin();
 
+  // Top play only generates on the day of the games
+  const todayDate = todayStr();
+  if (dateParam !== todayDate) {
+    return NextResponse.json({ topPlay: null, message: 'Top play only available on game day' });
+  }
+
   // Check cache first
   if (!force) {
     try {
