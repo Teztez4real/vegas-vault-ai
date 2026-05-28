@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { assignNBASlots } from '@/lib/nbaModel';
 import { createClient } from '@supabase/supabase-js';
 
-// ── UTILITIES ─────────────────────────────────────────────────────────────────
+// - UTILITIES -
 
 function todayStr() {
   return new Date().toISOString().split('T')[0];
@@ -19,7 +19,7 @@ function fmt(price) {
   return price ? (price > 0 ? `+${price}` : `${price}`) : 'N/A';
 }
 
-// ── MLB SLOT SYSTEM ───────────────────────────────────────────────────────────
+// - MLB SLOT SYSTEM -
 // PUBLIC days: Monday (1), Wednesday (3), Friday (5)
 // VEGAS days:  Tuesday (2), Thursday (4), Saturday (6), Sunday (0)
 //
@@ -33,11 +33,11 @@ function fmt(price) {
 // 7. Last game same time slot = hold
 
 function assignMLBSlots(games, adminPattern = null) {
-  // Slots ONLY come from the admin pattern — no auto-assignment
+  // Slots ONLY come from the admin pattern - no auto-assignment
   if (adminPattern && Array.isArray(adminPattern) && adminPattern.length > 0) {
     return games.map((g, i) => ({ ...g, slot: adminPattern[i] || null }));
   }
-  // No pattern set — return games with no slot (unassigned)
+  // No pattern set - return games with no slot (unassigned)
   return games.map(g => ({ ...g, slot: null }));
 
 
@@ -49,7 +49,7 @@ async function fetchNFLGames(dateParam) {
     const month = new Date().getMonth() + 1; // 1-12
     if (month >= 3 && month <= 8) return []; // March-August = offseason, no games
 
-// ── ESPN H2H (MLB Stats API — real H2H) ──────────────────────────────────────
+// - ESPN H2H (MLB Stats API - real H2H) -
 
 async function fetchMLBH2H(awayTeamId, homeTeamId, awayTeamName, homeTeamName) {
   try {
@@ -89,11 +89,11 @@ async function fetchMLBH2H(awayTeamId, homeTeamId, awayTeamName, homeTeamName) {
   }
 }
 
-// ── COVERS H2H (Ball Don't Lie — NBA H2H) ────────────────────────────────────
+// - COVERS H2H (Ball Don't Lie - NBA H2H) -
 
 async function fetchNBAH2H(awayTeamName, homeTeamName) {
   try {
-    // Ball Don't Lie free API — search for team IDs first
+    // Ball Don't Lie free API - search for team IDs first
     const teamsRes = await fetch('https://api.balldontlie.io/v1/teams', {
       headers: { 'Authorization': process.env.BALLDONTLIE_API_KEY || '' },
       signal: AbortSignal.timeout(5000),
@@ -147,7 +147,7 @@ async function fetchNBAH2H(awayTeamName, homeTeamName) {
   }
 }
 
-// ── ROTOWIRE INJURIES ─────────────────────────────────────────────────────────
+// - ROTOWIRE INJURIES -
 
 async function fetchRotoWireInjuries(awayTeam, homeTeam, sport = 'mlb') {
   try {
@@ -180,7 +180,7 @@ async function fetchRotoWireInjuries(awayTeam, homeTeam, sport = 'mlb') {
 }
 
 
-// ── WEATHER DATA (OpenWeatherMap free tier) ───────────────────────────────────
+// - WEATHER DATA (OpenWeatherMap free tier) -
 
 const BALLPARK_COORDS = {
   "Arizona Diamondbacks":    { lat:33.4455, lon:-112.0667, name:"Chase Field" },
@@ -281,7 +281,7 @@ function isWindOutToCenter(homeTeam, windDeg) {
   return windDeg >= low && windDeg <= high;
 }
 
-// ── UMPIRE DATA (MLB Stats API) ───────────────────────────────────────────────
+// - UMPIRE DATA (MLB Stats API) -
 
 async function fetchUmpire(gamePk) {
   try {
@@ -315,7 +315,7 @@ async function fetchUmpire(gamePk) {
   }
 }
 
-// ── CONFIRMED LINEUP + BATTER SPLITS vs LHP/RHP ──────────────────────────────
+// - CONFIRMED LINEUP + BATTER SPLITS vs LHP/RHP -
 
 async function fetchLineupAndSplits(gamePk, teamId, teamName) {
   try {
@@ -373,7 +373,7 @@ async function fetchLineupAndSplits(gamePk, teamId, teamName) {
   }
 }
 
-// ── PITCHER VS OPPONENT TEAM SPLITS ──────────────────────────────────────────
+// - PITCHER VS OPPONENT TEAM SPLITS -
 
 async function fetchPitcherVsTeam(pitcherId, pitcherName, opponentTeamId, opponentName) {
   if (!pitcherId) return `${pitcherName || "TBD"} vs ${opponentName}: No pitcher confirmed`;
@@ -409,7 +409,7 @@ async function fetchPitcherVsTeam(pitcherId, pitcherName, opponentTeamId, oppone
 }
 
 
-// ── THE ODDS API ──────────────────────────────────────────────────────────────
+// - THE ODDS API -
 
 async function fetchOdds(sportKey) {
   const apiKey = process.env.ODDS_API_KEY;
@@ -466,7 +466,7 @@ async function fetchOdds(sportKey) {
   }
 }
 
-// ── MLB STATS API ─────────────────────────────────────────────────────────────
+// - MLB STATS API -
 
 async function fetchMLBSchedule(date) {
   const dateStr = date || todayStr();
@@ -599,7 +599,7 @@ async function assembleMLBGame(g, oddsMap) {
   };
 }
 
-// ── NBA GAMES ─────────────────────────────────────────────────────────────────
+// - NBA GAMES -
 
 async function fetchNBAGames() {
   const apiKey = process.env.ODDS_API_KEY;
@@ -655,7 +655,7 @@ async function fetchNBAGames() {
   }
 }
 
-// ── MAIN HANDLER ──────────────────────────────────────────────────────────────
+// -- MAIN HANDLER --
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -719,7 +719,7 @@ export async function GET(request) {
 
     const allGames = [...mlbGames, ...nbaGames, ...nflGames];
 
-    // ── LIVE AI INSIGHTS from real line movement data ────────────────────────
+    // - LIVE AI INSIGHTS from real line movement data -
     const insights = [];
     const allMLBGames = mlbGames;
     for (const g of allMLBGames) {
@@ -737,7 +737,7 @@ export async function GET(request) {
       } else if (mov.includes('moved')) {
         insights.push({ icon:'○', text:`Line movement: ${awayShort} @ ${homeShort} — ${mov.slice(0,70)}`, time:`${minAgo}m ago` });
       } else if (mov.includes('stable') || mov.includes('Stable')) {
-        // skip stable lines — not interesting
+        // skip stable lines - not interesting
         continue;
       }
       if (insights.length >= 5) break;
@@ -755,7 +755,7 @@ export async function GET(request) {
       }
     }
 
-    // ── LIVE ODDS FEED from real odds data ───────────────────────────────────
+    // - LIVE ODDS FEED from real odds data -
     const ABBR_MAP = {
       "Yankees":"NYY","Red Sox":"BOS","Dodgers":"LAD","Padres":"SD","Cubs":"CHC",
       "Cardinals":"STL","Rays":"TB","Mets":"NYM","Braves":"ATL","Phillies":"PHI",
@@ -772,7 +772,7 @@ export async function GET(request) {
       return { team: abbr, line: '-1.5', odds: ml, up: !isNaN(num) && num < 0 };
     }).filter(o => o.odds !== 'N/A');
 
-    // ── MARKET SCANNER from line movement data ────────────────────────────────
+    // - MARKET SCANNER from line movement data -
     const reverseLineGames = allMLBGames.filter(g => (g.lineMovement||'').includes('moved toward') && (g.lineMovement||'').includes('public')).length;
     const sharpGames = allMLBGames.filter(g => (g.lineMovement||'').toLowerCase().includes('sharp') || (g.lineMovement||'').includes('moved toward')).length;
     const publicHeavyGames = allMLBGames.filter(g => (g.lineMovement||'').toLowerCase().includes('public')).length;
@@ -785,7 +785,7 @@ export async function GET(request) {
       vegasTrapAlert: Math.max(trapGames, 1),
     };
 
-    // ── LIVE ODDS FEED (from real odds data) ──────────────────────────────────
+    // - LIVE ODDS FEED (from real odds data) -
     const oddsValues = Object.entries(mlbOdds);
     const oddsFeed = oddsValues.slice(0, 12).map(([key, odds]) => {
       const [away, home] = key.split('|');
@@ -801,7 +801,7 @@ export async function GET(request) {
       };
     });
 
-    // ── AI MARKET SCANNER ──────────────────────────────────────────────────────
+    // - AI MARKET SCANNER -
     // Reverse line movement = line moved toward team despite public betting against
     const reverseLineGames = mlbGames.filter(g => {
       const mov = g.lineMovement || '';
@@ -827,7 +827,7 @@ export async function GET(request) {
       vegasTrapAlert:      Math.max(trapGames.length, 1),
     };
 
-    // ── AI INSIGHTS ────────────────────────────────────────────────────────────
+    // - AI INSIGHTS -
     const insights = [];
     mlbGames.forEach(g => {
       const mov = g.lineMovement || '';
