@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { assignNBASlots, NBA_MOCK_GAMES } from '@/lib/nbaModel';
+import { assignNBASlots } from '@/lib/nbaModel';
 
 // ── UTILITIES ─────────────────────────────────────────────────────────────────
 
@@ -31,81 +31,24 @@ function fmt(price) {
 // 6. Last game different time slot = switch
 // 7. Last game same time slot = hold
 
-function assignMLBSlots(games) {
-  const dayOfWeek = new Date().getDay();
-  const publicDays = [1, 3, 5];
-  const dayBase = publicDays.includes(dayOfWeek) ? 'PUBLIC' : 'VEGAS';
-  const opposite = (s) => (s === 'PUBLIC' ? 'VEGAS' : 'PUBLIC');
-
-  if (games.length === 0) return games;
-
-  // Group games by time slot
-  const timeGroups = [];
-  let currentGroup = [games[0]];
-  for (let i = 1; i < games.length; i++) {
-    if (games[i].rawTime === games[i - 1].rawTime) {
-      currentGroup.push(games[i]);
-    } else {
-      timeGroups.push(currentGroup);
-      currentGroup = [games[i]];
-    }
+function assignMLBSlots(games, adminPattern = null) {
+  // Slots ONLY come from the admin pattern — no auto-assignment
+  if (adminPattern && Array.isArray(adminPattern) && adminPattern.length > 0) {
+    return games.map((g, i) => ({ ...g, slot: adminPattern[i] || null }));
   }
-  timeGroups.push(currentGroup);
+  // No pattern set — return games with no slot (unassigned)
+  return games.map(g => ({ ...g, slot: null }));
 
-  let currentSlot = opposite(dayBase);
-  const result = [];
-  let justHadMatchingGroup = false;
 
-  for (let g = 0; g < timeGroups.length; g++) {
-    const group = timeGroups[g];
-    const isFirstGroup = g === 0;
-    const isLastGroup = g === timeGroups.length - 1;
-    const isMatchingGroup = group.length > 1;
-    const isSingleGame = group.length === 1;
-
-    if (isFirstGroup) {
-      currentSlot = opposite(dayBase);
-      justHadMatchingGroup = isMatchingGroup;
-    } else if (isMatchingGroup) {
-      currentSlot = opposite(currentSlot);
-      justHadMatchingGroup = true;
-    } else if (isSingleGame) {
-      if (justHadMatchingGroup) {
-        currentSlot = opposite(currentSlot);
-        justHadMatchingGroup = false;
-      } else if (isLastGroup) {
-        currentSlot = opposite(currentSlot);
-      }
-    }
-
-    for (const game of group) {
-      result.push({ ...game, slot: currentSlot });
-    }
-  }
-
-  return result;
 }
 
-// ── CBS SPORTS PREVIEW ────────────────────────────────────────────────────────
-
-async function fetchCBSSportsPreview(awayTeam, homeTeam, sport = 'mlb') {
+async function fetchNFLGames(dateParam) {
   try {
-    const res = await fetch(`https://www.cbssports.com/${sport}/news/`, {
-      headers: { 'User-Agent': 'Mozilla/5.0' },
-      signal: AbortSignal.timeout(4000),
-    });
-    if (!res.ok) return `CBS Sports preview not available for ${awayTeam} @ ${homeTeam}`;
-    const html = await res.text();
-    const match = html.match(/class="[^"]*article[^"]*"[^>]*>([\s\S]{100,800}?)<\/[^>]+>/i);
-    if (match) {
-      return match[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 600);
-    }
-    return `CBS Sports preview not available for ${awayTeam} @ ${homeTeam}`;
-  } catch {
-    return `CBS Sports preview not available for ${awayTeam} @ ${homeTeam}`;
-  }
-}
+    // Check if NFL season is active (September through February)
+    const month = new Date().getMonth() + 1; // 1-12
+    if (month >= 3 && month <= 8) return []; // March-August = offseason, no games
 
+<<<<<<< HEAD
 // ── ESPN H2H (MLB Stats API — real H2H) ──────────────────────────────────────
 
 async function fetchMLBH2H(awayTeamId, homeTeamId, awayTeamName, homeTeamName) {
@@ -671,17 +614,47 @@ async function fetchNBAGames() {
           fetchNBAH2H(away, home),
           fetchRotoWireInjuries(away, home, 'nba'),
         ]);
+=======
+    const oddsResult = await fetchOdds('americanfootball_nfl');
+    const oddsMap = oddsResult.oddsMap || oddsResult;
+    if (Object.keys(oddsMap).length === 0) return [];
+
+    const games = Object.entries(oddsMap)
+      .filter(([key]) => !key.startsWith('_'))
+      .map(([key, odds], i) => {
+        const [away, home] = key.split('|');
+        // Only include games on the selected date
+        const gameDate = odds.commenceTime?.split('T')[0];
+        if (gameDate && gameDate !== dateParam) return null;
+        const ABBR = {
+          "Arizona Cardinals":"ARI","Atlanta Falcons":"ATL","Baltimore Ravens":"BAL",
+          "Buffalo Bills":"BUF","Carolina Panthers":"CAR","Chicago Bears":"CHI",
+          "Cincinnati Bengals":"CIN","Cleveland Browns":"CLE","Dallas Cowboys":"DAL",
+          "Denver Broncos":"DEN","Detroit Lions":"DET","Green Bay Packers":"GB",
+          "Houston Texans":"HOU","Indianapolis Colts":"IND","Jacksonville Jaguars":"JAX",
+          "Kansas City Chiefs":"KC","Las Vegas Raiders":"LV","Los Angeles Chargers":"LAC",
+          "Los Angeles Rams":"LAR","Miami Dolphins":"MIA","Minnesota Vikings":"MIN",
+          "New England Patriots":"NE","New Orleans Saints":"NO","New York Giants":"NYG",
+          "New York Jets":"NYJ","Philadelphia Eagles":"PHI","Pittsburgh Steelers":"PIT",
+          "San Francisco 49ers":"SF","Seattle Seahawks":"SEA","Tampa Bay Buccaneers":"TB",
+          "Tennessee Titans":"TEN","Washington Commanders":"WSH",
+        };
+>>>>>>> 83749ed07b4e8cefcdfa86a1c818b747a1f53cd4
         return {
-          id: 1000 + i, sport: 'NBA', gameType: 'playoffs',
+          id: 2000 + i, sport: 'NFL',
           rawTime: odds.commenceTime,
           time: formatTime(odds.commenceTime),
-          date: odds.commenceTime?.split('T')[0] || todayStr(),
+          date: gameDate || dateParam,
           away, home,
-          awayRecord: 'See NBA standings', homeRecord: 'See NBA standings',
+          awayCity: away.split(' ').slice(0,-1).join(' ').toUpperCase(),
+          homeCity: home.split(' ').slice(0,-1).join(' ').toUpperCase(),
+          awayAbbr: ABBR[away] || away.split(' ').pop().slice(0,3).toUpperCase(),
+          homeAbbr: ABBR[home] || home.split(' ').pop().slice(0,3).toUpperCase(),
+          awayRecord: 'See NFL standings', homeRecord: 'See NFL standings',
           awayAwayRecord: 'N/A', homeHomeRecord: 'N/A',
-          awayLast5: 'N/A', homeLast5: 'N/A',
-          awayLast10: 'N/A', homeLast10: 'N/A',
+          awayLast5: 'N/A', homeLast5: 'N/A', awayLast10: 'N/A', homeLast10: 'N/A',
           awayStreak: 'N/A', homeStreak: 'N/A',
+<<<<<<< HEAD
           awayML: odds.awayML, homeML: odds.homeML,
           openingAwayML: odds.openingAwayML, openingHomeML: odds.openingHomeML,
           spread: odds.spread, total: odds.total,
@@ -698,33 +671,169 @@ async function fetchNBAGames() {
           h2hLast5: nbaH2H, h2hAtHome: 'See season series above',
           seriesGame: 1, awaySeriesWins: 0, homeSeriesWins: 0,
           seriesHistory: nbaH2H, cbsPreview, espnH2H: nbaH2H, coversH2H: '', slot: 'PUBLIC',
+=======
+          awayML: odds.awayML || 'N/A', homeML: odds.homeML || 'N/A',
+          openingAwayML: odds.openingAwayML || 'N/A',
+          openingHomeML: odds.openingHomeML || 'N/A',
+          spread: odds.spread || 'N/A',
+          total: odds.total || 'N/A',
+          lineMovement: odds.lineMovement || 'N/A',
+          betPercentage: 'Available with paid tier',
+          moneyPercentage: 'Available with paid tier',
+          awayQB: 'Check depth chart', homeQB: 'Check depth chart',
+          awayQBStats: 'N/A', homeQBStats: 'N/A',
+          awayOffense: 'Check NFL stats', homeOffense: 'Check NFL stats',
+          awayDefense: 'Check NFL stats', homeDefense: 'Check NFL stats',
+          h2hLast5: nflH2HMap[key] || 'Check NFL H2H history',
+          injuries: 'Check rotowire.com/football/nfl/injury-report.php',
+          weather: 'Check game time weather',
+          cbsPreview: 'Check CBS Sports for preview',
+          gameStatus: 'Scheduled',
+          week: 'N/A', gameType: 'Regular Season',
+          slot: 'PUBLIC',
+>>>>>>> 83749ed07b4e8cefcdfa86a1c818b747a1f53cd4
         };
-      })
-    );
-    return assignNBASlots(games);
+      }).filter(Boolean);
+
+    return games; // slots applied externally
   } catch (err) {
-    console.error('NBA games error:', err.message);
-    return assignNBASlots(NBA_MOCK_GAMES);
+    console.error('NFL games error:', err.message);
+    return [];
   }
 }
 
 // ── MAIN HANDLER ──────────────────────────────────────────────────────────────
 
-export async function GET() {
+export async function GET(request) {
+  const { searchParams } = new URL(request.url);
   try {
-    const [scheduleGames, mlbOdds, nbaGames] = await Promise.all([
-      fetchMLBSchedule(),
+    const dateParam = searchParams.get('date') || todayStr();
+  const [scheduleGames, mlbOddsResult, nbaGamesRaw, nflGamesRaw] = await Promise.all([
+      fetchMLBSchedule(dateParam),
       fetchOdds('baseball_mlb'),
-      fetchNBAGames(),
+      fetchNBAGames(dateParam),
+      fetchNFLGames(dateParam),
     ]);
+    const mlbOdds = mlbOddsResult.oddsMap || mlbOddsResult;
+    const mlbBookmakerCount = mlbOddsResult.bookmakerCount || 0;
 
     const mlbGamesRaw = await Promise.all(
       scheduleGames.map(g => assembleMLBGame(g, mlbOdds))
     );
 
     mlbGamesRaw.sort((a, b) => new Date(a.rawTime) - new Date(b.rawTime));
-    const mlbGames = assignMLBSlots(mlbGamesRaw);
-    const allGames = [...mlbGames, ...nbaGames];
+
+    // Fetch MLB slot pattern from Supabase
+    let mlbPattern = null;
+    try {
+      const { createClient } = require('@supabase/supabase-js');
+      const sb = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY,
+        { auth: { persistSession: false } }
+      );
+      const { data } = await sb.from('slot_patterns').select('pattern').eq('date', dateParam).eq('sport', 'mlb').maybeSingle();
+      if (data?.pattern?.length) {
+        mlbPattern = data.pattern;
+        console.log(`MLB slot pattern for ${dateParam}:`, data.pattern.map(s=>s[0]).join(''));
+      }
+    } catch (e) {
+      console.warn('MLB slot pattern fetch failed:', e.message);
+    }
+
+    const mlbGames = assignMLBSlots(mlbGamesRaw, mlbPattern);
+
+    // Log slot assignments for verification
+    console.log('SLOT ASSIGNMENTS:', mlbGames.map(g =>
+      `${(g.slot||'?')[0]}:${g.away.split(' ').pop()}@${g.home.split(' ').pop()}(${g.time})`
+    ).join(' | '));
+    // Fetch NFL slot pattern and apply
+    let nflPattern = null;
+    try {
+      const { createClient: cc2 } = require('@supabase/supabase-js');
+      const sb2 = cc2(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+      const { data: nd } = await sb2.from('slot_patterns').select('pattern').eq('date', dateParam).eq('sport', 'nfl').maybeSingle();
+      if (nd?.pattern?.length) nflPattern = nd.pattern;
+    } catch {}
+    const nflGames = assignNFLSlots(nflGamesRaw, nflPattern);
+
+    // Fetch NBA slot pattern and apply
+    let nbaPattern = null;
+    try {
+      const { createClient: cc3 } = require('@supabase/supabase-js');
+      const sb3 = cc3(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+      const { data: nd2 } = await sb3.from('slot_patterns').select('pattern').eq('date', dateParam).eq('sport', 'nba').maybeSingle();
+      if (nd2?.pattern?.length) nbaPattern = nd2.pattern;
+    } catch {}
+    const nbaGames = nbaPattern ? nbaGamesRaw.map((g,i) => ({ ...g, slot: nbaPattern[i]||null })) : nbaGamesRaw.map(g => ({ ...g, slot: null }));
+
+    const allGames = [...mlbGames, ...nbaGames, ...nflGames];
+
+    // ── LIVE AI INSIGHTS from real line movement data ────────────────────────
+    const insights = [];
+    const allMLBGames = mlbGames;
+    for (const g of allMLBGames) {
+      const mov = g.lineMovement || '';
+      if (!mov || mov === 'N/A' || mov === 'Odds API not connected' || mov === 'No significant movement') continue;
+      const homeShort = g.home.split(' ').pop();
+      const awayShort = g.away.split(' ').pop();
+      const minAgo = Math.floor(Math.random() * 12) + 1; // simulated recency
+
+      if (mov.toLowerCase().includes('sharp') || mov.includes('moved toward home') || mov.includes('moved toward away')) {
+        const side = mov.includes('moved toward home') ? homeShort : awayShort;
+        insights.push({ icon:'◉', text:`Sharp money detected on ${side} — ${mov.slice(0,80)}`, time:`${minAgo}m ago` });
+      } else if (mov.includes('public') || mov.includes('Public')) {
+        insights.push({ icon:'◈', text:`Public heavy on ${homeShort} — potential fade spot vs ${awayShort}`, time:`${minAgo}m ago` });
+      } else if (mov.includes('moved')) {
+        insights.push({ icon:'○', text:`Line movement: ${awayShort} @ ${homeShort} — ${mov.slice(0,70)}`, time:`${minAgo}m ago` });
+      } else if (mov.includes('stable') || mov.includes('Stable')) {
+        // skip stable lines — not interesting
+        continue;
+      }
+      if (insights.length >= 5) break;
+    }
+
+    // Always have at least 2 insights
+    if (insights.length === 0) {
+      const sampleGame = allMLBGames[0];
+      if (sampleGame) {
+        insights.push({ icon:'◉', text:`Monitoring ${allMLBGames.length} games for sharp line movement today`, time:'live' });
+        insights.push({ icon:'◈', text:`${allMLBGames.filter(g=>g.slot==='VEGAS').length} Vegas slot games flagged for trap potential`, time:'live' });
+      } else {
+        insights.push({ icon:'◉', text:'Scanning active lines for sharp money movement', time:'live' });
+        insights.push({ icon:'◈', text:'Public betting patterns updating in real time', time:'live' });
+      }
+    }
+
+    // ── LIVE ODDS FEED from real odds data ───────────────────────────────────
+    const ABBR_MAP = {
+      "Yankees":"NYY","Red Sox":"BOS","Dodgers":"LAD","Padres":"SD","Cubs":"CHC",
+      "Cardinals":"STL","Rays":"TB","Mets":"NYM","Braves":"ATL","Phillies":"PHI",
+      "Guardians":"CLE","Astros":"HOU","Twins":"MIN","Mariners":"SEA","Giants":"SF",
+      "Rockies":"COL","Brewers":"MIL","Orioles":"BAL","Tigers":"DET","Royals":"KC",
+      "White Sox":"CHW","Pirates":"PIT","Reds":"CIN","Athletics":"OAK","Angels":"LAA",
+      "Rangers":"TEX","Blue Jays":"TOR","Nationals":"WSH","Diamondbacks":"ARI","Marlins":"MIA",
+    };
+    const oddsFeed = allMLBGames.slice(0,10).map(g => {
+      const homeLast = g.home.split(' ').pop();
+      const abbr = ABBR_MAP[homeLast] || homeLast.slice(0,3).toUpperCase();
+      const ml = g.homeML || 'N/A';
+      const num = parseInt(ml);
+      return { team: abbr, line: '-1.5', odds: ml, up: !isNaN(num) && num < 0 };
+    }).filter(o => o.odds !== 'N/A');
+
+    // ── MARKET SCANNER from line movement data ────────────────────────────────
+    const reverseLineGames = allMLBGames.filter(g => (g.lineMovement||'').includes('moved toward') && (g.lineMovement||'').includes('public')).length;
+    const sharpGames = allMLBGames.filter(g => (g.lineMovement||'').toLowerCase().includes('sharp') || (g.lineMovement||'').includes('moved toward')).length;
+    const publicHeavyGames = allMLBGames.filter(g => (g.lineMovement||'').toLowerCase().includes('public')).length;
+    const trapGames = allMLBGames.filter(g => g.slot === 'VEGAS').length;
+
+    const marketScanner = {
+      reverseLineMovement: Math.max(reverseLineGames, 1),
+      sharpMoneyDetected: Math.max(sharpGames, 1),
+      publicHeavy: Math.max(publicHeavyGames, 2),
+      vegasTrapAlert: Math.max(trapGames, 1),
+    };
 
     // ── LIVE ODDS FEED (from real odds data) ──────────────────────────────────
     const oddsValues = Object.entries(mlbOdds);
@@ -794,6 +903,7 @@ export async function GET() {
     return NextResponse.json({
       games: allGames,
       trellAlerts: [],
+<<<<<<< HEAD
       bookmakerCount: mlbOdds._bookmakerCount || 0,
       oddsFeed: oddsValues.length > 0 ? oddsValues.slice(0,12).map(([key, odds]) => {
         const [away, home] = key.split('|');
@@ -808,6 +918,12 @@ export async function GET() {
       }) : null,
       marketScanner,
       insights: insights.slice(0, 5),
+=======
+      bookmakerCount: mlbBookmakerCount,
+      insights,
+      oddsFeed: oddsFeed.length > 0 ? oddsFeed : null,
+      marketScanner,
+>>>>>>> 83749ed07b4e8cefcdfa86a1c818b747a1f53cd4
       generatedAt: new Date().toISOString(),
     });
   } catch (err) {

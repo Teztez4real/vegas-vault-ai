@@ -1,0 +1,16 @@
+{
+  "functions": {
+    "app/api/generate/route.js": {
+      "maxDuration": 60
+    },
+    "app/api/topplay/route.js": {
+      "maxDuration": 60
+    },
+    "app/api/today/route.js": {
+      "maxDuration": 60
+    },
+    "app/api/lines/route.js": {
+      "maxDuration": 30
+    }
+  }
+}
