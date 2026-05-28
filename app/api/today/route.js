@@ -127,7 +127,7 @@ async function fetchNFLGames(dateParam) {
 async function fetchMLBSchedule(date) {
   const dateStr = date || todayStr();
   const res = await fetch(
-    `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${dateStr}&hydrate=team,probablePitcher,linescore`,
+    `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${dateStr}&hydrate=team,probablePitcher,linescore,stats,person,flags,game(seriesStatus)`,
     { cache: 'no-store' }
   );
   const data = await res.json();
@@ -188,6 +188,27 @@ async function assembleMLBGame(game, oddsMap) {
     const isFinal = status === 'Final';
     const awayScore = game.teams?.away?.score;
     const homeScore = game.teams?.home?.score;
+
+    // Records
+    const awayWins = game.teams?.away?.leagueRecord?.wins || 0;
+    const awayLosses = game.teams?.away?.leagueRecord?.losses || 0;
+    const homeWins = game.teams?.home?.leagueRecord?.wins || 0;
+    const homeLosses = game.teams?.home?.leagueRecord?.losses || 0;
+
+    // Pitchers
+    const awayPitcher = game.teams?.away?.probablePitcher?.fullName || 'TBD';
+    const homePitcher = game.teams?.home?.probablePitcher?.fullName || 'TBD';
+
+    // Series context
+    const seriesGame = game.seriesGameNumber || 1;
+    const seriesLength = game.gamesInSeries || 3;
+
+    // Pitcher stats from hydrated data
+    const awayPitcherStats = game.teams?.away?.probablePitcher ?
+      `ERA: ${game.teams.away.probablePitcher.stats?.find(s=>s.type?.displayName==='statsSingleSeason')?.stats?.era || 'N/A'}, WHIP: ${game.teams.away.probablePitcher.stats?.find(s=>s.type?.displayName==='statsSingleSeason')?.stats?.whip || 'N/A'}` : 'TBD';
+    const homePitcherStats = game.teams?.home?.probablePitcher ?
+      `ERA: ${game.teams.home.probablePitcher.stats?.find(s=>s.type?.displayName==='statsSingleSeason')?.stats?.era || 'N/A'}, WHIP: ${game.teams.home.probablePitcher.stats?.find(s=>s.type?.displayName==='statsSingleSeason')?.stats?.whip || 'N/A'}` : 'TBD';
+
     return {
       id: game.gamePk,
       sport: 'MLB',
@@ -196,6 +217,7 @@ async function assembleMLBGame(game, oddsMap) {
       homeAbbr: game.teams?.home?.team?.abbreviation || home.slice(0,3).toUpperCase(),
       time: isFinal ? `Final${awayScore != null ? ': ' + awayScore + '-' + homeScore : ''}` : formatTime(game.gameDate),
       rawTime: game.gameDate,
+      date: game.gameDate?.split('T')[0] || '',
       awayScore: awayScore ?? null,
       homeScore: homeScore ?? null,
       isFinal,
@@ -204,11 +226,46 @@ async function assembleMLBGame(game, oddsMap) {
       openingAwayML: odds.openingAwayML || 'N/A',
       openingHomeML: odds.openingHomeML || 'N/A',
       spread: odds.spread || 'N/A',
+      runLine: odds.spread ? `${home} ${odds.spread}` : 'N/A',
       total: odds.total || 'N/A',
-      awayRecord: `${game.teams?.away?.leagueRecord?.wins||0}-${game.teams?.away?.leagueRecord?.losses||0}`,
-      homeRecord: `${game.teams?.home?.leagueRecord?.wins||0}-${game.teams?.home?.leagueRecord?.losses||0}`,
-      awayPitcher: game.teams?.away?.probablePitcher?.fullName || 'TBD',
-      homePitcher: game.teams?.home?.probablePitcher?.fullName || 'TBD',
+      lineMovement: odds.lineMovement || 'N/A',
+      betPercentage: 'Check sharp action reports',
+      moneyPercentage: 'Check sharp action reports',
+      awayRecord: `${awayWins}-${awayLosses}`,
+      homeRecord: `${homeWins}-${homeLosses}`,
+      awayHomeRecord: 'See MLB standings',
+      awayAwayRecord: 'See MLB standings',
+      homeHomeRecord: 'See MLB standings',
+      homeAwayRecord: 'See MLB standings',
+      awayLast5: 'See recent games',
+      awayLast10: 'See recent games',
+      homeLast5: 'See recent games',
+      homeLast10: 'See recent games',
+      awayStreak: 'See MLB stats',
+      homeStreak: 'See MLB stats',
+      awayPitcher,
+      homePitcher,
+      awayPitcherStats,
+      homePitcherStats,
+      awayPitcherVsOpponent: 'Check Baseball Reference',
+      homePitcherVsOpponent: 'Check Baseball Reference',
+      awayBullpenERA: 'See team bullpen stats',
+      homeBullpenERA: 'See team bullpen stats',
+      awayLineup: 'Check lineups closer to game time',
+      homeLineup: 'Check lineups closer to game time',
+      awayBatterSplits: 'See team batting splits',
+      homeBatterSplits: 'See team batting splits',
+      awayOffense: `${away} offense — check recent run production and lineup`,
+      homeOffense: `${home} offense — check recent run production and lineup`,
+      h2hLast5: 'Check H2H history',
+      h2hAtHome: `Check ${home} home record vs ${away}`,
+      espnH2H: 'Check ESPN or Baseball Reference for season series',
+      injuries: 'Check RotoWire for latest injury report',
+      weather: 'Check weather for game time conditions',
+      umpire: 'Check MLB umpire assignments',
+      cbsPreview: `${away} @ ${home} — check CBS Sports for full preview and public narrative`,
+      seriesGame,
+      seriesLength,
       slot: null,
     };
   } catch { return null; }
