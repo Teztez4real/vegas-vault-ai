@@ -2301,7 +2301,7 @@ export default function VegasVaultApp() {
             ) : (
             <>
             {/* TOP PLAY OF THE DAY */}
-            {(topPlay || topPlayLoading) && (
+            {(topPlay || topPlayLoading) && selectedDate === new Date().toISOString().split("T")[0] && (
               <TopPlayBanner
                 topPlay={topPlay}
                 loading={topPlayLoading}
