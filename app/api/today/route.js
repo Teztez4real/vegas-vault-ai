@@ -467,14 +467,15 @@ async function fetchOdds(sportKey) {
 
 // ── MLB STATS API ─────────────────────────────────────────────────────────────
 
-async function fetchMLBSchedule() {
-  const today = todayStr();
+async function fetchMLBSchedule(date) {
+  const dateStr = date || todayStr();
   const res = await fetch(
-    `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${today}&hydrate=team,probablePitcher,linescore`,
-    { next: { revalidate: 600 } }
+    `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${dateStr}&hydrate=team,probablePitcher,linescore`,
+    { next: { revalidate: 0 } }
   );
   const data = await res.json();
-  return data.dates?.[0]?.games || [];
+  const dateEntry = data.dates?.find(d => d.date === dateStr) || data.dates?.[0];
+  return dateEntry?.games || [];
 }
 
 async function fetchTeamRecord(teamId) {
