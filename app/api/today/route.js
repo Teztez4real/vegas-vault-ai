@@ -615,10 +615,9 @@ async function fetchNBAGames() {
           fetchRotoWireInjuries(away, home, 'nba'),
         ]);
         return {
-          id: 2000 + i, sport: 'NFL',
+          id: 2000 + i, sport: 'NBA',
           rawTime: odds.commenceTime,
           time: formatTime(odds.commenceTime),
-          date: gameDate || dateParam,
           away, home,
           awayCity: away.split(' ').slice(0,-1).join(' ').toUpperCase(),
           homeCity: home.split(' ').slice(0,-1).join(' ').toUpperCase(),
@@ -645,7 +644,8 @@ async function fetchNBAGames() {
           seriesGame: 1, awaySeriesWins: 0, homeSeriesWins: 0,
           seriesHistory: nbaH2H, cbsPreview, espnH2H: nbaH2H, coversH2H: '', slot: 'PUBLIC',
         };
-      }).filter(Boolean);
+      })
+    );
 
     return games; // slots applied externally
   } catch (err) {
