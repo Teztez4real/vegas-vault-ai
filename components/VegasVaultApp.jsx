@@ -1607,6 +1607,7 @@ export default function VegasVaultApp() {
         if (data.insights?.length) setInsights(data.insights);
         if (data.bookmakerCount > 0) setBookmakerCount(data.bookmakerCount);
         setHasSlotPattern(!!data.hasSlotPattern);
+        if (!data.hasSlotPattern) setTopPlay(null);
         setLoading(false);
 
         // Fetch top play after games are loaded — only if slot pattern exists
