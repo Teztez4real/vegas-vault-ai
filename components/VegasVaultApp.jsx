@@ -2364,7 +2364,7 @@ export default function VegasVaultApp() {
                 onForceRefresh={async ()=>{
                   setTopPlayLoading(true);
                   try {
-                    const {data:{session:s}} = await supabase.auth.getSession();
+                    const {data:{session:s}} = await _supabase.auth.getSession();
                     const postRes = await fetch('/api/topplay',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:s?.access_token,date:selectedDate})});
                     if (!postRes.ok) {
                       const err = await postRes.json();
