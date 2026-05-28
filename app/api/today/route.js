@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import { assignNBASlots } from '@/lib/nbaModel';
 
 function assignNFLSlots(games, pattern) {
-  if (!pattern) return games.map(g => ({ ...g, slot: g.slot || 'PUBLIC' }));
-  return games.map((g, i) => ({ ...g, slot: pattern[i] || g.slot || 'PUBLIC' }));
+  if (!pattern) return games.map(g => ({ ...g, slot: null }));
+  return games.map((g, i) => ({ ...g, slot: pattern[i] || null }));
 }
 import { createClient } from '@supabase/supabase-js';
 
@@ -110,7 +110,7 @@ async function fetchNFLGames(dateParam) {
           cbsPreview: 'Check CBS Sports for preview',
           gameStatus: 'Scheduled',
           week: 'N/A', gameType: 'Regular Season',
-          slot: 'PUBLIC',
+          slot: null,
         };
       }).filter(Boolean);
 
@@ -209,7 +209,7 @@ async function assembleMLBGame(game, oddsMap) {
       homeRecord: `${game.teams?.home?.leagueRecord?.wins||0}-${game.teams?.home?.leagueRecord?.losses||0}`,
       awayPitcher: game.teams?.away?.probablePitcher?.fullName || 'TBD',
       homePitcher: game.teams?.home?.probablePitcher?.fullName || 'TBD',
-      slot: 'PUBLIC',
+      slot: null,
     };
   } catch { return null; }
 }
@@ -250,7 +250,7 @@ async function fetchNBAGames(date) {
         awayML, homeML, spread, total,
         openingAwayML: 'N/A', openingHomeML: 'N/A',
         awayRecord: 'N/A', homeRecord: 'N/A',
-        slot: 'PUBLIC',
+        slot: null,
       };
     });
   } catch { return []; }
