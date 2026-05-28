@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server';
 import { assignNBASlots } from '@/lib/nbaModel';
+
+function assignNFLSlots(games, pattern) {
+  if (!pattern) return games.map(g => ({ ...g, slot: g.slot || 'PUBLIC' }));
+  return games.map((g, i) => ({ ...g, slot: pattern[i] || g.slot || 'PUBLIC' }));
+}
 import { createClient } from '@supabase/supabase-js';
 
 // ── UTILITIES ─────────────────────────────────────────────────────────────────
