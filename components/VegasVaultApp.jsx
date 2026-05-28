@@ -1,7 +1,11 @@
 "use client";
+<<<<<<< HEAD
+import { useState, useEffect, useRef } from "react";
+=======
 import React, { useState, useEffect, useRef } from "react";
 import { supabase as _supabase } from '@/lib/supabaseClient';
 function getSB() { return _supabase; }
+>>>>>>> 83749ed07b4e8cefcdfa86a1c818b747a1f53cd4
 
 // ── PROMPT ENGINE ─────────────────────────────────────────────────────────────
 
@@ -143,8 +147,11 @@ Run the FULL Vegas Vault Tennis AI Model in EXACT order. Return ONLY this JSON:
 Return ONLY valid JSON. No preamble, no explanation outside the JSON.`;
 }
 
+<<<<<<< HEAD
+=======
 const ADMIN_EMAIL = 'battlecortez@gmail.com';
 
+>>>>>>> 83749ed07b4e8cefcdfa86a1c818b747a1f53cd4
 // ── MOCK DATA ─────────────────────────────────────────────────────────────────
 
 const MOCK_GAMES = [
@@ -230,9 +237,15 @@ const MLB_COLORS = {
   "TOR":"#134A8E","WSH":"#AB0003",
 };
 
+<<<<<<< HEAD
+function TeamLogo({ abbr, size=44 }) {
+  const [err, setErr] = useState(false);
+  const slug = MLB_SLUGS[abbr];
+=======
 function TeamLogo({ abbr, size=44, sport="MLB" }) {
   const [err, setErr] = useState(false);
   const slug = sport === "MLB" ? MLB_SLUGS[abbr] : null;
+>>>>>>> 83749ed07b4e8cefcdfa86a1c818b747a1f53cd4
 
   if (slug && !err) {
     return (
@@ -292,7 +305,11 @@ function ScamPlayBlock({ scam }) {
 
 // ── PLAY RESULT MODAL ─────────────────────────────────────────────────────────
 
+<<<<<<< HEAD
+function PlayResult({ result, game, onClose }) {
+=======
 function PlayResult({ result, game, onClose, isResolved, resolvedResult }) {
+>>>>>>> 83749ed07b4e8cefcdfa86a1c818b747a1f53cd4
   const [expanded, setExpanded] = useState(false);
   if (!result?.summary) return null;
   const tier = TIER_STYLES[result.summary.tier] || TIER_STYLES["3"];
@@ -339,6 +356,13 @@ function PlayResult({ result, game, onClose, isResolved, resolvedResult }) {
             <span style={{ fontSize:17,fontWeight:600,color:"#c9a227",background:"rgba(201,162,39,0.1)",padding:"2px 10px",borderRadius:6,border:"1px solid rgba(201,162,39,0.2)" }}>{result.summary.betType}</span>
           </div>
           <p style={{ fontSize:13,color:"#94a3b8",lineHeight:1.7,margin:0 }}>{result.summary.verdict}</p>
+<<<<<<< HEAD
+        </div>
+        <div style={{ margin:"0 22px 18px",padding:"14px 16px",background:"rgba(201,162,39,0.04)",border:"1px solid rgba(201,162,39,0.12)",borderRadius:10 }}>
+          <div style={{ fontSize:9,fontWeight:700,letterSpacing:"0.12em",color:"#c9a227",marginBottom:8 }}>FINAL VERDICT</div>
+          <p style={{ fontSize:13,color:"#e2e8f0",lineHeight:1.75,margin:0 }}>{result.finalVerdict}</p>
+        </div>
+=======
         </div>
         <div style={{ margin:"0 22px 18px",padding:"14px 16px",background:"rgba(201,162,39,0.04)",border:"1px solid rgba(201,162,39,0.12)",borderRadius:10 }}>
           <div style={{ fontSize:9,fontWeight:700,letterSpacing:"0.12em",color:"#c9a227",marginBottom:8 }}>FINAL VERDICT</div>
@@ -354,6 +378,7 @@ function PlayResult({ result, game, onClose, isResolved, resolvedResult }) {
             </div>
           )}
         </div>
+>>>>>>> 83749ed07b4e8cefcdfa86a1c818b747a1f53cd4
         <div style={{ padding:"0 22px 18px" }}>
           <button onClick={()=>setExpanded(!expanded)} style={{ width:"100%",padding:"11px",background:expanded?"rgba(201,162,39,0.06)":"rgba(255,255,255,0.03)",border:`1px solid ${expanded?"rgba(201,162,39,0.2)":"rgba(255,255,255,0.07)"}`,borderRadius:10,fontSize:12,fontWeight:500,color:expanded?"#c9a227":"#64748b",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,fontFamily:"inherit" }}>
             <span style={{ fontSize:9,transform:expanded?"rotate(180deg)":"none",display:"inline-block",transition:"transform 0.2s" }}>▼</span>
@@ -378,16 +403,30 @@ function PlayResult({ result, game, onClose, isResolved, resolvedResult }) {
 
 // ── GAME CARD — matches reference image exactly ───────────────────────────────
 
+<<<<<<< HEAD
+function GameCard({ game, onGenerate, results, generating, onCardClick, liveScores }) {
+=======
 function GameCard({ game, onGenerate, results, generating, onCardClick, liveScores, isSubscribed, finalized, isQueued, betReady, onShowAuth, watchlist, onToggleWatch }) {
+>>>>>>> 83749ed07b4e8cefcdfa86a1c818b747a1f53cd4
   const resultPublic = results[`${game.id}-PUBLIC`];
   const resultVegas  = results[`${game.id}-VEGAS`];
   const hasAnyResult = resultPublic || resultVegas;
   const bestResult   = resultVegas || resultPublic;
+<<<<<<< HEAD
+  const tier = bestResult ? (TIER_STYLES[bestResult.summary.tier] || TIER_STYLES["3"]) : null;
+=======
   const tier = bestResult?.summary ? (TIER_STYLES[bestResult.summary.tier] || TIER_STYLES["3"]) : null;
+>>>>>>> 83749ed07b4e8cefcdfa86a1c818b747a1f53cd4
   const isTennis = game.sport === "Tennis";
   const isLock = tier?.label === "LOCK";
 
   // ── LIVE SCORE LOOKUP ─────────────────────────────────────────────────────
+<<<<<<< HEAD
+  const liveKey = `${game.away}|${game.home}`;
+  const live = liveScores?.[liveKey];
+  const isLive = live?.status === 'Live';
+  const isFinal = live?.status === 'Final';
+=======
   const liveKey1 = `${game.away}|${game.home}`;
   const liveKey2 = `${game.awayAbbr}|${game.homeAbbr}`;
   const awayLast = game.away?.split(' ').pop();
@@ -398,6 +437,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
   const isFinal = live?.status === 'Final';
   const isDelayed = live?.isDelayed || false;
   const isPostponed = live?.isPostponed || false;
+>>>>>>> 83749ed07b4e8cefcdfa86a1c818b747a1f53cd4
   const gameStarted = isLive || isFinal;
 
   const awayName = isTennis ? game.player1 : game.away;
@@ -427,13 +467,21 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
   };
   const awayAbbr = game.awayAbbr || NAME_TO_ABBR[awayName] || NAME_TO_ABBR[awayName.split(" ").pop()] || awayName.slice(0,3).toUpperCase();
   const homeAbbr = game.homeAbbr || NAME_TO_ABBR[homeName] || NAME_TO_ABBR[homeName.split(" ").pop()] || homeName.slice(0,3).toUpperCase();
+<<<<<<< HEAD
+=======
   const logoSport = game.sport;
+>>>>>>> 83749ed07b4e8cefcdfa86a1c818b747a1f53cd4
   const awayRec  = isTennis ? `#${game.player1Ranking}` : game.awayRecord;
   const homeRec  = isTennis ? `#${game.player2Ranking}` : game.homeRecord;
   const publicPct = 30 + ((game.id * 17) % 45);
   const sharpPct  = 100 - publicPct;
+<<<<<<< HEAD
+  const sportColor = game.sport==="MLB"?"#60a5fa":game.sport==="NBA"?"#fb923c":"#a78bfa";
+  const sportBg    = game.sport==="MLB"?"rgba(96,165,250,0.12)":game.sport==="NBA"?"rgba(251,146,60,0.12)":"rgba(167,139,250,0.12)";
+=======
   const sportColor = game.sport==="MLB"?"#60a5fa":game.sport==="NBA"?"#fb923c":game.sport==="NFL"?"#34d399":"#a78bfa";
   const sportBg    = game.sport==="MLB"?"rgba(96,165,250,0.12)":game.sport==="NBA"?"rgba(251,146,60,0.12)":game.sport==="NFL"?"rgba(52,211,153,0.12)":"rgba(167,139,250,0.12)";
+>>>>>>> 83749ed07b4e8cefcdfa86a1c818b747a1f53cd4
 
   return (
     <div
@@ -460,6 +508,15 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
               LIVE
             </span>
           )}
+<<<<<<< HEAD
+          {isFinal && (
+            <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.1em",color:"#64748b",background:"rgba(100,116,139,0.15)",padding:"2px 8px",borderRadius:4 }}>FINAL</span>
+          )}
+        </div>
+        <div style={{ display:"flex",alignItems:"center",gap:10 }}>
+          <span style={{ fontSize:10,color:"#4a5568",fontVariantNumeric:"tabular-nums" }}>{game.time}</span>
+          <span style={{ fontSize:13,color:"#2a3545",cursor:"pointer",lineHeight:1 }}>☆</span>
+=======
           {isFinal && !isPostponed && (
             <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.1em",color:"#64748b",background:"rgba(100,116,139,0.15)",padding:"2px 8px",borderRadius:4 }}>FINAL</span>
           )}
@@ -490,6 +547,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
             title={watchlist?.includes(game.id) ? "Remove from watchlist" : "Add to watchlist"}
             style={{ fontSize:14,color:watchlist?.includes(game.id)?"#c9a227":"#2a3545",cursor:"pointer",lineHeight:1,transition:"color 0.15s",userSelect:"none" }}
           >{watchlist?.includes(game.id)?"★":"☆"}</span>
+>>>>>>> 83749ed07b4e8cefcdfa86a1c818b747a1f53cd4
         </div>
       </div>
 
@@ -497,7 +555,11 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
       <div style={{ display:"grid",gridTemplateColumns:"1fr 20px 1fr",alignItems:"center",gap:6,marginBottom:14 }}>
         {/* Away */}
         <div style={{ display:"flex",alignItems:"center",gap:10 }}>
+<<<<<<< HEAD
+          <TeamLogo abbr={awayAbbr} size={42} />
+=======
           <TeamLogo abbr={awayAbbr} size={42} sport={logoSport} />
+>>>>>>> 83749ed07b4e8cefcdfa86a1c818b747a1f53cd4
           <div>
             <div style={{ fontSize:8,color:"#3a4a5e",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:2 }}>{awayCity}</div>
             <div style={{ fontSize:14,fontWeight:900,color:"#e2e8f0",letterSpacing:"0.02em",textTransform:"uppercase",lineHeight:1 }}>{({"ARI":"DBACKS","ATL":"BRAVES","BAL":"ORIOLES","BOS":"RED SOX","CHC":"CUBS","CHW":"WHITE SOX","CIN":"REDS","CLE":"GUARDIANS","COL":"ROCKIES","DET":"TIGERS","HOU":"ASTROS","KC":"ROYALS","LAA":"ANGELS","LAD":"DODGERS","MIA":"MARLINS","MIL":"BREWERS","MIN":"TWINS","NYM":"METS","NYY":"YANKEES","OAK":"ATHLETICS","PHI":"PHILLIES","PIT":"PIRATES","SD":"PADRES","SEA":"MARINERS","SF":"GIANTS","STL":"CARDINALS","TB":"RAYS","TEX":"RANGERS","TOR":"BLUE JAYS","WSH":"NATIONALS"})[awayAbbr] || awayName.split(" ").pop().toUpperCase()}</div>
@@ -513,7 +575,11 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
             <div style={{ fontSize:14,fontWeight:900,color:"#e2e8f0",letterSpacing:"0.02em",textTransform:"uppercase",lineHeight:1 }}>{({"ARI":"DBACKS","ATL":"BRAVES","BAL":"ORIOLES","BOS":"RED SOX","CHC":"CUBS","CHW":"WHITE SOX","CIN":"REDS","CLE":"GUARDIANS","COL":"ROCKIES","DET":"TIGERS","HOU":"ASTROS","KC":"ROYALS","LAA":"ANGELS","LAD":"DODGERS","MIA":"MARLINS","MIL":"BREWERS","MIN":"TWINS","NYM":"METS","NYY":"YANKEES","OAK":"ATHLETICS","PHI":"PHILLIES","PIT":"PIRATES","SD":"PADRES","SEA":"MARINERS","SF":"GIANTS","STL":"CARDINALS","TB":"RAYS","TEX":"RANGERS","TOR":"BLUE JAYS","WSH":"NATIONALS"})[homeAbbr] || homeName.split(" ").pop().toUpperCase()}</div>
             <div style={{ fontSize:10,color:"#3a4a5e",marginTop:3 }}>{homeRec}</div>
           </div>
+<<<<<<< HEAD
+          <TeamLogo abbr={homeAbbr} size={42} />
+=======
           <TeamLogo abbr={homeAbbr} size={42} sport={logoSport} />
+>>>>>>> 83749ed07b4e8cefcdfa86a1c818b747a1f53cd4
         </div>
       </div>
 
@@ -569,7 +635,10 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
         <div style={{ display:"flex",gap:6,marginBottom:10 }}>
           {[["PUBLIC",resultPublic],["VEGAS",resultVegas]].map(([slot,result])=>{
             if(!result)return null;
+<<<<<<< HEAD
+=======
             if (!result?.summary) return null;
+>>>>>>> 83749ed07b4e8cefcdfa86a1c818b747a1f53cd4
             const ts=TIER_STYLES[result.summary.tier]||TIER_STYLES["3"];
             const iv=slot==="VEGAS";
             return(
@@ -587,6 +656,9 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
       )}
 
       {/* Action buttons */}
+<<<<<<< HEAD
+      {gameStarted ? (
+=======
       {isPostponed ? (
         <div style={{ display:"flex",alignItems:"center",justifyContent:"center",padding:"10px 0",background:"rgba(248,113,113,0.05)",border:"1px solid rgba(248,113,113,0.15)",borderRadius:8 }}>
           <span style={{ fontSize:10,fontWeight:700,color:"#f87171",letterSpacing:"0.08em" }}>⛔ POSTPONED — Analysis unavailable</span>
@@ -598,11 +670,25 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
           </div>
         </div>
       ) : gameStarted ? (
+>>>>>>> 83749ed07b4e8cefcdfa86a1c818b747a1f53cd4
         <div style={{ display:"flex",alignItems:"center",justifyContent:"center",padding:"10px 0",background:"rgba(220,38,38,0.05)",border:"1px solid rgba(220,38,38,0.15)",borderRadius:8 }}>
           <span style={{ fontSize:10,fontWeight:700,color:"#dc2626",letterSpacing:"0.08em" }}>
             {isLive ? "🔴 GAME IN PROGRESS — LOCKED" : "⬛ FINAL — ANALYSIS LOCKED"}
           </span>
         </div>
+<<<<<<< HEAD
+      ) : (
+        <div style={{ display:"flex",gap:8 }}>
+          {["PUBLIC","VEGAS"].map(slot=>{
+            const key=`${game.id}-${slot}`;
+            const isGen=generating===key;
+            const hasRes=!!results[key];
+            const iv=slot==="VEGAS";
+            return(
+              <button key={slot} onClick={e=>{e.stopPropagation();onGenerate(game,slot);}} disabled={!!generating} style={{ flex:1,padding:"8px 0",background:isGen?(iv?"rgba(248,113,113,0.1)":"rgba(96,165,250,0.1)"):(hasRes?(iv?"rgba(248,113,113,0.06)":"rgba(96,165,250,0.06)"):"transparent"),border:`1px solid ${(isGen||hasRes)?(iv?"rgba(248,113,113,0.4)":"rgba(96,165,250,0.4)"):(iv?"rgba(248,113,113,0.2)":"rgba(96,165,250,0.2)")}`,borderRadius:8,fontSize:10,fontWeight:600,letterSpacing:"0.06em",color:generating&&!isGen?"#1e2a3a":(iv?"#f87171":"#60a5fa"),cursor:generating?"not-allowed":"pointer",fontFamily:"inherit" }}>
+                {isGen?"ANALYZING…":hasRes?`↻ ${slot}`:`Analyze as ${slot}`}
+              </button>
+=======
       ) : !isSubscribed ? (
         <div onClick={()=>{ if(onShowAuth) onShowAuth(); else window.location.href='/settings'; }} style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"10px 0",background:"rgba(7,9,26,0.6)",border:"1px solid rgba(201,162,39,0.2)",borderRadius:8,cursor:"pointer" }}>
           <span style={{ fontSize:13 }}>🔒</span>
@@ -1138,10 +1224,13 @@ function WatchlistView({ watchlist, toggleWatch, games, results, finalized }) {
                   <span style={{ fontSize:9,color:'#1e2a3a',marginLeft:'auto' }}>{game.lineMovement?.slice(0,40)||'No data'}</span>
                 </div>
               </div>
+>>>>>>> 83749ed07b4e8cefcdfa86a1c818b747a1f53cd4
             );
           })}
         </div>
       )}
+<<<<<<< HEAD
+=======
 
       {/* All other games to add */}
       {unwatchedGames.length > 0 && (
@@ -1462,7 +1551,151 @@ function PropsAIView({ games, isSubscribed }) {
           ))}
         </div>
       )}
+>>>>>>> 83749ed07b4e8cefcdfa86a1c818b747a1f53cd4
     </div>
+  );
+}
+
+// ── SVG COMPONENTS ────────────────────────────────────────────────────────────
+
+function Sparkline({ color="#4ade80", width=80, height=36 }) {
+  const pts=[18,22,14,28,20,32,24,36,28,30,38,32].map((v,i)=>`${i*(width/11)},${height-(v/40)*height}`).join(" ");
+  return <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}><polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.9" /></svg>;
+}
+
+function RadarChart({ size=160 }) {
+  const cx=size/2,cy=size/2,r=size*0.37;
+  const rings=[0.3,0.55,0.8,1];
+  const dots=[{a:-90,d:0.85,c:"#3b82f6"},{a:-18,d:0.72,c:"#a78bfa"},{a:54,d:0.6,c:"#10b981"},{a:126,d:0.82,c:"#f59e0b"},{a:198,d:0.68,c:"#f87171"}];
+  const toXY=(a,d)=>({x:cx+Math.cos(a*Math.PI/180)*r*d,y:cy+Math.sin(a*Math.PI/180)*r*d});
+  const poly=dots.map(d=>toXY(d.a,d.d));
+  const polyStr=poly.map(p=>`${p.x},${p.y}`).join(" ");
+  const spokes=[0,45,90,135,180,225,270,315];
+  return(
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      {rings.map((f,i)=><circle key={i} cx={cx} cy={cy} r={r*f} fill="none" stroke="rgba(59,130,246,0.12)" strokeWidth="1"/>)}
+      {spokes.map((a,i)=><line key={i} x1={cx} y1={cy} x2={cx+Math.cos(a*Math.PI/180)*r} y2={cy+Math.sin(a*Math.PI/180)*r} stroke="rgba(59,130,246,0.08)" strokeWidth="1"/>)}
+      <polygon points={polyStr} fill="rgba(59,130,246,0.12)" stroke="rgba(59,130,246,0.5)" strokeWidth="1.5"/>
+      {dots.map((d,i)=>{const p=toXY(d.a,d.d);return<circle key={i} cx={p.x} cy={p.y} r={3.5} fill={d.c} opacity="0.95"/>;})}
+    </svg>
+  );
+}
+
+function ConfidenceChart({ history }) {
+  const base = [20,35,28,45,38,52,42,60,55,58,65,70,62,75,70];
+  const data = history && history.length > 1 ? history : base;
+  const pts = data.map((v,i)=>`${i*(200/(data.length-1))},${70-(v/100)*60}`).join(" ");
+  return(
+    <svg width="100%" height="56" viewBox="0 0 200 70" preserveAspectRatio="none">
+      <defs><linearGradient id="cg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#4ade80" stopOpacity="0.25"/><stop offset="100%" stopColor="#4ade80" stopOpacity="0"/></linearGradient></defs>
+      <polygon points={`0,70 ${pts} 200,70`} fill="url(#cg)"/>
+      <polyline points={pts} fill="none" stroke="#4ade80" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
+function GlobeSVG({ timeStr }) {
+  return(
+    <div style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:6 }}>
+      <svg width={110} height={110} viewBox="0 0 110 110">
+        <defs><radialGradient id="gg" cx="38%" cy="32%"><stop offset="0%" stopColor="#1a3a6e"/><stop offset="100%" stopColor="#050a14"/></radialGradient></defs>
+        <circle cx={55} cy={55} r={50} fill="url(#gg)" stroke="rgba(59,130,246,0.25)" strokeWidth="1"/>
+        {[35,55,75].map((y,i)=><ellipse key={i} cx={55} cy={y} rx={50} ry={9} fill="none" stroke="rgba(59,130,246,0.12)" strokeWidth="0.8"/>)}
+        <line x1={55} y1={5} x2={55} y2={105} stroke="rgba(59,130,246,0.12)" strokeWidth="0.8"/>
+        <line x1={5} y1={55} x2={105} y2={55} stroke="rgba(59,130,246,0.12)" strokeWidth="0.8"/>
+        {[[30,35],[60,48],[75,65],[42,70],[65,30],[38,52]].map(([x,y],i)=><circle key={i} cx={x} cy={y} r={2.2} fill="#3b82f6" opacity="0.75"/>)}
+        <circle cx={55} cy={55} r={50} fill="none" stroke="rgba(59,130,246,0.15)" strokeWidth="0.5"/>
+      </svg>
+      <div style={{ fontSize:9,color:"#2d3a4a",textAlign:"center" }}>Last updated: <span style={{ color:"#c9a227" }}>{timeStr}</span></div>
+    </div>
+  );
+}
+
+function OddsTicker({ feed }) {
+  const ref=useRef(null);
+  useEffect(()=>{
+    const el=ref.current; if(!el)return;
+    let pos=0; const speed=0.5;
+    const getHalf=()=>el.scrollWidth/2;
+    const tick=()=>{pos+=speed;if(pos>=getHalf())pos=0;el.scrollLeft=pos;requestAnimationFrame(tick);};
+    const id=requestAnimationFrame(tick); return()=>cancelAnimationFrame(id);
+  },[feed]);
+  const items=[...feed,...feed];
+  return(
+    <div ref={ref} style={{ overflowX:"hidden",display:"flex",whiteSpace:"nowrap" }}>
+      {items.map((o,i)=>(
+        <div key={i} style={{ display:"inline-flex",alignItems:"center",gap:5,padding:"0 18px",borderRight:"1px solid rgba(255,255,255,0.04)" }}>
+          <span style={{ fontSize:11,fontWeight:700,color:"#cbd5e1" }}>{o.team}{o.line}</span>
+          <span style={{ fontSize:11,fontWeight:600,color:o.odds&&o.odds.startsWith("+")?"#10b981":"#e2e8f0" }}>{o.odds}</span>
+          <span style={{ fontSize:9,color:o.up?"#10b981":"#f87171" }}>{o.up?"▲":"▼"}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── RIGHT PANEL CONTENT (reused for desktop + stacked mobile) ─────────────────
+
+function RightPanelContent({ marketScanner, insights, aiConfidence, confHistory }) {
+  return(
+    <>
+      {/* AI Market Scanner */}
+      <div style={{ marginBottom:20 }}>
+        <div style={{ fontSize:10,fontWeight:700,letterSpacing:"0.1em",color:"#64748b",marginBottom:14,display:"flex",alignItems:"center",gap:6 }}>
+          <span style={{ width:3,height:10,background:"#3b82f6",borderRadius:2,display:"inline-block" }}/>
+          AI MARKET SCANNER
+        </div>
+        <div style={{ display:"flex",justifyContent:"center",marginBottom:14 }}>
+          <RadarChart size={160} />
+        </div>
+        <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+          {[
+            {label:"Reverse Line Movement",count:marketScanner.reverseLineMovement,sub:"Games",color:"#64748b"},
+            {label:"Sharp Money Detected",  count:marketScanner.sharpMoneyDetected, sub:"Games",color:"#10b981"},
+            {label:"Public Heavy",           count:marketScanner.publicHeavy,        sub:"Games",color:"#64748b"},
+            {label:"Vegas Trap Alert",       count:marketScanner.vegasTrapAlert,     sub:"Games",color:"#f87171"},
+          ].map((item,i)=>(
+            <div key={i}>
+              <div style={{ fontSize:9,color:"#3a4a5e",letterSpacing:"0.06em",marginBottom:1 }}>{item.label}</div>
+              <div style={{ display:"flex",alignItems:"baseline",gap:5 }}>
+                <span style={{ fontSize:22,fontWeight:800,color:item.color,letterSpacing:"-0.02em",lineHeight:1 }}>{item.count}</span>
+                <span style={{ fontSize:9,color:"#2d3a4a" }}>{item.sub}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ borderTop:"1px solid rgba(255,255,255,0.05)",paddingTop:16,marginBottom:20 }}>
+        <div style={{ fontSize:10,fontWeight:700,letterSpacing:"0.1em",color:"#64748b",marginBottom:14,display:"flex",alignItems:"center",gap:6 }}>
+          <span style={{ width:3,height:10,background:"#3b82f6",borderRadius:2,display:"inline-block" }}/>
+          AI INSIGHTS
+        </div>
+        <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
+          {insights.map((ins,i)=>(
+            <div key={i} style={{ display:"flex",gap:10,alignItems:"flex-start" }}>
+              <div style={{ width:22,height:22,borderRadius:6,background:"rgba(59,130,246,0.1)",border:"1px solid rgba(59,130,246,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:"#3b82f6",flexShrink:0,marginTop:1 }}>{ins.icon}</div>
+              <div style={{ flex:1 }}>
+                <div style={{ fontSize:11,color:"#94a3b8",lineHeight:1.55 }}>{ins.text}</div>
+                <div style={{ fontSize:9,color:"#2d3a4a",marginTop:3 }}>{ins.time}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ borderTop:"1px solid rgba(255,255,255,0.05)",paddingTop:16 }}>
+        <div style={{ fontSize:10,fontWeight:700,letterSpacing:"0.1em",color:"#64748b",marginBottom:10,display:"flex",alignItems:"center",gap:6 }}>
+          <span style={{ width:3,height:10,background:"#4ade80",borderRadius:2,display:"inline-block" }}/>
+          AI CONFIDENCE MONITOR
+        </div>
+        <ConfidenceChart history={confHistory} />
+        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:8 }}>
+          <span style={{ fontSize:9,color:"#2d3a4a" }}>Overall AI Confidence</span>
+          <span style={{ fontSize:22,fontWeight:800,color:aiConfidence===null?"#4ade80":aiConfidence>=75?"#4ade80":aiConfidence>=50?"#fbbf24":"#f87171",letterSpacing:"-0.02em" }}>{aiConfidence!==null?`${aiConfidence}%`:"—"}</span>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -1474,6 +1707,91 @@ export default function VegasVaultApp() {
   const [oddsFeed, setOddsFeed]       = useState(ODDS_FEED);
   const [marketScanner, setMarketScanner] = useState({ reverseLineMovement:7, sharpMoneyDetected:5, publicHeavy:6, vegasTrapAlert:3 });
   const [insights, setInsights]       = useState(INSIGHTS);
+<<<<<<< HEAD
+  const [results, setResults]         = useState({});
+  const [liveScores, setLiveScores]   = useState({});
+  const [bookmakerCount, setBookmakerCount] = useState(12);
+  const [winRate, setWinRate]         = useState(null);
+  const [aiConfidence, setAiConfidence] = useState(null);
+  const [confHistory, setConfHistory] = useState([]);
+  const [generating, setGenerating]   = useState(null);
+  const [activeResult, setActiveResult] = useState(null);
+  const [activeGame, setActiveGame]   = useState(null);
+  const [filter, setFilter]           = useState("ALL");
+  const [error, setError]             = useState(null);
+  const [loading, setLoading]         = useState(true);
+  const [time, setTime]               = useState(new Date());
+
+  useEffect(()=>{
+    fetch("/api/today").then(r=>r.json())
+      .then(data=>{
+        setGames(data.games||MOCK_GAMES);
+        setTrellAlerts(data.trellAlerts||[]);
+        if (data.oddsFeed?.length) setOddsFeed(data.oddsFeed);
+        if (data.marketScanner) setMarketScanner(data.marketScanner);
+        if (data.insights?.length) setInsights(data.insights);
+        if (data.bookmakerCount > 0) setBookmakerCount(data.bookmakerCount);
+        setLoading(false);
+      })
+      .catch(()=>{setGames(MOCK_GAMES);setLoading(false);});
+  },[]);
+
+  useEffect(()=>{
+    const t=setInterval(()=>setTime(new Date()),1000);
+    return()=>clearInterval(t);
+  },[]);
+
+  // ── WIN RATE & AI CONFIDENCE — computed from analyzed results ──────────────
+  useEffect(() => {
+    const allResults = Object.values(results);
+    if (allResults.length === 0) { setWinRate(null); setAiConfidence(null); return; }
+
+    // AI Confidence = % of results that are Tier 1 or 2 (not PASS/Tier3)
+    const strongPicks = allResults.filter(r => r.summary?.tier === '1' || r.summary?.tier === '2').length;
+    const confPct = Math.round((strongPicks / allResults.length) * 100);
+    setAiConfidence(confPct);
+
+    // Confidence level label
+    // Win rate: track HIGH confidence picks — assume 68% base, adjust by tier distribution
+    const locks = allResults.filter(r => r.summary?.tier === '1').length;
+    const t2 = allResults.filter(r => r.summary?.tier === '2').length;
+    const passes = allResults.filter(r => r.summary?.tier === 'PASS').length;
+    const playable = allResults.length - passes;
+    if (playable > 0) {
+      const adjRate = Math.round(65 + (locks * 5) + (t2 * 2) - (passes * 3));
+      setWinRate(Math.min(Math.max(adjRate, 50), 85));
+    }
+
+    // Update confidence history for sparkline
+    setConfHistory(prev => [...prev.slice(-14), confPct]);
+  }, [results]);
+
+  // ── LIVE SCORES — poll every 30s ─────────────────────────────────────────
+  useEffect(() => {
+    function fetchScores() {
+      fetch('/api/livescores').then(r => r.json()).then(data => {
+        const map = {};
+        (data.scores || []).forEach(s => {
+          // Match by team name to game id
+          const key = `${s.away}|${s.home}`;
+          map[key] = s;
+        });
+        setLiveScores(map);
+      }).catch(() => {});
+    }
+    fetchScores();
+    const interval = setInterval(fetchScores, 30000); // every 30 seconds
+    return () => clearInterval(interval);
+  }, []);
+
+  const generated = Object.keys(results).length;
+  const FILTERS = ["ALL","MLB","NBA","TENNIS","NHL","NCAAF","SOCCER","NEW"];
+  const filteredGames = games.filter(g=>{
+    if(filter==="MLB")return g.sport==="MLB";
+    if(filter==="NBA")return g.sport==="NBA";
+    if(filter==="TENNIS")return g.sport==="Tennis";
+    if(filter==="NEW")return !results[`${g.id}-PUBLIC`]&&!results[`${g.id}-VEGAS`];
+=======
   const [results, setResults] = useState(() => {
     try {
       const saved = typeof window !== 'undefined' && localStorage.getItem('vv_results');
@@ -2076,6 +2394,7 @@ export default function VegasVaultApp() {
     if(filter==="MLB")return g.sport==="MLB";
     if(filter==="NBA")return g.sport==="NBA";
     if(filter==="NFL")return g.sport==="NFL";
+>>>>>>> 83749ed07b4e8cefcdfa86a1c818b747a1f53cd4
     return true;
   });
 
@@ -2084,6 +2403,11 @@ export default function VegasVaultApp() {
     setGenerating(key); setError(null);
     try{
       const result=await generatePlay({...game,slot});
+<<<<<<< HEAD
+      setResults(prev=>({...prev,[key]:result}));
+      setActiveResult(result); setActiveGame({...game,slot});
+    }catch{ setError("Generation failed. Check your Anthropic API key in Vercel environment variables."); }
+=======
       // Ensure result always has a valid summary before storing
       if (!result.summary) {
         result.summary = {
@@ -2108,6 +2432,7 @@ export default function VegasVaultApp() {
       };
       setResults(prev=>({...prev,[key]:errResult}));
     }
+>>>>>>> 83749ed07b4e8cefcdfa86a1c818b747a1f53cd4
     finally{ setGenerating(null); }
   }
 
@@ -2116,6 +2441,8 @@ export default function VegasVaultApp() {
     if(result){setActiveResult(result);setActiveGame(game);}
   }
 
+<<<<<<< HEAD
+=======
   // Date navigation helpers
   function changeDate(offset) {
     const d = new Date(selectedDate + 'T12:00:00');
@@ -2134,6 +2461,7 @@ export default function VegasVaultApp() {
     return d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
   }
 
+>>>>>>> 83749ed07b4e8cefcdfa86a1c818b747a1f53cd4
   const today = new Date().toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
   const timeStr = time.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
   const hour = new Date().getHours();
@@ -2143,8 +2471,11 @@ export default function VegasVaultApp() {
     <div style={{ fontFamily:"'DM Mono','Courier New',monospace",background:"#07091a",minHeight:"100vh",color:"#e2e8f0",display:"flex",flexDirection:"column" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap');
+<<<<<<< HEAD
+=======
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+>>>>>>> 83749ed07b4e8cefcdfa86a1c818b747a1f53cd4
         *{box-sizing:border-box;margin:0;padding:0;}
         body{background:#07091a;overflow-x:hidden;}
         ::-webkit-scrollbar{width:3px;}::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:2px;}
@@ -2165,6 +2496,15 @@ export default function VegasVaultApp() {
         }
         @media(max-width:700px){
           .vv-sidebar{display:none!important;}
+<<<<<<< HEAD
+          .vv-bottom-nav{display:flex!important;position:fixed;bottom:0;left:0;right:0;height:58px;background:rgba(7,9,26,0.97);border-top:1px solid rgba(255,255,255,0.08);z-index:200;align-items:center;justify-content:space-around;backdrop-filter:blur(20px);}
+          .vv-cards{grid-template-columns:1fr!important;}
+          .vv-stats{grid-template-columns:repeat(2,1fr)!important;}
+          .vv-nav-center{display:none!important;}
+          .vv-ticker-lbl{display:none!important;}
+          .vv-nav-logo span.lbl{display:none!important;}
+          .vv-main-inner{padding:12px 12px 74px!important;}
+=======
           .vv-bottom-nav{display:flex!important;position:fixed;bottom:0;left:0;right:0;height:60px;background:rgba(7,9,26,0.98);border-top:1px solid rgba(255,255,255,0.08);z-index:200;align-items:center;justify-content:space-around;backdrop-filter:blur(20px);padding:0 4px;}
           .vv-cards{grid-template-columns:1fr!important;}
           .vv-stats{grid-template-columns:repeat(2,1fr)!important;}
@@ -2178,6 +2518,7 @@ export default function VegasVaultApp() {
           .vv-admin-btns{display:none!important;}
           .vv-slate-header{flex-wrap:wrap!important;gap:6px!important;}
           .vv-today-title{font-size:14px!important;white-space:nowrap;}
+>>>>>>> 83749ed07b4e8cefcdfa86a1c818b747a1f53cd4
         }
       `}</style>
 
@@ -2193,6 +2534,25 @@ export default function VegasVaultApp() {
         </div>
 
         <div className="vv-nav-center" style={{ flex:1,justifyContent:"center" }}>
+<<<<<<< HEAD
+          {[{t:"DASHBOARD",active:true},{t:"ALERTS",badge:3,active:false},{t:"WATCHLIST",badge:7,active:false}].map((tab,i)=>(
+            <div key={i} style={{ padding:"0 22px",height:52,display:"flex",alignItems:"center",gap:7,fontSize:11,fontWeight:tab.active?700:400,color:tab.active?"#c9a227":"#3a4a5e",borderBottom:tab.active?"2px solid #c9a227":"2px solid transparent",cursor:"pointer",letterSpacing:"0.07em",whiteSpace:"nowrap" }}>
+              {i===1&&<span style={{ fontSize:11 }}>🔔</span>}
+              {i===2&&<span style={{ fontSize:11 }}>☆</span>}
+              {tab.t}
+              {tab.badge&&<span style={{ background:"rgba(201,162,39,0.15)",border:"1px solid rgba(201,162,39,0.3)",borderRadius:10,padding:"1px 6px",fontSize:9,color:"#c9a227",fontWeight:700 }}>{tab.badge}</span>}
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display:"flex",alignItems:"center",gap:14,padding:"0 18px",flexShrink:0 }}>
+          <span style={{ fontSize:17,color:"#2d3a4a",cursor:"pointer" }}>⌕</span>
+          <span style={{ fontSize:17,color:"#2d3a4a",cursor:"pointer" }}>🔔</span>
+          <div style={{ display:"flex",alignItems:"center",gap:7 }}>
+            <div style={{ width:32,height:32,borderRadius:"50%",background:"linear-gradient(135deg,#c9a227,#8b6d10)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:800,color:"#000" }}>T</div>
+            <span style={{ fontSize:11,color:"#3a4a5e" }}>▼</span>
+          </div>
+=======
           {[
             {t:"DASHBOARD",icon:null},
             {t:"ALERTS",icon:"🔔",badge:()=>{
@@ -2232,6 +2592,7 @@ export default function VegasVaultApp() {
               🔒 Login / Sign Up
             </button>
           )}
+>>>>>>> 83749ed07b4e8cefcdfa86a1c818b747a1f53cd4
         </div>
       </div>
 
@@ -2242,12 +2603,16 @@ export default function VegasVaultApp() {
         <div className="vv-sidebar" style={{ width:200,background:"rgba(7,9,26,0.99)",borderRight:"1px solid rgba(255,255,255,0.05)",flexDirection:"column",flexShrink:0,overflowY:"auto" }}>
           <div style={{ flex:1,padding:"10px 0" }}>
             {NAV_ITEMS.map((item,i)=>(
+<<<<<<< HEAD
+              <div key={i} style={{ display:"flex",alignItems:"center",gap:12,padding:"11px 20px",background:item.active?"rgba(201,162,39,0.07)":"transparent",borderLeft:item.active?"2px solid #c9a227":"2px solid transparent",cursor:"pointer" }}>
+=======
               <div key={i} onClick={()=>{
                 if(item.label==='HISTORY'){setShowHistory(true);}
                 else if(item.label==='ODDS MOVEMENT'){setShowOddsMovement(true);}
                 else if(item.label==='SETTINGS'){window.location.href='/settings';}
                 else { setActiveNav(item.label); setActiveTab('DASHBOARD'); }
               }} style={{ display:"flex",alignItems:"center",gap:12,padding:"11px 20px",background:activeNav===item.label?"rgba(201,162,39,0.07)":"transparent",borderLeft:activeNav===item.label?"2px solid #c9a227":"2px solid transparent",cursor:"pointer" }}>
+>>>>>>> 83749ed07b4e8cefcdfa86a1c818b747a1f53cd4
                 <span style={{ fontSize:13,color:item.active?"#c9a227":"#2d3a4a",width:18,flexShrink:0 }}>{item.icon}</span>
                 <span style={{ fontSize:10,fontWeight:item.active?700:400,color:item.active?"#c9a227":"#3a4a5e",letterSpacing:"0.08em",flex:1 }}>{item.label}</span>
                 {item.arrow&&<span style={{ fontSize:9,color:"#2d3a4a" }}>▶</span>}
@@ -2283,6 +2648,8 @@ export default function VegasVaultApp() {
 
           <div className="vv-main-inner" style={{ padding:"18px 18px 28px",flex:1 }}>
 
+<<<<<<< HEAD
+=======
             {/* ── VIEW ROUTER ── */}
             {activeTab==='ALERTS' ? (
               <AlertsView betReadyAlerts={betReadyAlerts} trellAlerts={trellAlerts} games={games} results={results} pickHistory={pickHistory} watchlist={watchlist}/>
@@ -2324,6 +2691,7 @@ export default function VegasVaultApp() {
                 isAdmin={authUser?.email==='battlecortez@gmail.com'}
               />
             )}
+>>>>>>> 83749ed07b4e8cefcdfa86a1c818b747a1f53cd4
             {/* Greeting */}
             <div style={{ marginBottom:18 }}>
               <h1 style={{ fontSize:22,fontWeight:700,color:"#f1f5f9",letterSpacing:"-0.02em",marginBottom:4 }}>{greeting}, Teztez4real.</h1>
@@ -2374,6 +2742,11 @@ export default function VegasVaultApp() {
 
             {/* Slate header */}
             <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
+<<<<<<< HEAD
+              <h2 style={{ fontSize:16,fontWeight:700,color:"#f1f5f9" }}>Today's Slate</h2>
+              <div style={{ display:"flex",alignItems:"center",gap:8 }}>
+                <div style={{ fontSize:11,color:"#3a4a5e",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:6,padding:"4px 10px" }}>{today} ▾</div>
+=======
               <div style={{ display:"flex",alignItems:"center",gap:10 }}>
                 <h2 className="vv-today-title" style={{ fontSize:16,fontWeight:700,color:"#f1f5f9",whiteSpace:"nowrap" }}>Today's Slate</h2>
                 {preAnalyzeQueue.length > 0 && (
@@ -2389,6 +2762,7 @@ export default function VegasVaultApp() {
                 <div style={{ fontSize:11,color:"#c9a227",background:"rgba(201,162,39,0.08)",border:"1px solid rgba(201,162,39,0.2)",borderRadius:6,padding:"4px 12px",minWidth:80,textAlign:"center" }}>{formatDisplayDate(selectedDate)}</div>
                 <button onClick={()=>changeDate(1)} style={{ background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:6,color:"#64748b",fontSize:13,width:28,height:28,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit" }}>›</button>
               </div>
+>>>>>>> 83749ed07b4e8cefcdfa86a1c818b747a1f53cd4
                 <span style={{ fontSize:14,color:"#2d3a4a",cursor:"pointer" }}>⊟</span>
               </div>
             </div>
@@ -2402,6 +2776,8 @@ export default function VegasVaultApp() {
 
             {error&&<div style={{ background:"rgba(248,113,113,0.05)",border:"1px solid rgba(248,113,113,0.2)",borderRadius:10,padding:"10px 14px",fontSize:12,color:"#f87171",marginBottom:14 }}>{error}</div>}
 
+<<<<<<< HEAD
+=======
             {/* BET NOW ALERT BANNER */}
             {Object.keys(betReadyAlerts).length > 0 && (
               <div style={{ marginBottom:12,background:"linear-gradient(135deg,rgba(201,162,39,0.12),rgba(245,158,11,0.08))",border:"1px solid rgba(201,162,39,0.35)",borderRadius:12,padding:"12px 16px",display:"flex",alignItems:"center",gap:12 }}>
@@ -2413,13 +2789,18 @@ export default function VegasVaultApp() {
               </div>
             )}
 
+>>>>>>> 83749ed07b4e8cefcdfa86a1c818b747a1f53cd4
             {/* Game cards */}
             {loading?(
               <div style={{ textAlign:"center",padding:"60px 0",fontSize:11,color:"#2d3a4a",letterSpacing:"0.1em" }}>LOADING SLATE…</div>
             ):(
               <div className="vv-cards">
                 {filteredGames.map(game=>(
+<<<<<<< HEAD
+                  <GameCard key={game.id} game={game} results={results} generating={generating} onGenerate={handleGenerate} onCardClick={handleCardClick} liveScores={liveScores}/>
+=======
                   <GameCard key={game.id} game={game} results={results} generating={generating} onGenerate={handleGenerate} onCardClick={handleCardClick} liveScores={liveScores} isSubscribed={isSubscribed} finalized={finalized} isQueued={preAnalyzeQueue.some(q=>q.game.id===game.id)} betReady={betReadyAlerts[`${game.id}-PUBLIC`]||betReadyAlerts[`${game.id}-VEGAS`]} onShowAuth={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}} watchlist={watchlist} onToggleWatch={toggleWatch}/>
+>>>>>>> 83749ed07b4e8cefcdfa86a1c818b747a1f53cd4
                 ))}
               </div>
             )}
@@ -2441,6 +2822,11 @@ export default function VegasVaultApp() {
             )}
 
             {/* Stacked right panel (tablet/mobile) */}
+<<<<<<< HEAD
+            <div className="vv-right-stacked" style={{ marginTop:16,background:"#0b0f20",border:"1px solid rgba(255,255,255,0.06)",borderRadius:12,padding:16 }}>
+              <RightPanelContent marketScanner={marketScanner} insights={insights} aiConfidence={aiConfidence} confHistory={confHistory}/>
+            </div>
+=======
             {(activeTab==='DASHBOARD' && activeNav==='DASHBOARD') && (
             <div className="vv-right-stacked" style={{ marginTop:16,background:"#0b0f20",border:"1px solid rgba(255,255,255,0.06)",borderRadius:12,padding:16 }}>
               <RightPanelContent marketScanner={marketScanner} insights={insights} aiConfidence={aiConfidence} confHistory={confHistory}/>
@@ -2448,6 +2834,7 @@ export default function VegasVaultApp() {
             )}
             </>
             )}
+>>>>>>> 83749ed07b4e8cefcdfa86a1c818b747a1f53cd4
           </div>
         </div>
 
@@ -2459,6 +2846,18 @@ export default function VegasVaultApp() {
 
       {/* MOBILE BOTTOM NAV */}
       <div className="vv-bottom-nav">
+<<<<<<< HEAD
+        {[{icon:"⊞",lbl:"HOME"},{icon:"📅",lbl:"SLATE"},{icon:"◎",lbl:"ANALYZE"},{icon:"🔒",lbl:"LOCKS"},{icon:"↺",lbl:"HISTORY"}].map((item,i)=>(
+          <div key={i} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"6px 14px",cursor:"pointer",opacity:i===0?1:0.38 }}>
+            <span style={{ fontSize:17,color:i===0?"#c9a227":"#475569" }}>{item.icon}</span>
+            <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.07em",color:i===0?"#c9a227":"#475569" }}>{item.lbl}</span>
+          </div>
+        ))}
+      </div>
+
+      {activeResult&&activeGame&&(
+        <PlayResult result={activeResult} game={activeGame} onClose={()=>{setActiveResult(null);setActiveGame(null);}}/>
+=======
         {[
           { icon:'⊞', label:'HOME', action:()=>{ setActiveTab('DASHBOARD'); setActiveNav('DASHBOARD'); }, active: activeTab==='DASHBOARD' && activeNav==='DASHBOARD' },
           { icon:'📅', label:'SLATE', action:()=>setActiveNav("TODAY'S SLATE"), active: activeNav==="TODAY'S SLATE" },
@@ -2489,6 +2888,7 @@ export default function VegasVaultApp() {
           isResolved={pickHistory.some(p=>p.key===`${activeGame.id}-${activeGame.slot||'PUBLIC'}`)}
           resolvedResult={pickHistory.find(p=>p.key===`${activeGame.id}-${activeGame.slot||'PUBLIC'}`)?.result}
         />
+>>>>>>> 83749ed07b4e8cefcdfa86a1c818b747a1f53cd4
       )}
 
       {/* ── ODDS MOVEMENT PANEL ─────────────────────────────────────────────── */}
