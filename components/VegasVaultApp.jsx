@@ -1255,7 +1255,7 @@ function SharpMoneyView({ games, marketScanner }) {
 // ── VAULT LOCKS VIEW ──────────────────────────────────────────────────────────
 function VaultLocksView({ results, games, finalized }) {
   const locks = Object.entries(results)
-    .filter(([key, val]) => val && (val.includes('Tier 1') || val.includes('LOCK') || val.includes('🔒')))
+    .filter(([key, val]) => { const s = typeof val === 'string' ? val : JSON.stringify(val||''); return s.includes('Tier 1') || s.includes('LOCK') || s.includes('🔒'); })
     .map(([key, val]) => {
       const [gameId, slot] = key.split('-');
       const game = games.find(g => String(g.id) === gameId);
