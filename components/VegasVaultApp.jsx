@@ -850,7 +850,7 @@ function TopPlayBanner({ topPlay, loading, results, games, pickHistory, isSubscr
         </div>
         <div style={{ display:'flex',alignItems:'center',gap:8 }}>
           {isAdmin && (
-            <button onClick={onForceRefresh} style={{ background:'transparent',border:'1px solid rgba(255,255,255,0.1)',borderRadius:6,padding:'4px 10px',fontSize:9,color:'#3a4a5e',cursor:'pointer',fontFamily:'inherit' }}>↺ Re-analyze</button>
+            <button onClick={(e)=>{e.stopPropagation();onForceRefresh();}} style={{ background:'transparent',border:'1px solid rgba(255,255,255,0.1)',borderRadius:6,padding:'4px 10px',fontSize:9,color:'#3a4a5e',cursor:'pointer',fontFamily:'inherit' }}>↺ Re-analyze</button>
           )}
           <button onClick={()=>setExpanded(e=>!e)} style={{ background:'transparent',border:'none',color:'#c9a227',fontSize:16,cursor:'pointer',padding:'0 4px' }}>
             {expanded ? '▲' : '▼'}
