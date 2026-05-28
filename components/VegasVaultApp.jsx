@@ -1960,57 +1960,55 @@ export default function VegasVaultApp() {
   // Track whether analysis-complete notification has been sent today
   const analysisDoneNotifKey = `vv_analysis_notif_${selectedDate}`;
 
-  // Process pre-analysis queue — 2 at a time for speed
-  const BATCH_SIZE = 2;
+  // Process pre-analysis queue — runs next unanalyzed game whenever queue changes
   useEffect(() => {
-    if (preAnalyzeQueue.length === 0 || preAnalyzing) return;
-    // Skip already-analyzed games at front of queue
-    const pending = preAnalyzeQueue.filter(item => !results[item.key]);
-    if (pending.length === 0) { setPreAnalyzeQueue([]); return; }
+    if (preAnalyzeQueue.length === 0) return;
+    if (preAnalyzing) return;
 
-    let cancelled = false;
+    // Find next game that hasn't been analyzed yet
+    const next = preAnalyzeQueue.find(item => !results[item.key]);
+    if (!next) {
+      // All done — fire notification and clear
+      setPreAnalyzeQueue([]);
+      const alreadyNotified = typeof window !== 'undefined' && localStorage.getItem(analysisDoneNotifKey);
+      if (!alreadyNotified) {
+        setResults(current => {
+          const allResults = Object.values(current);
+          const locks  = allResults.filter(r => r?.summary?.tier === '1').length;
+          const tier2s = allResults.filter(r => r?.summary?.tier === '2').length;
+          const passes = allResults.filter(r => r?.summary?.tier === 'PASS' || r?.summary?.tier === '3').length;
+          let body = '';
+          if (locks > 0)  body  = `🔒 ${locks} LOCK${locks>1?'S':''} identified`;
+          if (tier2s > 0) body += `${body?' · ':''}⭐ ${tier2s} Tier 2 play${tier2s>1?'s':''}`;
+          if (passes > 0) body += `${body?' · ':''}${passes} pass${passes>1?'es':''}`;
+          sendNotification('✅ Vegas Vault AI — Analysis Complete', body || `Today's ${allResults.length} games analyzed.`);
+          try { localStorage.setItem(analysisDoneNotifKey, '1'); } catch {}
+          return current;
+        });
+      }
+      return;
+    }
+
+    console.log('Analyzing:', next.game.away, '@', next.game.home, next.slot);
     setPreAnalyzing(true);
-    const batch = pending.slice(0, BATCH_SIZE);
 
-    Promise.all(batch.map(item =>
-      generatePlay({ ...item.game, slot: item.slot })
-        .then(result => {
-          if (!result.summary) result.summary = { tier:'3', tierLabel:'Tier 3', pick:'No Pick', betType:'N/A', confidence:'LOW', verdict:'Analysis incomplete.', isScamPlay:false, slot:item.slot };
-          return { key: item.key, result };
-        })
-        .catch(() => null)
-    )).then(outcomes => {
-      if (cancelled) return;
-      const valid = outcomes.filter(Boolean);
-      setResults(prev => {
-        const updated = { ...prev };
-        valid.forEach(({ key, result }) => { updated[key] = result; });
-        // Fire completion notification when nothing left
-        const remaining = pending.length - batch.length;
-        if (remaining === 0) {
-          const alreadyNotified = typeof window !== 'undefined' && localStorage.getItem(analysisDoneNotifKey);
-          if (!alreadyNotified) {
-            const allResults = Object.values(updated);
-            const locks  = allResults.filter(r => r?.summary?.tier === '1').length;
-            const tier2s = allResults.filter(r => r?.summary?.tier === '2').length;
-            const passes = allResults.filter(r => r?.summary?.tier === 'PASS' || r?.summary?.tier === '3').length;
-            let body = '';
-            if (locks > 0) body = `🔒 ${locks} LOCK${locks>1?'S':''} identified`;
-            if (tier2s > 0) body += `${body?' · ':''}⭐ ${tier2s} Tier 2 play${tier2s>1?'s':''}`;
-            if (passes > 0) body += `${body?' · ':''}${passes} pass${passes>1?'es':''}`;
-            sendNotification(
-              "✅ Vegas Vault AI — Analysis Complete",
-              body || `Today's ${allResults.length} games have been analyzed. Check your plays.`
-            );
-            try { localStorage.setItem(analysisDoneNotifKey, '1'); } catch {}
-          }
+    generatePlay({ ...next.game, slot: next.slot })
+      .then(result => {
+        if (!result?.summary) {
+          result = { ...result, summary:{ tier:'3', tierLabel:'Tier 3', pick:'No Pick', betType:'N/A', confidence:'LOW', verdict:'Analysis incomplete.', isScamPlay:false, slot:next.slot } };
         }
-        return updated;
+        setResults(prev => ({ ...prev, [next.key]: result }));
+        setPreAnalyzeQueue(q => q.filter(item => item.key !== next.key));
+      })
+      .catch(err => {
+        console.error('Analysis failed for', next.key, err?.message);
+        // Remove from queue so we don't get stuck
+        setPreAnalyzeQueue(q => q.filter(item => item.key !== next.key));
+      })
+      .finally(() => {
+        setPreAnalyzing(false);
       });
-      setPreAnalyzeQueue(q => q.filter(item => !batch.find(b => b.key === item.key)));
-      setPreAnalyzing(false);
-    });
-    return () => { cancelled = true; };
+
   }, [preAnalyzeQueue, preAnalyzing]);
 
   // ── LIVE SCORES — poll every 30s ─────────────────────────────────────────
