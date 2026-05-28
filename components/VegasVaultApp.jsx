@@ -1593,6 +1593,7 @@ export default function VegasVaultApp() {
   const [loading, setLoading]         = useState(true);
   const [time, setTime]               = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [hasSlotPattern, setHasSlotPattern] = useState(false);
 
   useEffect(()=>{
     setLoading(true);
@@ -1605,9 +1606,11 @@ export default function VegasVaultApp() {
         if (data.marketScanner) setMarketScanner(data.marketScanner);
         if (data.insights?.length) setInsights(data.insights);
         if (data.bookmakerCount > 0) setBookmakerCount(data.bookmakerCount);
+        setHasSlotPattern(!!data.hasSlotPattern);
         setLoading(false);
 
-        // Fetch top play after games are loaded (non-blocking, safe)
+        // Fetch top play after games are loaded — only if slot pattern exists
+        if (!data.hasSlotPattern) { setTopPlayLoading(false); return; }
         setTopPlayLoading(true);
         fetch(`/api/topplay?date=${selectedDate}`)
           .then(r => r.ok ? r.json() : null)
@@ -1942,8 +1945,7 @@ export default function VegasVaultApp() {
     // Only queue once per date — don't re-queue just because liveScores updated
     if (queuedDateRef.current === selectedDate) return;
     // Wait for slots to be assigned
-    const slotsAssigned = games.some(g => g.slot === 'PUBLIC' || g.slot === 'VEGAS');
-    if (!slotsAssigned) return;
+    if (!hasSlotPattern) return;
 
     const toAnalyze = [];
     for (const game of games) {

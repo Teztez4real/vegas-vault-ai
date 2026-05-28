@@ -395,6 +395,7 @@ export async function GET(request) {
       insights,
       oddsFeed: oddsFeed.length > 0 ? oddsFeed : null,
       marketScanner,
+      hasSlotPattern: !!(mlbPattern || nflPattern || nbaPattern),
       generatedAt: new Date().toISOString(),
     });
   } catch (err) {
