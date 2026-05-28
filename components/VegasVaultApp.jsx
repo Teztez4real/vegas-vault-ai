@@ -2365,11 +2365,15 @@ export default function VegasVaultApp() {
                   setTopPlayLoading(true);
                   try {
                     const {data:{session:s}} = await supabase.auth.getSession();
-                    await fetch('/api/topplay',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:s?.access_token,date:selectedDate})});
+                    const postRes = await fetch('/api/topplay',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:s?.access_token,date:selectedDate})});
+                    if (!postRes.ok) {
+                      const err = await postRes.json();
+                      console.error('topplay POST failed:', err);
+                    }
                     const res = await fetch(`/api/topplay?date=${selectedDate}&force=1`);
                     const data = await res.json();
                     if(data.topPlay) setTopPlay(data.topPlay);
-                  } catch{}
+                  } catch(e){ console.error('forceRefresh error:', e); }
                   setTopPlayLoading(false);
                 }}
                 isAdmin={authUser?.email==='battlecortez@gmail.com'}
