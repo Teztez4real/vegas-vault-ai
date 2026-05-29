@@ -137,42 +137,74 @@ async function fetchMLBSchedule(date) {
 
 async function fetchOdds(sport) {
   try {
+    // Only fetch from selected books: FanDuel, DraftKings, BetOnline
+    const SELECTED_BOOKS = ['fanduel', 'draftkings', 'betonlineag'];
+    const bookmakerParam = SELECTED_BOOKS.join(',');
     const res = await fetch(
-      `https://api.the-odds-api.com/v4/sports/${sport}/odds/?apiKey=${process.env.ODDS_API_KEY}&regions=us&markets=h2h,spreads,totals&oddsFormat=american`,
+      `https://api.the-odds-api.com/v4/sports/${sport}/odds/?apiKey=${process.env.ODDS_API_KEY}&regions=us&markets=h2h,spreads,totals&oddsFormat=american&bookmakers=${bookmakerParam}`,
       { cache: 'no-store' }
     );
     if (!res.ok) return { oddsMap: {}, bookmakerCount: 0 };
     const data = await res.json();
     const oddsMap = {};
     let bookmakerCount = 0;
+
+    // Priority order for consensus line: FanDuel first, then DraftKings, then BetOnline
+    const BOOK_PRIORITY = ['fanduel', 'draftkings', 'betonlineag'];
+
     data.forEach(game => {
       const away = game.away_team;
       const home = game.home_team;
       const key = `${away}@${home}`;
       let awayML = 'N/A', homeML = 'N/A', spread = 'N/A', total = 'N/A';
       let openingAwayML = 'N/A', openingHomeML = 'N/A';
-      game.bookmakers?.forEach(bm => {
+
+      // Filter to only selected books, sorted by priority
+      const selectedBooks = (game.bookmakers || [])
+        .filter(bm => SELECTED_BOOKS.includes(bm.key))
+        .sort((a, b) => BOOK_PRIORITY.indexOf(a.key) - BOOK_PRIORITY.indexOf(b.key));
+
+      selectedBooks.forEach(bm => {
         bookmakerCount++;
         bm.markets?.forEach(mkt => {
           if (mkt.key === 'h2h') {
             mkt.outcomes?.forEach(o => {
-              if (o.name === away) awayML = fmt(o.price);
-              if (o.name === home) homeML = fmt(o.price);
+              // Use first available (priority order) — don't overwrite if already set
+              if (o.name === away && awayML === 'N/A') awayML = fmt(o.price);
+              if (o.name === home && homeML === 'N/A') homeML = fmt(o.price);
             });
           }
           if (mkt.key === 'spreads') {
             mkt.outcomes?.forEach(o => {
-              if (o.name === home) spread = o.point > 0 ? `+${o.point}` : `${o.point}`;
+              if (o.name === home && spread === 'N/A') spread = o.point > 0 ? `+${o.point}` : `${o.point}`;
             });
           }
           if (mkt.key === 'totals') {
             mkt.outcomes?.forEach(o => {
-              if (o.name === 'Over') total = o.point;
+              if (o.name === 'Over' && total === 'N/A') total = o.point;
             });
           }
         });
       });
-      oddsMap[key] = { awayML, homeML, spread, total, openingAwayML, openingHomeML };
+
+      // Line movement: compare FanDuel vs DraftKings for divergence signal
+      const fd = selectedBooks.find(b => b.key === 'fanduel');
+      const dk = selectedBooks.find(b => b.key === 'draftkings');
+      let lineMovement = 'No significant movement detected';
+      if (fd && dk) {
+        const fdAway = fd.markets?.find(m => m.key === 'h2h')?.outcomes?.find(o => o.name === away)?.price;
+        const dkAway = dk.markets?.find(m => m.key === 'h2h')?.outcomes?.find(o => o.name === away)?.price;
+        if (fdAway && dkAway) {
+          const diff = Math.abs(fdAway - dkAway);
+          if (diff >= 10) {
+            lineMovement = fdAway < dkAway
+              ? `Sharp action detected: FanDuel has ${away} shorter (${fmt(fdAway)}) vs DraftKings (${fmt(dkAway)}) — money moved toward ${away}`
+              : `Sharp action detected: FanDuel has ${home} shorter (${fmt(dkAway)}) vs DraftKings (${fmt(fdAway)}) — money moved toward ${home}`;
+          }
+        }
+      }
+
+      oddsMap[key] = { awayML, homeML, spread, total, openingAwayML, openingHomeML, lineMovement };
     });
     return { oddsMap, bookmakerCount };
   } catch { return { oddsMap: {}, bookmakerCount: 0 }; }
