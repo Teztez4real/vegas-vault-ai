@@ -124,6 +124,58 @@ async function fetchNFLGames(dateParam) {
 
 // ── MLB ────────────────────────────────────────────────────────────────────────
 
+
+// ── ODDS API FALLBACK (for games Sharp API doesn't cover yet) ─────────────────
+
+async function fetchOddsAPIFallback(sport) {
+  try {
+    const ODDS_KEY = process.env.ODDS_API_KEY;
+    if (!ODDS_KEY) return {};
+    const res = await fetch(
+      `https://api.the-odds-api.com/v4/sports/${sport}/odds/?apiKey=${ODDS_KEY}&regions=us&markets=h2h,spreads,totals&oddsFormat=american&bookmakers=fanduel,draftkings,betonlineag`,
+      { cache: 'no-store' }
+    );
+    if (!res.ok) return {};
+    const data = await res.json();
+    const oddsMap = {};
+    data.forEach(game => {
+      const away = game.away_team;
+      const home = game.home_team;
+      const key = `${away}@${home}`;
+      let awayML = 'N/A', homeML = 'N/A', spread = 'N/A', total = 'N/A';
+      const bookPrices = {};
+      const _raw = {};
+      (game.bookmakers || []).forEach(bm => {
+        const label = bm.key === 'fanduel' ? 'FD' : bm.key === 'draftkings' ? 'DK' : 'BOL';
+        bm.markets?.forEach(mkt => {
+          if (mkt.key === 'h2h') mkt.outcomes?.forEach(o => {
+            if (o.name === away && awayML === 'N/A') awayML = fmt(o.price);
+            if (o.name === home && homeML === 'N/A') homeML = fmt(o.price);
+            bookPrices[label] = bookPrices[label] || {};
+            _raw[bm.key] = _raw[bm.key] || {};
+            if (o.name === away) { bookPrices[label].away = fmt(o.price); _raw[bm.key].away = o.price; }
+            if (o.name === home) { bookPrices[label].home = fmt(o.price); _raw[bm.key].home = o.price; }
+          });
+          if (mkt.key === 'spreads') mkt.outcomes?.forEach(o => {
+            if (o.name === home && spread === 'N/A') spread = o.point > 0 ? `+${o.point}` : `${o.point}`;
+          });
+          if (mkt.key === 'totals') mkt.outcomes?.forEach(o => {
+            if (o.name === 'Over' && total === 'N/A') total = o.point;
+          });
+        });
+      });
+      const pricingStr = Object.entries(bookPrices).map(([l,v]) => `${l}: ${v.away||'N/A'} / ${v.home||'N/A'}`).join(' | ');
+      const bolAway = _raw['betonlineag']?.away, fdAway = _raw['fanduel']?.away, dkAway = _raw['draftkings']?.away;
+      const signals = [];
+      if (bolAway && fdAway && Math.abs(bolAway-fdAway) >= 10) signals.push(`BOL ${fmt(bolAway)} vs FD ${fmt(fdAway)} — sharp on ${bolAway < fdAway ? away.split(' ').pop() : home.split(' ').pop()}`);
+      if (bolAway && dkAway && Math.abs(bolAway-dkAway) >= 10) signals.push(`BOL ${fmt(bolAway)} vs DK ${fmt(dkAway)} — sharp on ${bolAway < dkAway ? away.split(' ').pop() : home.split(' ').pop()}`);
+      oddsMap[key] = { awayML, homeML, spread, total, openingAwayML: pricingStr||'N/A', openingHomeML: pricingStr||'N/A', lineMovement: signals.join(' | ')||'No significant movement', pricingStr };
+    });
+    console.log('Odds API fallback:', Object.keys(oddsMap).length, 'games');
+    return oddsMap;
+  } catch(e) { console.error('Odds API fallback error:', e.message); return {}; }
+}
+
 async function fetchMLBSchedule(date) {
   const dateStr = date || todayStr();
   const res = await fetch(
@@ -284,6 +336,15 @@ async function fetchOdds(sport) {
       delete entry.bookPrices;
     });
 
+    // Fill missing games with Odds API fallback
+    const fallbackMap = await fetchOddsAPIFallback(sport);
+    let fallbackCount = 0;
+    Object.entries(fallbackMap).forEach(([key, val]) => {
+      const normKey = key.split('@').map(normTeamName).join('@');
+      const existsAlready = Object.keys(oddsMap).some(k => k.split('@').map(normTeamName).join('@') === normKey);
+      if (!existsAlready) { oddsMap[key] = val; fallbackCount++; }
+    });
+    console.log('Final oddsMap:', Object.keys(oddsMap).length, 'games (', fallbackCount, 'from Odds API fallback)');
     return { oddsMap, bookmakerCount };
   } catch (e) {
     console.error('Sharp API fetchOdds error:', e.message);
