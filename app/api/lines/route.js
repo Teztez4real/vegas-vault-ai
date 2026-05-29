@@ -35,34 +35,46 @@ async function fetchAllBooks(sportKey) {
       const league = leagueMap[sportKey];
       if (!league) return games;
 
-      const res = await fetch(`https://api.sharpapi.io/api/v1/odds?league=${league}&market=main&live=false&per_page=300`, {
+      const sportKeyMap2 = { baseball_mlb: 'baseball', basketball_nba: 'basketball', americanfootball_nfl: 'americanfootball' };
+        const sportName2 = sportKeyMap2[sportKey] || 'baseball';
+        const res = await fetch(`https://api.sharpapi.io/api/v1/odds?sport=${sportName2}&league=${league}`, {
         headers: { 'X-API-Key': sharpKey }, cache: 'no-store',
       });
       const rawJson = await res.json();
-      const rows = rawJson.data || [];
-      if (!rows.length) throw new Error('No rows');
+      // Handle both events[] (new) and data[] (old) format
+      const events = rawJson.events || rawJson.data || [];
+      if (!events.length) throw new Error('No rows');
 
-      for (const row of rows) {
-        const { home_team: home, away_team: away, sportsbook, odds_american: odds, event_start_time } = row;
-        if (!home || !away || odds == null) continue;
-        // Only process moneyline rows
-        if (row.market_type && row.market_type !== 'moneyline') continue;
+      for (const event of events) {
+        const away = event.away || event.away_team || '';
+        const home = event.home || event.home_team || '';
+        if (!away || !home) continue;
         const key = `${away}|${home}`;
-        if (!games[key]) games[key] = { away, home, commenceTime: event_start_time, books: {} };
-        const book = (sportsbook || '').toLowerCase();
-        if (!games[key].books[book]) games[key].books[book] = {};
-        // selection field contains abbreviated team name — match against home/away
-        const sel = (row.selection || '').toLowerCase();
-        const homeParts = home.toLowerCase().split(' ');
-        const awayParts = away.toLowerCase().split(' ');
-        const matchesHome = homeParts.some(p => p.length > 2 && sel.includes(p));
-        const matchesAway = awayParts.some(p => p.length > 2 && sel.includes(p));
-        if (matchesHome) games[key].books[book].homeML = odds;
-        else if (matchesAway) games[key].books[book].awayML = odds;
-        else {
-          // fallback: use odds sign — favorites are negative, use position
-          if (!games[key].books[book].awayML) games[key].books[book].awayML = odds;
-          else games[key].books[book].homeML = odds;
+        if (!games[key]) games[key] = { away, home, commenceTime: event.start_time || event.event_start_time, books: {} };
+
+        // New format: event.odds = { bookname: { moneyline, spread, total } }
+        const booksData = event.odds || event.sportsbooks || {};
+        Object.entries(booksData).forEach(([bookName, bookOdds]) => {
+          if (!bookOdds || typeof bookOdds !== 'object') return;
+          const book = bookName.toLowerCase();
+          if (!games[key].books[book]) games[key].books[book] = {};
+          const ml = bookOdds.moneyline || bookOdds;
+          if (ml?.away != null) games[key].books[book].awayML = ml.away;
+          if (ml?.home != null) games[key].books[book].homeML = ml.home;
+          if (bookOdds.spread?.home != null) games[key].books[book].spread = bookOdds.spread.home;
+          if (bookOdds.total?.over != null) games[key].books[book].total = bookOdds.total.over;
+        });
+
+        // Fallback: flat format with sportsbook field
+        if (!Object.keys(booksData).length && event.sportsbook) {
+          const book = event.sportsbook.toLowerCase();
+          if (!games[key].books[book]) games[key].books[book] = {};
+          if (event.odds_american != null) {
+            const sel = (event.selection || '').toLowerCase();
+            const matchesHome = home.toLowerCase().split(' ').some(p => p.length > 2 && sel.includes(p));
+            if (matchesHome) games[key].books[book].homeML = event.odds_american;
+            else games[key].books[book].awayML = event.odds_american;
+          }
         }
       }
 
