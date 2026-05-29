@@ -274,6 +274,8 @@ async function fetchOdds(sport) {
       delete entry.bookPrices;
     });
 
+    const keys = Object.keys(oddsMap);
+    console.log('Sharp oddsMap COUNT:', keys.length, 'KEYS:', keys.join(' || '));
     return { oddsMap, bookmakerCount };
   } catch (e) {
     console.error('Sharp API fetchOdds error:', e.message);
@@ -299,6 +301,7 @@ async function assembleMLBGame(game, oddsMap) {
     const home = game.teams?.home?.team?.name || 'Home';
     const key = `${away}@${home}`;
     
+    console.log('MLB game key:', key, '| oddsMap has:', Object.keys(oddsMap).length, 'entries');
     // Try exact match first, then fuzzy match by normalized team name
     let odds = oddsMap[key];
     if (!odds) {
