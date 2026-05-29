@@ -187,22 +187,50 @@ async function fetchOdds(sport) {
         });
       });
 
-      // Line movement: compare FanDuel vs DraftKings for divergence signal
+      // Line movement: compare all three books — BetOnline is a sharp book and leads movement
       const fd = selectedBooks.find(b => b.key === 'fanduel');
       const dk = selectedBooks.find(b => b.key === 'draftkings');
+      const bol = selectedBooks.find(b => b.key === 'betonlineag');
       let lineMovement = 'No significant movement detected';
-      if (fd && dk) {
-        const fdAway = fd.markets?.find(m => m.key === 'h2h')?.outcomes?.find(o => o.name === away)?.price;
-        const dkAway = dk.markets?.find(m => m.key === 'h2h')?.outcomes?.find(o => o.name === away)?.price;
-        if (fdAway && dkAway) {
-          const diff = Math.abs(fdAway - dkAway);
-          if (diff >= 10) {
-            lineMovement = fdAway < dkAway
-              ? `Sharp action detected: FanDuel has ${away} shorter (${fmt(fdAway)}) vs DraftKings (${fmt(dkAway)}) — money moved toward ${away}`
-              : `Sharp action detected: FanDuel has ${home} shorter (${fmt(dkAway)}) vs DraftKings (${fmt(fdAway)}) — money moved toward ${home}`;
-          }
+
+      const getAwayPrice = (bm) => bm?.markets?.find(m => m.key === 'h2h')?.outcomes?.find(o => o.name === away)?.price;
+      const fdAway = getAwayPrice(fd);
+      const dkAway = getAwayPrice(dk);
+      const bolAway = getAwayPrice(bol);
+
+      const signals = [];
+
+      // BetOnline vs FanDuel — sharp vs square divergence
+      if (bolAway && fdAway) {
+        const diff = Math.abs(bolAway - fdAway);
+        if (diff >= 10) {
+          signals.push(bolAway < fdAway
+            ? `BetOnline (sharp) shorter on ${away} (${fmt(bolAway)}) vs FanDuel (${fmt(fdAway)}) — sharp money on ${away}`
+            : `BetOnline (sharp) shorter on ${home} (${fmt(fdAway)}) vs FanDuel (${fmt(bolAway)}) — sharp money on ${home}`);
         }
       }
+
+      // BetOnline vs DraftKings — sharp vs square divergence
+      if (bolAway && dkAway) {
+        const diff = Math.abs(bolAway - dkAway);
+        if (diff >= 10) {
+          signals.push(bolAway < dkAway
+            ? `BetOnline (sharp) shorter on ${away} (${fmt(bolAway)}) vs DraftKings (${fmt(dkAway)}) — sharp money on ${away}`
+            : `BetOnline (sharp) shorter on ${home} (${fmt(dkAway)}) vs BetOnline (${fmt(bolAway)}) — sharp money on ${home}`);
+        }
+      }
+
+      // FanDuel vs DraftKings — square book divergence
+      if (fdAway && dkAway) {
+        const diff = Math.abs(fdAway - dkAway);
+        if (diff >= 15) {
+          signals.push(fdAway < dkAway
+            ? `FanDuel/DraftKings spread: ${away} (${fmt(fdAway)} vs ${fmt(dkAway)}) — public money moving toward ${away}`
+            : `FanDuel/DraftKings spread: ${home} (${fmt(dkAway)} vs ${fmt(fdAway)}) — public money moving toward ${home}`);
+        }
+      }
+
+      if (signals.length) lineMovement = signals.join(' | ');
 
       oddsMap[key] = { awayML, homeML, spread, total, openingAwayML, openingHomeML, lineMovement };
     });
