@@ -78,7 +78,7 @@ async function fetchAllBooks(sportKey) {
     } catch (err) {
       console.error('Lines SharpAPI error:', err.message);
     }
-  }}
+  }
 
   // SharpAPI is the only odds source — no Odds API fallback
   console.warn('SharpAPI returned no data for lines, sportKey:', sportKey);
