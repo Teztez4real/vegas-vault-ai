@@ -1,6 +1,24 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import { supabase as _supabase } from '@/lib/supabaseClient';
+
+// ── SUPABASE CROSS-DEVICE SYNC ────────────────────────────────────────────────
+async function syncLoad(userId, key) {
+  try {
+    const { data } = await _supabase.from('user_data').select('value').eq('user_id', userId).eq('key', key).single();
+    return data?.value ? JSON.parse(data.value) : null;
+  } catch { return null; }
+}
+
+async function syncSave(userId, key, value) {
+  try {
+    await _supabase.from('user_data').upsert({ user_id: userId, key, value: JSON.stringify(value), updated_at: new Date().toISOString() }, { onConflict: 'user_id,key' });
+  } catch(e) { console.warn('sync save failed:', e.message); }
+}
+
+async function syncDelete(userId, key) {
+  try { await _supabase.from('user_data').delete().eq('user_id', userId).eq('key', key); } catch {}
+}
 function getSB() { return _supabase; }
 
 // ── PROMPT ENGINE ─────────────────────────────────────────────────────────────
@@ -1532,9 +1550,7 @@ export default function VegasVaultApp() {
   const [topPlayLoading, setTopPlayLoading] = useState(false);
   const [activeNav, setActiveNav] = useState('DASHBOARD');
   const [activeTab, setActiveTab] = useState('DASHBOARD');
-  const [watchlist, setWatchlist] = useState(() => {
-    try { const s = typeof window!=='undefined' && localStorage.getItem('vv_watchlist'); return s ? JSON.parse(s) : []; } catch { return []; }
-  });
+  const [watchlist, setWatchlist] = useState([]);
   const [betReadyAlerts, setBetReadyAlerts] = useState({});
   const [preAnalyzeQueue, setPreAnalyzeQueue] = useState([]);
   const [liveScores, setLiveScores]   = useState({});
@@ -1553,10 +1569,23 @@ export default function VegasVaultApp() {
     try {
       const sb = getSB();
       if (!sb) return;
-      sb.auth.getSession().then(({ data: { session } }) => {
+      sb.auth.getSession().then(async ({ data: { session } }) => {
         if (session?.user) {
           setAuthUser(session.user);
           if (session.user.email === ADMIN_EMAIL) { localStorage.setItem('vv_admin','1'); setIsSubscribed(true); }
+          // Load synced data from Supabase
+          const uid = session.user.id;
+          const [wl, res, fin, hist] = await Promise.all([
+            syncLoad(uid, 'watchlist'),
+            syncLoad(uid, 'results'),
+            syncLoad(uid, 'finalized'),
+            syncLoad(uid, 'pick_history'),
+          ]);
+          if (wl) setWatchlist(wl);
+          else { try { const s = localStorage.getItem('vv_watchlist'); if(s) setWatchlist(JSON.parse(s)); } catch {} }
+          if (res) setResults(res);
+          if (fin) setFinalized(fin);
+          if (hist) setPickHistory(hist);
         }
       });
       const { data: { subscription } } = sb.auth.onAuthStateChange((_e, session) => {
@@ -1835,6 +1864,7 @@ export default function VegasVaultApp() {
   function clearAllPlays() {
     setResults({});
     setFinalized({});
+    if (authUser?.id) { syncDelete(authUser.id, 'results'); syncDelete(authUser.id, 'finalized'); }
     setPreAnalyzeQueue([]);
     setBetReadyAlerts({});
     try {
@@ -1847,6 +1877,7 @@ export default function VegasVaultApp() {
     setWatchlist(prev => {
       const updated = prev.includes(gameId) ? prev.filter(id => id !== gameId) : [...prev, gameId];
       try { localStorage.setItem('vv_watchlist', JSON.stringify(updated)); } catch {}
+      if (authUser?.id) syncSave(authUser.id, 'watchlist', updated);
       return updated;
     });
   }
@@ -1944,15 +1975,18 @@ export default function VegasVaultApp() {
   // ── PERSIST RESULTS TO LOCALSTORAGE ──────────────────────────────────────────
   useEffect(() => {
     try { localStorage.setItem('vv_results', JSON.stringify(results)); } catch {}
+    if (authUser?.id) syncSave(authUser.id, 'results', results);
   }, [results]);
 
   useEffect(() => {
     try { localStorage.setItem('vv_finalized', JSON.stringify(finalized)); } catch {}
+    if (authUser?.id) syncSave(authUser.id, 'finalized', finalized);
   }, [finalized]);
 
   // Persist pick history
   useEffect(() => {
     try { localStorage.setItem('vv_pick_history', JSON.stringify(pickHistory)); } catch {}
+    if (authUser?.id) syncSave(authUser.id, 'pick_history', pickHistory);
   }, [pickHistory]);
 
   // ── WIN RATE & AI CONFIDENCE ──────────────────────────────────────────────────
