@@ -42,6 +42,9 @@ async function fetchAllBooks(sportKey) {
       });
       const rawJson = await res.json();
       // Handle both events[] (new) and data[] (old) format
+      console.log('Sharp raw keys:', Object.keys(rawJson), 'events:', (rawJson.events||[]).length, 'data:', (rawJson.data||[]).length);
+      if (rawJson.events?.[0]) console.log('Sample event:', JSON.stringify(rawJson.events[0]).slice(0,300));
+      else if (rawJson.data?.[0]) console.log('Sample data:', JSON.stringify(rawJson.data[0]).slice(0,300));
       const events = rawJson.events || rawJson.data || [];
       if (!events.length) throw new Error('No rows');
 
