@@ -555,6 +555,32 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
         </div>
       </div>
 
+      {/* Prices row — ML, Spread, Total */}
+      {!isTennis && (game.awayML || game.homeML || game.spread || game.total) && (
+        <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10,padding:'6px 10px',background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.05)',borderRadius:8 }}>
+          {/* Away ML */}
+          <div style={{ textAlign:'center',flex:1 }}>
+            <div style={{ fontSize:8,color:'#3a4a5e',letterSpacing:'0.08em',marginBottom:2 }}>ML</div>
+            <div style={{ fontSize:12,fontWeight:700,color:(game.awayML||'').startsWith('-')?'#f87171':'#4ade80' }}>{game.awayML||'—'}</div>
+          </div>
+          {/* Spread */}
+          <div style={{ textAlign:'center',flex:1,borderLeft:'1px solid rgba(255,255,255,0.05)',borderRight:'1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ fontSize:8,color:'#3a4a5e',letterSpacing:'0.08em',marginBottom:2 }}>SPREAD</div>
+            <div style={{ fontSize:11,fontWeight:600,color:'#94a3b8' }}>{game.spread||'—'}</div>
+          </div>
+          {/* Total */}
+          <div style={{ textAlign:'center',flex:1,borderRight:'1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ fontSize:8,color:'#3a4a5e',letterSpacing:'0.08em',marginBottom:2 }}>O/U</div>
+            <div style={{ fontSize:11,fontWeight:600,color:'#94a3b8' }}>{game.total||'—'}</div>
+          </div>
+          {/* Home ML */}
+          <div style={{ textAlign:'center',flex:1 }}>
+            <div style={{ fontSize:8,color:'#3a4a5e',letterSpacing:'0.08em',marginBottom:2 }}>ML</div>
+            <div style={{ fontSize:12,fontWeight:700,color:(game.homeML||'').startsWith('-')?'#f87171':'#4ade80' }}>{game.homeML||'—'}</div>
+          </div>
+        </div>
+      )}
+
       {/* Lock badge */}
       {isLock && (
         <div style={{ display:"flex",justifyContent:"center",marginBottom:10 }}>
