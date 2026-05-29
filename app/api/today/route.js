@@ -232,7 +232,22 @@ async function fetchOdds(sport) {
 
       if (signals.length) lineMovement = signals.join(' | ');
 
-      oddsMap[key] = { awayML, homeML, spread, total, openingAwayML, openingHomeML, lineMovement };
+      // Build per-book pricing for transparency
+      const bookPrices = {};
+      selectedBooks.forEach(bm => {
+        const h2h = bm.markets?.find(m => m.key === 'h2h');
+        if (h2h) {
+          const a = h2h.outcomes?.find(o => o.name === away)?.price;
+          const h = h2h.outcomes?.find(o => o.name === home)?.price;
+          if (a && h) bookPrices[bm.key] = { away: fmt(a), home: fmt(h) };
+        }
+      });
+      const pricingStr = Object.entries(bookPrices).map(([k, v]) => {
+        const label = k === 'fanduel' ? 'FD' : k === 'draftkings' ? 'DK' : 'BOL';
+        return `${label}: ${away} ${v.away} / ${home} ${v.home}`;
+      }).join(' | ');
+
+      oddsMap[key] = { awayML, homeML, spread, total, openingAwayML: pricingStr || 'N/A', openingHomeML: pricingStr || 'N/A', lineMovement, pricingStr };
     });
     return { oddsMap, bookmakerCount };
   } catch { return { oddsMap: {}, bookmakerCount: 0 }; }
@@ -275,12 +290,15 @@ async function assembleMLBGame(game, oddsMap) {
     const awayPitcherHand = game.teams?.away?.probablePitcher?.pitchHand?.code || 'R';
     const homePitcherHand = game.teams?.home?.probablePitcher?.pitchHand?.code || 'R';
 
-    const [injuries, umpire, weather, awayBatterSplits, homeBatterSplits] = await Promise.all([
+    const [injuries, umpire, weather, awayBatterSplits, homeBatterSplits, awayForm, homeForm, h2h] = await Promise.all([
       awayTeamId && homeTeamId ? fetchMLBInjuries(awayTeamId, homeTeamId, away, home) : Promise.resolve('Injury data unavailable'),
       fetchUmpire(game.gamePk),
       fetchWeather(home, game.gameDate),
       awayTeamId ? fetchBatterSplits(awayTeamId, away, homePitcherHand) : Promise.resolve('Splits unavailable'),
       homeTeamId ? fetchBatterSplits(homeTeamId, home, awayPitcherHand) : Promise.resolve('Splits unavailable'),
+      awayTeamId ? fetchTeamRecentForm(awayTeamId, away) : Promise.resolve({ last5: 'N/A', last10: 'N/A', streak: 'N/A' }),
+      homeTeamId ? fetchTeamRecentForm(homeTeamId, home) : Promise.resolve({ last5: 'N/A', last10: 'N/A', streak: 'N/A' }),
+      awayTeamId && homeTeamId ? fetchMLBH2H(awayTeamId, homeTeamId, away, home) : Promise.resolve('H2H unavailable'),
     ]);
 
     return {
@@ -297,8 +315,8 @@ async function assembleMLBGame(game, oddsMap) {
       isFinal,
       awayML: odds.awayML || 'N/A',
       homeML: odds.homeML || 'N/A',
-      openingAwayML: odds.openingAwayML || 'N/A',
-      openingHomeML: odds.openingHomeML || 'N/A',
+      openingAwayML: odds.pricingStr || odds.openingAwayML || 'N/A',
+      openingHomeML: odds.pricingStr || odds.openingHomeML || 'N/A',
       spread: odds.spread || 'N/A',
       runLine: odds.spread ? `${home} ${odds.spread}` : 'N/A',
       total: odds.total || 'N/A',
@@ -311,12 +329,12 @@ async function assembleMLBGame(game, oddsMap) {
       awayAwayRecord: 'See MLB standings',
       homeHomeRecord: 'See MLB standings',
       homeAwayRecord: 'See MLB standings',
-      awayLast5: 'See recent games',
-      awayLast10: 'See recent games',
-      homeLast5: 'See recent games',
-      homeLast10: 'See recent games',
-      awayStreak: 'See MLB stats',
-      homeStreak: 'See MLB stats',
+      awayLast5: awayForm.last5,
+      awayLast10: awayForm.last10,
+      homeLast5: homeForm.last5,
+      homeLast10: homeForm.last10,
+      awayStreak: awayForm.streak,
+      homeStreak: homeForm.streak,
       awayPitcher,
       homePitcher,
       awayPitcherStats,
@@ -331,9 +349,9 @@ async function assembleMLBGame(game, oddsMap) {
       homeBatterSplits,
       awayOffense: `${away} offense — check recent run production and lineup`,
       homeOffense: `${home} offense — check recent run production and lineup`,
-      h2hLast5: 'Check H2H history',
-      h2hAtHome: `Check ${home} home record vs ${away}`,
-      espnH2H: 'Check ESPN or Baseball Reference for season series',
+      h2hLast5: h2h,
+      h2hAtHome: h2h,
+      espnH2H: h2h,
       injuries,
       weather,
       umpire,
@@ -387,6 +405,100 @@ async function fetchNBAGames(date) {
   } catch { return []; }
 }
 
+
+
+// ── RECENT FORM (MLB Stats API — free) ────────────────────────────────────────
+
+async function fetchTeamRecentForm(teamId, teamName) {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const tenDaysAgo = new Date(Date.now() - 14 * 86400000).toISOString().split('T')[0];
+    const res = await fetch(
+      `https://statsapi.mlb.com/api/v1/schedule?sportId=1&teamId=${teamId}&startDate=${tenDaysAgo}&endDate=${today}&hydrate=linescore&gameType=R`,
+      { cache: 'no-store' }
+    );
+    if (!res.ok) throw new Error('schedule fail');
+    const data = await res.json();
+
+    const games = [];
+    (data.dates || []).forEach(d => {
+      d.games?.forEach(g => {
+        if (g.status?.abstractGameState === 'Final') {
+          const isHome = g.teams?.home?.team?.id === teamId;
+          const teamScore = isHome ? g.teams?.home?.score : g.teams?.away?.score;
+          const oppScore = isHome ? g.teams?.away?.score : g.teams?.home?.score;
+          if (teamScore != null && oppScore != null) {
+            games.push({ win: teamScore > oppScore, teamScore, oppScore });
+          }
+        }
+      });
+    });
+
+    const last10 = games.slice(-10);
+    const last5 = last10.slice(-5);
+    const wins5 = last5.filter(g => g.win).length;
+    const wins10 = last10.filter(g => g.win).length;
+    const last5str = last5.map(g => g.win ? 'W' : 'L').join('');
+    const last10str = last10.map(g => g.win ? 'W' : 'L').join('');
+    const runDiff = last5.reduce((acc, g) => acc + (g.teamScore - g.oppScore), 0);
+    const runDiffStr = runDiff > 0 ? `+${runDiff}` : `${runDiff}`;
+
+    let streak = 0, streakType = '';
+    for (let i = last10.length - 1; i >= 0; i--) {
+      if (i === last10.length - 1) { streakType = last10[i].win ? 'W' : 'L'; streak = 1; }
+      else if ((last10[i].win && streakType === 'W') || (!last10[i].win && streakType === 'L')) streak++;
+      else break;
+    }
+
+    return {
+      last5: `${wins5}-${last5.length - wins5} (${last5str}) Run diff last 5: ${runDiffStr}`,
+      last10: `${wins10}-${last10.length - wins10} (${last10str})`,
+      streak: streak > 0 ? `${streakType}${streak}` : 'N/A',
+    };
+  } catch {
+    return { last5: 'See recent games', last10: 'See recent games', streak: 'N/A' };
+  }
+}
+
+// ── HEAD TO HEAD (MLB Stats API — free) ───────────────────────────────────────
+
+async function fetchMLBH2H(awayTeamId, homeTeamId, awayTeam, homeTeam) {
+  try {
+    const season = new Date().getFullYear();
+    const res = await fetch(
+      `https://statsapi.mlb.com/api/v1/schedule?sportId=1&teamId=${homeTeamId}&opponentId=${awayTeamId}&season=${season}&gameType=R&hydrate=linescore`,
+      { cache: 'no-store' }
+    );
+    if (!res.ok) throw new Error('h2h fail');
+    const data = await res.json();
+
+    const games = [];
+    (data.dates || []).forEach(d => {
+      d.games?.forEach(g => {
+        if (g.status?.abstractGameState === 'Final') {
+          const homeIsHome = g.teams?.home?.team?.id === homeTeamId;
+          const homeScore = homeIsHome ? g.teams?.home?.score : g.teams?.away?.score;
+          const awayScore = homeIsHome ? g.teams?.away?.score : g.teams?.home?.score;
+          if (homeScore != null && awayScore != null) {
+            games.push({ homeWin: homeScore > awayScore, homeScore, awayScore, atHome: homeIsHome });
+          }
+        }
+      });
+    });
+
+    if (!games.length) return `No ${season} season series data yet — check Baseball Reference`;
+
+    const homeWins = games.filter(g => g.homeWin).length;
+    const awayWins = games.length - homeWins;
+    const last5 = games.slice(-5).map(g => `${g.homeWin ? homeTeam : awayTeam} ${g.homeScore}-${g.awayScore}`).join(', ');
+    const homeGames = games.filter(g => g.atHome);
+    const homeWinsAtHome = homeGames.filter(g => g.homeWin).length;
+
+    return `${season} Series: ${homeTeam} ${homeWins}-${awayWins} | Last 5: ${last5 || 'N/A'} | ${homeTeam} at home vs ${awayTeam}: ${homeWinsAtHome}-${homeGames.length - homeWinsAtHome}`;
+  } catch {
+    return 'H2H data unavailable — check Baseball Reference';
+  }
+}
 
 // ── INJURIES (MLB Stats API — free) ───────────────────────────────────────────
 
