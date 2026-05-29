@@ -38,7 +38,11 @@ async function fetchAllBooks(sportKey) {
       const res = await fetch(`https://api.sharpapi.io/api/v1/odds?league=${league}&market=main&live=false&per_page=300`, {
         headers: { 'X-API-Key': sharpKey }, cache: 'no-store',
       });
-      const rows = (await res.json()).data || [];
+      const rawJson = await res.json();
+      const rows = rawJson.data || [];
+      console.log('Sharp lines raw response keys:', Object.keys(rawJson));
+      console.log('Sharp lines rows count:', rows.length);
+      if (rows.length > 0) console.log('Sharp lines sample row:', JSON.stringify(rows[0]));
       if (!rows.length) throw new Error('No rows');
 
       for (const row of rows) {
