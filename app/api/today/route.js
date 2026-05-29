@@ -141,7 +141,7 @@ async function fetchOdds(sport) {
     if (!SHARP_KEY) return { oddsMap: {}, bookmakerCount: 0 };
 
     // Map sport string to Sharp API league
-    const leagueMap = { 'baseball_mlb': 'mlb', 'basketball_nba': 'nba', 'americanfootball_nfl': 'nfl' };
+    const leagueMap = { 'baseball_mlb': 'MLB', 'basketball_nba': 'NBA', 'americanfootball_nfl': 'NFL' };
     const league = leagueMap[sport] || 'MLB';
 
     // Selected books: FanDuel, DraftKings, BetOnline (sharp)

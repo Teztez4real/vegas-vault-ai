@@ -31,7 +31,7 @@ async function fetchAllBooks(sportKey) {
 
   if (sharpKey) {
     try {
-      const leagueMap = { 'baseball_mlb': 'mlb', 'basketball_nba': 'nba', 'americanfootball_nfl': 'nfl' };
+      const leagueMap = { 'baseball_mlb': 'MLB', 'basketball_nba': 'NBA', 'americanfootball_nfl': 'NFL' };
       const league = leagueMap[sportKey];
       if (!league) return games;
 
