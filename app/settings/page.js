@@ -64,14 +64,13 @@ export default function SettingsPage() {
     } catch(e) { setTestMsg('❌ ' + e.message); }
   }
 
-  async function clearAllPlays() {
+  function clearAllPlays() {
     setClearMsg('');
     try {
-      const { data: { session: s } } = await supabase.auth.getSession();
-      if (!s) { setClearMsg('❌ Not signed in'); return; }
-      const { error } = await supabase.from('analyses').delete().eq('user_id', s.user.id);
-      if (error) throw error;
-      setClearMsg('✅ All plays cleared');
+      localStorage.removeItem('vv_results');
+      localStorage.removeItem('vv_finalized');
+      localStorage.removeItem('vv_pick_history');
+      setClearMsg('✅ All plays cleared — reload the dashboard to apply');
     } catch(e) { setClearMsg('❌ ' + e.message); }
   }
 
