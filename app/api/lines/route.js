@@ -27,7 +27,6 @@ function fmt(price) {
 
 async function fetchAllBooks(sportKey) {
   const sharpKey = process.env.SHARPAPI_KEY;
-  console.log('SHARPAPI_KEY present:', !!sharpKey, 'length:', sharpKey?.length);
   const games = {};
 
   if (sharpKey) {
@@ -41,22 +40,30 @@ async function fetchAllBooks(sportKey) {
       });
       const rawJson = await res.json();
       const rows = rawJson.data || [];
-      console.log('Sharp lines raw response keys:', Object.keys(rawJson));
-      console.log('Sharp lines rows count:', rows.length);
-      if (rows.length > 0) console.log('Sharp lines sample row:', JSON.stringify(rows[0]));
       if (!rows.length) throw new Error('No rows');
 
       for (const row of rows) {
         const { home_team: home, away_team: away, sportsbook, odds_american: odds, event_start_time } = row;
         if (!home || !away || odds == null) continue;
+        // Only process moneyline rows
+        if (row.market_type && row.market_type !== 'moneyline') continue;
         const key = `${away}|${home}`;
         if (!games[key]) games[key] = { away, home, commenceTime: event_start_time, books: {} };
         const book = (sportsbook || '').toLowerCase();
         if (!games[key].books[book]) games[key].books[book] = {};
-        const homeWord = home.split(' ').pop().toLowerCase();
-        const isHome = (row.selection || '').toLowerCase().includes(homeWord) || row.selection === home;
-        if (isHome) games[key].books[book].homeML = odds;
-        else games[key].books[book].awayML = odds;
+        // selection field contains abbreviated team name — match against home/away
+        const sel = (row.selection || '').toLowerCase();
+        const homeParts = home.toLowerCase().split(' ');
+        const awayParts = away.toLowerCase().split(' ');
+        const matchesHome = homeParts.some(p => p.length > 2 && sel.includes(p));
+        const matchesAway = awayParts.some(p => p.length > 2 && sel.includes(p));
+        if (matchesHome) games[key].books[book].homeML = odds;
+        else if (matchesAway) games[key].books[book].awayML = odds;
+        else {
+          // fallback: use odds sign — favorites are negative, use position
+          if (!games[key].books[book].awayML) games[key].books[book].awayML = odds;
+          else games[key].books[book].homeML = odds;
+        }
       }
 
       console.log(`Lines: SharpAPI returned ${Object.keys(games).length} games`);
