@@ -16,7 +16,7 @@ export async function POST(request) {
     const prompt = buildPrompt(game);
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-5',
+      model: 'claude-sonnet-4-5-20251022',
       max_tokens: 4000,
       messages: [
         {
