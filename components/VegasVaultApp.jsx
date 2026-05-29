@@ -2073,10 +2073,11 @@ export default function VegasVaultApp() {
         if (!result?.summary) {
           result = { ...result, summary:{ tier:'3', tierLabel:'Tier 3', pick:'No Pick', betType:'N/A', confidence:'LOW', verdict:'Analysis incomplete.', isScamPlay:false, slot:next.slot } };
         }
-        // Auto-finalize queued plays when done
-        const finalResult = { ...result, finalized: true, finalizedAt: new Date().toISOString() };
-        setResults(prev => ({ ...prev, [next.key]: finalResult }));
-        setFinalized(prev => ({ ...prev, [next.key]: true }));
+        setResults(prev => ({ ...prev, [next.key]: result }));
+        // AI decides when to finalize
+        if (result?.summary?.readyToFinalize === true) {
+          setFinalized(prev => ({ ...prev, [next.key]: true }));
+        }
         setPreAnalyzeQueue(q => q.filter(item => item.key !== next.key));
       })
       .catch(err => {
@@ -2184,13 +2185,16 @@ export default function VegasVaultApp() {
           isScamPlay:false, slot,
         };
       }
-      // Auto-finalize all analyzed plays — marks them as done for clients
-      const finalResult = { ...result, finalized: true, finalizedAt: new Date().toISOString() };
-      setResults(prev=>({...prev,[key]:finalResult}));
-      setFinalized(prev=>({...prev,[key]:true}));
+      setResults(prev=>({...prev,[key]:result}));
+      // AI decides when to finalize — only finalize if AI signals readiness
+      if (result?.summary?.readyToFinalize === true && !result.error) {
+        const finalResult = { ...result, finalized: true, finalizedAt: new Date().toISOString() };
+        setResults(prev=>({...prev,[key]:finalResult}));
+        setFinalized(prev=>({...prev,[key]:true}));
+      }
       // Only open the modal if analysis has real content
       if (!result.error && !result.parseError) {
-        setActiveResult(finalResult); setActiveGame({...game,slot});
+        setActiveResult(result); setActiveGame({...game,slot});
       }
     }catch(e){
       setError(`Generation failed: ${e.message}`);
