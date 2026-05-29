@@ -491,36 +491,62 @@ async function fetchTeamRecentForm(teamId, teamName) {
 async function fetchMLBH2H(awayTeamId, homeTeamId, awayTeam, homeTeam) {
   try {
     const season = new Date().getFullYear();
-    const res = await fetch(
-      `https://statsapi.mlb.com/api/v1/schedule?sportId=1&teamId=${homeTeamId}&opponentId=${awayTeamId}&season=${season}&gameType=R&hydrate=linescore`,
-      { cache: 'no-store' }
-    );
-    if (!res.ok) throw new Error('h2h fail');
-    const data = await res.json();
+    const lastSeason = season - 1;
 
-    const games = [];
-    (data.dates || []).forEach(d => {
-      d.games?.forEach(g => {
-        if (g.status?.abstractGameState === 'Final') {
-          const homeIsHome = g.teams?.home?.team?.id === homeTeamId;
-          const homeScore = homeIsHome ? g.teams?.home?.score : g.teams?.away?.score;
-          const awayScore = homeIsHome ? g.teams?.away?.score : g.teams?.home?.score;
-          if (homeScore != null && awayScore != null) {
-            games.push({ homeWin: homeScore > awayScore, homeScore, awayScore, atHome: homeIsHome });
+    // Fetch both current and last season in parallel
+    const [curRes, lastRes] = await Promise.all([
+      fetch(`https://statsapi.mlb.com/api/v1/schedule?sportId=1&teamId=${homeTeamId}&opponentId=${awayTeamId}&season=${season}&gameType=R&hydrate=linescore`, { cache: 'no-store' }),
+      fetch(`https://statsapi.mlb.com/api/v1/schedule?sportId=1&teamId=${homeTeamId}&opponentId=${awayTeamId}&season=${lastSeason}&gameType=R&hydrate=linescore`, { cache: 'no-store' }),
+    ]);
+
+    function parseGames(data) {
+      const games = [];
+      (data.dates || []).forEach(d => {
+        d.games?.forEach(g => {
+          if (g.status?.abstractGameState === 'Final') {
+            const homeIsHome = g.teams?.home?.team?.id === homeTeamId;
+            const homeScore = homeIsHome ? g.teams?.home?.score : g.teams?.away?.score;
+            const awayScore = homeIsHome ? g.teams?.away?.score : g.teams?.home?.score;
+            if (homeScore != null && awayScore != null)
+              games.push({ homeWin: homeScore > awayScore, homeScore, awayScore, atHome: homeIsHome });
           }
-        }
+        });
       });
-    });
+      return games;
+    }
 
-    if (!games.length) return `No ${season} season series data yet — check Baseball Reference`;
+    const curData = curRes.ok ? await curRes.json() : { dates: [] };
+    const lastData = lastRes.ok ? await lastRes.json() : { dates: [] };
 
-    const homeWins = games.filter(g => g.homeWin).length;
-    const awayWins = games.length - homeWins;
-    const last5 = games.slice(-5).map(g => `${g.homeWin ? homeTeam : awayTeam} ${g.homeScore}-${g.awayScore}`).join(', ');
-    const homeGames = games.filter(g => g.atHome);
-    const homeWinsAtHome = homeGames.filter(g => g.homeWin).length;
+    const curGames = parseGames(curData);
+    const lastGames = parseGames(lastData);
 
-    return `${season} Series: ${homeTeam} ${homeWins}-${awayWins} | Last 5: ${last5 || 'N/A'} | ${homeTeam} at home vs ${awayTeam}: ${homeWinsAtHome}-${homeGames.length - homeWinsAtHome}`;
+    const parts = [];
+
+    // Current season
+    if (curGames.length) {
+      const hw = curGames.filter(g => g.homeWin).length;
+      const aw = curGames.length - hw;
+      const last5 = curGames.slice(-5).map(g => `${g.homeWin ? homeTeam.split(' ').pop() : awayTeam.split(' ').pop()} ${g.homeScore}-${g.awayScore}`).join(', ');
+      const homeG = curGames.filter(g => g.atHome);
+      const hwh = homeG.filter(g => g.homeWin).length;
+      parts.push(`${season}: ${homeTeam.split(' ').pop()} ${hw}-${aw} vs ${awayTeam.split(' ').pop()} | Recent: ${last5} | At home: ${hwh}-${homeG.length - hwh}`);
+    } else {
+      parts.push(`${season}: No games played yet`);
+    }
+
+    // Last season
+    if (lastGames.length) {
+      const hw = lastGames.filter(g => g.homeWin).length;
+      const aw = lastGames.length - hw;
+      const homeG = lastGames.filter(g => g.atHome);
+      const hwh = homeG.filter(g => g.homeWin).length;
+      parts.push(`${lastSeason}: ${homeTeam.split(' ').pop()} ${hw}-${aw} | At home: ${hwh}-${homeG.length - hwh}`);
+    } else {
+      parts.push(`${lastSeason}: No data`);
+    }
+
+    return parts.join(' || ');
   } catch {
     return 'H2H data unavailable — check Baseball Reference';
   }
