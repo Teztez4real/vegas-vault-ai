@@ -430,8 +430,10 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
   const logoSport = game.sport;
   const awayRec  = isTennis ? `#${game.player1Ranking}` : game.awayRecord;
   const homeRec  = isTennis ? `#${game.player2Ranking}` : game.homeRecord;
-  const publicPct = 30 + ((game.id * 17) % 45);
-  const sharpPct  = 100 - publicPct;
+  // Use real betting splits if available, otherwise hide
+  const publicPct = game.publicBettingPct ?? null;
+  const sharpPct  = game.sharpMoneyPct ?? (publicPct !== null ? 100 - publicPct : null);
+  const hasRealSplits = publicPct !== null;
   const sportColor = game.sport==="MLB"?"#60a5fa":game.sport==="NBA"?"#fb923c":game.sport==="NFL"?"#34d399":"#a78bfa";
   const sportBg    = game.sport==="MLB"?"rgba(96,165,250,0.12)":game.sport==="NBA"?"rgba(251,146,60,0.12)":game.sport==="NFL"?"rgba(52,211,153,0.12)":"rgba(167,139,250,0.12)";
 
@@ -543,7 +545,8 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
         </div>
       )}
 
-      {/* Public / Sharp money bar */}
+      {/* Public / Sharp money bar — only show real data */}
+      {hasRealSplits && (
       <div style={{ marginBottom:12 }}>
         <div style={{ display:"flex",justifyContent:"space-between",marginBottom:5 }}>
           <span style={{ fontSize:8,color:"#1d4ed8",fontWeight:700,letterSpacing:"0.08em" }}>PUBLIC BETTING {publicPct}%</span>
@@ -554,30 +557,39 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
           <div style={{ width:`${sharpPct}%`,background:"linear-gradient(90deg,#047857,#10b981)",borderRadius:"0 2px 2px 0" }} />
         </div>
       </div>
+      )}
 
       {/* Prices row — ML, Spread, Total */}
       {!isTennis && (game.awayML || game.homeML || game.spread || game.total) && (
-        <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10,padding:'6px 10px',background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.05)',borderRadius:8 }}>
-          {/* Away ML */}
-          <div style={{ textAlign:'center',flex:1 }}>
-            <div style={{ fontSize:8,color:'#3a4a5e',letterSpacing:'0.08em',marginBottom:2 }}>ML</div>
-            <div style={{ fontSize:12,fontWeight:700,color:(game.awayML||'').startsWith('-')?'#f87171':'#4ade80' }}>{game.awayML||'—'}</div>
+        <div style={{ marginBottom:10 }}>
+          <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',padding:'6px 10px',background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.05)',borderRadius:game.lineMovement && game.lineMovement !== 'No significant movement' && game.lineMovement !== 'N/A' ? '8px 8px 0 0' : 8 }}>
+            {/* Away ML */}
+            <div style={{ textAlign:'center',flex:1 }}>
+              <div style={{ fontSize:8,color:'#3a4a5e',letterSpacing:'0.08em',marginBottom:2 }}>{game.awayAbbr||game.away?.split(' ').pop()} ML</div>
+              <div style={{ fontSize:12,fontWeight:700,color:(game.awayML||'').startsWith('-')?'#f87171':'#4ade80' }}>{game.awayML||'—'}</div>
+            </div>
+            {/* Spread */}
+            <div style={{ textAlign:'center',flex:1,borderLeft:'1px solid rgba(255,255,255,0.05)',borderRight:'1px solid rgba(255,255,255,0.05)' }}>
+              <div style={{ fontSize:8,color:'#3a4a5e',letterSpacing:'0.08em',marginBottom:2 }}>SPREAD</div>
+              <div style={{ fontSize:11,fontWeight:600,color:'#94a3b8' }}>{game.spread||'—'}</div>
+            </div>
+            {/* Total */}
+            <div style={{ textAlign:'center',flex:1,borderRight:'1px solid rgba(255,255,255,0.05)' }}>
+              <div style={{ fontSize:8,color:'#3a4a5e',letterSpacing:'0.08em',marginBottom:2 }}>O/U</div>
+              <div style={{ fontSize:11,fontWeight:600,color:'#94a3b8' }}>{game.total||'—'}</div>
+            </div>
+            {/* Home ML */}
+            <div style={{ textAlign:'center',flex:1 }}>
+              <div style={{ fontSize:8,color:'#3a4a5e',letterSpacing:'0.08em',marginBottom:2 }}>{game.homeAbbr||game.home?.split(' ').pop()} ML</div>
+              <div style={{ fontSize:12,fontWeight:700,color:(game.homeML||'').startsWith('-')?'#f87171':'#4ade80' }}>{game.homeML||'—'}</div>
+            </div>
           </div>
-          {/* Spread */}
-          <div style={{ textAlign:'center',flex:1,borderLeft:'1px solid rgba(255,255,255,0.05)',borderRight:'1px solid rgba(255,255,255,0.05)' }}>
-            <div style={{ fontSize:8,color:'#3a4a5e',letterSpacing:'0.08em',marginBottom:2 }}>SPREAD</div>
-            <div style={{ fontSize:11,fontWeight:600,color:'#94a3b8' }}>{game.spread||'—'}</div>
-          </div>
-          {/* Total */}
-          <div style={{ textAlign:'center',flex:1,borderRight:'1px solid rgba(255,255,255,0.05)' }}>
-            <div style={{ fontSize:8,color:'#3a4a5e',letterSpacing:'0.08em',marginBottom:2 }}>O/U</div>
-            <div style={{ fontSize:11,fontWeight:600,color:'#94a3b8' }}>{game.total||'—'}</div>
-          </div>
-          {/* Home ML */}
-          <div style={{ textAlign:'center',flex:1 }}>
-            <div style={{ fontSize:8,color:'#3a4a5e',letterSpacing:'0.08em',marginBottom:2 }}>ML</div>
-            <div style={{ fontSize:12,fontWeight:700,color:(game.homeML||'').startsWith('-')?'#f87171':'#4ade80' }}>{game.homeML||'—'}</div>
-          </div>
+          {/* Line movement indicator */}
+          {game.lineMovement && game.lineMovement !== 'No significant movement' && game.lineMovement !== 'N/A' && game.lineMovement !== 'No significant movement detected' && (
+            <div style={{ padding:'4px 10px',background:'rgba(248,113,113,0.06)',border:'1px solid rgba(248,113,113,0.15)',borderTop:'none',borderRadius:'0 0 8px 8px',fontSize:9,color:'#f87171',fontWeight:600 }}>
+              ⚡ {game.lineMovement}
+            </div>
+          )}
         </div>
       )}
 
@@ -2090,6 +2102,13 @@ export default function VegasVaultApp() {
               openingAwayML: fmtN(mv.openAway) || mv.openAway || game.openingAwayML,
               pinHomeML:     mv.pinHomeML     || game.pinHomeML,
               dkHomeML:      mv.dkHomeML      || game.dkHomeML,
+              // Live price updates from Sharp API
+              awayML:        fmtN(mv.currentAwayML) || mv.awayML || game.awayML,
+              homeML:        fmtN(mv.currentHomeML) || mv.homeML || game.homeML,
+              spread:        mv.spread        || game.spread,
+              total:         mv.total         || game.total,
+              publicBettingPct: mv.publicBettingPct ?? game.publicBettingPct,
+              sharpMoneyPct:    mv.sharpMoneyPct    ?? game.sharpMoneyPct,
             };
           }));
         })
