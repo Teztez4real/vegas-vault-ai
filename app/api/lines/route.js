@@ -39,7 +39,7 @@ async function fetchAllBooks(sportKey) {
       const allRows = [];
       let page = 1, lastPage = 1;
       do {
-        const res = await fetch(`https://api.sharpapi.io/api/v1/odds?league=${league}&market=main&per_page=100&page=${page}`, {
+        const res = await fetch(`https://api.sharpapi.io/api/v1/odds?league=${league}&per_page=100&page=${page}`, {
           headers: { 'X-API-Key': sharpKey }, cache: 'no-store',
         });
         if (!res.ok) break;
