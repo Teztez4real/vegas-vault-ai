@@ -272,6 +272,7 @@ async function fetchOdds(sport) {
       delete entry.bookPrices;
     });
 
+    console.log('Sharp oddsMap keys:', Object.keys(oddsMap).slice(0,5).join(' | '));
     return { oddsMap, bookmakerCount };
   } catch (e) {
     console.error('Sharp API fetchOdds error:', e.message);
