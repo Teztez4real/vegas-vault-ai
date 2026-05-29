@@ -205,7 +205,7 @@ async function fetchOdds(sport) {
     let lastPage = 1;
     do {
       const res = await fetch(
-        `https://api.sharpapi.io/api/v1/odds?league=${league}&market=main&per_page=100&page=${page}`,
+        `https://api.sharpapi.io/api/v1/odds?league=${league}&per_page=100&page=${page}`,
         { headers: { 'X-API-Key': SHARP_KEY }, cache: 'no-store' }
       );
       if (!res.ok) break;
