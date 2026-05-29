@@ -146,7 +146,7 @@ async function fetchOddsAPIFallback(sport) {
       const bookPrices = {};
       const _raw = {};
       (game.bookmakers || []).forEach(bm => {
-        const label = bm.key === 'fanduel' ? 'FD' : bm.key === 'draftkings' ? 'DK' : 'BOL';
+        const label = bm.key === 'fanduel' ? 'FD' : bm.key === 'draftkings' ? 'DK' : 'B365';
         bm.markets?.forEach(mkt => {
           if (mkt.key === 'h2h') mkt.outcomes?.forEach(o => {
             if (o.name === away && awayML === 'N/A') awayML = fmt(o.price);
@@ -167,8 +167,8 @@ async function fetchOddsAPIFallback(sport) {
       const pricingStr = Object.entries(bookPrices).map(([l,v]) => `${l}: ${v.away||'N/A'} / ${v.home||'N/A'}`).join(' | ');
       const bolAway = _raw['betonlineag']?.away, fdAway = _raw['fanduel']?.away, dkAway = _raw['draftkings']?.away;
       const signals = [];
-      if (bolAway && fdAway && Math.abs(bolAway-fdAway) >= 10) signals.push(`BOL ${fmt(bolAway)} vs FD ${fmt(fdAway)} — sharp on ${bolAway < fdAway ? away.split(' ').pop() : home.split(' ').pop()}`);
-      if (bolAway && dkAway && Math.abs(bolAway-dkAway) >= 10) signals.push(`BOL ${fmt(bolAway)} vs DK ${fmt(dkAway)} — sharp on ${bolAway < dkAway ? away.split(' ').pop() : home.split(' ').pop()}`);
+      if (bolAway && fdAway && Math.abs(bolAway-fdAway) >= 10) signals.push(`B365 ${fmt(bolAway)} vs FD ${fmt(fdAway)} — sharp on ${bolAway < fdAway ? away.split(' ').pop() : home.split(' ').pop()}`);
+      if (bolAway && dkAway && Math.abs(bolAway-dkAway) >= 10) signals.push(`B365 ${fmt(bolAway)} vs DK ${fmt(dkAway)} — sharp on ${bolAway < dkAway ? away.split(' ').pop() : home.split(' ').pop()}`);
       oddsMap[key] = { awayML, homeML, spread, total, openingAwayML: pricingStr||'N/A', openingHomeML: pricingStr||'N/A', lineMovement: signals.join(' | ')||'No significant movement', pricingStr };
     });
     console.log('Odds API fallback:', Object.keys(oddsMap).length, 'games');
@@ -197,7 +197,7 @@ async function fetchOdds(sport) {
     const league = leagueMap[sport] || 'MLB';
 
     // Fetch all books — filter to FD/DK/BetOnline in code
-    const SELECTED_BOOKS = ['fanduel', 'draftkings', 'betonline', 'bet_online', 'betonlineag'];
+    const SELECTED_BOOKS = ['fanduel', 'draftkings', 'bet365', 'bet_online', 'betonlineag'];
 
     // Step 1: Get all events for this league first
     const eventsRes = await fetch(
@@ -209,7 +209,7 @@ async function fetchOdds(sport) {
     console.log('Sharp events count:', events.length);
 
     // Step 2: Fetch odds for all events at once using sportsbook filter
-    const BOOKS = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'betonline'];
+    const BOOKS = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'bet365'];
     const allOdds = [];
     let page = 1;
     let lastPage = 1;
@@ -272,9 +272,9 @@ async function fetchOdds(sport) {
         const book = (o.sportsbook || '').toLowerCase();
         const isFD = book.includes('fanduel');
         const isDK = book.includes('draftkings');
-        const isBOL = book.includes('betonline') || book.includes('bovada') || book.includes('betus');
-        if (!isFD && !isDK && !isBOL) return; // skip non-selected books
-        const bookLabel = isFD ? 'FD' : isDK ? 'DK' : 'BOL';
+        const isB365 = book.includes('bet365') || book.includes('bovada') || book.includes('betus');
+        if (!isFD && !isDK && !isB365) return; // skip non-selected books
+        const bookLabel = isFD ? 'FD' : isDK ? 'DK' : 'B365';
         const odds = o.odds_american;
         const sel = (o.selection || '').toLowerCase();
         const marketType = o.market_type || '';
@@ -328,20 +328,20 @@ async function fetchOdds(sport) {
 
       // Line movement: BetOnline (sharp) vs square books
       const signals = [];
-      const bolAway = raw['betonline']?.away;
+      const bolAway = raw['bet365']?.away;
       const fdAway = raw['fanduel']?.away;
       const dkAway = raw['draftkings']?.away;
       const home = key.split('@')[1];
 
       if (bolAway && fdAway && Math.abs(bolAway - fdAway) >= 10) {
         signals.push(bolAway < fdAway
-          ? `BOL shorter on ${away} (${fmt(bolAway)}) vs FD (${fmt(fdAway)}) — sharp money on ${away}`
-          : `BOL shorter on ${home} (${fmt(fdAway)}) vs FD (${fmt(bolAway)}) — sharp money on ${home}`);
+          ? `B365 shorter on ${away} (${fmt(bolAway)}) vs FD (${fmt(fdAway)}) — sharp money on ${away}`
+          : `B365 shorter on ${home} (${fmt(fdAway)}) vs FD (${fmt(bolAway)}) — sharp money on ${home}`);
       }
       if (bolAway && dkAway && Math.abs(bolAway - dkAway) >= 10) {
         signals.push(bolAway < dkAway
-          ? `BOL shorter on ${away} (${fmt(bolAway)}) vs DK (${fmt(dkAway)}) — sharp money on ${away}`
-          : `BOL shorter on ${home} (${fmt(dkAway)}) vs DK (${fmt(bolAway)}) — sharp money on ${home}`);
+          ? `B365 shorter on ${away} (${fmt(bolAway)}) vs DK (${fmt(dkAway)}) — sharp money on ${away}`
+          : `B365 shorter on ${home} (${fmt(dkAway)}) vs DK (${fmt(bolAway)}) — sharp money on ${home}`);
       }
       if (fdAway && dkAway && Math.abs(fdAway - dkAway) >= 15) {
         signals.push(fdAway < dkAway

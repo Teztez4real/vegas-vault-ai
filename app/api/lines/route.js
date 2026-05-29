@@ -39,7 +39,7 @@ async function fetchAllBooks(sportKey) {
       const allRows = [];
       let page = 1, lastPage = 1;
       do {
-        const BOOKS = ["draftkings","fanduel","betmgm","caesars","betonline"];
+        const BOOKS = ["draftkings","fanduel","betmgm","caesars","bet365"];
         const res = await fetch(`https://api.sharpapi.io/api/v1/odds?league=${league}&sportsbook=${BOOKS.join(",")}&per_page=100&page=${page}`, {
           headers: { 'X-API-Key': sharpKey }, cache: 'no-store',
         });
@@ -62,7 +62,7 @@ async function fetchAllBooks(sportKey) {
         if (!games[key]) games[key] = { away, home, commenceTime: event_start_time, books: {} };
         const book = (sportsbook || '').toLowerCase();
         // Only track our 3 books
-        const isOurBook = book.includes('fanduel') || book.includes('draftkings') || book.includes('betonline') || book.includes('bovada') || book.includes('betus');
+        const isOurBook = book.includes('fanduel') || book.includes('draftkings') || book.includes('bet365') || book.includes('bovada') || book.includes('betus');
         if (!isOurBook) continue;
         if (!games[key].books[book]) games[key].books[book] = {};
         // selection field contains abbreviated team name — match against home/away
@@ -95,7 +95,7 @@ async function fetchAllBooks(sportKey) {
 // ── BUILD GAME LIST WITH BEST ODDS ────────────────────────────────────────────
 
 function buildGames(gamesMap) {
-  const preferredBooks = ['draftkings', 'fanduel', 'betonline'];
+  const preferredBooks = ['draftkings', 'fanduel', 'bet365'];
   return Object.entries(gamesMap).map(([key, event]) => {
     // Best public book for current ML
     let bestBook = null;
@@ -110,7 +110,7 @@ function buildGames(gamesMap) {
     if (!bestBook) return null;
 
     // BetOnline = sharp book (moves first with sharp money)
-    const bolEntry = Object.entries(event.books).find(([b]) => b.includes('betonline') || b.includes('betus') || b.includes('bovada'));
+    const bolEntry = Object.entries(event.books).find(([b]) => b.includes('bet365') || b.includes('betus') || b.includes('bovada'));
     const bolBook  = bolEntry?.[1];
 
     // DraftKings = biggest public book
@@ -123,12 +123,12 @@ function buildGames(gamesMap) {
 
     // Sharp signal: BetOnline vs DraftKings
     // BetOnline accepts sharp action and adjusts fast — when it diverges from DK, that's real
-    // Threshold: 5pts (lower than DK/FD because BOL is a true sharp book)
+    // Threshold: 5pts (lower than DK/FD because B365 is a true sharp book)
     let sharpSignal = null;
 
-    const sharpBook  = bolBook?.homeML != null ? bolBook : fdBook;  // BOL preferred, FD fallback
+    const sharpBook  = bolBook?.homeML != null ? bolBook : fdBook;  // B365 preferred, FD fallback
     const publicBook = dkBook?.homeML != null ? dkBook : null;
-    const sharpName  = bolBook?.homeML != null ? 'BOL' : 'FD';
+    const sharpName  = bolBook?.homeML != null ? 'B365' : 'FD';
     const publicName = 'DK';
 
     if (sharpBook && publicBook) {
