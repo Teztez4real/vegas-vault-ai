@@ -27,6 +27,7 @@ function fmt(price) {
 
 async function fetchAllBooks(sportKey) {
   const sharpKey = process.env.SHARPAPI_KEY;
+  console.log('SHARPAPI_KEY present:', !!sharpKey, 'length:', sharpKey?.length);
   const games = {};
 
   if (sharpKey) {
