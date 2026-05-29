@@ -66,7 +66,7 @@ async function fetchAllBooks(sportKey) {
         }
       }
 
-      console.log(`Lines: SharpAPI returned ${Object.keys(games).length} games`);
+      console.log('Lines: Sharp game keys:', Object.keys(games).join(' | '));
       return games;
     } catch (err) {
       console.error('Lines SharpAPI error:', err.message);
