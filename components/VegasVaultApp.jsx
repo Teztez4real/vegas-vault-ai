@@ -2512,7 +2512,7 @@ export default function VegasVaultApp() {
             <div style={{ padding:"18px 20px",borderBottom:"1px solid rgba(255,255,255,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:"#07091a",zIndex:10 }}>
               <div>
                 <div style={{ fontSize:14,fontWeight:700,color:"#f1f5f9",letterSpacing:"0.04em" }}>📊 ODDS MOVEMENT</div>
-                <div style={{ fontSize:10,color:"#3a4a5e",marginTop:2 }}>Live FanDuel vs DraftKings vs BetOnline · {games.length} games today</div>
+                <div style={{ fontSize:10,color:"#3a4a5e",marginTop:2 }}>Live FanDuel vs DraftKings vs BetMGM vs Caesars vs Bet365 · {games.length} games today</div>
               </div>
               <button onClick={()=>setShowOddsMovement(false)} style={{ background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:8,width:32,height:32,cursor:"pointer",color:"#64748b",fontSize:14,fontFamily:"inherit" }}>✕</button>
             </div>

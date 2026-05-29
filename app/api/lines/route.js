@@ -62,7 +62,7 @@ async function fetchAllBooks(sportKey) {
         if (!games[key]) games[key] = { away, home, commenceTime: event_start_time, books: {} };
         const book = (sportsbook || '').toLowerCase();
         // Only track our 3 books
-        const isOurBook = book.includes('fanduel') || book.includes('draftkings') || book.includes('bet365') || book.includes('bovada') || book.includes('betus');
+        const isOurBook = book.includes('fanduel') || book.includes('draftkings') || book.includes('bet365') || book.includes('betmgm') || book.includes('caesars');
         if (!isOurBook) continue;
         if (!games[key].books[book]) games[key].books[book] = {};
         // selection field contains abbreviated team name — match against home/away
@@ -95,7 +95,7 @@ async function fetchAllBooks(sportKey) {
 // ── BUILD GAME LIST WITH BEST ODDS ────────────────────────────────────────────
 
 function buildGames(gamesMap) {
-  const preferredBooks = ['draftkings', 'fanduel', 'bet365'];
+  const preferredBooks = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'bet365'];
   return Object.entries(gamesMap).map(([key, event]) => {
     // Best public book for current ML
     let bestBook = null;
