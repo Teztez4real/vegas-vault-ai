@@ -563,10 +563,10 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
       {!isTennis && (game.awayML || game.homeML || game.spread || game.total) && (
         <div style={{ marginBottom:10 }}>
           <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',padding:'6px 10px',background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.05)',borderRadius:game.lineMovement && game.lineMovement !== 'No significant movement' && game.lineMovement !== 'N/A' ? '8px 8px 0 0' : 8 }}>
-            {/* Away ML */}
+            {/* Away ML — DraftKings */}
             <div style={{ textAlign:'center',flex:1 }}>
               <div style={{ fontSize:8,color:'#3a4a5e',letterSpacing:'0.08em',marginBottom:2 }}>{game.awayAbbr||game.away?.split(' ').pop()} ML</div>
-              <div style={{ fontSize:12,fontWeight:700,color:(game.awayML||'').startsWith('-')?'#f87171':'#4ade80' }}>{game.awayML||'—'}</div>
+              <div style={{ fontSize:12,fontWeight:700,color:((game.dkAwayML!=null?String(game.dkAwayML):game.awayML)||'').startsWith('-')?'#f87171':'#4ade80' }}>{game.dkAwayML!=null?(game.dkAwayML>0?'+'+game.dkAwayML:game.dkAwayML):game.awayML||'—'}</div>
             </div>
             {/* Spread */}
             <div style={{ textAlign:'center',flex:1,borderLeft:'1px solid rgba(255,255,255,0.05)',borderRight:'1px solid rgba(255,255,255,0.05)' }}>
@@ -578,10 +578,10 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
               <div style={{ fontSize:8,color:'#3a4a5e',letterSpacing:'0.08em',marginBottom:2 }}>O/U</div>
               <div style={{ fontSize:11,fontWeight:600,color:'#94a3b8' }}>{game.total||'—'}</div>
             </div>
-            {/* Home ML */}
+            {/* Home ML — DraftKings */}
             <div style={{ textAlign:'center',flex:1 }}>
               <div style={{ fontSize:8,color:'#3a4a5e',letterSpacing:'0.08em',marginBottom:2 }}>{game.homeAbbr||game.home?.split(' ').pop()} ML</div>
-              <div style={{ fontSize:12,fontWeight:700,color:(game.homeML||'').startsWith('-')?'#f87171':'#4ade80' }}>{game.homeML||'—'}</div>
+              <div style={{ fontSize:12,fontWeight:700,color:((game.dkHomeML!=null?String(game.dkHomeML):game.homeML)||'').startsWith('-')?'#f87171':'#4ade80' }}>{game.dkHomeML!=null?(game.dkHomeML>0?'+'+game.dkHomeML:game.dkHomeML):game.homeML||'—'}</div>
             </div>
           </div>
           {/* Line movement indicator */}
@@ -2101,6 +2101,7 @@ export default function VegasVaultApp() {
               openingHomeML: fmtN(mv.openHome) || mv.openHome || game.openingHomeML,
               openingAwayML: fmtN(mv.openAway) || mv.openAway || game.openingAwayML,
               pinHomeML:     mv.pinHomeML     || game.pinHomeML,
+              dkAwayML:      mv.dkAwayML      || game.dkAwayML,
               dkHomeML:      mv.dkHomeML      || game.dkHomeML,
               // Live price updates from Sharp API
               awayML:        fmtN(mv.currentAwayML) || mv.awayML || game.awayML,
