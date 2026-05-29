@@ -35,7 +35,7 @@ async function fetchAllBooks(sportKey) {
       const league = leagueMap[sportKey];
       if (!league) return games;
 
-      const res = await fetch(`https://api.sharpapi.io/api/v1/odds?league=${league}&market=main&live=false&per_page=300`, {
+      const res = await fetch(`https://api.sharpapi.io/api/v1/odds?league=${league}&market=main&live=false&per_page=500`, {
         headers: { 'X-API-Key': sharpKey }, cache: 'no-store',
       });
       const rawJson = await res.json();
@@ -46,10 +46,14 @@ async function fetchAllBooks(sportKey) {
         const { home_team: home, away_team: away, sportsbook, odds_american: odds, event_start_time } = row;
         if (!home || !away || odds == null) continue;
         // Only process moneyline rows
-        if (row.market_type && row.market_type !== 'moneyline') continue;
+        const mt = (row.market_type || '').toLowerCase();
+        if (mt && mt !== 'moneyline' && !mt.includes('money')) continue;
         const key = `${away}|${home}`;
         if (!games[key]) games[key] = { away, home, commenceTime: event_start_time, books: {} };
         const book = (sportsbook || '').toLowerCase();
+        // Only track our 3 books
+        const isOurBook = book.includes('fanduel') || book.includes('draftkings') || book.includes('betonline') || book.includes('bovada') || book.includes('betus');
+        if (!isOurBook) continue;
         if (!games[key].books[book]) games[key].books[book] = {};
         // selection field contains abbreviated team name — match against home/away
         const sel = (row.selection || '').toLowerCase();

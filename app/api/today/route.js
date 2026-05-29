@@ -144,13 +144,11 @@ async function fetchOdds(sport) {
     const leagueMap = { 'baseball_mlb': 'MLB', 'basketball_nba': 'NBA', 'americanfootball_nfl': 'NFL' };
     const league = leagueMap[sport] || 'MLB';
 
-    // Selected books: FanDuel, DraftKings, BetOnline (sharp)
-    const SELECTED_BOOKS = ['fanduel', 'draftkings', 'betonline'];
-    const booksParam = SELECTED_BOOKS.join(',');
+    // Fetch all books — filter to FD/DK/BetOnline in code
+    const SELECTED_BOOKS = ['fanduel', 'draftkings', 'betonline', 'bet_online', 'betonlineag'];
 
-    // Fetch events and odds from Sharp API
     const oddsRes = await fetch(
-      `https://api.sharpapi.io/api/v1/odds?league=${league}&sportsbook=${booksParam}&market=main&live=false&per_page=500`,
+      `https://api.sharpapi.io/api/v1/odds?league=${league}&market=main&live=false&per_page=500`,
       { headers: { 'X-API-Key': SHARP_KEY }, cache: 'no-store' }
     );
 
@@ -192,7 +190,11 @@ async function fetchOdds(sport) {
 
       rows.forEach(o => {
         const book = (o.sportsbook || '').toLowerCase();
-        const bookLabel = book.includes('fanduel') ? 'FD' : book.includes('draftkings') ? 'DK' : 'BOL';
+        const isFD = book.includes('fanduel');
+        const isDK = book.includes('draftkings');
+        const isBOL = book.includes('betonline') || book.includes('bovada') || book.includes('betus');
+        if (!isFD && !isDK && !isBOL) return; // skip non-selected books
+        const bookLabel = isFD ? 'FD' : isDK ? 'DK' : 'BOL';
         const odds = o.odds_american;
         const sel = (o.selection || '').toLowerCase();
         const marketType = o.market_type || '';
@@ -272,7 +274,6 @@ async function fetchOdds(sport) {
       delete entry.bookPrices;
     });
 
-    console.log('Sharp oddsMap keys:', Object.keys(oddsMap).slice(0,5).join(' | '));
     return { oddsMap, bookmakerCount };
   } catch (e) {
     console.error('Sharp API fetchOdds error:', e.message);
