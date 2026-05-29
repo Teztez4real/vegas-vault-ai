@@ -2073,7 +2073,10 @@ export default function VegasVaultApp() {
         if (!result?.summary) {
           result = { ...result, summary:{ tier:'3', tierLabel:'Tier 3', pick:'No Pick', betType:'N/A', confidence:'LOW', verdict:'Analysis incomplete.', isScamPlay:false, slot:next.slot } };
         }
-        setResults(prev => ({ ...prev, [next.key]: result }));
+        // Auto-finalize queued plays when done
+        const finalResult = { ...result, finalized: true, finalizedAt: new Date().toISOString() };
+        setResults(prev => ({ ...prev, [next.key]: finalResult }));
+        setFinalized(prev => ({ ...prev, [next.key]: true }));
         setPreAnalyzeQueue(q => q.filter(item => item.key !== next.key));
       })
       .catch(err => {
@@ -2181,10 +2184,13 @@ export default function VegasVaultApp() {
           isScamPlay:false, slot,
         };
       }
-      setResults(prev=>({...prev,[key]:result}));
+      // Auto-finalize all analyzed plays — marks them as done for clients
+      const finalResult = { ...result, finalized: true, finalizedAt: new Date().toISOString() };
+      setResults(prev=>({...prev,[key]:finalResult}));
+      setFinalized(prev=>({...prev,[key]:true}));
       // Only open the modal if analysis has real content
       if (!result.error && !result.parseError) {
-        setActiveResult(result); setActiveGame({...game,slot});
+        setActiveResult(finalResult); setActiveGame({...game,slot});
       }
     }catch(e){
       setError(`Generation failed: ${e.message}`);
