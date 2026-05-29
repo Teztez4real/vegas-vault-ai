@@ -35,7 +35,7 @@ async function fetchAllBooks(sportKey) {
       const league = leagueMap[sportKey];
       if (!league) return games;
 
-      const res = await fetch(`https://api.sharpapi.io/api/v1/odds?league=${league}&market=moneyline`, {
+      const res = await fetch(`https://api.sharpapi.io/api/v1/odds?league=${league}&market=main&live=false&per_page=300`, {
         headers: { 'X-API-Key': sharpKey }, cache: 'no-store',
       });
       const rows = (await res.json()).data || [];

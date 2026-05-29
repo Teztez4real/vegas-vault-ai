@@ -141,7 +141,7 @@ async function fetchOdds(sport) {
     if (!SHARP_KEY) return { oddsMap: {}, bookmakerCount: 0 };
 
     // Map sport string to Sharp API league
-    const leagueMap = { 'baseball_mlb': 'MLB', 'basketball_nba': 'NBA', 'americanfootball_nfl': 'NFL' };
+    const leagueMap = { 'baseball_mlb': 'mlb', 'basketball_nba': 'nba', 'americanfootball_nfl': 'nfl' };
     const league = leagueMap[sport] || 'MLB';
 
     // Selected books: FanDuel, DraftKings, BetOnline (sharp)
@@ -150,19 +150,16 @@ async function fetchOdds(sport) {
 
     // Fetch events and odds from Sharp API
     const [eventsRes, oddsRes] = await Promise.all([
-      fetch(`https://api.sharpapi.io/api/v1/events?league=${league}&status=upcoming&per_page=50`, {
+      fetch(`https://api.sharpapi.io/api/v1/events?league=${league}&live=false&per_page=50`, {
         headers: { 'X-API-Key': SHARP_KEY },
         cache: 'no-store',
       }),
-      fetch(`https://api.sharpapi.io/api/v1/odds?league=${league}&sportsbook=${booksParam}&market=moneyline,spread,total&odds_format=american&per_page=200`, {
+      fetch(`https://api.sharpapi.io/api/v1/odds?league=${league}&sportsbook=${booksParam}&market=main&live=false&per_page=300`, {
         headers: { 'X-API-Key': SHARP_KEY },
         cache: 'no-store',
       }),
     ]);
 
-    console.log('Sharp events status:', eventsRes.status, 'odds status:', oddsRes.status);
-    if (!eventsRes.ok) { const t = await eventsRes.text(); console.log('events error:', t); }
-    if (!oddsRes.ok) { const t = await oddsRes.text(); console.log('odds error:', t); }
     if (!eventsRes.ok || !oddsRes.ok) return { oddsMap: {}, bookmakerCount: 0 };
 
     const eventsData = await eventsRes.json();
@@ -170,9 +167,6 @@ async function fetchOdds(sport) {
 
     const events = eventsData.data || [];
     const oddsList = oddsData.data || [];
-    console.log('Sharp API: events count:', events.length, 'odds count:', oddsList.length);
-    if (oddsList.length > 0) console.log('Sample odds object:', JSON.stringify(oddsList[0]));
-    if (events.length > 0) console.log('Sample event object:', JSON.stringify(events[0]));
 
     // Build event map by event_id
     const eventMap = {};
