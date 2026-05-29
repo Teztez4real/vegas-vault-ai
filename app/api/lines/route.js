@@ -31,49 +31,42 @@ async function fetchAllBooks(sportKey) {
 
   if (sharpKey) {
     try {
-      const leagueMap = { baseball_mlb:'MLB', basketball_nba:'NBA', americanfootball_nfl:'NFL' };
-      const sportKeyMap = { baseball_mlb:'baseball', basketball_nba:'basketball', americanfootball_nfl:'americanfootball' };
-      const league = leagueMap[sportKey] || 'MLB';
-      const sportName = sportKeyMap[sportKey] || 'baseball';
-      const SELECTED_BOOKS = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'bet365'];
+      const leagueMap = { 'baseball_mlb': 'MLB', 'basketball_nba': 'NBA', 'americanfootball_nfl': 'NFL' };
+      const league = leagueMap[sportKey];
+      if (!league) return games;
 
-      const res = await fetch(`https://api.sharpapi.io/api/v1/odds?sport=${sportName}&league=${league}&sportsbook=All`, {
+      const res = await fetch(`https://api.sharpapi.io/api/v1/odds?league=${league}&market=main&live=false&per_page=300`, {
         headers: { 'X-API-Key': sharpKey }, cache: 'no-store',
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      const events = data.events || [];
+      const rawJson = await res.json();
+      const rows = rawJson.data || [];
+      if (!rows.length) throw new Error('No rows');
 
-      for (const event of events) {
-        const away = event.away || '';
-        const home = event.home || '';
-        if (!away || !home) continue;
+      for (const row of rows) {
+        const { home_team: home, away_team: away, sportsbook, odds_american: odds, event_start_time } = row;
+        if (!home || !away || odds == null) continue;
+        // Only process moneyline rows
+        if (row.market_type && row.market_type !== 'moneyline') continue;
         const key = `${away}|${home}`;
-        if (!games[key]) games[key] = { away, home, commenceTime: event.start_time, books: {} };
-
-        const books = event.sportsbooks || event.books || {};
-        const odds = event.odds || {};
-
-        // Handle flat odds (aggregate)
-        if (odds.moneyline && !Object.keys(books).length) {
-          games[key].books['aggregate'] = {
-            awayML: odds.moneyline.away,
-            homeML: odds.moneyline.home,
-          };
+        if (!games[key]) games[key] = { away, home, commenceTime: event_start_time, books: {} };
+        const book = (sportsbook || '').toLowerCase();
+        if (!games[key].books[book]) games[key].books[book] = {};
+        // selection field contains abbreviated team name — match against home/away
+        const sel = (row.selection || '').toLowerCase();
+        const homeParts = home.toLowerCase().split(' ');
+        const awayParts = away.toLowerCase().split(' ');
+        const matchesHome = homeParts.some(p => p.length > 2 && sel.includes(p));
+        const matchesAway = awayParts.some(p => p.length > 2 && sel.includes(p));
+        if (matchesHome) games[key].books[book].homeML = odds;
+        else if (matchesAway) games[key].books[book].awayML = odds;
+        else {
+          // fallback: use odds sign — favorites are negative, use position
+          if (!games[key].books[book].awayML) games[key].books[book].awayML = odds;
+          else games[key].books[book].homeML = odds;
         }
-
-        // Handle per-book odds
-        Object.entries(books).forEach(([bookName, bookOdds]) => {
-          const bookLower = bookName.toLowerCase();
-          const isSelected = SELECTED_BOOKS.some(b => bookLower.includes(b));
-          if (!isSelected) return;
-          if (!games[key].books[bookLower]) games[key].books[bookLower] = {};
-          if (bookOdds.moneyline) {
-            games[key].books[bookLower].awayML = bookOdds.moneyline.away;
-            games[key].books[bookLower].homeML = bookOdds.moneyline.home;
-          }
-        });
       }
+
+      console.log(`Lines: SharpAPI returned ${Object.keys(games).length} games`);
       return games;
     } catch (err) {
       console.error('Lines SharpAPI error:', err.message);
@@ -88,7 +81,7 @@ async function fetchAllBooks(sportKey) {
 // ── BUILD GAME LIST WITH BEST ODDS ────────────────────────────────────────────
 
 function buildGames(gamesMap) {
-  const preferredBooks = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'bet365'];
+  const preferredBooks = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'pinnacle', 'pointsbet', 'bet365'];
   return Object.entries(gamesMap).map(([key, event]) => {
     // Best public book for current ML
     let bestBook = null;
@@ -103,7 +96,7 @@ function buildGames(gamesMap) {
     if (!bestBook) return null;
 
     // BetOnline = sharp book (moves first with sharp money)
-    const bolEntry = Object.entries(event.books).find(([b]) => b.includes('bet365') || b.includes('betus') || b.includes('bovada'));
+    const bolEntry = Object.entries(event.books).find(([b]) => b.includes('betonline') || b.includes('betus') || b.includes('bovada'));
     const bolBook  = bolEntry?.[1];
 
     // DraftKings = biggest public book
@@ -116,12 +109,12 @@ function buildGames(gamesMap) {
 
     // Sharp signal: BetOnline vs DraftKings
     // BetOnline accepts sharp action and adjusts fast — when it diverges from DK, that's real
-    // Threshold: 5pts (lower than DK/FD because B365 is a true sharp book)
+    // Threshold: 5pts (lower than DK/FD because BOL is a true sharp book)
     let sharpSignal = null;
 
-    const sharpBook  = bolBook?.homeML != null ? bolBook : fdBook;  // B365 preferred, FD fallback
+    const sharpBook  = bolBook?.homeML != null ? bolBook : fdBook;  // BOL preferred, FD fallback
     const publicBook = dkBook?.homeML != null ? dkBook : null;
-    const sharpName  = bolBook?.homeML != null ? 'B365' : 'FD';
+    const sharpName  = bolBook?.homeML != null ? 'BOL' : 'FD';
     const publicName = 'DK';
 
     if (sharpBook && publicBook) {
@@ -143,7 +136,6 @@ function buildGames(gamesMap) {
 
     return {
       key,
-      normalizedKey: `${normTeam(event.away)}|${normTeam(event.home)}`,
       away: event.away,
       home: event.home,
       homeML: fmt(bestBook.homeML),
@@ -159,13 +151,6 @@ function buildGames(gamesMap) {
 }
 
 // ── HANDLER ───────────────────────────────────────────────────────────────────
-
-// Normalize team name for fuzzy matching
-function normTeam(name) {
-  return (name || '').toLowerCase()
-    .replace(/^(the |los |san |new |st\. |st |fort |las )/, '')
-    .replace(/[^a-z]/g, '');
-}
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);

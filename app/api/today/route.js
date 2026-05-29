@@ -124,58 +124,6 @@ async function fetchNFLGames(dateParam) {
 
 // ── MLB ────────────────────────────────────────────────────────────────────────
 
-
-// ── ODDS API FALLBACK (for games Sharp API doesn't cover yet) ─────────────────
-
-async function fetchOddsAPIFallback(sport) {
-  try {
-    const ODDS_KEY = process.env.ODDS_API_KEY;
-    if (!ODDS_KEY) return {};
-    const res = await fetch(
-      `https://api.the-odds-api.com/v4/sports/${sport}/odds/?apiKey=${ODDS_KEY}&regions=us&markets=h2h,spreads,totals&oddsFormat=american&bookmakers=fanduel,draftkings,betonlineag`,
-      { cache: 'no-store' }
-    );
-    if (!res.ok) return {};
-    const data = await res.json();
-    const oddsMap = {};
-    data.forEach(game => {
-      const away = game.away_team;
-      const home = game.home_team;
-      const key = `${away}@${home}`;
-      let awayML = 'N/A', homeML = 'N/A', spread = 'N/A', total = 'N/A';
-      const bookPrices = {};
-      const _raw = {};
-      (game.bookmakers || []).forEach(bm => {
-        const label = bm.key === 'fanduel' ? 'FD' : bm.key === 'draftkings' ? 'DK' : 'B365';
-        bm.markets?.forEach(mkt => {
-          if (mkt.key === 'h2h') mkt.outcomes?.forEach(o => {
-            if (o.name === away && awayML === 'N/A') awayML = fmt(o.price);
-            if (o.name === home && homeML === 'N/A') homeML = fmt(o.price);
-            bookPrices[label] = bookPrices[label] || {};
-            _raw[bm.key] = _raw[bm.key] || {};
-            if (o.name === away) { bookPrices[label].away = fmt(o.price); _raw[bm.key].away = o.price; }
-            if (o.name === home) { bookPrices[label].home = fmt(o.price); _raw[bm.key].home = o.price; }
-          });
-          if (mkt.key === 'spreads') mkt.outcomes?.forEach(o => {
-            if (o.name === home && spread === 'N/A') spread = o.point > 0 ? `+${o.point}` : `${o.point}`;
-          });
-          if (mkt.key === 'totals') mkt.outcomes?.forEach(o => {
-            if (o.name === 'Over' && total === 'N/A') total = o.point;
-          });
-        });
-      });
-      const pricingStr = Object.entries(bookPrices).map(([l,v]) => `${l}: ${v.away||'N/A'} / ${v.home||'N/A'}`).join(' | ');
-      const bolAway = _raw['betonlineag']?.away, fdAway = _raw['fanduel']?.away, dkAway = _raw['draftkings']?.away;
-      const signals = [];
-      if (bolAway && fdAway && Math.abs(bolAway-fdAway) >= 10) signals.push(`B365 ${fmt(bolAway)} vs FD ${fmt(fdAway)} — sharp on ${bolAway < fdAway ? away.split(' ').pop() : home.split(' ').pop()}`);
-      if (bolAway && dkAway && Math.abs(bolAway-dkAway) >= 10) signals.push(`B365 ${fmt(bolAway)} vs DK ${fmt(dkAway)} — sharp on ${bolAway < dkAway ? away.split(' ').pop() : home.split(' ').pop()}`);
-      oddsMap[key] = { awayML, homeML, spread, total, openingAwayML: pricingStr||'N/A', openingHomeML: pricingStr||'N/A', lineMovement: signals.join(' | ')||'No significant movement', pricingStr };
-    });
-    console.log('Odds API fallback:', Object.keys(oddsMap).length, 'games');
-    return oddsMap;
-  } catch(e) { console.error('Odds API fallback error:', e.message); return {}; }
-}
-
 async function fetchMLBSchedule(date) {
   const dateStr = date || todayStr();
   const res = await fetch(
@@ -192,110 +140,143 @@ async function fetchOdds(sport) {
     const SHARP_KEY = process.env.SHARPAPI_KEY;
     if (!SHARP_KEY) return { oddsMap: {}, bookmakerCount: 0 };
 
+    // Map sport string to Sharp API league
     const leagueMap = { 'baseball_mlb': 'MLB', 'basketball_nba': 'NBA', 'americanfootball_nfl': 'NFL' };
-    const sportMap = { 'baseball_mlb': 'baseball', 'basketball_nba': 'basketball', 'americanfootball_nfl': 'americanfootball' };
     const league = leagueMap[sport] || 'MLB';
-    const sportKey = sportMap[sport] || 'baseball';
 
-    const res = await fetch(
-      `https://api.sharpapi.io/api/v1/odds?sport=${sportKey}&league=${league}&sportsbook=All`,
+    // Selected books: FanDuel, DraftKings, BetOnline (sharp)
+    const SELECTED_BOOKS = ['fanduel', 'draftkings', 'betonline'];
+    const booksParam = SELECTED_BOOKS.join(',');
+
+    // Fetch events and odds from Sharp API
+    const oddsRes = await fetch(
+      `https://api.sharpapi.io/api/v1/odds?league=${league}&sportsbook=${booksParam}&market=main&live=false&per_page=500`,
       { headers: { 'X-API-Key': SHARP_KEY }, cache: 'no-store' }
     );
 
-    if (!res.ok) {
-      console.error('Sharp API error:', res.status);
-      return { oddsMap: {}, bookmakerCount: 0 };
-    }
+    if (!oddsRes.ok) return { oddsMap: {}, bookmakerCount: 0 };
 
-    const data = await res.json();
-    const events = data.events || [];
-    console.log('Sharp API events:', events.length);
+    const oddsData = await oddsRes.json();
+    const oddsList = oddsData.data || [];
 
+    // Group odds by event_id and sportsbook
     const oddsMap = {};
-    const SELECTED_BOOKS = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'bet365'];
+    let bookmakerCount = 0;
 
-    events.forEach(event => {
-      const away = event.away || '';
-      const home = event.home || '';
+    // Group odds by event — Sharp API returns flat rows per selection
+    const eventOddsMap = {};
+    oddsList.forEach(o => {
+      if (!o.event_id) return;
+      if (!eventOddsMap[o.event_id]) eventOddsMap[o.event_id] = [];
+      eventOddsMap[o.event_id].push(o);
+    });
+
+    Object.entries(eventOddsMap).forEach(([eventId, rows]) => {
+      const sample = rows[0];
+      const away = sample.away_team || '';
+      const home = sample.home_team || '';
       if (!away || !home) return;
 
       const key = `${away}@${home}`;
-      
-      // odds can be nested by sportsbook or flat
-      const odds = event.odds || {};
-      const books = event.sportsbooks || event.books || {};
-      
-      let awayML = 'N/A', homeML = 'N/A', spread = 'N/A', total = 'N/A';
-      const bookPrices = {};
-      const _raw = {};
-
-      // Handle flat odds structure (single book or aggregate)
-      if (odds.moneyline) {
-        awayML = fmt(odds.moneyline.away);
-        homeML = fmt(odds.moneyline.home);
+      if (!oddsMap[key]) {
+        oddsMap[key] = {
+          awayML: 'N/A', homeML: 'N/A', spread: 'N/A', total: 'N/A',
+          openingAwayML: 'N/A', openingHomeML: 'N/A',
+          lineMovement: 'No significant movement detected',
+          pricingStr: '', bookPrices: {}, _raw: {},
+        };
+        bookmakerCount++;
       }
-      if (odds.spread?.home != null) {
-        spread = odds.spread.home > 0 ? `+${odds.spread.home}` : `${odds.spread.home}`;
-      }
-      if (odds.total?.over != null) total = odds.total.over;
 
-      // Handle per-book odds structure
-      Object.entries(books).forEach(([bookName, bookOdds]) => {
-        const bookLower = bookName.toLowerCase();
-        const isSelected = SELECTED_BOOKS.some(b => bookLower.includes(b));
-        if (!isSelected) return;
-        const label = bookLower.includes('fanduel') ? 'FD' : bookLower.includes('draftkings') ? 'DK' : bookLower.includes('betmgm') ? 'MGM' : bookLower.includes('caesars') ? 'CZR' : 'B365';
-        if (bookOdds.moneyline) {
-          bookPrices[label] = { away: fmt(bookOdds.moneyline.away), home: fmt(bookOdds.moneyline.home) };
-          _raw[bookLower] = { away: bookOdds.moneyline.away, home: bookOdds.moneyline.home };
-          if (awayML === 'N/A') { awayML = fmt(bookOdds.moneyline.away); homeML = fmt(bookOdds.moneyline.home); }
+      const entry = oddsMap[key];
+
+      rows.forEach(o => {
+        const book = (o.sportsbook || '').toLowerCase();
+        const bookLabel = book.includes('fanduel') ? 'FD' : book.includes('draftkings') ? 'DK' : 'BOL';
+        const odds = o.odds_american;
+        const sel = (o.selection || '').toLowerCase();
+        const marketType = o.market_type || '';
+
+        if (marketType === 'moneyline') {
+          const homeParts = home.toLowerCase().split(' ');
+          const awayParts = away.toLowerCase().split(' ');
+          const matchesHome = homeParts.some(p => p.length > 2 && sel.includes(p));
+          const matchesAway = awayParts.some(p => p.length > 2 && sel.includes(p));
+
+          if (!entry.bookPrices[bookLabel]) entry.bookPrices[bookLabel] = {};
+          if (matchesHome) {
+            entry.bookPrices[bookLabel].home = fmt(odds);
+            entry._raw[book] = entry._raw[book] || {};
+            entry._raw[book].home = odds;
+            if (entry.homeML === 'N/A') entry.homeML = fmt(odds);
+          } else if (matchesAway) {
+            entry.bookPrices[bookLabel].away = fmt(odds);
+            entry._raw[book] = entry._raw[book] || {};
+            entry._raw[book].away = odds;
+            if (entry.awayML === 'N/A') entry.awayML = fmt(odds);
+          }
         }
-        if (bookOdds.spread?.home != null && spread === 'N/A') {
-          spread = bookOdds.spread.home > 0 ? `+${bookOdds.spread.home}` : `${bookOdds.spread.home}`;
+
+        if (marketType === 'spread' || marketType === 'point_spread') {
+          const homeParts = home.toLowerCase().split(' ');
+          const matchesHome = homeParts.some(p => p.length > 2 && sel.includes(p));
+          if (matchesHome && entry.spread === 'N/A' && o.spread_handicap != null) {
+            entry.spread = o.spread_handicap > 0 ? `+${o.spread_handicap}` : `${o.spread_handicap}`;
+          }
         }
-        if (bookOdds.total?.over != null && total === 'N/A') total = bookOdds.total.over;
+
+        if (marketType === 'total' || marketType === 'over_under') {
+          if (entry.total === 'N/A' && o.total_line != null) entry.total = o.total_line;
+        }
       });
-
-      const pricingStr = Object.entries(bookPrices).map(([l,v]) => `${l}: ${v.away} / ${v.home}`).join(' | ') || 
-        (awayML !== 'N/A' ? `${away.split(' ').pop()} ${awayML} / ${home.split(' ').pop()} ${homeML}` : '');
-
-      // Line movement detection
-      const fdAway = _raw['fanduel']?.away;
-      const dkAway = _raw['draftkings']?.away;
-      const b365Away = _raw['bet365']?.away;
-      const signals = [];
-      if (b365Away && fdAway && Math.abs(b365Away - fdAway) >= 10)
-        signals.push(`B365 ${fmt(b365Away)} vs FD ${fmt(fdAway)} — sharp on ${b365Away < fdAway ? away.split(' ').pop() : home.split(' ').pop()}`);
-      if (b365Away && dkAway && Math.abs(b365Away - dkAway) >= 10)
-        signals.push(`B365 ${fmt(b365Away)} vs DK ${fmt(dkAway)} — sharp on ${b365Away < dkAway ? away.split(' ').pop() : home.split(' ').pop()}`);
-
-      oddsMap[key] = {
-        awayML, homeML, spread, total,
-        openingAwayML: pricingStr || 'N/A',
-        openingHomeML: pricingStr || 'N/A',
-        lineMovement: signals.join(' | ') || 'No significant movement',
-        pricingStr,
-      };
     });
 
-    console.log('oddsMap games:', Object.keys(oddsMap).length);
-    return { oddsMap, bookmakerCount: 5 };
+    // Build pricing strings and detect line movement for each game
+    Object.keys(oddsMap).forEach(key => {
+      const entry = oddsMap[key];
+      const raw = entry._raw;
+      const [away] = key.split('@');
+
+      // Per-book pricing string
+      entry.pricingStr = Object.entries(entry.bookPrices)
+        .map(([label, v]) => `${label}: ${away} ${v.away} / ${v.home}`)
+        .join(' | ');
+      entry.openingAwayML = entry.pricingStr || 'N/A';
+      entry.openingHomeML = entry.pricingStr || 'N/A';
+
+      // Line movement: BetOnline (sharp) vs square books
+      const signals = [];
+      const bolAway = raw['betonline']?.away;
+      const fdAway = raw['fanduel']?.away;
+      const dkAway = raw['draftkings']?.away;
+      const home = key.split('@')[1];
+
+      if (bolAway && fdAway && Math.abs(bolAway - fdAway) >= 10) {
+        signals.push(bolAway < fdAway
+          ? `BOL shorter on ${away} (${fmt(bolAway)}) vs FD (${fmt(fdAway)}) — sharp money on ${away}`
+          : `BOL shorter on ${home} (${fmt(fdAway)}) vs FD (${fmt(bolAway)}) — sharp money on ${home}`);
+      }
+      if (bolAway && dkAway && Math.abs(bolAway - dkAway) >= 10) {
+        signals.push(bolAway < dkAway
+          ? `BOL shorter on ${away} (${fmt(bolAway)}) vs DK (${fmt(dkAway)}) — sharp money on ${away}`
+          : `BOL shorter on ${home} (${fmt(dkAway)}) vs DK (${fmt(bolAway)}) — sharp money on ${home}`);
+      }
+      if (fdAway && dkAway && Math.abs(fdAway - dkAway) >= 15) {
+        signals.push(fdAway < dkAway
+          ? `FD/DK divergence: ${away} (${fmt(fdAway)} vs ${fmt(dkAway)}) — public moving toward ${away}`
+          : `FD/DK divergence: ${home} (${fmt(dkAway)} vs ${fmt(fdAway)}) — public moving toward ${home}`);
+      }
+      if (signals.length) entry.lineMovement = signals.join(' | ');
+
+      delete entry._raw;
+      delete entry.bookPrices;
+    });
+
+    return { oddsMap, bookmakerCount };
   } catch (e) {
-    console.error('fetchOdds error:', e.message);
+    console.error('Sharp API fetchOdds error:', e.message);
     return { oddsMap: {}, bookmakerCount: 0 };
   }
-}
-
-// Timeout wrapper for external API calls
-function withTimeout(promise, ms = 5000, fallback = null) {
-  return Promise.race([
-    promise,
-    new Promise(resolve => setTimeout(() => resolve(fallback), ms))
-  ]);
-}
-
-function normTeamName(name) {
-  return (name || '').toLowerCase().replace(/[^a-z]/g, '');
 }
 
 async function assembleMLBGame(game, oddsMap) {
@@ -303,18 +284,7 @@ async function assembleMLBGame(game, oddsMap) {
     const away = game.teams?.away?.team?.name || 'Away';
     const home = game.teams?.home?.team?.name || 'Home';
     const key = `${away}@${home}`;
-    
-    // Try exact match first, then fuzzy match by normalized team name
-    let odds = oddsMap[key];
-    if (!odds) {
-      const normAway = normTeamName(away);
-      const normHome = normTeamName(home);
-      const fuzzyKey = Object.keys(oddsMap).find(k => {
-        const [ka, kh] = k.split('@');
-        return normTeamName(ka) === normAway && normTeamName(kh) === normHome;
-      });
-      odds = fuzzyKey ? oddsMap[fuzzyKey] : {};
-    }
+    const odds = oddsMap[key] || {};
     const status = game.status?.abstractGameState || '';
     const isFinal = status === 'Final';
     const awayScore = game.teams?.away?.score;
@@ -347,14 +317,14 @@ async function assembleMLBGame(game, oddsMap) {
     const homePitcherHand = game.teams?.home?.probablePitcher?.pitchHand?.code || 'R';
 
     const [injuries, umpire, weather, awayBatterSplits, homeBatterSplits, awayForm, homeForm, h2h] = await Promise.all([
-      withTimeout(awayTeamId && homeTeamId ? fetchMLBInjuries(awayTeamId, homeTeamId, away, home) : Promise.resolve('Injury data unavailable'), 4000, 'Injury data unavailable'),
-      withTimeout(fetchUmpire(game.gamePk), 3000, 'Umpire TBD'),
-      withTimeout(fetchWeather(home, game.gameDate), 3000, 'Weather data unavailable'),
-      withTimeout(awayTeamId ? fetchBatterSplits(awayTeamId, away, homePitcherHand) : Promise.resolve('Splits unavailable'), 4000, 'Splits unavailable'),
-      withTimeout(homeTeamId ? fetchBatterSplits(homeTeamId, home, awayPitcherHand) : Promise.resolve('Splits unavailable'), 4000, 'Splits unavailable'),
-      withTimeout(awayTeamId ? fetchTeamRecentForm(awayTeamId, away) : Promise.resolve({ last5: 'N/A', last10: 'N/A', streak: 'N/A' }), 4000, { last5: 'N/A', last10: 'N/A', streak: 'N/A' }),
-      withTimeout(homeTeamId ? fetchTeamRecentForm(homeTeamId, home) : Promise.resolve({ last5: 'N/A', last10: 'N/A', streak: 'N/A' }), 4000, { last5: 'N/A', last10: 'N/A', streak: 'N/A' }),
-      withTimeout(awayTeamId && homeTeamId ? fetchMLBH2H(awayTeamId, homeTeamId, away, home) : Promise.resolve('H2H unavailable'), 4000, 'H2H unavailable'),
+      awayTeamId && homeTeamId ? fetchMLBInjuries(awayTeamId, homeTeamId, away, home) : Promise.resolve('Injury data unavailable'),
+      fetchUmpire(game.gamePk),
+      fetchWeather(home, game.gameDate),
+      awayTeamId ? fetchBatterSplits(awayTeamId, away, homePitcherHand) : Promise.resolve('Splits unavailable'),
+      homeTeamId ? fetchBatterSplits(homeTeamId, home, awayPitcherHand) : Promise.resolve('Splits unavailable'),
+      awayTeamId ? fetchTeamRecentForm(awayTeamId, away) : Promise.resolve({ last5: 'N/A', last10: 'N/A', streak: 'N/A' }),
+      homeTeamId ? fetchTeamRecentForm(homeTeamId, home) : Promise.resolve({ last5: 'N/A', last10: 'N/A', streak: 'N/A' }),
+      awayTeamId && homeTeamId ? fetchMLBH2H(awayTeamId, homeTeamId, away, home) : Promise.resolve('H2H unavailable'),
     ]);
 
     return {
