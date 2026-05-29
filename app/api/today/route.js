@@ -160,6 +160,9 @@ async function fetchOdds(sport) {
       }),
     ]);
 
+    console.log('Sharp events status:', eventsRes.status, 'odds status:', oddsRes.status);
+    if (!eventsRes.ok) { const t = await eventsRes.text(); console.log('events error:', t); }
+    if (!oddsRes.ok) { const t = await oddsRes.text(); console.log('odds error:', t); }
     if (!eventsRes.ok || !oddsRes.ok) return { oddsMap: {}, bookmakerCount: 0 };
 
     const eventsData = await eventsRes.json();
@@ -167,6 +170,9 @@ async function fetchOdds(sport) {
 
     const events = eventsData.data || [];
     const oddsList = oddsData.data || [];
+    console.log('Sharp API: events count:', events.length, 'odds count:', oddsList.length);
+    if (oddsList.length > 0) console.log('Sample odds object:', JSON.stringify(oddsList[0]));
+    if (events.length > 0) console.log('Sample event object:', JSON.stringify(events[0]));
 
     // Build event map by event_id
     const eventMap = {};
