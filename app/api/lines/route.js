@@ -81,7 +81,7 @@ async function fetchAllBooks(sportKey) {
 // ── BUILD GAME LIST WITH BEST ODDS ────────────────────────────────────────────
 
 function buildGames(gamesMap) {
-  const preferredBooks = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'pinnacle', 'pointsbet', 'bet365'];
+  const preferredBooks = ['draftkings', 'fanduel', 'betonline'];
   return Object.entries(gamesMap).map(([key, event]) => {
     // Best public book for current ML
     let bestBook = null;
@@ -136,6 +136,7 @@ function buildGames(gamesMap) {
 
     return {
       key,
+      normalizedKey: `${normTeam(event.away)}|${normTeam(event.home)}`,
       away: event.away,
       home: event.home,
       homeML: fmt(bestBook.homeML),
@@ -151,6 +152,13 @@ function buildGames(gamesMap) {
 }
 
 // ── HANDLER ───────────────────────────────────────────────────────────────────
+
+// Normalize team name for fuzzy matching
+function normTeam(name) {
+  return (name || '').toLowerCase()
+    .replace(/^(the |los |san |new |st\. |st |fort |las )/, '')
+    .replace(/[^a-z]/g, '');
+}
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);

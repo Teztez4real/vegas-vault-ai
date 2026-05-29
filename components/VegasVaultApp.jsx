@@ -2045,9 +2045,11 @@ export default function VegasVaultApp() {
         .then(r => r.json())
         .then(data => {
           if (!data.movements) return;
+          const normT = (n) => (n||'').toLowerCase().replace(/^(the |los |san |new |st\. |st |fort |las )/, '').replace(/[^a-z]/g,'');
           setGames(prev => prev.map(game => {
             const key = `${game.away}|${game.home}`;
-            const mv  = data.movements[key];
+            const normKey = `${normT(game.away)}|${normT(game.home)}`;
+            const mv = data.movements[key] || Object.values(data.movements).find(m => `${normT(m.away)}|${normT(m.home)}` === normKey);
             if (!mv) return game;
             // Build formatted opening ML strings
             const fmtN = (n) => n == null ? null : (n > 0 ? `+${n}` : `${n}`);
