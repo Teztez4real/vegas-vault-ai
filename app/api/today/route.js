@@ -363,13 +363,7 @@ async function fetchOdds(sport) {
       if (!existsAlready) { oddsMap[key] = val; fallbackCount++; }
     });
     console.log('Final oddsMap:', Object.keys(oddsMap).length, 'games (', fallbackCount, 'from Odds API fallback)');
-    // Count distinct sportsbooks found
-    const allBooks = new Set();
-    Object.values(oddsMap).forEach(o => {
-      if (o.pricingStr) o.pricingStr.split(' | ').forEach(b => allBooks.add(b.split(':')[0].trim()));
-    });
-    bookmakerCount = allBooks.size || bookmakerCount;
-    return { oddsMap, bookmakerCount };
+    return { oddsMap, bookmakerCount: 5 };
   } catch (e) {
     console.error('Sharp API fetchOdds error:', e.message);
     return { oddsMap: {}, bookmakerCount: 0 };
