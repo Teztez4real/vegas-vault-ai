@@ -165,7 +165,7 @@ If you cannot clearly identify the edge after full analysis — PASS. A confiden
   const fullPrompt = basePrompt + topPlayContext;
 
   const message = await client.messages.create({
-    model: 'claude-opus-4-5',  // Use Opus for top play — max accuracy
+    model: 'claude-sonnet-4-5-20251022',  // Use Opus for top play — max accuracy
     max_tokens: 4000,
     messages: [{ role: 'user', content: fullPrompt }],
   });
