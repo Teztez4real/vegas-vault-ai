@@ -199,13 +199,23 @@ async function fetchOdds(sport) {
     // Fetch all books — filter to FD/DK/BetOnline in code
     const SELECTED_BOOKS = ['fanduel', 'draftkings', 'betonline', 'bet_online', 'betonlineag'];
 
-    // Fetch all pages from Sharp API
+    // Step 1: Get all events for this league first
+    const eventsRes = await fetch(
+      `https://api.sharpapi.io/api/v1/events?league=${league}&per_page=100`,
+      { headers: { 'X-API-Key': SHARP_KEY }, cache: 'no-store' }
+    );
+    const eventsData = eventsRes.ok ? await eventsRes.json() : { data: [] };
+    const events = eventsData.data || [];
+    console.log('Sharp events count:', events.length);
+
+    // Step 2: Fetch odds for all events at once using sportsbook filter
+    const BOOKS = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'betonline'];
     const allOdds = [];
     let page = 1;
     let lastPage = 1;
     do {
       const res = await fetch(
-        `https://api.sharpapi.io/api/v1/odds?league=${league}&per_page=100&page=${page}`,
+        `https://api.sharpapi.io/api/v1/odds?league=${league}&sportsbook=${BOOKS.join(',')}&per_page=100&page=${page}`,
         { headers: { 'X-API-Key': SHARP_KEY }, cache: 'no-store' }
       );
       if (!res.ok) break;
@@ -214,10 +224,16 @@ async function fetchOdds(sport) {
       allOdds.push(...rows);
       lastPage = json.pagination?.last_page || 1;
       page++;
-    } while (page <= lastPage && page <= 20); // max 20 pages safety cap
+    } while (page <= lastPage && page <= 20);
 
     const oddsList = allOdds;
-    console.log('Sharp API total rows fetched:', oddsList.length);
+    console.log('Sharp odds rows:', oddsList.length, 'covering events:', new Set(oddsList.map(o=>o.event_id)).size);
+    
+    // Build event lookup from events endpoint
+    const eventLookup = {};
+    events.forEach(e => {
+      eventLookup[e.id] = { away: e.away_team, home: e.home_team };
+    });
 
     // Group odds by event_id and sportsbook
     const oddsMap = {};
@@ -233,8 +249,10 @@ async function fetchOdds(sport) {
 
     Object.entries(eventOddsMap).forEach(([eventId, rows]) => {
       const sample = rows[0];
-      const away = sample.away_team || '';
-      const home = sample.home_team || '';
+      // Use event lookup if odds row missing team names
+      const eventRef = eventLookup[eventId] || {};
+      const away = sample.away_team || eventRef.away || '';
+      const home = sample.home_team || eventRef.home || '';
       if (!away || !home) return;
 
       const key = `${away}@${home}`;
