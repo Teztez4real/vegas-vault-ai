@@ -146,7 +146,7 @@ function buildGames(gamesMap) {
       awayML: fmt(bestBook.awayML),
       currentHomeML: bestBook.homeML,
       currentAwayML: bestBook.awayML,
-      spread: spreadVal != null ? (spreadVal > 0 ?  : ) : null,
+      spread: spreadVal != null ? (spreadVal > 0 ? `+${spreadVal}` : `${spreadVal}`) : null,
       total: totalVal || null,
       commenceTime: event.commenceTime,
       bolHomeML: bolBook?.homeML,
