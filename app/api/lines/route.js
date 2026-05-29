@@ -35,11 +35,20 @@ async function fetchAllBooks(sportKey) {
       const league = leagueMap[sportKey];
       if (!league) return games;
 
-      const res = await fetch(`https://api.sharpapi.io/api/v1/odds?league=${league}&market=main&per_page=500`, {
-        headers: { 'X-API-Key': sharpKey }, cache: 'no-store',
-      });
-      const rawJson = await res.json();
-      const rows = rawJson.data || [];
+      // Fetch all pages
+      const allRows = [];
+      let page = 1, lastPage = 1;
+      do {
+        const res = await fetch(`https://api.sharpapi.io/api/v1/odds?league=${league}&market=main&per_page=100&page=${page}`, {
+          headers: { 'X-API-Key': sharpKey }, cache: 'no-store',
+        });
+        if (!res.ok) break;
+        const json = await res.json();
+        allRows.push(...(json.data || []));
+        lastPage = json.pagination?.last_page || 1;
+        page++;
+      } while (page <= lastPage && page <= 20);
+      const rows = allRows;
       if (!rows.length) throw new Error('No rows');
 
       for (const row of rows) {

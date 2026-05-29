@@ -147,19 +147,25 @@ async function fetchOdds(sport) {
     // Fetch all books — filter to FD/DK/BetOnline in code
     const SELECTED_BOOKS = ['fanduel', 'draftkings', 'betonline', 'bet_online', 'betonlineag'];
 
-    const oddsRes = await fetch(
-      `https://api.sharpapi.io/api/v1/odds?league=${league}&market=main&per_page=500`,
-      { headers: { 'X-API-Key': SHARP_KEY }, cache: 'no-store' }
-    );
+    // Fetch all pages from Sharp API
+    const allOdds = [];
+    let page = 1;
+    let lastPage = 1;
+    do {
+      const res = await fetch(
+        `https://api.sharpapi.io/api/v1/odds?league=${league}&market=main&per_page=100&page=${page}`,
+        { headers: { 'X-API-Key': SHARP_KEY }, cache: 'no-store' }
+      );
+      if (!res.ok) break;
+      const json = await res.json();
+      const rows = json.data || [];
+      allOdds.push(...rows);
+      lastPage = json.pagination?.last_page || 1;
+      page++;
+    } while (page <= lastPage && page <= 20); // max 20 pages safety cap
 
-    if (!oddsRes.ok) {
-      console.error('Sharp odds error:', oddsRes.status, await oddsRes.text());
-      return { oddsMap: {}, bookmakerCount: 0 };
-    }
-
-    const oddsData = await oddsRes.json();
-    const oddsList = oddsData.data || [];
-    console.log('Sharp API total:', oddsData.pagination?.total, 'returned:', oddsList.length, 'pages:', oddsData.pagination?.last_page);
+    const oddsList = allOdds;
+    console.log('Sharp API total rows fetched:', oddsList.length);
 
     // Group odds by event_id and sportsbook
     const oddsMap = {};
