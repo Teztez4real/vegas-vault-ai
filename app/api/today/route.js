@@ -152,10 +152,14 @@ async function fetchOdds(sport) {
       { headers: { 'X-API-Key': SHARP_KEY }, cache: 'no-store' }
     );
 
-    if (!oddsRes.ok) return { oddsMap: {}, bookmakerCount: 0 };
+    if (!oddsRes.ok) {
+      console.error('Sharp odds error:', oddsRes.status, await oddsRes.text());
+      return { oddsMap: {}, bookmakerCount: 0 };
+    }
 
     const oddsData = await oddsRes.json();
     const oddsList = oddsData.data || [];
+    console.log('Sharp API total:', oddsData.pagination?.total, 'returned:', oddsList.length, 'pages:', oddsData.pagination?.last_page);
 
     // Group odds by event_id and sportsbook
     const oddsMap = {};
