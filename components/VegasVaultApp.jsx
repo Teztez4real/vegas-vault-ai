@@ -568,15 +568,15 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
               <div style={{ fontSize:8,color:'#3a4a5e',letterSpacing:'0.08em',marginBottom:2 }}>{game.awayAbbr||game.away?.split(' ').pop()} ML</div>
               <div style={{ fontSize:12,fontWeight:700,color:((game.dkAwayML!=null?String(game.dkAwayML):game.awayML)||'').startsWith('-')?'#f87171':'#4ade80' }}>{game.dkAwayML!=null?(game.dkAwayML>0?'+'+game.dkAwayML:game.dkAwayML):game.awayML||'—'}</div>
             </div>
-            {/* Spread */}
+            {/* Spread — DraftKings */}
             <div style={{ textAlign:'center',flex:1,borderLeft:'1px solid rgba(255,255,255,0.05)',borderRight:'1px solid rgba(255,255,255,0.05)' }}>
               <div style={{ fontSize:8,color:'#3a4a5e',letterSpacing:'0.08em',marginBottom:2 }}>SPREAD</div>
-              <div style={{ fontSize:11,fontWeight:600,color:'#94a3b8' }}>{game.spread||'—'}</div>
+              <div style={{ fontSize:11,fontWeight:600,color:'#94a3b8' }}>{game.dkSpread||game.spread||'—'}</div>
             </div>
-            {/* Total */}
+            {/* Total — DraftKings */}
             <div style={{ textAlign:'center',flex:1,borderRight:'1px solid rgba(255,255,255,0.05)' }}>
               <div style={{ fontSize:8,color:'#3a4a5e',letterSpacing:'0.08em',marginBottom:2 }}>O/U</div>
-              <div style={{ fontSize:11,fontWeight:600,color:'#94a3b8' }}>{game.total||'—'}</div>
+              <div style={{ fontSize:11,fontWeight:600,color:'#94a3b8' }}>{game.dkTotal||game.total||'—'}</div>
             </div>
             {/* Home ML — DraftKings */}
             <div style={{ textAlign:'center',flex:1 }}>
@@ -2103,6 +2103,8 @@ export default function VegasVaultApp() {
               pinHomeML:     mv.pinHomeML     || game.pinHomeML,
               dkAwayML:      mv.dkAwayML      || game.dkAwayML,
               dkHomeML:      mv.dkHomeML      || game.dkHomeML,
+              dkSpread:      mv.dkSpread      || game.dkSpread,
+              dkTotal:       mv.dkTotal       || game.dkTotal,
               // Live price updates from Sharp API
               awayML:        fmtN(mv.currentAwayML) || mv.awayML || game.awayML,
               homeML:        fmtN(mv.currentHomeML) || mv.homeML || game.homeML,
