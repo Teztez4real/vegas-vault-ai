@@ -279,12 +279,35 @@ async function fetchOdds(sport) {
   }
 }
 
+// Timeout wrapper for external API calls
+function withTimeout(promise, ms = 5000, fallback = null) {
+  return Promise.race([
+    promise,
+    new Promise(resolve => setTimeout(() => resolve(fallback), ms))
+  ]);
+}
+
+function normTeamName(name) {
+  return (name || '').toLowerCase().replace(/[^a-z]/g, '');
+}
+
 async function assembleMLBGame(game, oddsMap) {
   try {
     const away = game.teams?.away?.team?.name || 'Away';
     const home = game.teams?.home?.team?.name || 'Home';
     const key = `${away}@${home}`;
-    const odds = oddsMap[key] || {};
+    
+    // Try exact match first, then fuzzy match by normalized team name
+    let odds = oddsMap[key];
+    if (!odds) {
+      const normAway = normTeamName(away);
+      const normHome = normTeamName(home);
+      const fuzzyKey = Object.keys(oddsMap).find(k => {
+        const [ka, kh] = k.split('@');
+        return normTeamName(ka) === normAway && normTeamName(kh) === normHome;
+      });
+      odds = fuzzyKey ? oddsMap[fuzzyKey] : {};
+    }
     const status = game.status?.abstractGameState || '';
     const isFinal = status === 'Final';
     const awayScore = game.teams?.away?.score;
@@ -317,14 +340,14 @@ async function assembleMLBGame(game, oddsMap) {
     const homePitcherHand = game.teams?.home?.probablePitcher?.pitchHand?.code || 'R';
 
     const [injuries, umpire, weather, awayBatterSplits, homeBatterSplits, awayForm, homeForm, h2h] = await Promise.all([
-      awayTeamId && homeTeamId ? fetchMLBInjuries(awayTeamId, homeTeamId, away, home) : Promise.resolve('Injury data unavailable'),
-      fetchUmpire(game.gamePk),
-      fetchWeather(home, game.gameDate),
-      awayTeamId ? fetchBatterSplits(awayTeamId, away, homePitcherHand) : Promise.resolve('Splits unavailable'),
-      homeTeamId ? fetchBatterSplits(homeTeamId, home, awayPitcherHand) : Promise.resolve('Splits unavailable'),
-      awayTeamId ? fetchTeamRecentForm(awayTeamId, away) : Promise.resolve({ last5: 'N/A', last10: 'N/A', streak: 'N/A' }),
-      homeTeamId ? fetchTeamRecentForm(homeTeamId, home) : Promise.resolve({ last5: 'N/A', last10: 'N/A', streak: 'N/A' }),
-      awayTeamId && homeTeamId ? fetchMLBH2H(awayTeamId, homeTeamId, away, home) : Promise.resolve('H2H unavailable'),
+      withTimeout(awayTeamId && homeTeamId ? fetchMLBInjuries(awayTeamId, homeTeamId, away, home) : Promise.resolve('Injury data unavailable'), 4000, 'Injury data unavailable'),
+      withTimeout(fetchUmpire(game.gamePk), 3000, 'Umpire TBD'),
+      withTimeout(fetchWeather(home, game.gameDate), 3000, 'Weather data unavailable'),
+      withTimeout(awayTeamId ? fetchBatterSplits(awayTeamId, away, homePitcherHand) : Promise.resolve('Splits unavailable'), 4000, 'Splits unavailable'),
+      withTimeout(homeTeamId ? fetchBatterSplits(homeTeamId, home, awayPitcherHand) : Promise.resolve('Splits unavailable'), 4000, 'Splits unavailable'),
+      withTimeout(awayTeamId ? fetchTeamRecentForm(awayTeamId, away) : Promise.resolve({ last5: 'N/A', last10: 'N/A', streak: 'N/A' }), 4000, { last5: 'N/A', last10: 'N/A', streak: 'N/A' }),
+      withTimeout(homeTeamId ? fetchTeamRecentForm(homeTeamId, home) : Promise.resolve({ last5: 'N/A', last10: 'N/A', streak: 'N/A' }), 4000, { last5: 'N/A', last10: 'N/A', streak: 'N/A' }),
+      withTimeout(awayTeamId && homeTeamId ? fetchMLBH2H(awayTeamId, homeTeamId, away, home) : Promise.resolve('H2H unavailable'), 4000, 'H2H unavailable'),
     ]);
 
     return {
