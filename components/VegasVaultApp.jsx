@@ -566,7 +566,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
             {/* Away ML — DraftKings */}
             <div style={{ textAlign:'center',flex:1 }}>
               <div style={{ fontSize:8,color:'#3a4a5e',letterSpacing:'0.08em',marginBottom:2 }}>{game.awayAbbr||game.away?.split(' ').pop()} ML</div>
-              <div style={{ fontSize:12,fontWeight:700,color:((game.dkAwayML!=null?String(game.dkAwayML):game.awayML)||'').startsWith('-')?'#f87171':'#4ade80' }}>{game.dkAwayML!=null?(game.dkAwayML>0?'+'+game.dkAwayML:game.dkAwayML):game.awayML||'—'}</div>
+              <div style={{ fontSize:12,fontWeight:700,color:((game.dkAwayML!=null?String(game.dkAwayML):game.awayML)||'').startsWith('-')?'#f87171':'#4ade80' }}>{game.dkAwayML!=null?(typeof game.dkAwayML==='string'?game.dkAwayML:(game.dkAwayML>0?'+'+game.dkAwayML:game.dkAwayML)):game.awayML||'—'}</div>
             </div>
             {/* Spread — DraftKings */}
             <div style={{ textAlign:'center',flex:1,borderLeft:'1px solid rgba(255,255,255,0.05)',borderRight:'1px solid rgba(255,255,255,0.05)' }}>
@@ -581,7 +581,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
             {/* Home ML — DraftKings */}
             <div style={{ textAlign:'center',flex:1 }}>
               <div style={{ fontSize:8,color:'#3a4a5e',letterSpacing:'0.08em',marginBottom:2 }}>{game.homeAbbr||game.home?.split(' ').pop()} ML</div>
-              <div style={{ fontSize:12,fontWeight:700,color:((game.dkHomeML!=null?String(game.dkHomeML):game.homeML)||'').startsWith('-')?'#f87171':'#4ade80' }}>{game.dkHomeML!=null?(game.dkHomeML>0?'+'+game.dkHomeML:game.dkHomeML):game.homeML||'—'}</div>
+              <div style={{ fontSize:12,fontWeight:700,color:((game.dkHomeML!=null?String(game.dkHomeML):game.homeML)||'').startsWith('-')?'#f87171':'#4ade80' }}>{game.dkHomeML!=null?(typeof game.dkHomeML==='string'?game.dkHomeML:(game.dkHomeML>0?'+'+game.dkHomeML:game.dkHomeML)):game.homeML||'—'}</div>
             </div>
           </div>
           {/* Line movement indicator */}

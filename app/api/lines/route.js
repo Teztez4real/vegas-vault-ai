@@ -222,6 +222,8 @@ export async function GET(request) {
         bolHomeML: fmt(game.bolHomeML),
         dkAwayML:  fmt(game.dkAwayML),
         dkHomeML:  fmt(game.dkHomeML),
+        dkSpread:  game.dkSpread || null,
+        dkTotal:   game.dkTotal  || null,
         fdHomeML:  fmt(game.fdHomeML),
         ...mv,
       };
