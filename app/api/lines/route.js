@@ -31,61 +31,54 @@ async function fetchAllBooks(sportKey) {
 
   if (sharpKey) {
     try {
-      const leagueMap = { 'baseball_mlb': 'MLB', 'basketball_nba': 'NBA', 'americanfootball_nfl': 'NFL' };
-      const league = leagueMap[sportKey];
-      if (!league) return games;
+      const leagueMap = { baseball_mlb:'MLB', basketball_nba:'NBA', americanfootball_nfl:'NFL' };
+      const sportKeyMap = { baseball_mlb:'baseball', basketball_nba:'basketball', americanfootball_nfl:'americanfootball' };
+      const league = leagueMap[sportKey] || 'MLB';
+      const sportName = sportKeyMap[sportKey] || 'baseball';
+      const SELECTED_BOOKS = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'bet365'];
 
-      // Fetch all pages
-      const allRows = [];
-      let page = 1, lastPage = 1;
-      do {
-        const BOOKS = ["draftkings","fanduel","betmgm","caesars","bet365"];
-        const res = await fetch(`https://api.sharpapi.io/api/v1/odds?league=${league}&sportsbook=${BOOKS.join(",")}&per_page=100&page=${page}`, {
-          headers: { 'X-API-Key': sharpKey }, cache: 'no-store',
-        });
-        if (!res.ok) break;
-        const json = await res.json();
-        allRows.push(...(json.data || []));
-        lastPage = json.pagination?.last_page || 1;
-        page++;
-      } while (page <= lastPage && page <= 20);
-      const rows = allRows;
-      if (!rows.length) throw new Error('No rows');
+      const res = await fetch(`https://api.sharpapi.io/api/v1/odds?sport=${sportName}&league=${league}&sportsbook=All`, {
+        headers: { 'X-API-Key': sharpKey }, cache: 'no-store',
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const events = data.events || [];
 
-      for (const row of rows) {
-        const { home_team: home, away_team: away, sportsbook, odds_american: odds, event_start_time } = row;
-        if (!home || !away || odds == null) continue;
-        // Only process moneyline rows
-        const mt = (row.market_type || '').toLowerCase();
-        if (mt && mt !== 'moneyline' && !mt.includes('money')) continue;
+      for (const event of events) {
+        const away = event.away || '';
+        const home = event.home || '';
+        if (!away || !home) continue;
         const key = `${away}|${home}`;
-        if (!games[key]) games[key] = { away, home, commenceTime: event_start_time, books: {} };
-        const book = (sportsbook || '').toLowerCase();
-        // Only track our 3 books
-        const isOurBook = book.includes('fanduel') || book.includes('draftkings') || book.includes('bet365') || book.includes('betmgm') || book.includes('caesars');
-        if (!isOurBook) continue;
-        if (!games[key].books[book]) games[key].books[book] = {};
-        // selection field contains abbreviated team name — match against home/away
-        const sel = (row.selection || '').toLowerCase();
-        const homeParts = home.toLowerCase().split(' ');
-        const awayParts = away.toLowerCase().split(' ');
-        const matchesHome = homeParts.some(p => p.length > 2 && sel.includes(p));
-        const matchesAway = awayParts.some(p => p.length > 2 && sel.includes(p));
-        if (matchesHome) games[key].books[book].homeML = odds;
-        else if (matchesAway) games[key].books[book].awayML = odds;
-        else {
-          // fallback: use odds sign — favorites are negative, use position
-          if (!games[key].books[book].awayML) games[key].books[book].awayML = odds;
-          else games[key].books[book].homeML = odds;
+        if (!games[key]) games[key] = { away, home, commenceTime: event.start_time, books: {} };
+
+        const books = event.sportsbooks || event.books || {};
+        const odds = event.odds || {};
+
+        // Handle flat odds (aggregate)
+        if (odds.moneyline && !Object.keys(books).length) {
+          games[key].books['aggregate'] = {
+            awayML: odds.moneyline.away,
+            homeML: odds.moneyline.home,
+          };
         }
+
+        // Handle per-book odds
+        Object.entries(books).forEach(([bookName, bookOdds]) => {
+          const bookLower = bookName.toLowerCase();
+          const isSelected = SELECTED_BOOKS.some(b => bookLower.includes(b));
+          if (!isSelected) return;
+          if (!games[key].books[bookLower]) games[key].books[bookLower] = {};
+          if (bookOdds.moneyline) {
+            games[key].books[bookLower].awayML = bookOdds.moneyline.away;
+            games[key].books[bookLower].homeML = bookOdds.moneyline.home;
+          }
+        });
       }
-
-
       return games;
     } catch (err) {
       console.error('Lines SharpAPI error:', err.message);
     }
-  }
+  }}
 
   // SharpAPI is the only odds source — no Odds API fallback
   console.warn('SharpAPI returned no data for lines, sportKey:', sportKey);
