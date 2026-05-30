@@ -398,9 +398,10 @@ function PlayResult({ result, game, onClose, isResolved, resolvedResult }) {
 
 function GameCard({ game, onGenerate, results, generating, onCardClick, liveScores, isSubscribed, finalized, isQueued, betReady, onShowAuth, watchlist, onToggleWatch }) {
   const resultPublic = results[`${game.id}-PUBLIC`];
+  const resultWNBA   = results[`${game.id}-WNBA`];
   const resultVegas  = results[`${game.id}-VEGAS`];
-  const hasAnyResult = resultPublic || resultVegas;
-  const bestResult   = resultVegas || resultPublic;
+  const hasAnyResult = resultPublic || resultVegas || resultWNBA;
+  const bestResult   = resultVegas || resultPublic || resultWNBA;
   const tier = bestResult?.summary ? (TIER_STYLES[bestResult.summary.tier] || TIER_STYLES["3"]) : null;
   const isTennis = game.sport === "Tennis";
   const isLock = tier?.label === "LOCK";
@@ -658,15 +659,15 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
       {/* Result strip */}
       {hasAnyResult && !isLock && (
         <div style={{ display:"flex",gap:6,marginBottom:10 }}>
-          {[["PUBLIC",resultPublic],["VEGAS",resultVegas]].map(([slot,result])=>{
+          {([["PUBLIC",resultPublic],["VEGAS",resultVegas],["WNBA",resultWNBA]]).map(([slot,result])=>{
             if(!result)return null;
             if(game.slot && slot !== game.slot) return null;
             if (!result?.summary) return null;
             const ts=TIER_STYLES[result.summary.tier]||TIER_STYLES["3"];
-            const iv=slot==="VEGAS";
+            const iv=slot==="VEGAS"; const iw=slot==="WNBA";
             return(
-              <div key={slot} style={{ flex:1,background:iv?"rgba(248,113,113,0.05)":"rgba(96,165,250,0.05)",border:iv?"1px solid rgba(248,113,113,0.15)":"1px solid rgba(96,165,250,0.15)",borderRadius:7,padding:"6px 8px" }}>
-                <div style={{ fontSize:8,fontWeight:700,letterSpacing:"0.1em",color:iv?"#f87171":"#60a5fa",marginBottom:3 }}>{slot}</div>
+              <div key={slot} style={{ flex:1,background:iw?"rgba(192,132,252,0.05)":iv?"rgba(248,113,113,0.05)":"rgba(96,165,250,0.05)",border:iw?"1px solid rgba(192,132,252,0.2)":iv?"1px solid rgba(248,113,113,0.15)":"1px solid rgba(96,165,250,0.15)",borderRadius:7,padding:"6px 8px" }}>
+                <div style={{ fontSize:8,fontWeight:700,letterSpacing:"0.1em",color:iw?"#c084fc":iv?"#f87171":"#60a5fa",marginBottom:3 }}>{slot}</div>
                 <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center" }}>
                   <span style={{ fontSize:11,fontWeight:700,color:"#f8fafc" }}>{result.summary.pick.split(" ").pop()}</span>
                   <span style={{ fontSize:8,fontWeight:700,padding:"2px 5px",borderRadius:4,background:ts.bg,color:ts.text,border:`1px solid ${ts.border}` }}>{ts.label}</span>
@@ -706,9 +707,10 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
           const isGen = generating === key;
           const hasRes = !!results[key];
           const isVeg = game.slot === 'VEGAS';
-          const slotColor = isVeg ? '#f87171' : '#60a5fa';
-          const slotBg = isVeg ? 'rgba(248,113,113,0.08)' : 'rgba(96,165,250,0.08)';
-          const slotBorder = isVeg ? 'rgba(248,113,113,0.25)' : 'rgba(96,165,250,0.25)';
+          const isWNBA = game.sport === 'WNBA';
+          const slotColor = isWNBA ? '#c084fc' : isVeg ? '#f87171' : '#60a5fa';
+          const slotBg = isWNBA ? 'rgba(192,132,252,0.08)' : isVeg ? 'rgba(248,113,113,0.08)' : 'rgba(96,165,250,0.08)';
+          const slotBorder = isWNBA ? 'rgba(192,132,252,0.25)' : isVeg ? 'rgba(248,113,113,0.25)' : 'rgba(96,165,250,0.25)';
           if (isGen) return (
             <div style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"10px 0",background:slotBg,border:`1px solid ${slotBorder}`,borderRadius:8 }}>
               <div style={{ width:12,height:12,borderRadius:"50%",border:`2px solid ${slotBorder}`,borderTop:`2px solid ${slotColor}`,animation:"spin 0.8s linear infinite" }}/>
@@ -723,10 +725,16 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
             </div>
           );
           return (
+            game.sport === 'WNBA' ? (
+              <div onClick={()=>onGenerate(game, 'WNBA')} style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"9px 0",background:"rgba(192,132,252,0.08)",border:"1px solid rgba(192,132,252,0.25)",borderRadius:8,cursor:"pointer" }}>
+                <span style={{ fontSize:9,fontWeight:700,color:"#c084fc",letterSpacing:"0.08em" }}>▶ ANALYZE WNBA</span>
+              </div>
+            ) : (
             <div style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"9px 0",background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:8 }}>
               <div style={{ width:8,height:8,borderRadius:"50%",background:"#c9a227",animation:"pulse 1.5s ease-in-out infinite" }}/>
               <span style={{ fontSize:9,fontWeight:600,color:"#3a4a5e",letterSpacing:"0.08em" }}>QUEUED FOR ANALYSIS</span>
             </div>
+            )
           );
         })()
       )}
@@ -2304,7 +2312,7 @@ export default function VegasVaultApp() {
   }
 
   function handleCardClick(game){
-    const result=results[`${game.id}-VEGAS`]||results[`${game.id}-PUBLIC`];
+    const result=results[`${game.id}-VEGAS`]||results[`${game.id}-PUBLIC`]||results[`${game.id}-WNBA`];
     if(result){setActiveResult(result);setActiveGame(game);}
   }
 
