@@ -938,7 +938,7 @@ function RightPanelContent({ marketScanner, insights, aiConfidence, confHistory 
 
 
 // ── TOP PLAY BANNER ──────────────────────────────────────────────────────────
-function TopPlayBanner({ topPlay, loading, results, games, pickHistory, isSubscribed, onShowAuth, onForceRefresh, isAdmin }) {
+function TopPlayBanner({ topPlay, loading, results, games, pickHistory, isSubscribed, onShowAuth, onForceRefresh, isAdmin, watchlist, onToggleWatch, sport }) {
   const [expanded, setExpanded] = useState(false);
 
   if (loading && !topPlay) {
@@ -1849,6 +1849,45 @@ export default function VegasVaultApp() {
     return()=>clearInterval(t);
   },[]);
 
+  // ── PER-SPORT TOP PLAY — runs after all games in sport are analyzed ────────────
+  useEffect(() => {
+    const SPORTS = ['MLB', 'NBA', 'NFL', 'WNBA'];
+    SPORTS.forEach(sport => {
+      if (sportTopPlayDone[sport]) return;
+      const sportGames = games.filter(g => g.sport === sport);
+      if (!sportGames.length) return;
+
+      // Check if all games in this sport have been analyzed
+      const allAnalyzed = sportGames.every(g => {
+        const slots = sport === 'WNBA' ? ['WNBA'] : ['PUBLIC', 'VEGAS'];
+        return slots.some(slot => results[`${g.id}-${slot}`]?.summary);
+      });
+      if (!allAnalyzed) return;
+
+      // Find the best pick across all analyzed games in this sport
+      let bestPick = null, bestScore = -1;
+      sportGames.forEach(g => {
+        const slots = sport === 'WNBA' ? ['WNBA'] : ['PUBLIC', 'VEGAS'];
+        slots.forEach(slot => {
+          const r = results[`${g.id}-${slot}`];
+          if (!r?.summary || r.summary.tierLabel === 'PASS') return;
+          const tierScore = r.summary.tier === '1' ? 3 : r.summary.tier === '2' ? 2 : 1;
+          const confScore = r.summary.confidence === 'HIGH' ? 2 : r.summary.confidence === 'MEDIUM' ? 1 : 0;
+          const score = tierScore * 10 + confScore;
+          if (score > bestScore) {
+            bestScore = score;
+            bestPick = { game: g, slot, result: r, sport };
+          }
+        });
+      });
+
+      if (bestPick) {
+        setSportTopPlays(prev => ({ ...prev, [sport]: bestPick }));
+        setSportTopPlayDone(prev => ({ ...prev, [sport]: true }));
+      }
+    });
+  }, [games, results, sportTopPlayDone]);
+
   // ── BET READY ALERTS — 30 min before game, Tier 1 & 2 picks ─────────────────
   useEffect(() => {
     if (!games || Object.keys(results).length === 0) return;
@@ -1869,7 +1908,8 @@ export default function VegasVaultApp() {
         const minsUntil = (gameTime - now) / 60000;
         if (minsUntil > 30 || minsUntil < 0) continue;
 
-        for (const slot of ['PUBLIC', 'VEGAS']) {
+        const slots = game.sport === 'WNBA' ? ['WNBA'] : ['PUBLIC', 'VEGAS'];
+        for (const slot of slots) {
           const key = `${game.id}-${slot}`;
           const pick = results[key];
           if (!pick?.summary) continue;
@@ -2677,11 +2717,24 @@ export default function VegasVaultApp() {
             {loading?(
               <div style={{ textAlign:"center",padding:"60px 0",fontSize:11,color:"#2d3a4a",letterSpacing:"0.06em" }}>LOADING SLATE…</div>
             ):(
-              <div className="vv-cards">
-                {filteredGames.map(game=>(
-                  <GameCard key={game.id} game={game} results={results} generating={generating} onGenerate={handleGenerate} onCardClick={handleCardClick} liveScores={liveScores} isSubscribed={isSubscribed} finalized={finalized} isQueued={preAnalyzeQueue.some(q=>q.game.id===game.id)} betReady={betReadyAlerts[`${game.id}-PUBLIC`]||betReadyAlerts[`${game.id}-VEGAS`]} onShowAuth={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}} watchlist={watchlist} onToggleWatch={toggleWatch}/>
-                ))}
-              </div>
+              <>
+                {filter === 'WNBA' && sportTopPlays.WNBA && (
+                  <div style={{ marginBottom:12 }}>
+                    <TopPlayBanner
+                      topPlay={{ result: sportTopPlays.WNBA.result, slot: 'WNBA', away: sportTopPlays.WNBA.game.away, home: sportTopPlays.WNBA.game.home, time: sportTopPlays.WNBA.game.time, game_key: `${sportTopPlays.WNBA.game.away}|${sportTopPlays.WNBA.game.home}`, away_abbr: sportTopPlays.WNBA.game.awayAbbr, home_abbr: sportTopPlays.WNBA.game.homeAbbr }}
+                      loading={false} results={results} games={games} pickHistory={pickHistory}
+                      isSubscribed={isSubscribed} onShowAuth={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}}
+                      onForceRefresh={null} isAdmin={authUser?.email===ADMIN_EMAIL}
+                      watchlist={watchlist} onToggleWatch={toggleWatch} sport="WNBA"
+                    />
+                  </div>
+                )}
+                <div className="vv-cards">
+                  {filteredGames.map(game=>(
+                    <GameCard key={game.id} game={game} results={results} generating={generating} onGenerate={handleGenerate} onCardClick={handleCardClick} liveScores={liveScores} isSubscribed={isSubscribed} finalized={finalized} isQueued={preAnalyzeQueue.some(q=>q.game.id===game.id)} betReady={betReadyAlerts[`${game.id}-PUBLIC`]||betReadyAlerts[`${game.id}-VEGAS`]||betReadyAlerts[`${game.id}-WNBA`]} onShowAuth={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}} watchlist={watchlist} onToggleWatch={toggleWatch}/>
+                  ))}
+                </div>
+              </>
             )}
 
 
