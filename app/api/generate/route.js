@@ -69,6 +69,10 @@ export async function POST(request) {
       };
     }
 
+    // Map summary fields to analysis for breakdown display
+    if (result.summary && !result.analysis) {
+      result.analysis = result.summary;
+    }
     return NextResponse.json(result);
   } catch (err) {
     console.error('Generate error:', err.message);

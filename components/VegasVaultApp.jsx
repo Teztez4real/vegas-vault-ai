@@ -375,7 +375,17 @@ function PlayResult({ result, game, onClose, isResolved, resolvedResult }) {
     {label:"Mental & Psych",key:"mentalPsychological"},{label:"Injury Check",key:"injuryCheck"},
     {label:"Pricing Intelligence",key:"pricingIntelligence"},{label:"Game Script",key:"gameScript"},
   ];
-  const steps = isTennis ? tennisSteps : baseballSteps;
+  const wnbaSteps = [
+    {label:"Matchup Foundation",key:"matchupFoundation"},{label:"Records",key:"records"},
+    {label:"Recent Form",key:"recentForm"},{label:"Head to Head",key:"headToHead"},
+    {label:"Lineup & Roster",key:"lineupAnalysis"},{label:"Fatigue & Travel",key:"fatigueTravel"},
+    {label:"Game Script",key:"gameScript"},{label:"Series Context",key:"seriesContext"},
+    {label:"Trell Rule",key:"trellRule"},{label:"Pricing",key:"pricingComprehension"},
+    {label:"Line Movement",key:"lineMovement"},{label:"Public vs Sharp",key:"vegasVsPublicPropaganda"},
+    {label:"Discrepancies",key:"discrepancies"},
+  ];
+  const isWNBA = game.sport === "WNBA";
+  const steps = isTennis ? tennisSteps : isWNBA ? wnbaSteps : baseballSteps;
   return (
     <div onClick={e=>e.target===e.currentTarget&&onClose()} style={{ position:"fixed",inset:0,zIndex:300,background:"rgba(0,0,0,0.82)",backdropFilter:"blur(18px)",display:"flex",alignItems:"center",justifyContent:"center",padding:16 }}>
       <div style={{ background:"#090d18",border:"1px solid rgba(255,255,255,0.09)",borderRadius:20,width:"100%",maxWidth:660,maxHeight:"92vh",overflowY:"auto",boxShadow:"0 40px 100px rgba(0,0,0,0.9)" }}>
