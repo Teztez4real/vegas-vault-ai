@@ -610,7 +610,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
               </div>
               {/* Run Line / Spread */}
               <div style={{ background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:8,overflow:'hidden' }}>
-                <div style={{ padding:'3px 0',textAlign:'center',fontSize:8,color:'#3a4a5e',letterSpacing:'0.08em',fontWeight:600,borderBottom:'1px solid rgba(255,255,255,0.05)',background:'rgba(255,255,255,0.02)' }}>RUN LINE</div>
+                <div style={{ padding:'3px 0',textAlign:'center',fontSize:8,color:'#3a4a5e',letterSpacing:'0.08em',fontWeight:600,borderBottom:'1px solid rgba(255,255,255,0.05)',background:'rgba(255,255,255,0.02)' }}>{game.sport==='MLB'?'RUN LINE':'SPREAD'}</div>
                 <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:0 }}>
                   <div style={{ padding:'7px 6px',textAlign:'center',borderRight:'1px solid rgba(255,255,255,0.05)' }}>
                     <div style={{ fontSize:9,color:'#475569',marginBottom:3,fontWeight:600 }}>{game.awayAbbr||game.away?.split(' ').pop()}</div>
