@@ -375,6 +375,187 @@ async function assembleMLBGame(game, oddsMap) {
   } catch { return null; }
 }
 
+// ── NBA DATA FUNCTIONS ────────────────────────────────────────────────────────
+
+async function fetchNBATeamStats(teamName) {
+  try {
+    // Use ESPN API to get team stats including home/away/ATS
+    const res = await fetch(
+      `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams?limit=50`,
+      { cache: 'no-store' }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const teams = data.sports?.[0]?.leagues?.[0]?.teams || [];
+    const team = teams.find(t => {
+      const name = t.team?.displayName || '';
+      return name === teamName || name.includes(teamName.split(' ').pop());
+    });
+    return team?.team?.id || null;
+  } catch { return null; }
+}
+
+async function fetchNBARecentForm(teamName) {
+  try {
+    // Get team ID first
+    const searchRes = await fetch(
+      `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams?limit=50`,
+      { cache: 'no-store' }
+    );
+    if (!searchRes.ok) return { last5: 'N/A', last10: 'N/A', streak: 'N/A', homeRecord: 'N/A', awayRecord: 'N/A', atsRecord: 'N/A' };
+    const searchData = await searchRes.json();
+    const teams = searchData.sports?.[0]?.leagues?.[0]?.teams || [];
+    const team = teams.find(t => {
+      const n = t.team?.displayName || '';
+      return n === teamName || n.includes(teamName.split(' ').pop());
+    });
+    if (!team?.team?.id) return { last5: 'N/A', last10: 'N/A', streak: 'N/A', homeRecord: 'N/A', awayRecord: 'N/A', atsRecord: 'N/A' };
+
+    const teamId = team.team.id;
+    const res = await fetch(
+      `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/${teamId}/schedule?season=2025`,
+      { cache: 'no-store' }
+    );
+    if (!res.ok) return { last5: 'N/A', last10: 'N/A', streak: 'N/A', homeRecord: 'N/A', awayRecord: 'N/A', atsRecord: 'N/A' };
+    const data = await res.json();
+
+    const games = (data.events || []).filter(e => e.competitions?.[0]?.status?.type?.completed);
+    const results = games.map(e => {
+      const comp = e.competitions[0];
+      const isHome = comp.competitors?.[0]?.homeAway === 'home' && comp.competitors?.[0]?.team?.id === teamId ||
+                     comp.competitors?.[1]?.homeAway === 'home' && comp.competitors?.[1]?.team?.id === teamId;
+      const myTeam = comp.competitors?.find(c => c.team?.id === teamId);
+      const oppTeam = comp.competitors?.find(c => c.team?.id !== teamId);
+      const myScore = parseInt(myTeam?.score || 0);
+      const oppScore = parseInt(oppTeam?.score || 0);
+      const win = myScore > oppScore;
+      return { win, myScore, oppScore, isHome };
+    });
+
+    const last10 = results.slice(-10);
+    const last5 = last10.slice(-5);
+    const wins5 = last5.filter(g => g.win).length;
+    const wins10 = last10.filter(g => g.win).length;
+    const last5str = last5.map(g => g.win ? 'W' : 'L').join('');
+    const last10str = last10.map(g => g.win ? 'W' : 'L').join('');
+
+    // Streak
+    let streak = 0, streakType = '';
+    for (let i = last10.length - 1; i >= 0; i--) {
+      if (i === last10.length - 1) { streakType = last10[i].win ? 'W' : 'L'; streak = 1; }
+      else if ((last10[i].win && streakType === 'W') || (!last10[i].win && streakType === 'L')) streak++;
+      else break;
+    }
+
+    // Home/Away splits
+    const homeG = results.filter(g => g.isHome);
+    const awayG = results.filter(g => !g.isHome);
+    const homeW = homeG.filter(g => g.win).length;
+    const awayW = awayG.filter(g => g.win).length;
+
+    // ATS (spread -3.5 approx): win by 4+
+    const atsW = results.filter(g => g.win && (g.myScore - g.oppScore) >= 4).length + results.filter(g => !g.win && (g.oppScore - g.myScore) <= 3).length;
+
+    return {
+      last5: `${wins5}-${last5.length - wins5} (${last5str})`,
+      last10: `${wins10}-${last10.length - wins10} (${last10str})`,
+      streak: streak > 0 ? `${streakType}${streak}` : 'N/A',
+      homeRecord: `${homeW}-${homeG.length - homeW}`,
+      awayRecord: `${awayW}-${awayG.length - awayW}`,
+      atsRecord: `${atsW}-${results.length - atsW}`,
+    };
+  } catch { return { last5: 'N/A', last10: 'N/A', streak: 'N/A', homeRecord: 'N/A', awayRecord: 'N/A', atsRecord: 'N/A' }; }
+}
+
+async function fetchNBAH2H(awayTeam, homeTeam) {
+  try {
+    const season = 2025;
+    const res = await fetch(
+      `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams?limit=50`,
+      { cache: 'no-store' }
+    );
+    if (!res.ok) return 'H2H unavailable';
+    const data = await res.json();
+    const teams = data.sports?.[0]?.leagues?.[0]?.teams || [];
+    const homeT = teams.find(t => (t.team?.displayName || '').includes(homeTeam.split(' ').pop()));
+    if (!homeT?.team?.id) return 'H2H unavailable';
+
+    const schedRes = await fetch(
+      `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/${homeT.team.id}/schedule?season=${season}`,
+      { cache: 'no-store' }
+    );
+    if (!schedRes.ok) return 'H2H unavailable';
+    const schedData = await schedRes.json();
+
+    const awayKeyword = awayTeam.split(' ').pop();
+    const h2hGames = (schedData.events || []).filter(e => {
+      const comp = e.competitions?.[0];
+      const completed = comp?.status?.type?.completed;
+      const hasAway = comp?.competitors?.some(c => (c.team?.displayName || '').includes(awayKeyword));
+      return completed && hasAway;
+    });
+
+    if (!h2hGames.length) return `No ${season} season H2H games yet`;
+
+    const results = h2hGames.map(e => {
+      const comp = e.competitions[0];
+      const homeComp = comp.competitors?.find(c => c.homeAway === 'home' && (c.team?.displayName || '').includes(homeTeam.split(' ').pop()));
+      const awayComp = comp.competitors?.find(c => c.homeAway === 'away');
+      const homeScore = parseInt(homeComp?.score || 0);
+      const awayScore = parseInt(awayComp?.score || 0);
+      const homeWin = homeScore > awayScore;
+      return `${homeWin ? homeTeam.split(' ').pop() : awayTeam.split(' ').pop()} ${homeScore}-${awayScore}`;
+    });
+
+    const homeWins = h2hGames.filter(e => {
+      const comp = e.competitions[0];
+      const homeComp = comp.competitors?.find(c => c.homeAway === 'home' && (c.team?.displayName || '').includes(homeTeam.split(' ').pop()));
+      return parseInt(homeComp?.score || 0) > parseInt(comp.competitors?.find(c => c.homeAway === 'away')?.score || 0);
+    }).length;
+
+    return `${season} Season: ${homeTeam.split(' ').pop()} ${homeWins}-${h2hGames.length - homeWins} vs ${awayTeam.split(' ').pop()} | Games: ${results.join(', ')}`;
+  } catch { return 'H2H unavailable'; }
+}
+
+async function fetchNBAPlayoffContext(awayTeam, homeTeam, date) {
+  try {
+    const month = new Date(date || Date.now()).getMonth() + 1;
+    const isPlayoffMonth = month >= 4 && month <= 6;
+    if (!isPlayoffMonth) return { isPlayoffs: false, context: 'Regular Season' };
+
+    const res = await fetch(
+      `https://site.api.espn.com/apis/v2/scoreboard/header?sport=basketball&league=nba`,
+      { cache: 'no-store' }
+    );
+    if (!res.ok) return { isPlayoffs: true, context: 'NBA Playoffs' };
+    const data = await res.json();
+
+    // Check if any game has playoff series info
+    const games = data.sports?.[0]?.leagues?.[0]?.events || [];
+    const awayKeyword = awayTeam.split(' ').pop();
+    const homeKeyword = homeTeam.split(' ').pop();
+    const matchGame = games.find(g => {
+      const name = g.name || '';
+      return name.includes(awayKeyword) || name.includes(homeKeyword);
+    });
+
+    const seriesInfo = matchGame?.series;
+    if (seriesInfo) {
+      const summary = seriesInfo.summary || '';
+      const gameNum = seriesInfo.completed + 1;
+      const awayWins = seriesInfo.competitors?.[0]?.wins || 0;
+      const homeWins = seriesInfo.competitors?.[1]?.wins || 0;
+      return {
+        isPlayoffs: true,
+        context: `NBA PLAYOFFS — Game ${gameNum} | Series: ${awayTeam.split(' ').pop()} ${awayWins}-${homeWins} ${homeTeam.split(' ').pop()} | ${summary}`,
+        gameNumber: gameNum,
+        seriesRecord: `${awayWins}-${homeWins}`,
+      };
+    }
+    return { isPlayoffs: true, context: 'NBA Playoffs' };
+  } catch { return { isPlayoffs: false, context: 'Regular Season' }; }
+}
+
 async function fetchNBAGames(date) {
   try {
     const month = new Date().getMonth() + 1;
@@ -412,6 +593,40 @@ async function fetchNBAGames(date) {
         });
       });
       const nbaAbbrMap = {'Atlanta Hawks':'ATL','Boston Celtics':'BOS','Brooklyn Nets':'BKN','Charlotte Hornets':'CHA','Chicago Bulls':'CHI','Cleveland Cavaliers':'CLE','Dallas Mavericks':'DAL','Denver Nuggets':'DEN','Detroit Pistons':'DET','Golden State Warriors':'GSW','Houston Rockets':'HOU','Indiana Pacers':'IND','Los Angeles Clippers':'LAC','Los Angeles Lakers':'LAL','Memphis Grizzlies':'MEM','Miami Heat':'MIA','Milwaukee Bucks':'MIL','Minnesota Timberwolves':'MIN','New Orleans Pelicans':'NOP','New York Knicks':'NYK','Oklahoma City Thunder':'OKC','Orlando Magic':'ORL','Philadelphia 76ers':'PHI','Phoenix Suns':'PHX','Portland Trail Blazers':'POR','Sacramento Kings':'SAC','San Antonio Spurs':'SAS','Toronto Raptors':'TOR','Utah Jazz':'UTA','Washington Wizards':'WAS'};
+
+      // Build per-book pricing string for discrepancy analysis
+      const PRIORITY = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'bet365'];
+      const books = (game.bookmakers || []).sort((a,b) => PRIORITY.indexOf(a.key) - PRIORITY.indexOf(b.key));
+      const bookPrices = {};
+      const _raw = {};
+      books.forEach(bm => {
+        const label = bm.key === 'draftkings' ? 'DK' : bm.key === 'fanduel' ? 'FD' : bm.key === 'betmgm' ? 'MGM' : bm.key === 'caesars' ? 'CZR' : 'B365';
+        bm.markets?.forEach(mkt => {
+          if (mkt.key === 'h2h') mkt.outcomes?.forEach(o => {
+            bookPrices[label] = bookPrices[label] || {};
+            _raw[bm.key] = _raw[bm.key] || {};
+            if (o.name === away) { bookPrices[label].away = fmt(o.price); _raw[bm.key].away = o.price; }
+            if (o.name === home) { bookPrices[label].home = fmt(o.price); _raw[bm.key].home = o.price; }
+          });
+        });
+      });
+      const pricingStr = Object.entries(bookPrices).map(([l,v]) => \`\${l}: \${v.away||'N/A'}/\${v.home||'N/A'}\`).join(' | ');
+
+      // Line movement signals
+      const b365Away = _raw['bet365']?.away, fdAway = _raw['fanduel']?.away, dkAway = _raw['draftkings']?.away;
+      const signals = [];
+      if (b365Away && fdAway && Math.abs(b365Away-fdAway) >= 8) signals.push(\`B365 \${fmt(b365Away)} vs FD \${fmt(fdAway)} — sharp on \${b365Away<fdAway?away.split(' ').pop():home.split(' ').pop()}\`);
+      if (b365Away && dkAway && Math.abs(b365Away-dkAway) >= 8) signals.push(\`B365 \${fmt(b365Away)} vs DK \${fmt(dkAway)} — sharp on \${b365Away<dkAway?away.split(' ').pop():home.split(' ').pop()}\`);
+      const lineMovement = signals.join(' | ') || 'No significant movement';
+
+      // Fetch NBA-specific data in parallel
+      const [awayForm, homeForm, h2h, playoffCtx] = await Promise.all([
+        fetchNBARecentForm(away),
+        fetchNBARecentForm(home),
+        fetchNBAH2H(away, home),
+        fetchNBAPlayoffContext(away, home, game.commence_time),
+      ]);
+
       return {
         id: 3000 + i, sport: 'NBA',
         away, home,
@@ -420,9 +635,29 @@ async function fetchNBAGames(date) {
         time: formatTime(game.commence_time),
         rawTime: game.commence_time,
         awayML, homeML, spread, total,
-        openingAwayML: 'N/A', openingHomeML: 'N/A',
+        openingAwayML: pricingStr || 'N/A',
+        openingHomeML: pricingStr || 'N/A',
+        pricingStr,
+        lineMovement,
         awayRecord: nbaRecords[away] || 'N/A',
         homeRecord: nbaRecords[home] || 'N/A',
+        awayHomeRecord: awayForm.homeRecord,
+        awayAwayRecord: awayForm.awayRecord,
+        awayATS: awayForm.atsRecord,
+        homeHomeRecord: homeForm.homeRecord,
+        homeAwayRecord: homeForm.awayRecord,
+        homeATS: homeForm.atsRecord,
+        awayLast5: awayForm.last5,
+        awayLast10: awayForm.last10,
+        awayStreak: awayForm.streak,
+        homeLast5: homeForm.last5,
+        homeLast10: homeForm.last10,
+        homeStreak: homeForm.streak,
+        h2h,
+        isPlayoffs: playoffCtx.isPlayoffs,
+        playoffContext: playoffCtx.context,
+        playoffGameNumber: playoffCtx.gameNumber,
+        playoffSeriesRecord: playoffCtx.seriesRecord,
         slot: null,
       };
     });
