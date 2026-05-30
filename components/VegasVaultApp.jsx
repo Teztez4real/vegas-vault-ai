@@ -353,10 +353,10 @@ function ScamPlayBlock({ scam }) {
 
 function PlayResult({ result, game, onClose, isResolved, resolvedResult }) {
   const [expanded, setExpanded] = useState(false);
-  if (!result?.summary) return null;
+  if (!result?.summary || !game) return null;
   const tier = TIER_STYLES[result.summary.tier] || TIER_STYLES["3"];
   const conf = CONF_STYLES[result.summary.confidence] || CONF_STYLES.MEDIUM;
-  const a = result.analysis;
+  const a = result.analysis || result.summary || {};
   const isVegas = result.summary.slot === "VEGAS";
   const isTennis = game.sport === "Tennis";
   const baseballSteps = [
@@ -2363,8 +2363,9 @@ export default function VegasVaultApp() {
   }
 
   function handleCardClick(game){
+    if (!game) return;
     const result=results[`${game.id}-VEGAS`]||results[`${game.id}-PUBLIC`]||results[`${game.id}-WNBA`];
-    if(result){setActiveResult(result);setActiveGame(game);}
+    if(result && result.summary){setActiveResult(result);setActiveGame(game);}
   }
 
   // Date navigation helpers
@@ -2743,7 +2744,7 @@ export default function VegasVaultApp() {
         )}
       </div>
 
-      {activeResult&&activeGame&&(
+      {activeResult&&activeGame&&activeResult.summary&&(
         <PlayResult
           result={activeResult}
           game={activeGame}
