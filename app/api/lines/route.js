@@ -29,61 +29,44 @@ async function fetchAllBooks(sportKey) {
   const sharpKey = process.env.SHARPAPI_KEY;
   const games = {};
 
-  if (sharpKey) {
+  // Use Odds API for real-time lines across all books
+  const oddsKey = process.env.ODDS_API_KEY;
+  if (oddsKey) {
     try {
-      const leagueMap = { 'baseball_mlb': 'MLB', 'basketball_nba': 'NBA', 'americanfootball_nfl': 'NFL' };
-      const league = leagueMap[sportKey];
-      if (!league) return games;
+      const leagueMap = { baseball_mlb: 'baseball_mlb', basketball_nba: 'basketball_nba', americanfootball_nfl: 'americanfootball_nfl' };
+      const apiSport = leagueMap[sportKey] || 'baseball_mlb';
+      const BOOKS = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'bet365'];
+      const res = await fetch(
+        `https://api.the-odds-api.com/v4/sports/${apiSport}/odds/?apiKey=${oddsKey}&regions=us&markets=h2h&oddsFormat=american&bookmakers=${BOOKS.join(',')}`,
+        { cache: 'no-store' }
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
 
-      const sportKeyMap2 = { baseball_mlb: 'baseball', basketball_nba: 'basketball', americanfootball_nfl: 'americanfootball' };
-        const sportName2 = sportKeyMap2[sportKey] || 'baseball';
-        const res = await fetch(`https://api.sharpapi.io/api/v1/odds?sport=${sportName2}&league=${league}`, {
-        headers: { 'X-API-Key': sharpKey }, cache: 'no-store',
-      });
-      const rawJson = await res.json();
-      // Handle both events[] (new) and data[] (old) format
-      // Sharp API returns flat rows — one row per selection per book
-      const rows = rawJson.events || rawJson.data || [];
-      if (!rows.length) throw new Error('No rows');
-
-      for (const row of rows) {
-        const home = row.home_team || '';
-        const away = row.away_team || '';
-        if (!home || !away) continue;
-
-        // Only process moneyline rows
-        const mkt = (row.market_type || '').toLowerCase();
-        if (!mkt.includes('moneyline') && mkt !== 'money_line') continue;
-
+      for (const game of data) {
+        const away = game.away_team;
+        const home = game.home_team;
         const key = `${away}|${home}`;
-        if (!games[key]) games[key] = { away, home, commenceTime: row.event_start_time, books: {} };
+        if (!games[key]) games[key] = { away, home, commenceTime: game.commence_time, books: {} };
 
-        const book = (typeof row.sportsbook === 'string' ? row.sportsbook : '').toLowerCase().replace(/\s+/g, '');
-        if (!games[key].books[book]) games[key].books[book] = {};
-
-        const sel = (typeof row.selection === 'string' ? row.selection : '').toLowerCase();
-        const odds = row.odds_american;
-        if (odds == null) continue;
-
-        const homeParts = home.toLowerCase().split(' ');
-        const awayParts = away.toLowerCase().split(' ');
-        const matchesHome = homeParts.some(p => p.length > 2 && sel.includes(p));
-        const matchesAway = awayParts.some(p => p.length > 2 && sel.includes(p));
-
-        if (matchesHome) games[key].books[book].homeML = odds;
-        else if (matchesAway) games[key].books[book].awayML = odds;
-        else {
-          if (!games[key].books[book].awayML) games[key].books[book].awayML = odds;
-          else games[key].books[book].homeML = odds;
-        }
+        (game.bookmakers || []).forEach(bm => {
+          const book = bm.key;
+          if (!games[key].books[book]) games[key].books[book] = {};
+          bm.markets?.forEach(mkt => {
+            if (mkt.key === 'h2h') mkt.outcomes?.forEach(o => {
+              if (o.name === away) games[key].books[book].awayML = o.price;
+              if (o.name === home) games[key].books[book].homeML = o.price;
+            });
+          });
+        });
       }
-
-      console.log(`Lines: SharpAPI returned ${Object.keys(games).length} games`);
       return games;
-    } catch (err) {
-      console.error('Lines SharpAPI error:', err.message);
+    } catch(err) {
+      console.error('Lines Odds API error:', err.message);
     }
   }
+
+}
 
   // SharpAPI is the only odds source — no Odds API fallback
   console.warn('SharpAPI returned no data for lines, sportKey:', sportKey);
