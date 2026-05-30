@@ -201,6 +201,60 @@ async function fetchOdds(sport) {
 }
 
 
+async function fetchPitcherVsOpponent(pitcherId, opponentTeamId, pitcherName) {
+  if (!pitcherId || !opponentTeamId) return 'N/A';
+  try {
+    const season = new Date().getFullYear();
+    // Get pitcher's game log vs this opponent this season
+    const res = await fetch(
+      `https://statsapi.mlb.com/api/v1/people/${pitcherId}/stats?stats=vsTeam&opposingTeamId=${opponentTeamId}&group=pitching&season=${season}`,
+      { cache: 'no-store' }
+    );
+    if (!res.ok) return 'N/A';
+    const data = await res.json();
+    const stats = data.stats?.[0]?.splits?.[0]?.stat;
+    if (!stats) return `${pitcherName} — No matchup data vs this team this season`;
+    const era = stats.era || 'N/A';
+    const ip = stats.inningsPitched || '0';
+    const h = stats.hits ?? 'N/A';
+    const er = stats.earnedRuns ?? 'N/A';
+    const bb = stats.baseOnBalls ?? 'N/A';
+    const so = stats.strikeOuts ?? 'N/A';
+    const g = stats.gamesPitched ?? 0;
+    return `${pitcherName} vs this team: ${g} G | ${ip} IP | ERA ${era} | ${h} H | ${er} ER | ${bb} BB | ${so} K`;
+  } catch {
+    return 'N/A';
+  }
+}
+
+async function fetchFullPitcherStats(pitcherId, pitcherName) {
+  if (!pitcherId) return 'TBD';
+  try {
+    const season = new Date().getFullYear();
+    const res = await fetch(
+      `https://statsapi.mlb.com/api/v1/people/${pitcherId}/stats?stats=season&group=pitching&season=${season}`,
+      { cache: 'no-store' }
+    );
+    if (!res.ok) return 'TBD';
+    const data = await res.json();
+    const stats = data.stats?.[0]?.splits?.[0]?.stat;
+    if (!stats) return 'TBD';
+    const era = stats.era || 'N/A';
+    const whip = stats.whip || 'N/A';
+    const ip = stats.inningsPitched || '0';
+    const w = stats.wins ?? 0;
+    const l = stats.losses ?? 0;
+    const so = stats.strikeOuts ?? 'N/A';
+    const bb = stats.baseOnBalls ?? 'N/A';
+    const hr = stats.homeRuns ?? 'N/A';
+    const avg = stats.avg || 'N/A';
+    const gs = stats.gamesStarted ?? 0;
+    return `${w}-${l} | ${gs} GS | ${ip} IP | ERA ${era} | WHIP ${whip} | ${so} K | ${bb} BB | ${hr} HR | BAA ${avg}`;
+  } catch {
+    return 'TBD';
+  }
+}
+
 async function assembleMLBGame(game, oddsMap) {
   try {
     const away = game.teams?.away?.team?.name || 'Away';
@@ -226,11 +280,9 @@ async function assembleMLBGame(game, oddsMap) {
     const seriesGame = game.seriesGameNumber || 1;
     const seriesLength = game.gamesInSeries || 3;
 
-    // Pitcher stats from hydrated data
-    const awayPitcherStats = game.teams?.away?.probablePitcher ?
-      `ERA: ${game.teams.away.probablePitcher.stats?.find(s=>s.type?.displayName==='statsSingleSeason')?.stats?.era || 'N/A'}, WHIP: ${game.teams.away.probablePitcher.stats?.find(s=>s.type?.displayName==='statsSingleSeason')?.stats?.whip || 'N/A'}` : 'TBD';
-    const homePitcherStats = game.teams?.home?.probablePitcher ?
-      `ERA: ${game.teams.home.probablePitcher.stats?.find(s=>s.type?.displayName==='statsSingleSeason')?.stats?.era || 'N/A'}, WHIP: ${game.teams.home.probablePitcher.stats?.find(s=>s.type?.displayName==='statsSingleSeason')?.stats?.whip || 'N/A'}` : 'TBD';
+    // Pitcher IDs for detailed stats fetch
+    const awayPitcherId = game.teams?.away?.probablePitcher?.id;
+    const homePitcherId = game.teams?.home?.probablePitcher?.id;
 
     // Fetch live data in parallel
     const awayTeamId = game.teams?.away?.team?.id;
@@ -238,7 +290,7 @@ async function assembleMLBGame(game, oddsMap) {
     const awayPitcherHand = game.teams?.away?.probablePitcher?.pitchHand?.code || 'R';
     const homePitcherHand = game.teams?.home?.probablePitcher?.pitchHand?.code || 'R';
 
-    const [injuries, umpire, weather, awayBatterSplits, homeBatterSplits, awayForm, homeForm, h2h] = await Promise.all([
+    const [injuries, umpire, weather, awayBatterSplits, homeBatterSplits, awayForm, homeForm, h2h, awayPitcherStats, homePitcherStats, awayPitcherVsOpp, homePitcherVsOpp] = await Promise.all([
       awayTeamId && homeTeamId ? fetchMLBInjuries(awayTeamId, homeTeamId, away, home) : Promise.resolve('Injury data unavailable'),
       fetchUmpire(game.gamePk),
       fetchWeather(home, game.gameDate),
@@ -247,6 +299,10 @@ async function assembleMLBGame(game, oddsMap) {
       awayTeamId ? fetchTeamRecentForm(awayTeamId, away) : Promise.resolve({ last5: 'N/A', last10: 'N/A', streak: 'N/A' }),
       homeTeamId ? fetchTeamRecentForm(homeTeamId, home) : Promise.resolve({ last5: 'N/A', last10: 'N/A', streak: 'N/A' }),
       awayTeamId && homeTeamId ? fetchMLBH2H(awayTeamId, homeTeamId, away, home) : Promise.resolve('H2H unavailable'),
+      fetchFullPitcherStats(awayPitcherId, awayPitcher),
+      fetchFullPitcherStats(homePitcherId, homePitcher),
+      fetchPitcherVsOpponent(awayPitcherId, homeTeamId, awayPitcher),
+      fetchPitcherVsOpponent(homePitcherId, awayTeamId, homePitcher),
     ]);
 
     return {
@@ -291,8 +347,8 @@ async function assembleMLBGame(game, oddsMap) {
       homePitcher,
       awayPitcherStats,
       homePitcherStats,
-      awayPitcherVsOpponent: 'Check Baseball Reference',
-      homePitcherVsOpponent: 'Check Baseball Reference',
+      awayPitcherVsOpponent: awayPitcherVsOpp || 'N/A',
+      homePitcherVsOpponent: homePitcherVsOpp || 'N/A',
       awayBullpenERA: 'See team bullpen stats',
       homeBullpenERA: 'See team bullpen stats',
       awayLineup: 'Check lineups closer to game time',
