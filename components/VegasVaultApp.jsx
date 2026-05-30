@@ -2263,7 +2263,7 @@ export default function VegasVaultApp() {
   }, [selectedDate]);
 
   const generated = Object.keys(results).length;
-  const FILTERS = ["ALL","MLB","NBA","NFL","WNBA"];
+  const FILTERS = ["ALL","MLB","NBA","NFL"]; // WNBA has its own section
   const filteredGames = games.filter(g=>{
     if(filter==="MLB")return g.sport==="MLB";
     if(filter==="NBA")return g.sport==="NBA";
