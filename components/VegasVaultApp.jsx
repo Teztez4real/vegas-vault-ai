@@ -276,6 +276,16 @@ const WNBA_SLUGS = {
   "Mercury":"phx","Storm":"sea","Mystics":"wsh","Tempo":"tor",
 };
 
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { hasError: false }; }
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(error) { console.error('PlayResult crash:', error); }
+  render() {
+    if (this.state.hasError) return null;
+    return this.props.children;
+  }
+}
+
 function TeamLogo({ abbr, size=44, sport="MLB" }) {
   const [err, setErr] = useState(false);
   
@@ -357,8 +367,8 @@ function PlayResult({ result, game, onClose, isResolved, resolvedResult }) {
   const tier = TIER_STYLES[result.summary.tier] || TIER_STYLES["3"];
   const conf = CONF_STYLES[result.summary.confidence] || CONF_STYLES.MEDIUM;
   const a = result.analysis || result.summary || {};
-  const isVegas = result.summary.slot === "VEGAS";
-  const isTennis = game.sport === "Tennis";
+  const isVegas = result.summary?.slot === "VEGAS";
+  const isTennis = game?.sport === "Tennis";
   const baseballSteps = [
     {label:"Matchup Foundation",key:"matchupFoundation"},{label:"Records",key:"records"},
     {label:"Recent Form",key:"recentForm"},{label:"Head to Head",key:"headToHead"},
@@ -432,7 +442,7 @@ function PlayResult({ result, game, onClose, isResolved, resolvedResult }) {
         {expanded&&(
           <div style={{ padding:"0 22px 22px" }}>
             <div style={{ borderTop:"1px solid rgba(255,255,255,0.05)",paddingTop:4 }}>
-              {steps.map((s,i)=><AnalysisRow key={s.key} index={i+1} label={s.label} value={a[s.key]||"—"} />)}
+              {steps.map((s,i)=><AnalysisRow key={s.key} index={i+1} label={s.label} value={(a&&a[s.key])||"—"} />)}
             </div>
             <div style={{ marginTop:18 }}>
               <div style={{ fontSize:9,fontWeight:700,letterSpacing:"0.08em",color:"#3b82f6",marginBottom:10 }}>SCAM PLAY ANALYSIS</div>
@@ -2744,7 +2754,7 @@ export default function VegasVaultApp() {
         )}
       </div>
 
-      {activeResult&&activeGame&&activeResult.summary&&(
+      {activeResult&&activeGame&&activeResult.summary&&(<ErrorBoundary key={activeResult?.summary?.pick+activeGame?.id}>
         <PlayResult
           result={activeResult}
           game={activeGame}
