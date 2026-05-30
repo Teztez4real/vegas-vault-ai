@@ -752,7 +752,7 @@ export async function GET(request) {
     } catch {}
     const nbaGames = nbaPattern ? nbaGamesRaw.map((g,i) => ({ ...g, slot: nbaPattern[i]||null })) : nbaGamesRaw.map(g => ({ ...g, slot: null }));
 
-    const wnbaGames = (wnbaGamesRaw||[]).map(g => ({ ...g, slot: 'WNBA' })).sort((a,b) => new Date(a.rawTime) - new Date(b.rawTime)); // WNBA has no slot pattern
+    const wnbaGames = (wnbaGamesRaw||[]).map(g => ({ ...g, slot: 'WNBA' })).sort((a,b) => { const ta = new Date(a.rawTime||0).getTime(); const tb = new Date(b.rawTime||0).getTime(); return ta - tb; });
     const allGames = [...mlbGames, ...nbaGames, ...nflGames, ...wnbaGames];
 
     // ── LIVE AI INSIGHTS from real line movement data ────────────────────────
