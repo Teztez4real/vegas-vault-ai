@@ -610,13 +610,13 @@ async function fetchNBAGames(date) {
           });
         });
       });
-      const pricingStr = Object.entries(bookPrices).map(([l,v]) => \`\${l}: \${v.away||'N/A'}/\${v.home||'N/A'}\`).join(' | ');
+      const pricingStr = Object.entries(bookPrices).map(([l,v]) => `${l}: ${v.away||'N/A'}/${v.home||'N/A'}`).join(' | ');
 
       // Line movement signals
       const b365Away = _raw['bet365']?.away, fdAway = _raw['fanduel']?.away, dkAway = _raw['draftkings']?.away;
       const signals = [];
-      if (b365Away && fdAway && Math.abs(b365Away-fdAway) >= 8) signals.push(\`B365 \${fmt(b365Away)} vs FD \${fmt(fdAway)} — sharp on \${b365Away<fdAway?away.split(' ').pop():home.split(' ').pop()}\`);
-      if (b365Away && dkAway && Math.abs(b365Away-dkAway) >= 8) signals.push(\`B365 \${fmt(b365Away)} vs DK \${fmt(dkAway)} — sharp on \${b365Away<dkAway?away.split(' ').pop():home.split(' ').pop()}\`);
+      if (b365Away && fdAway && Math.abs(b365Away-fdAway) >= 8) signals.push(`B365 ${fmt(b365Away)} vs FD ${fmt(fdAway)} — sharp on ${b365Away<fdAway?away.split(' ').pop():home.split(' ').pop()}`);
+      if (b365Away && dkAway && Math.abs(b365Away-dkAway) >= 8) signals.push(`B365 ${fmt(b365Away)} vs DK ${fmt(dkAway)} — sharp on ${b365Away<dkAway?away.split(' ').pop():home.split(' ').pop()}`);
       const lineMovement = signals.join(' | ') || 'No significant movement';
 
       // Fetch NBA-specific data in parallel
