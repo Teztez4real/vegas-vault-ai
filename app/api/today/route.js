@@ -576,7 +576,7 @@ async function fetchNBAGames(date) {
       const gameDateStr = ct.toISOString().split('T')[0];
       return gameDateStr === targetDate;
     });
-    return filtered.map((game, i) => {
+    return Promise.all(filtered.map(async (game, i) => {
       const away = game.away_team;
       const home = game.home_team;
       let awayML = 'N/A', homeML = 'N/A', spread = 'N/A', total = 'N/A';
@@ -660,7 +660,7 @@ async function fetchNBAGames(date) {
         playoffSeriesRecord: playoffCtx.seriesRecord,
         slot: null,
       };
-    });
+    }));
   } catch { return []; }
 }
 
