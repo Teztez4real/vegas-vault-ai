@@ -355,6 +355,48 @@ async function fetchNBAGames(date) {
 
 
 
+async function fetchWNBAGames(date) {
+  try {
+    const res = await fetch(
+      `https://api.the-odds-api.com/v4/sports/basketball_wnba/odds/?apiKey=${process.env.ODDS_API_KEY}&regions=us&markets=h2h,spreads,totals&oddsFormat=american`,
+      { cache: 'no-store' }
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.map((game, i) => {
+      const away = game.away_team;
+      const home = game.home_team;
+      let awayML = 'N/A', homeML = 'N/A', spread = 'N/A', total = 'N/A';
+      const PRIORITY = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'bet365'];
+      const books = (game.bookmakers || []).sort((a,b) => PRIORITY.indexOf(a.key) - PRIORITY.indexOf(b.key));
+      books[0]?.markets?.forEach(mkt => {
+        if (mkt.key === 'h2h') mkt.outcomes?.forEach(o => {
+          if (o.name === away) awayML = fmt(o.price);
+          if (o.name === home) homeML = fmt(o.price);
+        });
+        if (mkt.key === 'spreads') mkt.outcomes?.forEach(o => {
+          if (o.name === home) spread = o.point > 0 ? `+${o.point}` : `${o.point}`;
+        });
+        if (mkt.key === 'totals') mkt.outcomes?.forEach(o => {
+          if (o.name === 'Over') total = o.point;
+        });
+      });
+      return {
+        id: 5000 + i, sport: 'WNBA',
+        away, home,
+        awayAbbr: away.split(' ').pop().slice(0,3).toUpperCase(),
+        homeAbbr: home.split(' ').pop().slice(0,3).toUpperCase(),
+        time: formatTime(game.commence_time),
+        rawTime: game.commence_time,
+        awayML, homeML, spread, total,
+        openingAwayML: 'N/A', openingHomeML: 'N/A',
+        awayRecord: 'N/A', homeRecord: 'N/A',
+        slot: null,
+      };
+    });
+  } catch { return []; }
+}
+
 // ── RECENT FORM (MLB Stats API — free) ────────────────────────────────────────
 
 async function fetchTeamRecentForm(teamId, teamName) {
@@ -653,11 +695,12 @@ export async function GET(request) {
     const dateParam = searchParams.get('date') || todayStr();
     const isPast = dateParam < todayStr();
 
-    const [scheduleGames, mlbOddsResult, nbaGamesRaw, nflGamesRaw] = await Promise.all([
+    const [scheduleGames, mlbOddsResult, nbaGamesRaw, nflGamesRaw, wnbaGamesRaw] = await Promise.all([
       fetchMLBSchedule(dateParam),
       isPast ? Promise.resolve({ oddsMap: {}, bookmakerCount: 0 }) : fetchOdds('baseball_mlb'),
       isPast ? Promise.resolve([]) : fetchNBAGames(dateParam),
       isPast ? Promise.resolve([]) : fetchNFLGames(dateParam),
+      isPast ? Promise.resolve([]) : fetchWNBAGames(dateParam),
     ]);
     const mlbOdds = mlbOddsResult.oddsMap || mlbOddsResult;
     const mlbBookmakerCount = mlbOddsResult.bookmakerCount || 0;
@@ -709,7 +752,8 @@ export async function GET(request) {
     } catch {}
     const nbaGames = nbaPattern ? nbaGamesRaw.map((g,i) => ({ ...g, slot: nbaPattern[i]||null })) : nbaGamesRaw.map(g => ({ ...g, slot: null }));
 
-    const allGames = [...mlbGames, ...nbaGames, ...nflGames];
+    const wnbaGames = (wnbaGamesRaw||[]).map(g => ({ ...g, slot: null }));
+    const allGames = [...mlbGames, ...nbaGames, ...nflGames, ...wnbaGames];
 
     // ── LIVE AI INSIGHTS from real line movement data ────────────────────────
     const insights = [];
