@@ -577,39 +577,74 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
       </div>
       )}
 
-      {/* Prices row — ML, Spread, Total */}
-      {!isTennis && (game.awayML || game.homeML || game.spread || game.total) && (
-        <div style={{ marginBottom:10 }}>
-          <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',padding:'6px 10px',background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.05)',borderRadius:game.lineMovement && game.lineMovement !== 'No significant movement' && game.lineMovement !== 'N/A' ? '8px 8px 0 0' : 8 }}>
-            {/* Away ML — DraftKings */}
-            <div style={{ textAlign:'center',flex:1 }}>
-              <div style={{ fontSize:8,color:'#3a4a5e',letterSpacing:'0.08em',marginBottom:2 }}>{game.awayAbbr||game.away?.split(' ').pop()} ML</div>
-              <div style={{ fontSize:12,fontWeight:700,color:((game.dkAwayML!=null?String(game.dkAwayML):game.awayML)||'').startsWith('-')?'#f87171':'#4ade80' }}>{game.dkAwayML!=null?(typeof game.dkAwayML==='string'?game.dkAwayML:(game.dkAwayML>0?'+'+game.dkAwayML:game.dkAwayML)):game.awayML||'—'}</div>
+      {/* Sportsbook-style odds row */}
+      {!isTennis && (game.awayML || game.homeML || game.spread || game.total) && (() => {
+        const awayOdds = game.dkAwayML!=null?(typeof game.dkAwayML==='string'?game.dkAwayML:(game.dkAwayML>0?'+'+game.dkAwayML:String(game.dkAwayML))):game.awayML||'—';
+        const homeOdds = game.dkHomeML!=null?(typeof game.dkHomeML==='string'?game.dkHomeML:(game.dkHomeML>0?'+'+game.dkHomeML:String(game.dkHomeML))):game.homeML||'—';
+        const spreadVal = game.dkSpread||game.spread||'—';
+        const totalVal = String(game.dkTotal||game.total||'—');
+        const hasMovement = game.lineMovement && !['No significant movement','N/A','No significant movement detected'].includes(game.lineMovement);
+        const awayColor = awayOdds.startsWith('-') ? '#f87171' : '#4ade80';
+        const homeColor = homeOdds.startsWith('-') ? '#f87171' : '#4ade80';
+        const awaySpread = spreadVal !== '—' ? (spreadVal.startsWith('-') ? '+'+spreadVal.slice(1) : '-'+spreadVal.replace('+','')) : '—';
+        return (
+          <div style={{ marginBottom:10 }}>
+            <div style={{ display:'flex',alignItems:'center',gap:5,marginBottom:5 }}>
+              <div style={{ fontSize:8,fontWeight:700,color:'#1d6fa5',background:'rgba(29,111,165,0.15)',border:'1px solid rgba(29,111,165,0.3)',borderRadius:3,padding:'1px 6px',letterSpacing:'0.06em' }}>DK</div>
+              <span style={{ fontSize:8,color:'#2d3a4a',letterSpacing:'0.06em' }}>DRAFTKINGS ODDS</span>
             </div>
-            {/* Spread — DraftKings */}
-            <div style={{ textAlign:'center',flex:1,borderLeft:'1px solid rgba(255,255,255,0.05)',borderRight:'1px solid rgba(255,255,255,0.05)' }}>
-              <div style={{ fontSize:8,color:'#3a4a5e',letterSpacing:'0.08em',marginBottom:2 }}>SPREAD</div>
-              <div style={{ fontSize:11,fontWeight:600,color:'#94a3b8' }}>{game.dkSpread||game.spread||'—'}</div>
+            <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:5 }}>
+              {/* Moneyline */}
+              <div style={{ background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:8,overflow:'hidden' }}>
+                <div style={{ padding:'3px 0',textAlign:'center',fontSize:8,color:'#3a4a5e',letterSpacing:'0.08em',fontWeight:600,borderBottom:'1px solid rgba(255,255,255,0.05)',background:'rgba(255,255,255,0.02)' }}>MONEYLINE</div>
+                <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:0 }}>
+                  <div style={{ padding:'7px 6px',textAlign:'center',borderRight:'1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ fontSize:9,color:'#475569',marginBottom:3,fontWeight:600 }}>{game.awayAbbr||game.away?.split(' ').pop()}</div>
+                    <div style={{ fontSize:14,fontWeight:700,color:awayColor,letterSpacing:'-0.02em' }}>{awayOdds}</div>
+                  </div>
+                  <div style={{ padding:'7px 6px',textAlign:'center' }}>
+                    <div style={{ fontSize:9,color:'#475569',marginBottom:3,fontWeight:600 }}>{game.homeAbbr||game.home?.split(' ').pop()}</div>
+                    <div style={{ fontSize:14,fontWeight:700,color:homeColor,letterSpacing:'-0.02em' }}>{homeOdds}</div>
+                  </div>
+                </div>
+              </div>
+              {/* Run Line / Spread */}
+              <div style={{ background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:8,overflow:'hidden' }}>
+                <div style={{ padding:'3px 0',textAlign:'center',fontSize:8,color:'#3a4a5e',letterSpacing:'0.08em',fontWeight:600,borderBottom:'1px solid rgba(255,255,255,0.05)',background:'rgba(255,255,255,0.02)' }}>RUN LINE</div>
+                <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:0 }}>
+                  <div style={{ padding:'7px 6px',textAlign:'center',borderRight:'1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ fontSize:9,color:'#475569',marginBottom:3,fontWeight:600 }}>{game.awayAbbr||game.away?.split(' ').pop()}</div>
+                    <div style={{ fontSize:13,fontWeight:600,color:'#94a3b8' }}>{awaySpread}</div>
+                  </div>
+                  <div style={{ padding:'7px 6px',textAlign:'center' }}>
+                    <div style={{ fontSize:9,color:'#475569',marginBottom:3,fontWeight:600 }}>{game.homeAbbr||game.home?.split(' ').pop()}</div>
+                    <div style={{ fontSize:13,fontWeight:600,color:'#94a3b8' }}>{spreadVal}</div>
+                  </div>
+                </div>
+              </div>
+              {/* Total */}
+              <div style={{ background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:8,overflow:'hidden' }}>
+                <div style={{ padding:'3px 0',textAlign:'center',fontSize:8,color:'#3a4a5e',letterSpacing:'0.08em',fontWeight:600,borderBottom:'1px solid rgba(255,255,255,0.05)',background:'rgba(255,255,255,0.02)' }}>TOTAL</div>
+                <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:0 }}>
+                  <div style={{ padding:'7px 6px',textAlign:'center',borderRight:'1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ fontSize:9,color:'#475569',marginBottom:3,fontWeight:600 }}>OVER</div>
+                    <div style={{ fontSize:13,fontWeight:600,color:'#60a5fa' }}>{totalVal !== '—' ? 'o'+totalVal : '—'}</div>
+                  </div>
+                  <div style={{ padding:'7px 6px',textAlign:'center' }}>
+                    <div style={{ fontSize:9,color:'#475569',marginBottom:3,fontWeight:600 }}>UNDER</div>
+                    <div style={{ fontSize:13,fontWeight:600,color:'#60a5fa' }}>{totalVal !== '—' ? 'u'+totalVal : '—'}</div>
+                  </div>
+                </div>
+              </div>
             </div>
-            {/* Total — DraftKings */}
-            <div style={{ textAlign:'center',flex:1,borderRight:'1px solid rgba(255,255,255,0.05)' }}>
-              <div style={{ fontSize:8,color:'#3a4a5e',letterSpacing:'0.08em',marginBottom:2 }}>O/U</div>
-              <div style={{ fontSize:11,fontWeight:600,color:'#94a3b8' }}>{game.dkTotal||game.total||'—'}</div>
-            </div>
-            {/* Home ML — DraftKings */}
-            <div style={{ textAlign:'center',flex:1 }}>
-              <div style={{ fontSize:8,color:'#3a4a5e',letterSpacing:'0.08em',marginBottom:2 }}>{game.homeAbbr||game.home?.split(' ').pop()} ML</div>
-              <div style={{ fontSize:12,fontWeight:700,color:((game.dkHomeML!=null?String(game.dkHomeML):game.homeML)||'').startsWith('-')?'#f87171':'#4ade80' }}>{game.dkHomeML!=null?(typeof game.dkHomeML==='string'?game.dkHomeML:(game.dkHomeML>0?'+'+game.dkHomeML:game.dkHomeML)):game.homeML||'—'}</div>
-            </div>
+            {hasMovement && (
+              <div style={{ marginTop:5,padding:'4px 8px',background:'rgba(248,113,113,0.06)',border:'1px solid rgba(248,113,113,0.2)',borderRadius:6,fontSize:9,color:'#f87171',fontWeight:600 }}>
+                ⚡ {game.lineMovement}
+              </div>
+            )}
           </div>
-          {/* Line movement indicator */}
-          {game.lineMovement && game.lineMovement !== 'No significant movement' && game.lineMovement !== 'N/A' && game.lineMovement !== 'No significant movement detected' && (
-            <div style={{ padding:'4px 10px',background:'rgba(248,113,113,0.06)',border:'1px solid rgba(248,113,113,0.15)',borderTop:'none',borderRadius:'0 0 8px 8px',fontSize:9,color:'#f87171',fontWeight:600 }}>
-              ⚡ {game.lineMovement}
-            </div>
-          )}
-        </div>
-      )}
+        );
+      })()}
 
       {/* Lock badge */}
       {isLock && (
