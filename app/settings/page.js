@@ -64,13 +64,19 @@ export default function SettingsPage() {
     } catch(e) { setTestMsg('❌ ' + e.message); }
   }
 
-  function clearAllPlays() {
+  async function clearAllPlays() {
     setClearMsg('');
     try {
       localStorage.removeItem('vv_results');
       localStorage.removeItem('vv_finalized');
       localStorage.removeItem('vv_pick_history');
-      setClearMsg('✅ All plays cleared — reload the dashboard to apply');
+      // Also clear from Supabase
+      const { data: { session: s } } = await supabase.auth.getSession();
+      if (s?.user?.id) {
+        await supabase.from('user_data').delete().eq('user_id', s.user.id).in('key', ['results', 'finalized', 'pick_history']);
+      }
+      setClearMsg('✅ Cleared — redirecting to dashboard...');
+      setTimeout(() => { window.location.href = '/dashboard'; }, 1000);
     } catch(e) { setClearMsg('❌ ' + e.message); }
   }
 
