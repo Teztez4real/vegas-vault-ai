@@ -2270,7 +2270,7 @@ export default function VegasVaultApp() {
     if(filter==="NFL")return g.sport==="NFL";
     if(filter==="WNBA")return g.sport==="WNBA";
     return g.sport !== 'WNBA';
-  });
+  }).sort((a,b) => filter==="WNBA" ? new Date(a.rawTime||0) - new Date(b.rawTime||0) : 0);
   const wnbaFilteredGames = games.filter(g => g.sport === 'WNBA').sort((a,b) => new Date(a.rawTime||a.time) - new Date(b.rawTime||b.time));
 
   async function handleGenerate(game,slot){
