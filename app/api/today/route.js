@@ -391,7 +391,7 @@ async function fetchWNBAGames(date) {
         awayML, homeML, spread, total,
         openingAwayML: 'N/A', openingHomeML: 'N/A',
         awayRecord: 'N/A', homeRecord: 'N/A',
-        slot: null,
+        slot: 'WNBA',
       };
     });
   } catch { return []; }
@@ -752,7 +752,7 @@ export async function GET(request) {
     } catch {}
     const nbaGames = nbaPattern ? nbaGamesRaw.map((g,i) => ({ ...g, slot: nbaPattern[i]||null })) : nbaGamesRaw.map(g => ({ ...g, slot: null }));
 
-    const wnbaGames = (wnbaGamesRaw||[]).map(g => ({ ...g, slot: null }));
+    const wnbaGames = (wnbaGamesRaw||[]).map(g => ({ ...g, slot: 'WNBA' })); // WNBA has no slot pattern
     const allGames = [...mlbGames, ...nbaGames, ...nflGames, ...wnbaGames];
 
     // ── LIVE AI INSIGHTS from real line movement data ────────────────────────

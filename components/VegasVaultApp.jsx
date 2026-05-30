@@ -2054,7 +2054,15 @@ export default function VegasVaultApp() {
     // Only queue once per date — don't re-queue just because liveScores updated
     if (queuedDateRef.current === selectedDate) return;
     // Wait for slots to be assigned
-    if (!hasSlotPattern) return;
+    // WNBA always analyzes — no slot pattern required
+    const wnbaGames = games.filter(g => g.sport === 'WNBA');
+    if (!hasSlotPattern && wnbaGames.length === 0) return;
+    if (!hasSlotPattern && wnbaGames.length > 0) {
+      // Only queue WNBA games
+      const wnbaQueue = wnbaGames.filter(g => !results[g.id+'-WNBA'] && !finalized[g.id+'-WNBA']).map(g => ({ game: g, slot: 'WNBA', key: g.id+'-WNBA' }));
+      if (wnbaQueue.length) setPreAnalyzeQueue(q => [...q, ...wnbaQueue.filter(nq => !q.find(eq => eq.key === nq.key))]);
+      return;
+    }
 
     const toAnalyze = [];
     for (const game of games) {
