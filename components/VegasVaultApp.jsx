@@ -2628,7 +2628,7 @@ export default function VegasVaultApp() {
             )}
 
             {/* WNBA Section */}
-            {filter !== 'WNBA' && wnbaFilteredGames.length > 0 && (
+            {wnbaFilteredGames.length > 0 && (
               <div style={{ marginTop:24 }}>
                 <div style={{ display:'flex',alignItems:'center',gap:10,marginBottom:12 }}>
                   <div style={{ flex:1,height:1,background:'rgba(255,255,255,0.05)' }}/>
