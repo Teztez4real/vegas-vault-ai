@@ -2263,13 +2263,13 @@ export default function VegasVaultApp() {
   }, [selectedDate]);
 
   const generated = Object.keys(results).length;
-  const FILTERS = ["ALL","MLB","NBA","NFL"]; // WNBA has its own section
+  const FILTERS = ["ALL","MLB","NBA","NFL","WNBA"];
   const filteredGames = games.filter(g=>{
     if(filter==="MLB")return g.sport==="MLB";
     if(filter==="NBA")return g.sport==="NBA";
     if(filter==="NFL")return g.sport==="NFL";
     if(filter==="WNBA")return g.sport==="WNBA";
-    return g.sport !== 'WNBA'; // ALL excludes WNBA — it has its own section
+    return g.sport !== 'WNBA';
   });
   const wnbaFilteredGames = games.filter(g => g.sport === 'WNBA').sort((a,b) => new Date(a.rawTime||a.time) - new Date(b.rawTime||b.time));
 
@@ -2627,24 +2627,7 @@ export default function VegasVaultApp() {
               </div>
             )}
 
-            {/* WNBA Section — always separate */}
-            {!loading && wnbaFilteredGames.length > 0 && (
-              <div style={{ marginTop:24 }}>
-                <div style={{ display:'flex',alignItems:'center',gap:10,marginBottom:12 }}>
-                  <div style={{ flex:1,height:1,background:'rgba(255,255,255,0.05)' }}/>
-                  <div style={{ display:'flex',alignItems:'center',gap:8 }}>
-                    <span style={{ fontSize:10,fontWeight:700,color:'#c084fc',letterSpacing:'0.12em' }}>WNBA</span>
-                    <span style={{ fontSize:9,color:'#c084fc',background:'rgba(192,132,252,0.1)',border:'1px solid rgba(192,132,252,0.25)',borderRadius:4,padding:'2px 7px',fontWeight:600 }}>{wnbaFilteredGames.length} GAMES</span>
-                  </div>
-                  <div style={{ flex:1,height:1,background:'rgba(255,255,255,0.05)' }}/>
-                </div>
-                <div className="vv-cards">
-                  {wnbaFilteredGames.map(game=>(
-                    <GameCard key={game.id} game={game} results={results} generating={generating} onGenerate={handleGenerate} onCardClick={handleCardClick} liveScores={liveScores} isSubscribed={isSubscribed} finalized={finalized} isQueued={preAnalyzeQueue.some(q=>q.game.id===game.id)} betReady={betReadyAlerts[game.id+'-WNBA']} onShowAuth={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}} watchlist={watchlist} onToggleWatch={toggleWatch}/>
-                  ))}
-                </div>
-              </div>
-            )}
+
 
             {/* Trell alerts */}
             {trellAlerts.length>0&&(
