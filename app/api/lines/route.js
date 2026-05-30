@@ -42,42 +42,39 @@ async function fetchAllBooks(sportKey) {
       });
       const rawJson = await res.json();
       // Handle both events[] (new) and data[] (old) format
-      console.log('Sharp raw keys:', Object.keys(rawJson), 'events:', (rawJson.events||[]).length, 'data:', (rawJson.data||[]).length);
-      if (rawJson.events?.[0]) console.log('Sample event:', JSON.stringify(rawJson.events[0]).slice(0,300));
-      else if (rawJson.data?.[0]) console.log('Sample data:', JSON.stringify(rawJson.data[0]).slice(0,300));
-      const events = rawJson.events || rawJson.data || [];
-      if (!events.length) throw new Error('No rows');
+      // Sharp API returns flat rows — one row per selection per book
+      const rows = rawJson.events || rawJson.data || [];
+      if (!rows.length) throw new Error('No rows');
 
-      for (const event of events) {
-        const away = event.away || event.away_team || '';
-        const home = event.home || event.home_team || '';
-        if (!away || !home) continue;
+      for (const row of rows) {
+        const home = row.home_team || '';
+        const away = row.away_team || '';
+        if (!home || !away) continue;
+
+        // Only process moneyline rows
+        const mkt = (row.market_type || '').toLowerCase();
+        if (!mkt.includes('moneyline') && mkt !== 'money_line') continue;
+
         const key = `${away}|${home}`;
-        if (!games[key]) games[key] = { away, home, commenceTime: event.start_time || event.event_start_time, books: {} };
+        if (!games[key]) games[key] = { away, home, commenceTime: row.event_start_time, books: {} };
 
-        // New format: event.odds = { bookname: { moneyline, spread, total } }
-        const booksData = event.odds || event.sportsbooks || {};
-        Object.entries(booksData).forEach(([bookName, bookOdds]) => {
-          if (!bookOdds || typeof bookOdds !== 'object') return;
-          const book = bookName.toLowerCase();
-          if (!games[key].books[book]) games[key].books[book] = {};
-          const ml = bookOdds.moneyline || bookOdds;
-          if (ml?.away != null) games[key].books[book].awayML = ml.away;
-          if (ml?.home != null) games[key].books[book].homeML = ml.home;
-          if (bookOdds.spread?.home != null) games[key].books[book].spread = bookOdds.spread.home;
-          if (bookOdds.total?.over != null) games[key].books[book].total = bookOdds.total.over;
-        });
+        const book = (typeof row.sportsbook === 'string' ? row.sportsbook : '').toLowerCase().replace(/\s+/g, '');
+        if (!games[key].books[book]) games[key].books[book] = {};
 
-        // Fallback: flat format with sportsbook field
-        if (!Object.keys(booksData).length && event.sportsbook) {
-          const book = event.sportsbook.toLowerCase();
-          if (!games[key].books[book]) games[key].books[book] = {};
-          if (event.odds_american != null) {
-            const sel = (event.selection || '').toLowerCase();
-            const matchesHome = home.toLowerCase().split(' ').some(p => p.length > 2 && sel.includes(p));
-            if (matchesHome) games[key].books[book].homeML = event.odds_american;
-            else games[key].books[book].awayML = event.odds_american;
-          }
+        const sel = (typeof row.selection === 'string' ? row.selection : '').toLowerCase();
+        const odds = row.odds_american;
+        if (odds == null) continue;
+
+        const homeParts = home.toLowerCase().split(' ');
+        const awayParts = away.toLowerCase().split(' ');
+        const matchesHome = homeParts.some(p => p.length > 2 && sel.includes(p));
+        const matchesAway = awayParts.some(p => p.length > 2 && sel.includes(p));
+
+        if (matchesHome) games[key].books[book].homeML = odds;
+        else if (matchesAway) games[key].books[book].awayML = odds;
+        else {
+          if (!games[key].books[book].awayML) games[key].books[book].awayML = odds;
+          else games[key].books[book].homeML = odds;
         }
       }
 
