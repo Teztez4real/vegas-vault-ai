@@ -290,7 +290,7 @@ async function assembleMLBGame(game, oddsMap) {
     const awayPitcherHand = game.teams?.away?.probablePitcher?.pitchHand?.code || 'R';
     const homePitcherHand = game.teams?.home?.probablePitcher?.pitchHand?.code || 'R';
 
-    const [injuries, umpire, weather, awayBatterSplits, homeBatterSplits, awayForm, homeForm, h2h, awayPitcherStats, homePitcherStats, awayPitcherVsOpp, homePitcherVsOpp] = await Promise.all([
+    const [injuries, umpire, weather, awayBatterSplits, homeBatterSplits, awayForm, homeForm, h2h, awayPitcherStats, homePitcherStats, awayPitcherVsOpp, homePitcherVsOpp, awayBullpen, homeBullpen, awayLineup, homeLineup] = await Promise.all([
       awayTeamId && homeTeamId ? fetchMLBInjuries(awayTeamId, homeTeamId, away, home) : Promise.resolve('Injury data unavailable'),
       fetchUmpire(game.gamePk),
       fetchWeather(home, game.gameDate),
@@ -303,6 +303,10 @@ async function assembleMLBGame(game, oddsMap) {
       fetchFullPitcherStats(homePitcherId, homePitcher),
       fetchPitcherVsOpponent(awayPitcherId, homeTeamId, awayPitcher),
       fetchPitcherVsOpponent(homePitcherId, awayTeamId, homePitcher),
+      awayTeamId ? fetchBullpenStats(awayTeamId, away) : Promise.resolve('N/A'),
+      homeTeamId ? fetchBullpenStats(homeTeamId, home) : Promise.resolve('N/A'),
+      fetchConfirmedLineup(game.gamePk, awayTeamId, away),
+      fetchConfirmedLineup(game.gamePk, homeTeamId, home),
     ]);
 
     return {
@@ -349,10 +353,10 @@ async function assembleMLBGame(game, oddsMap) {
       homePitcherStats,
       awayPitcherVsOpponent: awayPitcherVsOpp || 'N/A',
       homePitcherVsOpponent: homePitcherVsOpp || 'N/A',
-      awayBullpenERA: 'See team bullpen stats',
-      homeBullpenERA: 'See team bullpen stats',
-      awayLineup: 'Check lineups closer to game time',
-      homeLineup: 'Check lineups closer to game time',
+      awayBullpenERA: awayBullpen || 'N/A',
+      homeBullpenERA: homeBullpen || 'N/A',
+      awayLineup: awayLineup || 'Not yet posted',
+      homeLineup: homeLineup || 'Not yet posted',
       awayBatterSplits,
       homeBatterSplits,
       awayOffense: `${away} offense — check recent run production and lineup`,
@@ -691,6 +695,56 @@ async function fetchMLBInjuries(awayTeamId, homeTeamId, awayTeam, homeTeam) {
 
 // ── UMPIRE (MLB Stats API — free) ─────────────────────────────────────────────
 
+async function fetchBullpenStats(teamId, teamName) {
+  try {
+    const season = new Date().getFullYear();
+    const res = await fetch(
+      `https://statsapi.mlb.com/api/v1/teams/${teamId}/stats?stats=season&group=pitching&season=${season}`,
+      { cache: 'no-store' }
+    );
+    if (!res.ok) return 'N/A';
+    const data = await res.json();
+    const stats = data.stats?.[0]?.splits?.[0]?.stat;
+    if (!stats) return 'N/A';
+    const era = stats.era || 'N/A';
+    const whip = stats.whip || 'N/A';
+    const saves = stats.saves ?? 'N/A';
+    const blownSaves = stats.blownSaves ?? 'N/A';
+    const hr = stats.homeRuns ?? 'N/A';
+    const k9 = stats.strikeoutsPer9Inn || 'N/A';
+    return `${teamName} Bullpen — ERA: ${era} | WHIP: ${whip} | K/9: ${k9} | SV: ${saves} | BS: ${blownSaves} | HR allowed: ${hr}`;
+  } catch {
+    return 'Bullpen data unavailable';
+  }
+}
+
+async function fetchConfirmedLineup(gamePk, teamId, teamName) {
+  try {
+    const res = await fetch(
+      `https://statsapi.mlb.com/api/v1/game/${gamePk}/boxscore`,
+      { cache: 'no-store' }
+    );
+    if (!res.ok) return 'Lineup not yet confirmed';
+    const data = await res.json();
+    const teamKey = data.teams?.away?.team?.id === teamId ? 'away' : 'home';
+    const batters = data.teams?.[teamKey]?.battingOrder || [];
+    const players = data.teams?.[teamKey]?.players || {};
+    if (!batters.length) return 'Lineup not yet posted';
+    const lineup = batters.slice(0, 9).map((id, i) => {
+      const p = players[`ID${id}`];
+      const name = p?.person?.fullName?.split(' ').pop() || `#${id}`;
+      const pos = p?.position?.abbreviation || '?';
+      const avg = p?.seasonStats?.batting?.avg || '.---';
+      const hr = p?.seasonStats?.batting?.homeRuns ?? 0;
+      const rbi = p?.seasonStats?.batting?.rbi ?? 0;
+      return `${i+1}. ${name} (${pos}) ${avg} ${hr}HR ${rbi}RBI`;
+    }).join(' | ');
+    return lineup || 'Lineup not yet posted';
+  } catch {
+    return 'Lineup not yet confirmed';
+  }
+}
+
 async function fetchUmpire(gamePk) {
   try {
     const res = await fetch(`https://statsapi.mlb.com/api/v1/game/${gamePk}/boxscore`, { cache: 'no-store' });
@@ -703,16 +757,38 @@ async function fetchUmpire(gamePk) {
 
     // Known umpire tendencies (strike zone / over-under leanings)
     const TENDENCIES = {
-      'Angel Hernandez': 'Inconsistent zone, average over/under tendencies',
-      'CB Bucknor': 'Wide zone, slightly pitcher-friendly',
-      'Joe West': 'Quick trigger, pitcher-friendly zone',
-      'Phil Cuzzi': 'Tight zone, batter-friendly, leans OVER',
-      'Vic Carapazza': 'High strikeout zone, leans UNDER',
-      'Dan Iassogna': 'Consistent zone, average tendencies',
-      'Jim Wolf': 'Expansive zone, pitcher-friendly, leans UNDER',
-      'Laz Diaz': 'Wide zone, batter-friendly, leans OVER',
-      'Lance Barksdale': 'Inconsistent, average over/under',
-      'Mark Carlson': 'Tight zone, batter-friendly',
+      'Angel Hernandez': 'Inconsistent zone, high variance — OVER lean historically',
+      'CB Bucknor': 'Wide zone, pitcher-friendly, leans UNDER',
+      'Phil Cuzzi': 'Tight zone, batter-friendly, strong OVER lean',
+      'Vic Carapazza': 'High strikeout zone, strong UNDER lean',
+      'Dan Iassogna': 'Consistent tight zone, slight UNDER lean',
+      'Jim Wolf': 'Expansive zone, pitcher-friendly, UNDER lean',
+      'Laz Diaz': 'Wide zone, batter-friendly, OVER lean',
+      'Lance Barksdale': 'Inconsistent, slightly batter-friendly',
+      'Mark Carlson': 'Tight zone, batter-friendly, slight OVER',
+      'Stu Scheurwater': 'Consistent zone, neutral',
+      'Chris Guccione': 'Wide zone, pitcher-friendly, UNDER lean',
+      'Bill Miller': 'Tight zone, average tendencies',
+      'Mike Muchlinski': 'Consistent, neutral tendencies',
+      'Adrian Johnson': 'Wide zone, batter-friendly, OVER lean',
+      'John Libka': 'Tight zone, pitcher-friendly',
+      'Brian Knight': 'Consistent, slightly pitcher-friendly',
+      'Ben May': 'Neutral zone, average tendencies',
+      'Manny Gonzalez': 'Inconsistent, slight OVER lean',
+      'Alfonso Marquez': 'Consistent, neutral to UNDER',
+      'Jerry Meals': 'Wide zone, pitcher-friendly, UNDER lean',
+      'Paul Nauert': 'Tight zone, batter-friendly',
+      'Ron Kulpa': 'High K zone, strong UNDER lean',
+      'Ted Barrett': 'Consistent, neutral',
+      'Marty Foster': 'Wide zone, pitcher-friendly',
+      'Doug Eddings': 'Inconsistent, slight OVER lean',
+      'Greg Gibson': 'Consistent, neutral to UNDER',
+      'Tripp Gibson': 'Tight zone, batter-friendly, OVER lean',
+      'Mike Estabrook': 'Consistent, neutral',
+      'Will Little': 'Wide zone, pitcher-friendly',
+      'Fieldin Culbreth': 'Wide zone, UNDER lean',
+      'Sam Holbrook': 'Consistent, neutral',
+      'Quinn Wolcott': 'Tight zone, batter-friendly',
     };
     const tendency = TENDENCIES[name] || 'Tendency data unavailable — check umpire databases';
     return `${name} — ${tendency}`;
