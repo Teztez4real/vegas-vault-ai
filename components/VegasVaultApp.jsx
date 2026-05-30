@@ -1691,6 +1691,8 @@ export default function VegasVaultApp() {
   const [showOddsMovement, setShowOddsMovement] = useState(false);
   const [topPlay, setTopPlay] = useState(null);
   const [topPlayLoading, setTopPlayLoading] = useState(false);
+  const [sportTopPlays, setSportTopPlays] = useState({ MLB: null, NBA: null, NFL: null, WNBA: null });
+  const [sportTopPlayDone, setSportTopPlayDone] = useState({ MLB: false, NBA: false, NFL: false, WNBA: false });
   const [activeNav, setActiveNav] = useState('DASHBOARD');
   const [activeTab, setActiveTab] = useState('DASHBOARD');
   const [watchlist, setWatchlist] = useState([]);
