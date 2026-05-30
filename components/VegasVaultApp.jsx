@@ -2596,6 +2596,13 @@ export default function VegasVaultApp() {
               </div>
             </div>
 
+            {/* Filter pills */}
+            <div style={{ display:"flex",gap:6,marginBottom:16,flexWrap:"wrap" }}>
+              {FILTERS.map(f=>(
+                <button key={f} onClick={()=>setFilter(f)} style={{ fontSize:11,fontWeight:filter===f?700:400,padding:"5px 14px",borderRadius:6,border:`1px solid ${filter===f?"rgba(201,162,39,0.5)":"rgba(255,255,255,0.07)"}`,background:filter===f?"rgba(201,162,39,0.1)":"transparent",color:filter===f?"#c9a227":"#3a4a5e",cursor:"pointer",letterSpacing:"0.05em",fontFamily:"inherit" }}>{f}</button>
+              ))}
+            </div>
+
             {error&&<div style={{ background:"rgba(248,113,113,0.05)",border:"1px solid rgba(248,113,113,0.2)",borderRadius:10,padding:"10px 14px",fontSize:12,color:"#f87171",marginBottom:14 }}>{error}</div>}
 
             {/* BET NOW ALERT BANNER */}
@@ -2609,74 +2616,34 @@ export default function VegasVaultApp() {
               </div>
             )}
 
-            {loading ? (
+            {/* Game cards */}
+            {loading?(
               <div style={{ textAlign:"center",padding:"60px 0",fontSize:11,color:"#2d3a4a",letterSpacing:"0.1em" }}>LOADING SLATE…</div>
-            ) : (
-              <>
-                {/* MLB Section */}
-                {games.filter(g=>g.sport==='MLB').length > 0 && (
-                  <div style={{ marginBottom:24 }}>
-                    <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:12 }}>
-                      <span style={{ fontSize:10,fontWeight:700,color:'#60a5fa',letterSpacing:'0.12em' }}>MLB</span>
-                      <span style={{ fontSize:9,color:'#3a4a5e' }}>{games.filter(g=>g.sport==='MLB').length} games</span>
-                      <div style={{ flex:1,height:1,background:'rgba(255,255,255,0.05)' }}/>
-                    </div>
-                    <div className="vv-cards">
-                      {games.filter(g=>g.sport==='MLB').map(game=>(
-                        <GameCard key={game.id} game={game} results={results} generating={generating} onGenerate={handleGenerate} onCardClick={handleCardClick} liveScores={liveScores} isSubscribed={isSubscribed} finalized={finalized} isQueued={preAnalyzeQueue.some(q=>q.game.id===game.id)} betReady={betReadyAlerts[`${game.id}-PUBLIC`]||betReadyAlerts[`${game.id}-VEGAS`]} onShowAuth={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}} watchlist={watchlist} onToggleWatch={toggleWatch}/>
-                      ))}
-                    </div>
-                  </div>
-                )}
+            ):(
+              <div className="vv-cards">
+                {filteredGames.map(game=>(
+                  <GameCard key={game.id} game={game} results={results} generating={generating} onGenerate={handleGenerate} onCardClick={handleCardClick} liveScores={liveScores} isSubscribed={isSubscribed} finalized={finalized} isQueued={preAnalyzeQueue.some(q=>q.game.id===game.id)} betReady={betReadyAlerts[`${game.id}-PUBLIC`]||betReadyAlerts[`${game.id}-VEGAS`]} onShowAuth={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}} watchlist={watchlist} onToggleWatch={toggleWatch}/>
+                ))}
+              </div>
+            )}
 
-                {/* NBA Section */}
-                {games.filter(g=>g.sport==='NBA').length > 0 && (
-                  <div style={{ marginBottom:24 }}>
-                    <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:12 }}>
-                      <span style={{ fontSize:10,fontWeight:700,color:'#fb923c',letterSpacing:'0.12em' }}>NBA</span>
-                      <span style={{ fontSize:9,color:'#3a4a5e' }}>{games.filter(g=>g.sport==='NBA').length} games</span>
-                      <div style={{ flex:1,height:1,background:'rgba(255,255,255,0.05)' }}/>
-                    </div>
-                    <div className="vv-cards">
-                      {games.filter(g=>g.sport==='NBA').map(game=>(
-                        <GameCard key={game.id} game={game} results={results} generating={generating} onGenerate={handleGenerate} onCardClick={handleCardClick} liveScores={liveScores} isSubscribed={isSubscribed} finalized={finalized} isQueued={preAnalyzeQueue.some(q=>q.game.id===game.id)} betReady={betReadyAlerts[`${game.id}-PUBLIC`]||betReadyAlerts[`${game.id}-VEGAS`]} onShowAuth={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}} watchlist={watchlist} onToggleWatch={toggleWatch}/>
-                      ))}
-                    </div>
+            {/* WNBA Section — always separate */}
+            {!loading && wnbaFilteredGames.length > 0 && (
+              <div style={{ marginTop:24 }}>
+                <div style={{ display:'flex',alignItems:'center',gap:10,marginBottom:12 }}>
+                  <div style={{ flex:1,height:1,background:'rgba(255,255,255,0.05)' }}/>
+                  <div style={{ display:'flex',alignItems:'center',gap:8 }}>
+                    <span style={{ fontSize:10,fontWeight:700,color:'#c084fc',letterSpacing:'0.12em' }}>WNBA</span>
+                    <span style={{ fontSize:9,color:'#c084fc',background:'rgba(192,132,252,0.1)',border:'1px solid rgba(192,132,252,0.25)',borderRadius:4,padding:'2px 7px',fontWeight:600 }}>{wnbaFilteredGames.length} GAMES</span>
                   </div>
-                )}
-
-                {/* NFL Section */}
-                {games.filter(g=>g.sport==='NFL').length > 0 && (
-                  <div style={{ marginBottom:24 }}>
-                    <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:12 }}>
-                      <span style={{ fontSize:10,fontWeight:700,color:'#34d399',letterSpacing:'0.12em' }}>NFL</span>
-                      <span style={{ fontSize:9,color:'#3a4a5e' }}>{games.filter(g=>g.sport==='NFL').length} games</span>
-                      <div style={{ flex:1,height:1,background:'rgba(255,255,255,0.05)' }}/>
-                    </div>
-                    <div className="vv-cards">
-                      {games.filter(g=>g.sport==='NFL').map(game=>(
-                        <GameCard key={game.id} game={game} results={results} generating={generating} onGenerate={handleGenerate} onCardClick={handleCardClick} liveScores={liveScores} isSubscribed={isSubscribed} finalized={finalized} isQueued={preAnalyzeQueue.some(q=>q.game.id===game.id)} betReady={betReadyAlerts[`${game.id}-PUBLIC`]||betReadyAlerts[`${game.id}-VEGAS`]} onShowAuth={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}} watchlist={watchlist} onToggleWatch={toggleWatch}/>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* WNBA Section */}
-                {wnbaFilteredGames.length > 0 && (
-                  <div style={{ marginBottom:24 }}>
-                    <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:12 }}>
-                      <span style={{ fontSize:10,fontWeight:700,color:'#c084fc',letterSpacing:'0.12em' }}>WNBA</span>
-                      <span style={{ fontSize:9,color:'#3a4a5e' }}>{wnbaFilteredGames.length} games</span>
-                      <div style={{ flex:1,height:1,background:'rgba(255,255,255,0.05)' }}/>
-                    </div>
-                    <div className="vv-cards">
-                      {wnbaFilteredGames.map(game=>(
-                        <GameCard key={game.id} game={game} results={results} generating={generating} onGenerate={handleGenerate} onCardClick={handleCardClick} liveScores={liveScores} isSubscribed={isSubscribed} finalized={finalized} isQueued={preAnalyzeQueue.some(q=>q.game.id===game.id)} betReady={betReadyAlerts[game.id+'-WNBA']} onShowAuth={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}} watchlist={watchlist} onToggleWatch={toggleWatch}/>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
+                  <div style={{ flex:1,height:1,background:'rgba(255,255,255,0.05)' }}/>
+                </div>
+                <div className="vv-cards">
+                  {wnbaFilteredGames.map(game=>(
+                    <GameCard key={game.id} game={game} results={results} generating={generating} onGenerate={handleGenerate} onCardClick={handleCardClick} liveScores={liveScores} isSubscribed={isSubscribed} finalized={finalized} isQueued={preAnalyzeQueue.some(q=>q.game.id===game.id)} betReady={betReadyAlerts[game.id+'-WNBA']} onShowAuth={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}} watchlist={watchlist} onToggleWatch={toggleWatch}/>
+                  ))}
+                </div>
+              </div>
             )}
 
             {/* Trell alerts */}
