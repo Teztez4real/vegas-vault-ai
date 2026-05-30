@@ -2656,33 +2656,7 @@ export default function VegasVaultApp() {
             </div>
 
             {/* TOP PLAY OF THE DAY */}
-            {hasSlotPattern && selectedDate === new Date().toISOString().split("T")[0] && (topPlay || topPlayLoading) && (
-              <TopPlayBanner
-                topPlay={topPlay}
-                loading={topPlayLoading}
-                results={results}
-                games={games}
-                pickHistory={pickHistory}
-                isSubscribed={isSubscribed}
-                onShowAuth={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}}
-                onForceRefresh={async ()=>{
-                  setTopPlayLoading(true);
-                  try {
-                    const {data:{session:s}} = await _supabase.auth.getSession();
-                    const postRes = await fetch('/api/topplay',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:s?.access_token,date:selectedDate})});
-                    if (!postRes.ok) {
-                      const err = await postRes.json();
-                      console.error('topplay POST failed:', err);
-                    }
-                    const res = await fetch(`/api/topplay?date=${selectedDate}&force=1`);
-                    const data = await res.json();
-                    if(data.topPlay) setTopPlay(data.topPlay);
-                  } catch(e){ console.error('forceRefresh error:', e); }
-                  setTopPlayLoading(false);
-                }}
-                isAdmin={authUser?.email==='battlecortez@gmail.com'}
-              />
-            )}
+{/* Top play of the day removed — using per-sport top plays instead */}
 
             {/* Slate header */}
             <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
