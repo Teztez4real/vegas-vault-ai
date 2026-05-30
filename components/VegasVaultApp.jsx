@@ -1000,6 +1000,16 @@ function TopPlayBanner({ topPlay, loading, results, games, pickHistory, isSubscr
           )}
         </div>
         <div style={{ display:'flex',alignItems:'center',gap:8 }}>
+          {/* Watchlist star for top play */}
+          {watchlist && onToggleWatch && matchingGame && (
+            <span
+              onClick={(e)=>{e.stopPropagation();onToggleWatch(matchingGame.id);}}
+              title={watchlist.includes(matchingGame.id)?'Remove from watchlist':'Add to watchlist'}
+              style={{ fontSize:18,color:watchlist.includes(matchingGame.id)?'#3b82f6':'#2a3545',cursor:'pointer',lineHeight:1 }}
+            >
+              {watchlist.includes(matchingGame.id)?'★':'☆'}
+            </span>
+          )}
           {isAdmin && (
             <button onClick={(e)=>{e.stopPropagation();onForceRefresh&&onForceRefresh();}} style={{ background:'transparent',border:'1px solid rgba(255,255,255,0.1)',borderRadius:6,padding:'4px 10px',fontSize:9,color:'#3a4a5e',cursor:'pointer',fontFamily:'inherit' }}>↺ Re-analyze</button>
           )}
@@ -2720,6 +2730,22 @@ export default function VegasVaultApp() {
               <div style={{ textAlign:"center",padding:"60px 0",fontSize:11,color:"#2d3a4a",letterSpacing:"0.06em" }}>LOADING SLATE…</div>
             ):(
               <>
+                {/* Per-sport top play banners */}
+                {['MLB','NBA','NFL'].filter(s => filter==='ALL'||filter===s).map(sport => {
+                  const tp = sportTopPlays[sport];
+                  if (!tp) return null;
+                  return (
+                    <div key={sport} style={{ marginBottom:12 }}>
+                      <TopPlayBanner
+                        topPlay={{ result: tp.result, slot: tp.slot, away: tp.game.away, home: tp.game.home, time: tp.game.time, game_key: `${tp.game.away}|${tp.game.home}`, away_abbr: tp.game.awayAbbr, home_abbr: tp.game.homeAbbr }}
+                        loading={false} results={results} games={games} pickHistory={pickHistory}
+                        isSubscribed={isSubscribed} onShowAuth={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}}
+                        onForceRefresh={null} isAdmin={authUser?.email===ADMIN_EMAIL}
+                        watchlist={watchlist} onToggleWatch={toggleWatch} sport={sport}
+                      />
+                    </div>
+                  );
+                })}
                 {filter === 'WNBA' && sportTopPlays.WNBA && (
                   <div style={{ marginBottom:12 }}>
                     <TopPlayBanner
