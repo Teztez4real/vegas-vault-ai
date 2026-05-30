@@ -758,10 +758,10 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
           const isGen = generating === key;
           const hasRes = !!results[key];
           const isVeg = game.slot === 'VEGAS';
-          const isWNBA = game.sport === 'WNBA';
-          const slotColor = isWNBA ? '#c084fc' : isVeg ? '#f87171' : '#60a5fa';
-          const slotBg = isWNBA ? 'rgba(192,132,252,0.08)' : isVeg ? 'rgba(248,113,113,0.08)' : 'rgba(96,165,250,0.08)';
-          const slotBorder = isWNBA ? 'rgba(192,132,252,0.25)' : isVeg ? 'rgba(248,113,113,0.25)' : 'rgba(96,165,250,0.25)';
+          const isWNBAGame = game.sport === 'WNBA';
+          const slotColor = isWNBAGame ? '#c084fc' : isVeg ? '#f87171' : '#60a5fa';
+          const slotBg = isWNBAGame ? 'rgba(192,132,252,0.08)' : isVeg ? 'rgba(248,113,113,0.08)' : 'rgba(96,165,250,0.08)';
+          const slotBorder = isWNBAGame ? 'rgba(192,132,252,0.25)' : isVeg ? 'rgba(248,113,113,0.25)' : 'rgba(96,165,250,0.25)';
           if (isGen) return (
             <div style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"10px 0",background:slotBg,border:`1px solid ${slotBorder}`,borderRadius:8 }}>
               <div style={{ width:12,height:12,borderRadius:"50%",border:`2px solid ${slotBorder}`,borderTop:`2px solid ${slotColor}`,animation:"spin 0.8s linear infinite" }}/>
@@ -776,7 +776,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
             </div>
           );
           return (
-            game.sport === 'WNBA' ? (
+            isWNBAGame ? (
               <div onClick={()=>onGenerate(game, 'WNBA')} style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"9px 0",background:"rgba(192,132,252,0.08)",border:"1px solid rgba(192,132,252,0.25)",borderRadius:8,cursor:"pointer" }}>
                 <span style={{ fontSize:9,fontWeight:700,color:"#c084fc",letterSpacing:"0.08em" }}>▶ ANALYZE WNBA</span>
               </div>
