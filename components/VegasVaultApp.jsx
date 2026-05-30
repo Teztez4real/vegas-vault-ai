@@ -248,14 +248,55 @@ const MLB_COLORS = {
   "TOR":"#134A8E","WSH":"#AB0003",
 };
 
+// NBA team slugs for ESPN CDN
+const NBA_SLUGS = {
+  "ATL":"atl","BOS":"bos","BKN":"bkn","CHA":"cha","CHI":"chi",
+  "CLE":"cle","DAL":"dal","DEN":"den","DET":"det","GSW":"gs",
+  "HOU":"hou","IND":"ind","LAC":"lac","LAL":"lal","MEM":"mem",
+  "MIA":"mia","MIL":"mil","MIN":"min","NOP":"no","NYK":"ny",
+  "OKC":"okc","ORL":"orl","PHI":"phi","PHX":"phx","POR":"por",
+  "SAC":"sac","SAS":"sa","TOR":"tor","UTA":"utah","WAS":"wsh",
+  // Handle full name fallbacks
+  "Hawks":"atl","Celtics":"bos","Nets":"bkn","Hornets":"cha","Bulls":"chi",
+  "Cavaliers":"cle","Mavericks":"dal","Nuggets":"den","Pistons":"det","Warriors":"gs",
+  "Rockets":"hou","Pacers":"ind","Clippers":"lac","Lakers":"lal","Grizzlies":"mem",
+  "Heat":"mia","Bucks":"mil","Timberwolves":"min","Pelicans":"no","Knicks":"ny",
+  "Thunder":"okc","Magic":"orl","76ers":"phi","Suns":"phx","Trail":"por",
+  "Kings":"sac","Spurs":"sa","Raptors":"tor","Jazz":"utah","Wizards":"wsh",
+};
+
+// WNBA team slugs for ESPN CDN
+const WNBA_SLUGS = {
+  "ATL":"atl","CHI":"chi","CON":"conn","DAL":"dal","IND":"ind",
+  "LVA":"lv","LAS":"lv","LAL":"la","MIN":"min","NYL":"ny",
+  "PHO":"phx","SEA":"sea","WAS":"wsh",
+  // Handle full name fallbacks
+  "Dream":"atl","Sky":"chi","Sun":"conn","Wings":"dal","Fever":"ind",
+  "Aces":"lv","Sparks":"la","Lynx":"min","Liberty":"ny",
+  "Mercury":"phx","Storm":"sea","Mystics":"wsh","Tempo":"tor",
+};
+
 function TeamLogo({ abbr, size=44, sport="MLB" }) {
   const [err, setErr] = useState(false);
-  const slug = sport === "MLB" ? MLB_SLUGS[abbr] : null;
+  
+  let slug = null;
+  let espnSport = null;
+  
+  if (sport === "MLB") {
+    slug = MLB_SLUGS[abbr];
+    espnSport = "mlb";
+  } else if (sport === "NBA") {
+    slug = NBA_SLUGS[abbr];
+    espnSport = "nba";
+  } else if (sport === "WNBA") {
+    slug = WNBA_SLUGS[abbr];
+    espnSport = "wnba";
+  }
 
-  if (slug && !err) {
+  if (slug && espnSport && !err) {
     return (
       <img
-        src={`https://a.espncdn.com/i/teamlogos/mlb/500/${slug}.png`}
+        src={`https://a.espncdn.com/i/teamlogos/${espnSport}/500/${slug}.png`}
         alt={abbr}
         width={size} height={size}
         style={{ objectFit:"contain", flexShrink:0 }}
@@ -264,9 +305,9 @@ function TeamLogo({ abbr, size=44, sport="MLB" }) {
     );
   }
   // Fallback colored box with initials
-  const c = MLB_COLORS[abbr] || "#1e3a5f";
+  const col = MLB_COLORS[abbr] || "#1e3a5f";
   return (
-    <div style={{ width:size, height:size, borderRadius:8, background:`${c}22`, border:`1.5px solid ${c}66`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:size*0.3, fontWeight:900, color:c, flexShrink:0 }}>
+    <div style={{ width:size, height:size, borderRadius:8, background:`${col}22`, border:`1.5px solid ${col}66`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:size*0.3, fontWeight:900, color:col, flexShrink:0 }}>
       {abbr.slice(0,2)}
     </div>
   );

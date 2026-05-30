@@ -338,11 +338,12 @@ async function fetchNBAGames(date) {
           if (o.name === 'Over') total = o.point;
         });
       });
+      const nbaAbbrMap = {'Atlanta Hawks':'ATL','Boston Celtics':'BOS','Brooklyn Nets':'BKN','Charlotte Hornets':'CHA','Chicago Bulls':'CHI','Cleveland Cavaliers':'CLE','Dallas Mavericks':'DAL','Denver Nuggets':'DEN','Detroit Pistons':'DET','Golden State Warriors':'GSW','Houston Rockets':'HOU','Indiana Pacers':'IND','Los Angeles Clippers':'LAC','Los Angeles Lakers':'LAL','Memphis Grizzlies':'MEM','Miami Heat':'MIA','Milwaukee Bucks':'MIL','Minnesota Timberwolves':'MIN','New Orleans Pelicans':'NOP','New York Knicks':'NYK','Oklahoma City Thunder':'OKC','Orlando Magic':'ORL','Philadelphia 76ers':'PHI','Phoenix Suns':'PHX','Portland Trail Blazers':'POR','Sacramento Kings':'SAC','San Antonio Spurs':'SAS','Toronto Raptors':'TOR','Utah Jazz':'UTA','Washington Wizards':'WAS'};
       return {
         id: 3000 + i, sport: 'NBA',
         away, home,
-        awayAbbr: away.split(' ').pop().slice(0,3).toUpperCase(),
-        homeAbbr: home.split(' ').pop().slice(0,3).toUpperCase(),
+        awayAbbr: nbaAbbrMap[away] || away.split(' ').pop().slice(0,3).toUpperCase(),
+        homeAbbr: nbaAbbrMap[home] || home.split(' ').pop().slice(0,3).toUpperCase(),
         time: formatTime(game.commence_time),
         rawTime: game.commence_time,
         awayML, homeML, spread, total,
@@ -419,11 +420,12 @@ async function fetchWNBAGames(date) {
           if (o.name === 'Over') total = o.point;
         });
       });
+      const wnbaAbbrMap = {'Atlanta Dream':'Dream','Chicago Sky':'Sky','Connecticut Sun':'Sun','Dallas Wings':'Wings','Indiana Fever':'Fever','Las Vegas Aces':'Aces','Los Angeles Sparks':'Sparks','Minnesota Lynx':'Lynx','New York Liberty':'Liberty','Phoenix Mercury':'Mercury','Seattle Storm':'Storm','Washington Mystics':'Mystics','Toronto Tempo':'Tempo'};
       return {
         id: 5000 + i, sport: 'WNBA',
         away, home,
-        awayAbbr: away.split(' ').pop().slice(0,3).toUpperCase(),
-        homeAbbr: home.split(' ').pop().slice(0,3).toUpperCase(),
+        awayAbbr: wnbaAbbrMap[away] || away.split(' ').pop().slice(0,3).toUpperCase(),
+        homeAbbr: wnbaAbbrMap[home] || home.split(' ').pop().slice(0,3).toUpperCase(),
         time: formatTime(game.commence_time),
         rawTime: game.commence_time,
         awayML, homeML, spread, total,
