@@ -702,39 +702,167 @@ async function fetchWNBARecords() {
   } catch { return {}; }
 }
 
+async function fetchWNBARecentForm(teamName) {
+  try {
+    const keyword = teamName.split(' ').pop();
+    const res = await fetch(
+      `https://site.api.espn.com/apis/site/v2/sports/basketball/wnba/teams?limit=20`,
+      { cache: 'no-store' }
+    );
+    if (!res.ok) return { last5:'N/A', last10:'N/A', streak:'N/A', homeRecord:'N/A', awayRecord:'N/A', atsRecord:'N/A' };
+    const data = await res.json();
+    const teams = data.sports?.[0]?.leagues?.[0]?.teams || [];
+    const team = teams.find(t => (t.team?.displayName||'').includes(keyword));
+    if (!team?.team?.id) return { last5:'N/A', last10:'N/A', streak:'N/A', homeRecord:'N/A', awayRecord:'N/A', atsRecord:'N/A' };
+
+    const schedRes = await fetch(
+      `https://site.api.espn.com/apis/site/v2/sports/basketball/wnba/teams/${team.team.id}/schedule`,
+      { cache: 'no-store' }
+    );
+    if (!schedRes.ok) return { last5:'N/A', last10:'N/A', streak:'N/A', homeRecord:'N/A', awayRecord:'N/A', atsRecord:'N/A' };
+    const sched = await schedRes.json();
+
+    const results = (sched.events || [])
+      .filter(e => e.competitions?.[0]?.status?.type?.completed)
+      .map(e => {
+        const comp = e.competitions[0];
+        const my = comp.competitors?.find(c => c.team?.id === team.team.id);
+        const opp = comp.competitors?.find(c => c.team?.id !== team.team.id);
+        const myScore = parseInt(my?.score || 0);
+        const oppScore = parseInt(opp?.score || 0);
+        return { win: myScore > oppScore, myScore, oppScore, isHome: my?.homeAway === 'home' };
+      });
+
+    const last10 = results.slice(-10);
+    const last5 = last10.slice(-5);
+    const w5 = last5.filter(g=>g.win).length;
+    const w10 = last10.filter(g=>g.win).length;
+    const l5str = last5.map(g=>g.win?'W':'L').join('');
+    const l10str = last10.map(g=>g.win?'W':'L').join('');
+
+    let streak=0, sType='';
+    for (let i=last10.length-1;i>=0;i--) {
+      if (i===last10.length-1){sType=last10[i].win?'W':'L';streak=1;}
+      else if((last10[i].win&&sType==='W')||(!last10[i].win&&sType==='L'))streak++;
+      else break;
+    }
+
+    const homeG=results.filter(g=>g.isHome), awayG=results.filter(g=>!g.isHome);
+    const atsW=results.filter(g=>g.win&&(g.myScore-g.oppScore)>=4).length + results.filter(g=>!g.win&&(g.oppScore-g.myScore)<=3).length;
+
+    return {
+      last5: `${w5}-${last5.length-w5} (${l5str})`,
+      last10: `${w10}-${last10.length-w10} (${l10str})`,
+      streak: streak>0?`${sType}${streak}`:'N/A',
+      homeRecord: `${homeG.filter(g=>g.win).length}-${homeG.filter(g=>!g.win).length}`,
+      awayRecord: `${awayG.filter(g=>g.win).length}-${awayG.filter(g=>!g.win).length}`,
+      atsRecord: `${atsW}-${results.length-atsW}`,
+    };
+  } catch { return { last5:'N/A', last10:'N/A', streak:'N/A', homeRecord:'N/A', awayRecord:'N/A', atsRecord:'N/A' }; }
+}
+
+async function fetchWNBAH2H(awayTeam, homeTeam) {
+  try {
+    const homeKeyword = homeTeam.split(' ').pop();
+    const awayKeyword = awayTeam.split(' ').pop();
+    const res = await fetch(
+      `https://site.api.espn.com/apis/site/v2/sports/basketball/wnba/teams?limit=20`,
+      { cache: 'no-store' }
+    );
+    if (!res.ok) return 'H2H unavailable';
+    const data = await res.json();
+    const teams = data.sports?.[0]?.leagues?.[0]?.teams || [];
+    const homeT = teams.find(t => (t.team?.displayName||'').includes(homeKeyword));
+    if (!homeT?.team?.id) return 'H2H unavailable';
+
+    const schedRes = await fetch(
+      `https://site.api.espn.com/apis/site/v2/sports/basketball/wnba/teams/${homeT.team.id}/schedule`,
+      { cache: 'no-store' }
+    );
+    if (!schedRes.ok) return 'H2H unavailable';
+    const sched = await schedRes.json();
+
+    const h2hGames = (sched.events||[]).filter(e => {
+      const comp = e.competitions?.[0];
+      return comp?.status?.type?.completed && comp?.competitors?.some(c=>(c.team?.displayName||'').includes(awayKeyword));
+    });
+    if (!h2hGames.length) return 'No H2H games this season yet';
+
+    const homeWins = h2hGames.filter(e => {
+      const comp = e.competitions[0];
+      const homeComp = comp.competitors?.find(c=>c.homeAway==='home'&&(c.team?.displayName||'').includes(homeKeyword));
+      const awayComp = comp.competitors?.find(c=>c.homeAway==='away');
+      return parseInt(homeComp?.score||0) > parseInt(awayComp?.score||0);
+    }).length;
+
+    const results = h2hGames.map(e => {
+      const comp = e.competitions[0];
+      const c1 = comp.competitors?.[0], c2 = comp.competitors?.[1];
+      return `${parseInt(c1?.score||0)>parseInt(c2?.score||0)?c1.team?.abbreviation:c2.team?.abbreviation} ${c1?.score}-${c2?.score}`;
+    }).join(', ');
+
+    return `${homeTeam.split(' ').pop()} ${homeWins}-${h2hGames.length-homeWins} vs ${awayTeam.split(' ').pop()} this season | Results: ${results}`;
+  } catch { return 'H2H unavailable'; }
+}
+
 async function fetchWNBAGames(date) {
   try {
+    const wnbaRecords = await fetchWNBARecords();
     const res = await fetch(
       `https://api.the-odds-api.com/v4/sports/basketball_wnba/odds/?apiKey=${process.env.ODDS_API_KEY}&regions=us&markets=h2h,spreads,totals&oddsFormat=american`,
       { cache: 'no-store' }
     );
     if (!res.ok) return [];
     const data = await res.json();
-    // Filter to only games on the requested date (CT timezone)
     const targetDate = date || new Date().toISOString().split('T')[0];
     const dateFiltered = data.filter(game => {
       const ct = new Date(new Date(game.commence_time).getTime() - 5 * 60 * 60 * 1000);
       return ct.toISOString().split('T')[0] === targetDate;
     });
-    return dateFiltered.map((game, i) => {
+
+    return Promise.all(dateFiltered.map(async (game, i) => {
       const away = game.away_team;
       const home = game.home_team;
       let awayML = 'N/A', homeML = 'N/A', spread = 'N/A', total = 'N/A';
+
+      // Per-book pricing for discrepancy analysis
       const PRIORITY = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'bet365'];
       const books = (game.bookmakers || []).sort((a,b) => PRIORITY.indexOf(a.key) - PRIORITY.indexOf(b.key));
-      books[0]?.markets?.forEach(mkt => {
-        if (mkt.key === 'h2h') mkt.outcomes?.forEach(o => {
-          if (o.name === away) awayML = fmt(o.price);
-          if (o.name === home) homeML = fmt(o.price);
-        });
-        if (mkt.key === 'spreads') mkt.outcomes?.forEach(o => {
-          if (o.name === home) spread = o.point > 0 ? `+${o.point}` : `${o.point}`;
-        });
-        if (mkt.key === 'totals') mkt.outcomes?.forEach(o => {
-          if (o.name === 'Over') total = o.point;
+      const bookPrices = {}, _raw = {};
+      books.forEach(bm => {
+        const label = bm.key==='draftkings'?'DK':bm.key==='fanduel'?'FD':bm.key==='betmgm'?'MGM':bm.key==='caesars'?'CZR':'B365';
+        bm.markets?.forEach(mkt => {
+          if (mkt.key==='h2h') mkt.outcomes?.forEach(o => {
+            bookPrices[label]=bookPrices[label]||{}; _raw[bm.key]=_raw[bm.key]||{};
+            if (o.name===away){bookPrices[label].away=fmt(o.price);_raw[bm.key].away=o.price;if(awayML==='N/A')awayML=fmt(o.price);}
+            if (o.name===home){bookPrices[label].home=fmt(o.price);_raw[bm.key].home=o.price;if(homeML==='N/A')homeML=fmt(o.price);}
+          });
+          if (mkt.key==='spreads') mkt.outcomes?.forEach(o => {
+            if (o.name===home&&spread==='N/A') spread=o.point>0?`+${o.point}`:`${o.point}`;
+          });
+          if (mkt.key==='totals') mkt.outcomes?.forEach(o => {
+            if (o.name==='Over'&&total==='N/A') total=o.point;
+          });
         });
       });
+      const pricingStr = Object.entries(bookPrices).map(([l,v])=>`${l}: ${v.away||'N/A'}/${v.home||'N/A'}`).join(' | ');
+
+      // Line movement
+      const b365Away=_raw['bet365']?.away, fdAway=_raw['fanduel']?.away, dkAway=_raw['draftkings']?.away;
+      const signals=[];
+      if(b365Away&&fdAway&&Math.abs(b365Away-fdAway)>=8) signals.push(`B365 ${fmt(b365Away)} vs FD ${fmt(fdAway)} — sharp on ${b365Away<fdAway?away.split(' ').pop():home.split(' ').pop()}`);
+      if(b365Away&&dkAway&&Math.abs(b365Away-dkAway)>=8) signals.push(`B365 ${fmt(b365Away)} vs DK ${fmt(dkAway)} — sharp on ${b365Away<dkAway?away.split(' ').pop():home.split(' ').pop()}`);
+      const lineMovement = signals.join(' | ') || 'No significant movement';
+
+      // Fetch WNBA-specific data
+      const [awayForm, homeForm, h2h] = await Promise.all([
+        fetchWNBARecentForm(away),
+        fetchWNBARecentForm(home),
+        fetchWNBAH2H(away, home),
+      ]);
+
       const wnbaAbbrMap = {'Atlanta Dream':'Dream','Chicago Sky':'Sky','Connecticut Sun':'Sun','Dallas Wings':'Wings','Indiana Fever':'Fever','Las Vegas Aces':'Aces','Los Angeles Sparks':'Sparks','Minnesota Lynx':'Lynx','New York Liberty':'Liberty','Phoenix Mercury':'Mercury','Seattle Storm':'Storm','Washington Mystics':'Mystics','Toronto Tempo':'Tempo'};
+
       return {
         id: 5000 + i, sport: 'WNBA',
         away, home,
@@ -743,11 +871,28 @@ async function fetchWNBAGames(date) {
         time: formatTime(game.commence_time),
         rawTime: game.commence_time,
         awayML, homeML, spread, total,
-        openingAwayML: 'N/A', openingHomeML: 'N/A',
-        awayRecord: 'N/A', homeRecord: 'N/A',
+        pricingStr,
+        openingAwayML: pricingStr || 'N/A',
+        openingHomeML: pricingStr || 'N/A',
+        lineMovement,
+        awayRecord: wnbaRecords[away] || 'N/A',
+        homeRecord: wnbaRecords[home] || 'N/A',
+        awayHomeRecord: awayForm.homeRecord,
+        awayAwayRecord: awayForm.awayRecord,
+        awayATS: awayForm.atsRecord,
+        homeHomeRecord: homeForm.homeRecord,
+        homeAwayRecord: homeForm.awayRecord,
+        homeATS: homeForm.atsRecord,
+        awayLast5: awayForm.last5,
+        awayLast10: awayForm.last10,
+        awayStreak: awayForm.streak,
+        homeLast5: homeForm.last5,
+        homeLast10: homeForm.last10,
+        homeStreak: homeForm.streak,
+        h2h,
         slot: 'WNBA',
       };
-    });
+    }));
   } catch { return []; }
 }
 
