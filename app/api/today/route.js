@@ -269,14 +269,18 @@ async function assembleMLBGame(game, oddsMap) {
       runLine: odds.spread ? `${home} ${odds.spread}` : 'N/A',
       total: odds.total || 'N/A',
       lineMovement: odds.lineMovement || 'N/A',
-      betPercentage: 'Check sharp action reports',
-      moneyPercentage: 'Check sharp action reports',
+      betPercentage: odds.betPercentage || 'N/A',
+      moneyPercentage: odds.moneyPercentage || 'N/A',
+      openingLine: odds.openingLine || odds.pricingStr || 'N/A',
+      pricingStr: odds.pricingStr || 'N/A',
       awayRecord: `${awayWins}-${awayLosses}`,
       homeRecord: `${homeWins}-${homeLosses}`,
-      awayHomeRecord: 'See MLB standings',
-      awayAwayRecord: 'See MLB standings',
-      homeHomeRecord: 'See MLB standings',
-      homeAwayRecord: 'See MLB standings',
+      awayHomeRecord: awayForm.homeRecord || 'N/A',
+      awayAwayRecord: awayForm.awayRecord || 'N/A',
+      awayATS: awayForm.atsRecord || 'N/A',
+      homeHomeRecord: homeForm.homeRecord || 'N/A',
+      homeAwayRecord: homeForm.awayRecord || 'N/A',
+      homeATS: homeForm.atsRecord || 'N/A',
       awayLast5: awayForm.last5,
       awayLast10: awayForm.last10,
       homeLast5: homeForm.last5,
@@ -456,30 +460,41 @@ async function fetchWNBAGames(date) {
 
 async function fetchTeamRecentForm(teamId, teamName) {
   try {
+    const season = new Date().getFullYear();
     const today = new Date().toISOString().split('T')[0];
     const tenDaysAgo = new Date(Date.now() - 14 * 86400000).toISOString().split('T')[0];
-    const res = await fetch(
-      `https://statsapi.mlb.com/api/v1/schedule?sportId=1&teamId=${teamId}&startDate=${tenDaysAgo}&endDate=${today}&hydrate=linescore&gameType=R`,
-      { cache: 'no-store' }
-    );
-    if (!res.ok) throw new Error('schedule fail');
-    const data = await res.json();
 
-    const games = [];
-    (data.dates || []).forEach(d => {
-      d.games?.forEach(g => {
-        if (g.status?.abstractGameState === 'Final') {
-          const isHome = g.teams?.home?.team?.id === teamId;
-          const teamScore = isHome ? g.teams?.home?.score : g.teams?.away?.score;
-          const oppScore = isHome ? g.teams?.away?.score : g.teams?.home?.score;
-          if (teamScore != null && oppScore != null) {
-            games.push({ win: teamScore > oppScore, teamScore, oppScore });
+    // Fetch recent games AND full season record in parallel
+    const [recentRes, seasonRes] = await Promise.all([
+      fetch(`https://statsapi.mlb.com/api/v1/schedule?sportId=1&teamId=${teamId}&startDate=${tenDaysAgo}&endDate=${today}&hydrate=linescore&gameType=R`, { cache: 'no-store' }),
+      fetch(`https://statsapi.mlb.com/api/v1/schedule?sportId=1&teamId=${teamId}&season=${season}&hydrate=linescore&gameType=R`, { cache: 'no-store' }),
+    ]);
+
+    const parseGamesFromData = (data, tid) => {
+      const games = [];
+      (data.dates || []).forEach(d => {
+        d.games?.forEach(g => {
+          if (g.status?.abstractGameState === 'Final') {
+            const isHome = g.teams?.home?.team?.id === tid;
+            const teamScore = isHome ? g.teams?.home?.score : g.teams?.away?.score;
+            const oppScore = isHome ? g.teams?.away?.score : g.teams?.home?.score;
+            if (teamScore != null && oppScore != null) {
+              games.push({ win: teamScore > oppScore, teamScore, oppScore, isHome });
+            }
           }
-        }
+        });
       });
-    });
+      return games;
+    };
 
-    const last10 = games.slice(-10);
+    const recentData = recentRes.ok ? await recentRes.json() : { dates: [] };
+    const seasonData = seasonRes.ok ? await seasonRes.json() : { dates: [] };
+
+    const recentGames = parseGamesFromData(recentData, teamId);
+    const seasonGames = parseGamesFromData(seasonData, teamId);
+
+    // Recent form
+    const last10 = recentGames.slice(-10);
     const last5 = last10.slice(-5);
     const wins5 = last5.filter(g => g.win).length;
     const wins10 = last10.filter(g => g.win).length;
@@ -495,13 +510,32 @@ async function fetchTeamRecentForm(teamId, teamName) {
       else break;
     }
 
+    // Season home/away splits
+    const homeGames = seasonGames.filter(g => g.isHome);
+    const awayGames = seasonGames.filter(g => !g.isHome);
+    const homeW = homeGames.filter(g => g.win).length;
+    const awayW = awayGames.filter(g => g.win).length;
+    const homeRecord = `${homeW}-${homeGames.length - homeW}`;
+    const awayRecord = `${awayW}-${awayGames.length - awayW}`;
+
+    // ATS record (run line -1.5): wins by 2+ as favorite, or loses by 1 or wins as dog
+    const atsWins = seasonGames.filter(g => {
+      const margin = g.teamScore - g.oppScore;
+      return margin >= 2; // covers -1.5
+    }).length;
+    const atsLosses = seasonGames.length - atsWins;
+    const atsRecord = `${atsWins}-${atsLosses}`;
+
     return {
-      last5: `${wins5}-${last5.length - wins5} (${last5str}) Run diff last 5: ${runDiffStr}`,
+      last5: `${wins5}-${last5.length - wins5} (${last5str}) | Run diff: ${runDiffStr}`,
       last10: `${wins10}-${last10.length - wins10} (${last10str})`,
       streak: streak > 0 ? `${streakType}${streak}` : 'N/A',
+      homeRecord,
+      awayRecord,
+      atsRecord,
     };
   } catch {
-    return { last5: 'See recent games', last10: 'See recent games', streak: 'N/A' };
+    return { last5: 'N/A', last10: 'N/A', streak: 'N/A', homeRecord: 'N/A', awayRecord: 'N/A', atsRecord: 'N/A' };
   }
 }
 
