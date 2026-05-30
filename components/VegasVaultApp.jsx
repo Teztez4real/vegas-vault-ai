@@ -278,8 +278,8 @@ function AnalysisRow({ index, label, value }) {
   return (
     <div style={{ padding:"11px 0", borderBottom:"1px solid rgba(255,255,255,0.04)", display:"grid", gridTemplateColumns:"160px 1fr", gap:12, alignItems:"start" }}>
       <div style={{ display:"flex", alignItems:"center", gap:7 }}>
-        <span style={{ width:18,height:18,borderRadius:4,background:"rgba(201,162,39,0.15)",border:"1px solid rgba(201,162,39,0.25)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:"#c9a227",fontWeight:700,flexShrink:0 }}>{index}</span>
-        <span style={{ fontSize:9,color:"#c9a227",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em",lineHeight:1.3 }}>{label}</span>
+        <span style={{ width:18,height:18,borderRadius:4,background:"rgba(59,130,246,0.15)",border:"1px solid rgba(59,130,246,0.25)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:"#3b82f6",fontWeight:700,flexShrink:0 }}>{index}</span>
+        <span style={{ fontSize:9,color:"#3b82f6",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",lineHeight:1.3 }}>{label}</span>
       </div>
       <div style={{ fontSize:12,color:"#cbd5e1",lineHeight:1.7 }}>{value}</div>
     </div>
@@ -294,8 +294,8 @@ function ScamPlayBlock({ scam }) {
     </div>
   );
   return (
-    <div style={{ background:"rgba(201,162,39,0.04)",border:"1px solid rgba(201,162,39,0.2)",borderRadius:10,padding:"12px 14px" }}>
-      <div style={{ fontSize:9,fontWeight:700,letterSpacing:"0.12em",color:"#c9a227",background:"rgba(201,162,39,0.1)",padding:"3px 8px",borderRadius:4,display:"inline-block",marginBottom:10 }}>⚡ SCAM PLAY</div>
+    <div style={{ background:"rgba(201,162,39,0.04)",border:"1px solid rgba(59,130,246,0.2)",borderRadius:10,padding:"12px 14px" }}>
+      <div style={{ fontSize:9,fontWeight:700,letterSpacing:"0.08em",color:"#3b82f6",background:"rgba(59,130,246,0.1)",padding:"3px 8px",borderRadius:4,display:"inline-block",marginBottom:10 }}>⚡ SCAM PLAY</div>
       <div style={{ marginBottom:8 }}>
         <div style={{ fontSize:9,color:"#f87171",fontWeight:700,letterSpacing:"0.08em",marginBottom:3 }}>WHY IT LOOKS WRONG</div>
         <div style={{ fontSize:12,color:"#fca5a5",lineHeight:1.6 }}>{scam.whyItLooksWrong}</div>
@@ -338,28 +338,28 @@ function PlayResult({ result, game, onClose, isResolved, resolvedResult }) {
   return (
     <div onClick={e=>e.target===e.currentTarget&&onClose()} style={{ position:"fixed",inset:0,zIndex:300,background:"rgba(0,0,0,0.82)",backdropFilter:"blur(18px)",display:"flex",alignItems:"center",justifyContent:"center",padding:16 }}>
       <div style={{ background:"#090d18",border:"1px solid rgba(255,255,255,0.09)",borderRadius:20,width:"100%",maxWidth:660,maxHeight:"92vh",overflowY:"auto",boxShadow:"0 40px 100px rgba(0,0,0,0.9)" }}>
-        <div style={{ padding:"14px 20px",borderBottom:"1px solid rgba(255,255,255,0.06)",display:"flex",justifyContent:"space-between",alignItems:"center" }}>
+        <div style={{ padding:"14px 20px",borderBottom:"1px solid rgba(59,130,246,0.1)",display:"flex",justifyContent:"space-between",alignItems:"center" }}>
           <div style={{ display:"flex",alignItems:"center",gap:10 }}>
-            <span style={{ fontSize:10,fontWeight:700,letterSpacing:"0.1em",color:"#60a5fa",background:"rgba(96,165,250,0.1)",padding:"2px 8px",borderRadius:4 }}>{game.sport}</span>
+            <span style={{ fontSize:10,fontWeight:700,letterSpacing:"0.06em",color:"#60a5fa",background:"rgba(96,165,250,0.1)",padding:"2px 8px",borderRadius:4 }}>{game.sport}</span>
             <span style={{ fontSize:12,color:"#475569" }}>{isTennis?`${game.player1} vs ${game.player2}`:`${game.away} @ ${game.home}`} · {game.time}</span>
           </div>
-          <button onClick={onClose} style={{ background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,width:28,height:28,cursor:"pointer",color:"#64748b",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center" }}>✕</button>
+          <button onClick={onClose} style={{ background:"rgba(59,130,246,0.1)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,width:28,height:28,cursor:"pointer",color:"#64748b",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center" }}>✕</button>
         </div>
         <div style={{ padding:"22px 22px 18px" }}>
           <div style={{ display:"flex",flexWrap:"wrap",gap:8,marginBottom:18 }}>
-            <span style={{ fontSize:10,fontWeight:700,letterSpacing:"0.1em",padding:"4px 12px",borderRadius:6,background:tier.bg,border:`1px solid ${tier.border}`,color:tier.text }}>{tier.label}</span>
+            <span style={{ fontSize:10,fontWeight:700,letterSpacing:"0.06em",padding:"4px 12px",borderRadius:6,background:tier.bg,border:`1px solid ${tier.border}`,color:tier.text }}>{tier.label}</span>
             <span style={{ fontSize:10,fontWeight:700,padding:"4px 12px",borderRadius:6,background:isVegas?"rgba(248,113,113,0.08)":"rgba(96,165,250,0.08)",border:isVegas?"1px solid rgba(248,113,113,0.25)":"1px solid rgba(96,165,250,0.25)",color:isVegas?"#f87171":"#60a5fa",letterSpacing:"0.08em" }}>{isVegas?"VEGAS SLOT":"PUBLIC SLOT"}</span>
-            {result.summary.isScamPlay&&<span style={{ fontSize:10,fontWeight:700,padding:"4px 12px",borderRadius:6,background:"rgba(201,162,39,0.08)",border:"1px solid rgba(201,162,39,0.25)",color:"#c9a227",letterSpacing:"0.08em" }}>⚡ SCAM PLAY</span>}
-            <span style={{ fontSize:10,padding:"4px 12px",borderRadius:6,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",color:conf.color,marginLeft:"auto" }}>Confidence: <strong>{result.summary.confidence}</strong></span>
+            {result.summary.isScamPlay&&<span style={{ fontSize:10,fontWeight:700,padding:"4px 12px",borderRadius:6,background:"rgba(59,130,246,0.08)",border:"1px solid rgba(59,130,246,0.25)",color:"#3b82f6",letterSpacing:"0.08em" }}>⚡ SCAM PLAY</span>}
+            <span style={{ fontSize:10,padding:"4px 12px",borderRadius:6,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(59,130,246,0.14)",color:conf.color,marginLeft:"auto" }}>Confidence: <strong>{result.summary.confidence}</strong></span>
           </div>
           <div style={{ display:"flex",alignItems:"baseline",gap:12,marginBottom:10 }}>
             <span style={{ fontSize:30,fontWeight:800,color:"#f8fafc",letterSpacing:"-0.02em" }}>{result.summary.pick}</span>
-            <span style={{ fontSize:17,fontWeight:600,color:"#c9a227",background:"rgba(201,162,39,0.1)",padding:"2px 10px",borderRadius:6,border:"1px solid rgba(201,162,39,0.2)" }}>{result.summary.betType}</span>
+            <span style={{ fontSize:17,fontWeight:600,color:"#3b82f6",background:"rgba(59,130,246,0.1)",padding:"2px 10px",borderRadius:6,border:"1px solid rgba(59,130,246,0.2)" }}>{result.summary.betType}</span>
           </div>
           <p style={{ fontSize:13,color:"#94a3b8",lineHeight:1.7,margin:0 }}>{result.summary.verdict}</p>
         </div>
-        <div style={{ margin:"0 22px 18px",padding:"14px 16px",background:"rgba(201,162,39,0.04)",border:"1px solid rgba(201,162,39,0.12)",borderRadius:10 }}>
-          <div style={{ fontSize:9,fontWeight:700,letterSpacing:"0.12em",color:"#c9a227",marginBottom:8 }}>FINAL VERDICT</div>
+        <div style={{ margin:"0 22px 18px",padding:"14px 16px",background:"rgba(201,162,39,0.04)",border:"1px solid rgba(59,130,246,0.12)",borderRadius:10 }}>
+          <div style={{ fontSize:9,fontWeight:700,letterSpacing:"0.08em",color:"#3b82f6",marginBottom:8 }}>FINAL VERDICT</div>
           <p style={{ fontSize:13,color:"#e2e8f0",lineHeight:1.75,margin:0 }}>{result.finalVerdict}</p>
 
           {/* Auto-resolved result */}
@@ -373,7 +373,7 @@ function PlayResult({ result, game, onClose, isResolved, resolvedResult }) {
           )}
         </div>
         <div style={{ padding:"0 22px 18px" }}>
-          <button onClick={()=>setExpanded(!expanded)} style={{ width:"100%",padding:"11px",background:expanded?"rgba(201,162,39,0.06)":"rgba(255,255,255,0.03)",border:`1px solid ${expanded?"rgba(201,162,39,0.2)":"rgba(255,255,255,0.07)"}`,borderRadius:10,fontSize:12,fontWeight:500,color:expanded?"#c9a227":"#64748b",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,fontFamily:"inherit" }}>
+          <button onClick={()=>setExpanded(!expanded)} style={{ width:"100%",padding:"11px",background:expanded?"rgba(201,162,39,0.06)":"rgba(255,255,255,0.03)",border:`1px solid ${expanded?"rgba(59,130,246,0.2)":"rgba(59,130,246,0.12)"}`,borderRadius:10,fontSize:12,fontWeight:500,color:expanded?"#3b82f6":"#64748b",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,fontFamily:"inherit" }}>
             <span style={{ fontSize:9,transform:expanded?"rotate(180deg)":"none",display:"inline-block",transition:"transform 0.2s" }}>▼</span>
             {expanded?"Collapse full breakdown":"View full Vegas Vault breakdown"}
           </button>
@@ -384,7 +384,7 @@ function PlayResult({ result, game, onClose, isResolved, resolvedResult }) {
               {steps.map((s,i)=><AnalysisRow key={s.key} index={i+1} label={s.label} value={a[s.key]||"—"} />)}
             </div>
             <div style={{ marginTop:18 }}>
-              <div style={{ fontSize:9,fontWeight:700,letterSpacing:"0.12em",color:"#c9a227",marginBottom:10 }}>SCAM PLAY ANALYSIS</div>
+              <div style={{ fontSize:9,fontWeight:700,letterSpacing:"0.08em",color:"#3b82f6",marginBottom:10 }}>SCAM PLAY ANALYSIS</div>
               <ScamPlayBlock scam={a.scamPlay} />
             </div>
           </div>
@@ -461,7 +461,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
       onClick={()=>hasAnyResult&&onCardClick(game)}
       style={{
         background: isLock ? "linear-gradient(145deg,#0d1a10,#081210)" : "#0a0f1c",
-        border: `1px solid ${isLock?"rgba(74,222,128,0.3)":hasAnyResult?(tier?.border||"rgba(201,162,39,0.2)"):"rgba(255,255,255,0.07)"}`,
+        border: `1px solid ${isLock?"rgba(74,222,128,0.3)":hasAnyResult?(tier?.border||"rgba(59,130,246,0.2)"):"rgba(59,130,246,0.12)"}`,
         borderRadius:12, padding:"14px 16px",
         cursor:hasAnyResult?"pointer":"default",
         position:"relative", overflow:"hidden",
@@ -469,39 +469,39 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
       }}
     >
       {/* Gold glow top border for locks */}
-      {isLock && <div style={{ position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,transparent,#c9a227 40%,#c9a227 60%,transparent)" }} />}
+      {isLock && <div style={{ position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,transparent,#3b82f6 40%,#3b82f6 60%,transparent)" }} />}
 
       {/* Header row */}
       <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
         <div style={{ display:"flex",alignItems:"center",gap:6 }}>
-          <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.1em",color:sportColor,background:sportBg,padding:"2px 8px",borderRadius:4 }}>{game.sport}</span>
+          <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.06em",color:sportColor,background:sportBg,padding:"2px 8px",borderRadius:4 }}>{game.sport}</span>
           {isLive && (
-            <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.1em",color:"#fff",background:"#dc2626",padding:"2px 8px",borderRadius:4,display:"flex",alignItems:"center",gap:4 }}>
+            <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.06em",color:"#fff",background:"#dc2626",padding:"2px 8px",borderRadius:4,display:"flex",alignItems:"center",gap:4 }}>
               <span style={{ width:5,height:5,borderRadius:"50%",background:"#fff",display:"inline-block",animation:"pulse 1s infinite" }}/>
               LIVE
             </span>
           )}
           {isFinal && !isPostponed && (
-            <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.1em",color:"#64748b",background:"rgba(100,116,139,0.15)",padding:"2px 8px",borderRadius:4 }}>FINAL</span>
+            <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.06em",color:"#64748b",background:"rgba(100,116,139,0.15)",padding:"2px 8px",borderRadius:4 }}>FINAL</span>
           )}
           {isDelayed && (
-            <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.1em",color:"#fbbf24",background:"rgba(251,191,36,0.12)",padding:"2px 8px",borderRadius:4 }}>⏸ DELAYED</span>
+            <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.06em",color:"#fbbf24",background:"rgba(251,191,36,0.12)",padding:"2px 8px",borderRadius:4 }}>⏸ DELAYED</span>
           )}
           {isPostponed && (
-            <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.1em",color:"#f87171",background:"rgba(248,113,113,0.12)",padding:"2px 8px",borderRadius:4 }}>⛔ POSTPONED</span>
+            <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.06em",color:"#f87171",background:"rgba(248,113,113,0.12)",padding:"2px 8px",borderRadius:4 }}>⛔ POSTPONED</span>
           )}
           {/* Error badge — shown when analysis failed or couldn't parse */}
           {hasAnyResult && (bestResult?.error || bestResult?.parseError) && (
             <span style={{ fontSize:9,fontWeight:700,color:"#f87171",background:"rgba(248,113,113,0.1)",border:"1px solid rgba(248,113,113,0.3)",borderRadius:4,padding:"2px 8px",letterSpacing:"0.06em" }}>⚠ RE-ANALYZE</span>
           )}
           {betReady && !gameStarted && (
-            <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.1em",color:"#000",background:"linear-gradient(135deg,#c9a227,#f59e0b)",padding:"2px 10px",borderRadius:4,animation:"pulse 1.5s infinite" }}>🎯 BET NOW</span>
+            <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.06em",color:"#000",background:"linear-gradient(135deg,#3b82f6,#f59e0b)",padding:"2px 10px",borderRadius:4,animation:"pulse 1.5s infinite" }}>🎯 BET NOW</span>
           )}
           {!betReady && finalized && (finalized[`${game.id}-PUBLIC`] || finalized[`${game.id}-VEGAS`]) && (
-            <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.1em",color:"#c9a227",background:"rgba(201,162,39,0.12)",padding:"2px 8px",borderRadius:4 }}>🔒 FINAL</span>
+            <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.06em",color:"#3b82f6",background:"rgba(59,130,246,0.12)",padding:"2px 8px",borderRadius:4 }}>🔒 FINAL</span>
           )}
           {!betReady && isQueued && !finalized?.[`${game.id}-PUBLIC`] && (
-            <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.1em",color:"#60a5fa",background:"rgba(96,165,250,0.1)",padding:"2px 8px",borderRadius:4 }}>⟳ QUEUED</span>
+            <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.06em",color:"#60a5fa",background:"rgba(96,165,250,0.1)",padding:"2px 8px",borderRadius:4 }}>⟳ QUEUED</span>
           )}
         </div>
         <div style={{ display:"flex",alignItems:"center",gap:10 }}>
@@ -509,7 +509,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
           <span
             onClick={(e)=>{ e.stopPropagation(); if(onToggleWatch) onToggleWatch(game.id); }}
             title={watchlist?.includes(game.id) ? "Remove from watchlist" : "Add to watchlist"}
-            style={{ fontSize:14,color:watchlist?.includes(game.id)?"#c9a227":"#2a3545",cursor:"pointer",lineHeight:1,transition:"color 0.15s",userSelect:"none" }}
+            style={{ fontSize:14,color:watchlist?.includes(game.id)?"#3b82f6":"#2a3545",cursor:"pointer",lineHeight:1,transition:"color 0.15s",userSelect:"none" }}
           >{watchlist?.includes(game.id)?"★":"☆"}</span>
         </div>
       </div>
@@ -520,9 +520,9 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
         <div style={{ display:"flex",alignItems:"center",gap:10 }}>
           <TeamLogo abbr={awayAbbr} size={42} sport={logoSport} />
           <div>
-            <div style={{ fontSize:8,color:"#3a4a5e",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:2 }}>{awayCity}</div>
-            <div style={{ fontSize:14,fontWeight:900,color:"#e2e8f0",letterSpacing:"0.02em",textTransform:"uppercase",lineHeight:1 }}>{({"ARI":"DBACKS","ATL":"BRAVES","BAL":"ORIOLES","BOS":"RED SOX","CHC":"CUBS","CHW":"WHITE SOX","CIN":"REDS","CLE":"GUARDIANS","COL":"ROCKIES","DET":"TIGERS","HOU":"ASTROS","KC":"ROYALS","LAA":"ANGELS","LAD":"DODGERS","MIA":"MARLINS","MIL":"BREWERS","MIN":"TWINS","NYM":"METS","NYY":"YANKEES","OAK":"ATHLETICS","PHI":"PHILLIES","PIT":"PIRATES","SD":"PADRES","SEA":"MARINERS","SF":"GIANTS","STL":"CARDINALS","TB":"RAYS","TEX":"RANGERS","TOR":"BLUE JAYS","WSH":"NATIONALS"})[awayAbbr] || awayName.split(" ").pop().toUpperCase()}</div>
-            <div style={{ fontSize:10,color:"#3a4a5e",marginTop:3 }}>{awayRec}</div>
+            <div style={{ fontSize:9,color:"#4a6080",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:3,fontWeight:500 }}>{awayCity}</div>
+            <div style={{ fontSize:16,fontWeight:800,color:"#f1f5f9",letterSpacing:"0.01em",textTransform:"uppercase",lineHeight:1 }}>{({"ARI":"DBACKS","ATL":"BRAVES","BAL":"ORIOLES","BOS":"RED SOX","CHC":"CUBS","CHW":"WHITE SOX","CIN":"REDS","CLE":"GUARDIANS","COL":"ROCKIES","DET":"TIGERS","HOU":"ASTROS","KC":"ROYALS","LAA":"ANGELS","LAD":"DODGERS","MIA":"MARLINS","MIL":"BREWERS","MIN":"TWINS","NYM":"METS","NYY":"YANKEES","OAK":"ATHLETICS","PHI":"PHILLIES","PIT":"PIRATES","SD":"PADRES","SEA":"MARINERS","SF":"GIANTS","STL":"CARDINALS","TB":"RAYS","TEX":"RANGERS","TOR":"BLUE JAYS","WSH":"NATIONALS"})[awayAbbr] || awayName.split(" ").pop().toUpperCase()}</div>
+            <div style={{ fontSize:10,color:"#4a6080",marginTop:4,fontWeight:500 }}>{awayRec}</div>
           </div>
         </div>
         {/* @ */}
@@ -530,9 +530,9 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
         {/* Home */}
         <div style={{ display:"flex",alignItems:"center",gap:10,justifyContent:"flex-end" }}>
           <div style={{ textAlign:"right" }}>
-            <div style={{ fontSize:8,color:"#3a4a5e",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:2 }}>{homeCity}</div>
-            <div style={{ fontSize:14,fontWeight:900,color:"#e2e8f0",letterSpacing:"0.02em",textTransform:"uppercase",lineHeight:1 }}>{({"ARI":"DBACKS","ATL":"BRAVES","BAL":"ORIOLES","BOS":"RED SOX","CHC":"CUBS","CHW":"WHITE SOX","CIN":"REDS","CLE":"GUARDIANS","COL":"ROCKIES","DET":"TIGERS","HOU":"ASTROS","KC":"ROYALS","LAA":"ANGELS","LAD":"DODGERS","MIA":"MARLINS","MIL":"BREWERS","MIN":"TWINS","NYM":"METS","NYY":"YANKEES","OAK":"ATHLETICS","PHI":"PHILLIES","PIT":"PIRATES","SD":"PADRES","SEA":"MARINERS","SF":"GIANTS","STL":"CARDINALS","TB":"RAYS","TEX":"RANGERS","TOR":"BLUE JAYS","WSH":"NATIONALS"})[homeAbbr] || homeName.split(" ").pop().toUpperCase()}</div>
-            <div style={{ fontSize:10,color:"#3a4a5e",marginTop:3 }}>{homeRec}</div>
+            <div style={{ fontSize:9,color:"#4a6080",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:3,fontWeight:500 }}>{homeCity}</div>
+            <div style={{ fontSize:16,fontWeight:800,color:"#f1f5f9",letterSpacing:"0.01em",textTransform:"uppercase",lineHeight:1 }}>{({"ARI":"DBACKS","ATL":"BRAVES","BAL":"ORIOLES","BOS":"RED SOX","CHC":"CUBS","CHW":"WHITE SOX","CIN":"REDS","CLE":"GUARDIANS","COL":"ROCKIES","DET":"TIGERS","HOU":"ASTROS","KC":"ROYALS","LAA":"ANGELS","LAD":"DODGERS","MIA":"MARLINS","MIL":"BREWERS","MIN":"TWINS","NYM":"METS","NYY":"YANKEES","OAK":"ATHLETICS","PHI":"PHILLIES","PIT":"PIRATES","SD":"PADRES","SEA":"MARINERS","SF":"GIANTS","STL":"CARDINALS","TB":"RAYS","TEX":"RANGERS","TOR":"BLUE JAYS","WSH":"NATIONALS"})[homeAbbr] || homeName.split(" ").pop().toUpperCase()}</div>
+            <div style={{ fontSize:10,color:"#4a6080",marginTop:4,fontWeight:500 }}>{homeRec}</div>
           </div>
           <TeamLogo abbr={homeAbbr} size={42} sport={logoSport} />
         </div>
@@ -596,7 +596,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
             </div>
             <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:5 }}>
               {/* Moneyline */}
-              <div style={{ background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:8,overflow:'hidden' }}>
+              <div style={{ background:'rgba(255,255,255,0.02)',border:'1px solid rgba(59,130,246,0.14)',borderRadius:8,overflow:'hidden' }}>
                 <div style={{ padding:'3px 0',textAlign:'center',fontSize:8,color:'#3a4a5e',letterSpacing:'0.08em',fontWeight:600,borderBottom:'1px solid rgba(255,255,255,0.05)',background:'rgba(255,255,255,0.02)' }}>MONEYLINE</div>
                 <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:0 }}>
                   <div style={{ padding:'7px 6px',textAlign:'center',borderRight:'1px solid rgba(255,255,255,0.05)' }}>
@@ -610,7 +610,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
                 </div>
               </div>
               {/* Run Line / Spread */}
-              <div style={{ background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:8,overflow:'hidden' }}>
+              <div style={{ background:'rgba(255,255,255,0.02)',border:'1px solid rgba(59,130,246,0.14)',borderRadius:8,overflow:'hidden' }}>
                 <div style={{ padding:'3px 0',textAlign:'center',fontSize:8,color:'#3a4a5e',letterSpacing:'0.08em',fontWeight:600,borderBottom:'1px solid rgba(255,255,255,0.05)',background:'rgba(255,255,255,0.02)' }}>{game.sport==='MLB'?'RUN LINE':'SPREAD'}</div>
                 <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:0 }}>
                   <div style={{ padding:'7px 6px',textAlign:'center',borderRight:'1px solid rgba(255,255,255,0.05)' }}>
@@ -624,7 +624,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
                 </div>
               </div>
               {/* Total */}
-              <div style={{ background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:8,overflow:'hidden' }}>
+              <div style={{ background:'rgba(255,255,255,0.02)',border:'1px solid rgba(59,130,246,0.14)',borderRadius:8,overflow:'hidden' }}>
                 <div style={{ padding:'3px 0',textAlign:'center',fontSize:8,color:'#3a4a5e',letterSpacing:'0.08em',fontWeight:600,borderBottom:'1px solid rgba(255,255,255,0.05)',background:'rgba(255,255,255,0.02)' }}>TOTAL</div>
                 <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:0 }}>
                   <div style={{ padding:'7px 6px',textAlign:'center',borderRight:'1px solid rgba(255,255,255,0.05)' }}>
@@ -650,7 +650,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
       {/* Lock badge */}
       {isLock && (
         <div style={{ display:"flex",justifyContent:"center",marginBottom:10 }}>
-          <div style={{ display:"flex",alignItems:"center",gap:6,background:"rgba(201,162,39,0.1)",border:"1px solid rgba(201,162,39,0.3)",borderRadius:8,padding:"5px 18px",fontSize:12,fontWeight:800,color:"#c9a227",letterSpacing:"0.08em" }}>
+          <div style={{ display:"flex",alignItems:"center",gap:6,background:"rgba(59,130,246,0.1)",border:"1px solid rgba(59,130,246,0.3)",borderRadius:8,padding:"5px 18px",fontSize:12,fontWeight:800,color:"#3b82f6",letterSpacing:"0.08em" }}>
             🔒 LOCK
           </div>
         </div>
@@ -667,7 +667,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
             const iv=slot==="VEGAS"; const iw=slot==="WNBA";
             return(
               <div key={slot} style={{ flex:1,background:iw?"rgba(192,132,252,0.05)":iv?"rgba(248,113,113,0.05)":"rgba(96,165,250,0.05)",border:iw?"1px solid rgba(192,132,252,0.2)":iv?"1px solid rgba(248,113,113,0.15)":"1px solid rgba(96,165,250,0.15)",borderRadius:7,padding:"6px 8px" }}>
-                <div style={{ fontSize:8,fontWeight:700,letterSpacing:"0.1em",color:iw?"#c084fc":iv?"#f87171":"#60a5fa",marginBottom:3 }}>{slot}</div>
+                <div style={{ fontSize:8,fontWeight:700,letterSpacing:"0.06em",color:iw?"#c084fc":iv?"#f87171":"#60a5fa",marginBottom:3 }}>{slot}</div>
                 <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center" }}>
                   <span style={{ fontSize:11,fontWeight:700,color:"#f8fafc" }}>{result.summary.pick.split(" ").pop()}</span>
                   <span style={{ fontSize:8,fontWeight:700,padding:"2px 5px",borderRadius:4,background:ts.bg,color:ts.text,border:`1px solid ${ts.border}` }}>{ts.label}</span>
@@ -697,9 +697,9 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
           </span>
         </div>
       ) : !isSubscribed ? (
-        <div onClick={()=>{ if(onShowAuth) onShowAuth(); else window.location.href='/settings'; }} style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"10px 0",background:"rgba(7,9,26,0.6)",border:"1px solid rgba(201,162,39,0.2)",borderRadius:8,cursor:"pointer" }}>
+        <div onClick={()=>{ if(onShowAuth) onShowAuth(); else window.location.href='/settings'; }} style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"10px 0",background:"rgba(7,9,26,0.6)",border:"1px solid rgba(59,130,246,0.2)",borderRadius:8,cursor:"pointer" }}>
           <span style={{ fontSize:13 }}>🔒</span>
-          <span style={{ fontSize:10,fontWeight:700,color:"#c9a227",letterSpacing:"0.08em" }}>SUBSCRIBE TO UNLOCK</span>
+          <span style={{ fontSize:10,fontWeight:700,color:"#3b82f6",letterSpacing:"0.08em" }}>SUBSCRIBE TO UNLOCK</span>
         </div>
       ) : (
         (() => {
@@ -730,8 +730,8 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
                 <span style={{ fontSize:9,fontWeight:700,color:"#c084fc",letterSpacing:"0.08em" }}>▶ ANALYZE WNBA</span>
               </div>
             ) : (
-            <div style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"9px 0",background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:8 }}>
-              <div style={{ width:8,height:8,borderRadius:"50%",background:"#c9a227",animation:"pulse 1.5s ease-in-out infinite" }}/>
+            <div style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"9px 0",background:"rgba(255,255,255,0.02)",border:"1px solid rgba(59,130,246,0.1)",borderRadius:8 }}>
+              <div style={{ width:8,height:8,borderRadius:"50%",background:"#3b82f6",animation:"pulse 1.5s ease-in-out infinite" }}/>
               <span style={{ fontSize:9,fontWeight:600,color:"#3a4a5e",letterSpacing:"0.08em" }}>QUEUED FOR ANALYSIS</span>
             </div>
             )
@@ -792,7 +792,7 @@ function GlobeSVG({ timeStr }) {
         {[[30,35],[60,48],[75,65],[42,70],[65,30],[38,52]].map(([x,y],i)=><circle key={i} cx={x} cy={y} r={2.2} fill="#3b82f6" opacity="0.75"/>)}
         <circle cx={55} cy={55} r={50} fill="none" stroke="rgba(59,130,246,0.15)" strokeWidth="0.5"/>
       </svg>
-      <div style={{ fontSize:9,color:"#2d3a4a",textAlign:"center" }}>Last updated: <span style={{ color:"#c9a227" }}>{timeStr}</span></div>
+      <div style={{ fontSize:9,color:"#2d3a4a",textAlign:"center" }}>Last updated: <span style={{ color:"#3b82f6" }}>{timeStr}</span></div>
     </div>
   );
 }
@@ -827,7 +827,7 @@ function RightPanelContent({ marketScanner, insights, aiConfidence, confHistory 
     <>
       {/* AI Market Scanner */}
       <div style={{ marginBottom:20 }}>
-        <div style={{ fontSize:10,fontWeight:700,letterSpacing:"0.1em",color:"#64748b",marginBottom:14,display:"flex",alignItems:"center",gap:6 }}>
+        <div style={{ fontSize:10,fontWeight:700,letterSpacing:"0.06em",color:"#64748b",marginBottom:14,display:"flex",alignItems:"center",gap:6 }}>
           <span style={{ width:3,height:10,background:"#3b82f6",borderRadius:2,display:"inline-block" }}/>
           AI MARKET SCANNER
         </div>
@@ -853,7 +853,7 @@ function RightPanelContent({ marketScanner, insights, aiConfidence, confHistory 
       </div>
 
       <div style={{ borderTop:"1px solid rgba(255,255,255,0.05)",paddingTop:16,marginBottom:20 }}>
-        <div style={{ fontSize:10,fontWeight:700,letterSpacing:"0.1em",color:"#64748b",marginBottom:14,display:"flex",alignItems:"center",gap:6 }}>
+        <div style={{ fontSize:10,fontWeight:700,letterSpacing:"0.06em",color:"#64748b",marginBottom:14,display:"flex",alignItems:"center",gap:6 }}>
           <span style={{ width:3,height:10,background:"#3b82f6",borderRadius:2,display:"inline-block" }}/>
           AI INSIGHTS
         </div>
@@ -871,7 +871,7 @@ function RightPanelContent({ marketScanner, insights, aiConfidence, confHistory 
       </div>
 
       <div style={{ borderTop:"1px solid rgba(255,255,255,0.05)",paddingTop:16 }}>
-        <div style={{ fontSize:10,fontWeight:700,letterSpacing:"0.1em",color:"#64748b",marginBottom:10,display:"flex",alignItems:"center",gap:6 }}>
+        <div style={{ fontSize:10,fontWeight:700,letterSpacing:"0.06em",color:"#64748b",marginBottom:10,display:"flex",alignItems:"center",gap:6 }}>
           <span style={{ width:3,height:10,background:"#4ade80",borderRadius:2,display:"inline-block" }}/>
           AI CONFIDENCE MONITOR
         </div>
@@ -892,10 +892,10 @@ function TopPlayBanner({ topPlay, loading, results, games, pickHistory, isSubscr
 
   if (loading && !topPlay) {
     return (
-      <div style={{ background:'linear-gradient(135deg,rgba(201,162,39,0.08),rgba(201,162,39,0.03))',border:'1px solid rgba(201,162,39,0.3)',borderRadius:14,padding:'16px 20px',marginBottom:20,display:'flex',alignItems:'center',gap:12 }}>
-        <div style={{ width:28,height:28,borderRadius:'50%',border:'2px solid rgba(201,162,39,0.3)',borderTop:'2px solid #c9a227',animation:'spin 0.8s linear infinite',flexShrink:0 }}/>
+      <div style={{ background:'linear-gradient(135deg,rgba(59,130,246,0.08),rgba(201,162,39,0.03))',border:'1px solid rgba(59,130,246,0.3)',borderRadius:14,padding:'16px 20px',marginBottom:20,display:'flex',alignItems:'center',gap:12 }}>
+        <div style={{ width:28,height:28,borderRadius:'50%',border:'2px solid rgba(59,130,246,0.3)',borderTop:'2px solid #3b82f6',animation:'spin 0.8s linear infinite',flexShrink:0 }}/>
         <div>
-          <div style={{ fontSize:11,fontWeight:700,color:'#c9a227',letterSpacing:'0.08em' }}>⭐ TOP PLAY OF THE DAY</div>
+          <div style={{ fontSize:11,fontWeight:700,color:'#3b82f6',letterSpacing:'0.08em' }}>⭐ TOP PLAY OF THE DAY</div>
           <div style={{ fontSize:11,color:'#3a4a5e',marginTop:2 }}>AI is analyzing the best game for today...</div>
         </div>
       </div>
@@ -918,8 +918,8 @@ function TopPlayBanner({ topPlay, loading, results, games, pickHistory, isSubscr
     matchingGame && p.key === `${matchingGame.id}-${topPlay.slot}` && p.result
   );
   const tpResult = tpHistoryEntry?.result || null; // 'win' | 'loss' | null
-  const tierColors = { '1':'#c9a227', '2':'#60a5fa', '3':'#475569', 'PASS':'#f87171' };
-  const tierColor  = tierColors[summary.tier] || '#c9a227';
+  const tierColors = { '1':'#3b82f6', '2':'#60a5fa', '3':'#475569', 'PASS':'#f87171' };
+  const tierColor  = tierColors[summary.tier] || '#3b82f6';
   const isPass     = summary.tier === 'PASS' || summary.tier === '3';
 
   // Extract final verdict — look in multiple places
@@ -927,17 +927,17 @@ function TopPlayBanner({ topPlay, loading, results, games, pickHistory, isSubscr
   const scamPlay = topPlay.result?.scamPlay || topPlay.result?.analysis?.scamPlay;
 
   return (
-    <div className="vv-top-play" style={{ background:`linear-gradient(135deg,rgba(201,162,39,0.1),rgba(201,162,39,0.04))`,border:'1px solid rgba(201,162,39,0.4)',borderRadius:14,marginBottom:20,overflow:'hidden' }}>
+    <div className="vv-top-play" style={{ background:`linear-gradient(135deg,rgba(59,130,246,0.1),rgba(201,162,39,0.04))`,border:'1px solid rgba(59,130,246,0.4)',borderRadius:14,marginBottom:20,overflow:'hidden' }}>
 
       {/* Header */}
       <div style={{ padding:'14px 18px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap' }}>
         <div style={{ display:'flex',alignItems:'center',gap:10 }}>
-          <div style={{ background:'rgba(201,162,39,0.15)',border:'1px solid rgba(201,162,39,0.4)',borderRadius:8,padding:'4px 10px',display:'flex',alignItems:'center',gap:5 }}>
+          <div style={{ background:'rgba(59,130,246,0.15)',border:'1px solid rgba(59,130,246,0.4)',borderRadius:8,padding:'4px 10px',display:'flex',alignItems:'center',gap:5 }}>
             <span style={{ fontSize:12 }}>⭐</span>
-            <span style={{ fontSize:9,fontWeight:800,color:'#c9a227',letterSpacing:'0.12em' }}>TOP PLAY</span>
+            <span style={{ fontSize:9,fontWeight:800,color:'#3b82f6',letterSpacing:'0.08em' }}>TOP PLAY</span>
           </div>
           <span style={{ fontSize:9,fontWeight:700,color:slotColor,background:slotBg,borderRadius:4,padding:'2px 8px',letterSpacing:'0.08em' }}>{topPlay.slot}</span>
-          {!isPass && <span style={{ fontSize:9,fontWeight:700,color:tierColor,background:'rgba(201,162,39,0.08)',borderRadius:4,padding:'2px 8px' }}>
+          {!isPass && <span style={{ fontSize:9,fontWeight:700,color:tierColor,background:'rgba(59,130,246,0.08)',borderRadius:4,padding:'2px 8px' }}>
             {summary.tier === '1' ? '🔒 LOCK' : `Tier ${summary.tier}`}
           </span>}
           {isPass && <span style={{ fontSize:9,fontWeight:700,color:'#f87171',background:'rgba(248,113,113,0.1)',borderRadius:4,padding:'2px 8px' }}>🚫 NO PLAY</span>}
@@ -952,14 +952,14 @@ function TopPlayBanner({ topPlay, loading, results, games, pickHistory, isSubscr
           {isAdmin && (
             <button onClick={(e)=>{e.stopPropagation();onForceRefresh();}} style={{ background:'transparent',border:'1px solid rgba(255,255,255,0.1)',borderRadius:6,padding:'4px 10px',fontSize:9,color:'#3a4a5e',cursor:'pointer',fontFamily:'inherit' }}>↺ Re-analyze</button>
           )}
-          <button onClick={()=>setExpanded(e=>!e)} style={{ background:'transparent',border:'none',color:'#c9a227',fontSize:16,cursor:'pointer',padding:'0 4px' }}>
+          <button onClick={()=>setExpanded(e=>!e)} style={{ background:'transparent',border:'none',color:'#3b82f6',fontSize:16,cursor:'pointer',padding:'0 4px' }}>
             {expanded ? '▲' : '▼'}
           </button>
         </div>
       </div>
 
       {/* Game info — always visible */}
-      <div style={{ padding:'0 14px 14px',borderBottom:'1px solid rgba(201,162,39,0.15)' }}>
+      <div style={{ padding:'0 14px 14px',borderBottom:'1px solid rgba(59,130,246,0.15)' }}>
         <div style={{ fontSize:16,fontWeight:800,color:'#f1f5f9',letterSpacing:'-0.01em' }}>
           {topPlay.away_abbr||topPlay.away?.split(' ').pop()} @ {topPlay.home_abbr||topPlay.home?.split(' ').pop()}
         </div>
@@ -970,10 +970,10 @@ function TopPlayBanner({ topPlay, loading, results, games, pickHistory, isSubscr
       {isSubscribed ? (
         <>
           {!isPass && (
-            <div style={{ padding:'12px 14px',borderBottom:'1px solid rgba(201,162,39,0.1)',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap' }}>
-              <div style={{ background:'rgba(201,162,39,0.1)',border:'1px solid rgba(201,162,39,0.3)',borderRadius:10,padding:'10px 16px',textAlign:'center',minWidth:120 }}>
+            <div style={{ padding:'12px 14px',borderBottom:'1px solid rgba(59,130,246,0.1)',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap' }}>
+              <div style={{ background:'rgba(59,130,246,0.1)',border:'1px solid rgba(59,130,246,0.3)',borderRadius:10,padding:'10px 16px',textAlign:'center',minWidth:120 }}>
                 <div style={{ fontSize:9,color:'#3a4a5e',letterSpacing:'0.1em',marginBottom:3 }}>THE PLAY</div>
-                <div style={{ fontSize:14,fontWeight:800,color:'#c9a227' }}>{summary.pick}</div>
+                <div style={{ fontSize:14,fontWeight:800,color:'#3b82f6' }}>{summary.pick}</div>
                 <div style={{ fontSize:10,color:'#94a3b8',marginTop:1 }}>{summary.betType}</div>
               </div>
               {tpResult && (
@@ -986,7 +986,7 @@ function TopPlayBanner({ topPlay, loading, results, games, pickHistory, isSubscr
 
           {/* Verdict */}
           {verdict && !isPass && (
-            <div style={{ padding:'12px 14px',borderBottom:expanded?'1px solid rgba(201,162,39,0.1)':'none' }}>
+            <div style={{ padding:'12px 14px',borderBottom:expanded?'1px solid rgba(59,130,246,0.1)':'none' }}>
               <div style={{ fontSize:11,color:'#94a3b8',lineHeight:1.6 }}>
                 {expanded ? verdict : verdict.slice(0,200)+(verdict.length>200?'...':'')}
               </div>
@@ -1030,7 +1030,7 @@ function TopPlayBanner({ topPlay, loading, results, games, pickHistory, isSubscr
                 {summary.confidence && (
                   <div style={{ background:'rgba(255,255,255,0.02)',borderRadius:8,padding:'8px',textAlign:'center' }}>
                     <div style={{ fontSize:8,color:'#3a4a5e',marginBottom:2 }}>CONFIDENCE</div>
-                    <div style={{ fontSize:11,fontWeight:700,color:summary.confidence==='HIGH'?'#4ade80':summary.confidence==='MEDIUM'?'#c9a227':'#f87171' }}>{summary.confidence}</div>
+                    <div style={{ fontSize:11,fontWeight:700,color:summary.confidence==='HIGH'?'#4ade80':summary.confidence==='MEDIUM'?'#3b82f6':'#f87171' }}>{summary.confidence}</div>
                   </div>
                 )}
                 {summary.betType && (
@@ -1055,11 +1055,11 @@ function TopPlayBanner({ topPlay, loading, results, games, pickHistory, isSubscr
           <div style={{ display:'flex',alignItems:'center',gap:8 }}>
             <span style={{ fontSize:22 }}>🔒</span>
             <div>
-              <div style={{ fontSize:13,fontWeight:800,color:'#c9a227',letterSpacing:'0.04em' }}>Subscribe to Unlock</div>
+              <div style={{ fontSize:13,fontWeight:800,color:'#3b82f6',letterSpacing:'0.04em' }}>Subscribe to Unlock</div>
               <div style={{ fontSize:11,color:'#3a4a5e',marginTop:2 }}>Get the Top Play + all game analysis</div>
             </div>
           </div>
-          <div style={{ background:'linear-gradient(135deg,#c9a227,#8b6d10)',borderRadius:8,padding:'8px 24px',fontSize:11,fontWeight:700,color:'#000',letterSpacing:'0.06em' }}>
+          <div style={{ background:'linear-gradient(135deg,#3b82f6,#1d4ed8)',borderRadius:8,padding:'8px 24px',fontSize:11,fontWeight:700,color:'#000',letterSpacing:'0.06em' }}>
             SUBSCRIBE NOW
           </div>
         </div>
@@ -1081,7 +1081,7 @@ function AlertsView({ betReadyAlerts, trellAlerts, games, results, pickHistory, 
         game: games.find(g => key.startsWith(g.id+'-')),
         slot: key.split('-').pop(),
         title: '🔔 Bet Ready',
-        color: '#c9a227', bg: 'rgba(201,162,39,0.08)', border: 'rgba(201,162,39,0.25)',
+        color: '#3b82f6', bg: 'rgba(59,130,246,0.08)', border: 'rgba(59,130,246,0.25)',
       })),
     ...trellAlerts
       .filter(a => {
@@ -1149,12 +1149,12 @@ function AlertsView({ betReadyAlerts, trellAlerts, games, results, pickHistory, 
         <div style={{ marginTop:24 }}>
           <div style={{ fontSize:10,fontWeight:700,color:'#3a4a5e',letterSpacing:'0.1em',marginBottom:10 }}>PENDING PICKS ({pendingPicks.length})</div>
           {pendingPicks.map((p,i) => (
-            <div key={i} style={{ background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:10,padding:'10px 14px',marginBottom:8,display:'flex',justifyContent:'space-between',alignItems:'center' }}>
+            <div key={i} style={{ background:'rgba(255,255,255,0.02)',border:'1px solid rgba(59,130,246,0.1)',borderRadius:10,padding:'10px 14px',marginBottom:8,display:'flex',justifyContent:'space-between',alignItems:'center' }}>
               <div>
                 <div style={{ fontSize:11,fontWeight:600,color:'#e2e8f0' }}>{p.pick}</div>
                 <div style={{ fontSize:10,color:'#3a4a5e' }}>{p.game} · {p.slot}</div>
               </div>
-              <div style={{ fontSize:11,color:'#3a4a5e',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:6,padding:'4px 10px' }}>PENDING</div>
+              <div style={{ fontSize:11,color:'#3a4a5e',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(59,130,246,0.1)',borderRadius:6,padding:'4px 10px' }}>PENDING</div>
             </div>
           ))}
         </div>
@@ -1184,11 +1184,11 @@ function WatchlistView({ watchlist, toggleWatch, games, results, finalized }) {
       </div>
 
       {/* Notification types legend */}
-      <div style={{ background:'rgba(201,162,39,0.05)',border:'1px solid rgba(201,162,39,0.15)',borderRadius:12,padding:'12px 16px',marginBottom:20 }}>
-        <div style={{ fontSize:9,fontWeight:700,color:'#c9a227',letterSpacing:'0.1em',marginBottom:8 }}>YOU GET NOTIFIED FOR WATCHLISTED GAMES WHEN:</div>
+      <div style={{ background:'rgba(201,162,39,0.05)',border:'1px solid rgba(59,130,246,0.15)',borderRadius:12,padding:'12px 16px',marginBottom:20 }}>
+        <div style={{ fontSize:9,fontWeight:700,color:'#3b82f6',letterSpacing:'0.1em',marginBottom:8 }}>YOU GET NOTIFIED FOR WATCHLISTED GAMES WHEN:</div>
         <div style={{ display:'flex',flexWrap:'wrap',gap:8 }}>
           {NOTIF_TYPES.map((n,i) => (
-            <div key={i} style={{ display:'flex',alignItems:'center',gap:5,background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:8,padding:'5px 10px' }}>
+            <div key={i} style={{ display:'flex',alignItems:'center',gap:5,background:'rgba(255,255,255,0.03)',border:'1px solid rgba(59,130,246,0.1)',borderRadius:8,padding:'5px 10px' }}>
               <span style={{ fontSize:11 }}>{n.icon}</span>
               <div>
                 <div style={{ fontSize:9,fontWeight:700,color:'#e2e8f0' }}>{n.label}</div>
@@ -1200,7 +1200,7 @@ function WatchlistView({ watchlist, toggleWatch, games, results, finalized }) {
       </div>
 
       {/* Watched games */}
-      <div style={{ fontSize:10,fontWeight:700,color:'#c9a227',letterSpacing:'0.1em',marginBottom:10 }}>
+      <div style={{ fontSize:10,fontWeight:700,color:'#3b82f6',letterSpacing:'0.1em',marginBottom:10 }}>
         MY GAMES ({watchedGames.length}) <span style={{ color:'#3a4a5e',fontWeight:400 }}>— notifications ON</span>
       </div>
 
@@ -1218,14 +1218,14 @@ function WatchlistView({ watchlist, toggleWatch, games, results, finalized }) {
             const lmLower = (game.lineMovement||'').toLowerCase();
             const isSharp = lmLower.includes('sharp') || lmLower.includes('steam') || lmLower.includes('reverse') || !!game.rlm;
             return (
-              <div key={game.id} style={{ background:'rgba(201,162,39,0.04)',border:'1px solid rgba(201,162,39,0.25)',borderRadius:12,padding:'14px 16px',marginBottom:8 }}>
+              <div key={game.id} style={{ background:'rgba(201,162,39,0.04)',border:'1px solid rgba(59,130,246,0.25)',borderRadius:12,padding:'14px 16px',marginBottom:8 }}>
                 <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6 }}>
                   <div style={{ display:'flex',alignItems:'center',gap:8,flexWrap:'wrap' }}>
                     <span style={{ fontSize:9,fontWeight:700,color:game.slot==='VEGAS'?'#f87171':'#60a5fa',background:game.slot==='VEGAS'?'rgba(248,113,113,0.1)':'rgba(96,165,250,0.1)',borderRadius:4,padding:'1px 6px' }}>{game.sport}·{game.slot}</span>
                     <span style={{ fontSize:12,fontWeight:700,color:'#f1f5f9' }}>{game.awayAbbr||game.away?.split(' ').pop()} @ {game.homeAbbr||game.home?.split(' ').pop()}</span>
                     <span style={{ fontSize:10,color:'#3a4a5e' }}>{game.time}</span>
                   </div>
-                  <button onClick={()=>toggleWatch(game.id)} title="Remove from watchlist" style={{ background:'transparent',border:'none',color:'#c9a227',fontSize:18,cursor:'pointer',lineHeight:1,padding:'0 2px' }}>★</button>
+                  <button onClick={()=>toggleWatch(game.id)} title="Remove from watchlist" style={{ background:'transparent',border:'none',color:'#3b82f6',fontSize:18,cursor:'pointer',lineHeight:1,padding:'0 2px' }}>★</button>
                 </div>
                 {/* Status badges */}
                 <div style={{ display:'flex',gap:6,flexWrap:'wrap' }}>
@@ -1234,7 +1234,7 @@ function WatchlistView({ watchlist, toggleWatch, games, results, finalized }) {
                   <span style={{ fontSize:9,color:(game.homeML||'').startsWith('-')?'#f87171':'#4ade80' }}>{game.homeML}</span>
                   {isSharp && <span style={{ fontSize:9,fontWeight:700,color:'#f87171',background:'rgba(248,113,113,0.1)',borderRadius:4,padding:'1px 6px' }}>⚡ SHARP</span>}
                   {hasResult && !isFin && <span style={{ fontSize:9,fontWeight:700,color:'#60a5fa',background:'rgba(96,165,250,0.08)',borderRadius:4,padding:'1px 6px' }}>✓ ANALYZED</span>}
-                  {isFin && <span style={{ fontSize:9,fontWeight:700,color:'#c9a227',background:'rgba(201,162,39,0.1)',borderRadius:4,padding:'1px 6px' }}>🔒 FINALIZED</span>}
+                  {isFin && <span style={{ fontSize:9,fontWeight:700,color:'#3b82f6',background:'rgba(59,130,246,0.1)',borderRadius:4,padding:'1px 6px' }}>🔒 FINALIZED</span>}
                   <span style={{ fontSize:9,color:'#1e2a3a',marginLeft:'auto' }}>{game.lineMovement?.slice(0,40)||'No data'}</span>
                 </div>
               </div>
@@ -1287,7 +1287,7 @@ function SharpMoneyView({ games, marketScanner }) {
       <div style={{ display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:10,marginBottom:20 }}>
         {[
           { label:'SHARP SIGNALS', value:marketScanner.sharpMoneyDetected, color:'#f87171', icon:'⚡' },
-          { label:'REVERSE LINE', value:marketScanner.reverseLineMovement, color:'#c9a227', icon:'↩' },
+          { label:'REVERSE LINE', value:marketScanner.reverseLineMovement, color:'#3b82f6', icon:'↩' },
           { label:'PUBLIC HEAVY', value:marketScanner.publicHeavy, color:'#60a5fa', icon:'👥' },
           { label:'VEGAS TRAPS', value:marketScanner.vegasTrapAlert, color:'#a78bfa', icon:'🎰' },
         ].map((s,i) => (
@@ -1329,9 +1329,9 @@ function SharpMoneyView({ games, marketScanner }) {
       {/* Moving lines */}
       {movingGames.length > 0 && (
         <>
-          <div style={{ fontSize:10,fontWeight:700,color:'#c9a227',letterSpacing:'0.1em',marginBottom:10,marginTop:20 }}>📈 LINE MOVEMENT</div>
+          <div style={{ fontSize:10,fontWeight:700,color:'#3b82f6',letterSpacing:'0.1em',marginBottom:10,marginTop:20 }}>📈 LINE MOVEMENT</div>
           {movingGames.map((game,i) => (
-            <div key={game.id||i} style={{ background:'rgba(201,162,39,0.05)',border:'1px solid rgba(201,162,39,0.2)',borderRadius:12,padding:'14px 16px',marginBottom:10 }}>
+            <div key={game.id||i} style={{ background:'rgba(201,162,39,0.05)',border:'1px solid rgba(59,130,246,0.2)',borderRadius:12,padding:'14px 16px',marginBottom:10 }}>
               <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:6 }}>
                 <span style={{ fontSize:12,fontWeight:700,color:'#e2e8f0' }}>{game.awayAbbr||game.away?.split(' ').pop()} @ {game.homeAbbr||game.home?.split(' ').pop()}</span>
                 <span style={{ fontSize:10,color:'#3a4a5e' }}>{game.time}</span>
@@ -1387,14 +1387,14 @@ function VaultLocksView({ results, games, finalized }) {
           <div style={{ fontSize:12,color:'#1e2a3a' }}>Generate game analyses — Tier 1 picks appear here automatically.</div>
         </div>
       ) : locks.map((lock,i) => (
-        <div key={lock.key} style={{ background:'rgba(201,162,39,0.06)',border:'1px solid rgba(201,162,39,0.3)',borderRadius:12,padding:'16px',marginBottom:12 }}>
+        <div key={lock.key} style={{ background:'rgba(201,162,39,0.06)',border:'1px solid rgba(59,130,246,0.3)',borderRadius:12,padding:'16px',marginBottom:12 }}>
           <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:8 }}>
             <span style={{ fontSize:16 }}>🔒</span>
             <span style={{ fontSize:9,fontWeight:700,color:lock.slot==='VEGAS'?'#f87171':'#60a5fa',background:lock.slot==='VEGAS'?'rgba(248,113,113,0.1)':'rgba(96,165,250,0.1)',borderRadius:4,padding:'1px 6px' }}>{lock.slot}</span>
             {lock.game && <span style={{ fontSize:12,fontWeight:700,color:'#f1f5f9' }}>{lock.game.away?.split(' ').pop()} @ {lock.game.home?.split(' ').pop()}</span>}
             {lock.game && <span style={{ fontSize:10,color:'#3a4a5e' }}>{lock.game.time}</span>}
           </div>
-          <div style={{ fontSize:12,fontWeight:700,color:'#c9a227',marginBottom:6 }}>{extractPick(lock.analysis)}</div>
+          <div style={{ fontSize:12,fontWeight:700,color:'#3b82f6',marginBottom:6 }}>{extractPick(lock.analysis)}</div>
           {finalized?.[lock.key] && <span style={{ fontSize:9,color:'#475569',background:'rgba(255,255,255,0.04)',borderRadius:4,padding:'2px 6px' }}>FINALIZED</span>}
         </div>
       ))}
@@ -1412,7 +1412,7 @@ function TodaySlateView({ games, results, generating, onGenerate, liveScores, is
 
   function SlateGameRow({ game }) {
     return (
-      <div key={game.id} style={{ background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:12,padding:'14px 16px' }}>
+      <div key={game.id} style={{ background:'rgba(255,255,255,0.02)',border:'1px solid rgba(59,130,246,0.1)',borderRadius:12,padding:'14px 16px' }}>
         <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8 }}>
           <div style={{ display:'flex',alignItems:'center',gap:8 }}>
             {game.sport !== 'WNBA' && (
@@ -1445,7 +1445,7 @@ function TodaySlateView({ games, results, generating, onGenerate, liveScores, is
       {/* Sport filter pills — excludes WNBA since it has its own section */}
       <div style={{ display:'flex',gap:6,marginBottom:16,flexWrap:'wrap' }}>
         {sports.map(s => (
-          <button key={s} onClick={()=>setSportFilter(s)} style={{ padding:'5px 14px',background:sportFilter===s?'rgba(201,162,39,0.15)':'transparent',border:`1px solid ${sportFilter===s?'rgba(201,162,39,0.4)':'rgba(255,255,255,0.08)'}`,borderRadius:20,fontSize:10,fontWeight:sportFilter===s?700:400,color:sportFilter===s?'#c9a227':'#3a4a5e',cursor:'pointer',fontFamily:'inherit',letterSpacing:'0.06em' }}>{s}</button>
+          <button key={s} onClick={()=>setSportFilter(s)} style={{ padding:'5px 14px',background:sportFilter===s?'rgba(59,130,246,0.15)':'transparent',border:`1px solid ${sportFilter===s?'rgba(59,130,246,0.4)':'rgba(59,130,246,0.14)'}`,borderRadius:20,fontSize:10,fontWeight:sportFilter===s?700:400,color:sportFilter===s?'#3b82f6':'#3a4a5e',cursor:'pointer',fontFamily:'inherit',letterSpacing:'0.06em' }}>{s}</button>
         ))}
       </div>
 
@@ -1460,7 +1460,7 @@ function TodaySlateView({ games, results, generating, onGenerate, liveScores, is
           <div style={{ display:'flex',alignItems:'center',gap:10,marginBottom:12 }}>
             <div style={{ flex:1,height:1,background:'rgba(255,255,255,0.05)' }}/>
             <div style={{ display:'flex',alignItems:'center',gap:8 }}>
-              <span style={{ fontSize:11,fontWeight:700,color:'#c084fc',letterSpacing:'0.12em' }}>WNBA</span>
+              <span style={{ fontSize:11,fontWeight:700,color:'#c084fc',letterSpacing:'0.08em' }}>WNBA</span>
               <span style={{ fontSize:9,color:'#7c3aed',background:'rgba(192,132,252,0.1)',border:'1px solid rgba(192,132,252,0.25)',borderRadius:4,padding:'2px 7px',fontWeight:600 }}>{wnbaGames.length} GAMES</span>
             </div>
             <div style={{ flex:1,height:1,background:'rgba(255,255,255,0.05)' }}/>
@@ -1506,13 +1506,13 @@ function AIAnalyzerView({ games, results, generating, onGenerate, isSubscribed }
       </div>
 
       {/* Progress */}
-      <div style={{ background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:12,padding:'16px',marginBottom:20 }}>
+      <div style={{ background:'rgba(255,255,255,0.02)',border:'1px solid rgba(59,130,246,0.1)',borderRadius:12,padding:'16px',marginBottom:20 }}>
         <div style={{ display:'flex',justifyContent:'space-between',marginBottom:8 }}>
           <span style={{ fontSize:10,color:'#3a4a5e',letterSpacing:'0.08em' }}>ANALYSIS PROGRESS</span>
-          <span style={{ fontSize:10,color:'#c9a227',fontWeight:700 }}>{games.length>0?Math.round((analyzed.length/games.length)*100):0}%</span>
+          <span style={{ fontSize:10,color:'#3b82f6',fontWeight:700 }}>{games.length>0?Math.round((analyzed.length/games.length)*100):0}%</span>
         </div>
         <div style={{ height:4,background:'rgba(255,255,255,0.04)',borderRadius:2 }}>
-          <div style={{ height:'100%',width:games.length?`${Math.min(100,(analyzed.length/games.length)*100)}%`:'0%',background:'linear-gradient(90deg,#8b6d10,#c9a227)',borderRadius:2,transition:'width 0.4s' }}/>
+          <div style={{ height:'100%',width:games.length?`${Math.min(100,(analyzed.length/games.length)*100)}%`:'0%',background:'linear-gradient(90deg,#1d4ed8,#3b82f6)',borderRadius:2,transition:'width 0.4s' }}/>
         </div>
         <div style={{ display:'flex',gap:16,marginTop:10,fontSize:10,color:'#3a4a5e' }}>
           <span>✅ {analyzed.length} analyzed</span>
@@ -1529,7 +1529,7 @@ function AIAnalyzerView({ games, results, generating, onGenerate, isSubscribed }
             const vegRes = results[`${game.id}-VEGAS`];
             const _r = typeof (pubRes||vegRes) === 'string' ? (pubRes||vegRes) : JSON.stringify(pubRes||vegRes||''); const isTier1 = _r.includes('Tier 1') || _r.includes('LOCK');
             return (
-              <div key={game.id} style={{ background:'rgba(255,255,255,0.02)',border:`1px solid ${isTier1?'rgba(201,162,39,0.3)':'rgba(255,255,255,0.06)'}`,borderRadius:12,padding:'14px 16px',marginBottom:10 }}>
+              <div key={game.id} style={{ background:'rgba(255,255,255,0.02)',border:`1px solid ${isTier1?'rgba(59,130,246,0.3)':'rgba(59,130,246,0.1)'}`,borderRadius:12,padding:'14px 16px',marginBottom:10 }}>
                 <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6 }}>
                   <div style={{ display:'flex',alignItems:'center',gap:8 }}>
                     {isTier1 && <span style={{ fontSize:12 }}>🔒</span>}
@@ -1582,8 +1582,8 @@ function PropsAIView({ games, isSubscribed }) {
         <p style={{ fontSize:12,color:'#3a4a5e' }}>Player props & alternate lines analysis</p>
       </div>
 
-      <div style={{ background:'rgba(201,162,39,0.06)',border:'1px solid rgba(201,162,39,0.2)',borderRadius:12,padding:'16px',marginBottom:20 }}>
-        <div style={{ fontSize:11,fontWeight:700,color:'#c9a227',marginBottom:6 }}>🚧 Coming Soon</div>
+      <div style={{ background:'rgba(201,162,39,0.06)',border:'1px solid rgba(59,130,246,0.2)',borderRadius:12,padding:'16px',marginBottom:20 }}>
+        <div style={{ fontSize:11,fontWeight:700,color:'#3b82f6',marginBottom:6 }}>🚧 Coming Soon</div>
         <div style={{ fontSize:12,color:'#64748b' }}>Props AI is being built out. It will analyze player props, first-inning lines, team totals, and alternate spreads using the Vegas Vault model.</div>
       </div>
 
@@ -1604,7 +1604,7 @@ function PropsAIView({ games, isSubscribed }) {
               <span style={{ fontSize:11,color:'#64748b' }}>{game.away?.split(' ').pop()} @ {game.home?.split(' ').pop()}</span>
               <div style={{ display:'flex',gap:6 }}>
                 {['HR','Ks','Hits'].map(t => (
-                  <span key={t} style={{ fontSize:9,background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:4,padding:'2px 6px',color:'#2d3a4a' }}>{t}</span>
+                  <span key={t} style={{ fontSize:9,background:'rgba(255,255,255,0.04)',border:'1px solid rgba(59,130,246,0.1)',borderRadius:4,padding:'2px 6px',color:'#2d3a4a' }}>{t}</span>
                 ))}
               </div>
             </div>
@@ -2340,14 +2340,14 @@ export default function VegasVaultApp() {
   const greeting = hour<12?"Good morning":hour<17?"Good afternoon":"Good evening";
 
   return (
-    <div style={{ fontFamily:"'DM Mono','Courier New',monospace",background:"#07091a",minHeight:"100vh",color:"#e2e8f0",display:"flex",flexDirection:"column" }}>
+    <div style={{ fontFamily:"'Inter','SF Pro Display',-apple-system,sans-serif",background:"#060a18",minHeight:"100vh",color:"#e2e8f0",display:"flex",flexDirection:"column" }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
         *{box-sizing:border-box;margin:0;padding:0;}
-        body{background:#07091a;overflow-x:hidden;}
-        ::-webkit-scrollbar{width:3px;}::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:2px;}
+        body{background:#060a18;overflow-x:hidden;font-family:'Inter',-apple-system,sans-serif;}
+        ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-thumb{background:rgba(59,130,246,0.25);border-radius:2px;}
         button{font-family:inherit;}
         @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.35;}}
         .vv-sidebar{display:flex;}
@@ -2365,7 +2365,7 @@ export default function VegasVaultApp() {
         }
         @media(max-width:700px){
           .vv-sidebar{display:none!important;}
-          .vv-bottom-nav{display:flex!important;position:fixed;bottom:0;left:0;right:0;height:60px;background:rgba(7,9,26,0.98);border-top:1px solid rgba(255,255,255,0.08);z-index:200;align-items:center;justify-content:space-around;backdrop-filter:blur(20px);padding:0 4px;}
+          .vv-bottom-nav{display:flex!important;position:fixed;bottom:0;left:0;right:0;height:60px;background:rgba(7,9,26,0.98);border-top:1px solid rgba(59,130,246,0.14);z-index:200;align-items:center;justify-content:space-around;backdrop-filter:blur(20px);padding:0 4px;}
           .vv-cards{grid-template-columns:1fr!important;}
           .vv-stats{grid-template-columns:repeat(2,1fr)!important;}
           .vv-top-play{margin-left:-2px!important;margin-right:-2px!important;}
@@ -2382,12 +2382,12 @@ export default function VegasVaultApp() {
       `}</style>
 
       {/* ── TOP NAV ── */}
-      <div style={{ height:52,borderBottom:"1px solid rgba(255,255,255,0.06)",display:"flex",alignItems:"center",background:"rgba(7,9,26,0.96)",backdropFilter:"blur(24px)",position:"sticky",top:0,zIndex:100,flexShrink:0 }}>
-        <div className="vv-nav-logo" style={{ width:200,padding:"0 18px",display:"flex",alignItems:"center",gap:10,borderRight:"1px solid rgba(255,255,255,0.06)",flexShrink:0 }}>
-          <div style={{ width:30,height:30,background:"linear-gradient(135deg,#c9a227,#8b6d10)",borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:900,color:"#000",flexShrink:0 }}>V</div>
+      <div style={{ height:52,borderBottom:"1px solid rgba(59,130,246,0.1)",display:"flex",alignItems:"center",background:"rgba(7,9,26,0.96)",backdropFilter:"blur(24px)",position:"sticky",top:0,zIndex:100,flexShrink:0 }}>
+        <div className="vv-nav-logo" style={{ width:200,padding:"0 18px",display:"flex",alignItems:"center",gap:10,borderRight:"1px solid rgba(59,130,246,0.1)",flexShrink:0 }}>
+          <div style={{ width:30,height:30,background:"linear-gradient(135deg,#3b82f6,#1d4ed8)",borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:900,color:"#000",flexShrink:0 }}>V</div>
           <div>
             <span className="lbl" style={{ fontSize:13,fontWeight:700,color:"#f8fafc",letterSpacing:"0.06em" }}>VEGAS </span>
-            <span className="lbl" style={{ fontSize:13,fontWeight:700,color:"#c9a227",letterSpacing:"0.06em" }}>VAULT</span>
+            <span className="lbl" style={{ fontSize:13,fontWeight:700,color:"#3b82f6",letterSpacing:"0.06em" }}>VAULT</span>
             <span className="lbl" style={{ fontSize:10,color:"#3a4a5e",marginLeft:4 }}>AI</span>
           </div>
         </div>
@@ -2405,10 +2405,10 @@ export default function VegasVaultApp() {
             const isActive = activeTab===tab.t;
             const badgeVal = tab.badge ? tab.badge() : 0;
             return (
-              <div key={i} onClick={()=>setActiveTab(tab.t)} style={{ padding:"0 22px",height:52,display:"flex",alignItems:"center",gap:7,fontSize:11,fontWeight:isActive?700:400,color:isActive?"#c9a227":"#3a4a5e",borderBottom:isActive?"2px solid #c9a227":"2px solid transparent",cursor:"pointer",letterSpacing:"0.07em",whiteSpace:"nowrap" }}>
+              <div key={i} onClick={()=>setActiveTab(tab.t)} style={{ padding:"0 22px",height:52,display:"flex",alignItems:"center",gap:7,fontSize:11,fontWeight:isActive?700:400,color:isActive?"#3b82f6":"#3a4a5e",borderBottom:isActive?"2px solid #3b82f6":"2px solid transparent",cursor:"pointer",letterSpacing:"0.07em",whiteSpace:"nowrap" }}>
                 {tab.icon&&<span style={{ fontSize:11 }}>{tab.icon}</span>}
                 {tab.t}
-                {badgeVal>0&&<span style={{ background:"rgba(201,162,39,0.15)",border:"1px solid rgba(201,162,39,0.3)",borderRadius:10,padding:"1px 6px",fontSize:9,color:"#c9a227",fontWeight:700 }}>{badgeVal}</span>}
+                {badgeVal>0&&<span style={{ background:"rgba(59,130,246,0.15)",border:"1px solid rgba(59,130,246,0.3)",borderRadius:10,padding:"1px 6px",fontSize:9,color:"#3b82f6",fontWeight:700 }}>{badgeVal}</span>}
               </div>
             );
           })}
@@ -2418,15 +2418,15 @@ export default function VegasVaultApp() {
           {authUser ? (
             <div style={{ display:"flex",alignItems:"center",gap:8 }}>
               {authUser.email===ADMIN_EMAIL&&<span className="vv-admin-btns" style={{ display:"flex",alignItems:"center",gap:5 }}>
-                <span style={{ fontSize:9,fontWeight:700,color:"#c9a227",background:"rgba(201,162,39,0.12)",border:"1px solid rgba(201,162,39,0.3)",borderRadius:4,padding:"2px 7px",letterSpacing:"0.08em" }}>ADMIN</span>
+                <span style={{ fontSize:9,fontWeight:700,color:"#3b82f6",background:"rgba(59,130,246,0.12)",border:"1px solid rgba(59,130,246,0.3)",borderRadius:4,padding:"2px 7px",letterSpacing:"0.08em" }}>ADMIN</span>
               </span>}
-              <div style={{ width:32,height:32,borderRadius:"50%",background:"linear-gradient(135deg,#c9a227,#8b6d10)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,color:"#000",cursor:"pointer" }} onClick={()=>window.location.href='/settings'}>
+              <div style={{ width:32,height:32,borderRadius:"50%",background:"linear-gradient(135deg,#3b82f6,#1d4ed8)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,color:"#000",cursor:"pointer" }} onClick={()=>window.location.href='/settings'}>
                 {(authUser.email?.[0]||'U').toUpperCase()}
               </div>
-              <button onClick={doSignOut} style={{ fontSize:10,color:"#475569",background:"transparent",border:"1px solid rgba(255,255,255,0.08)",borderRadius:6,padding:"4px 10px",cursor:"pointer",fontFamily:"inherit" }}>Sign Out</button>
+              <button onClick={doSignOut} style={{ fontSize:10,color:"#475569",background:"transparent",border:"1px solid rgba(59,130,246,0.14)",borderRadius:6,padding:"4px 10px",cursor:"pointer",fontFamily:"inherit" }}>Sign Out</button>
             </div>
           ) : (
-            <button onClick={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}} style={{ display:"flex",alignItems:"center",gap:7,background:"linear-gradient(135deg,#c9a227,#8b6d10)",border:"none",borderRadius:8,padding:"7px 16px",fontSize:11,fontWeight:700,color:"#000",cursor:"pointer",letterSpacing:"0.06em",fontFamily:"inherit" }}>
+            <button onClick={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}} style={{ display:"flex",alignItems:"center",gap:7,background:"linear-gradient(135deg,#3b82f6,#1d4ed8)",border:"none",borderRadius:8,padding:"7px 16px",fontSize:11,fontWeight:700,color:"#000",cursor:"pointer",letterSpacing:"0.06em",fontFamily:"inherit" }}>
               🔒 Login / Sign Up
             </button>
           )}
@@ -2445,16 +2445,16 @@ export default function VegasVaultApp() {
                 else if(item.label==='ODDS MOVEMENT'){setShowOddsMovement(true);}
                 else if(item.label==='SETTINGS'){window.location.href='/settings';}
                 else { setActiveNav(item.label); setActiveTab('DASHBOARD'); }
-              }} style={{ display:"flex",alignItems:"center",gap:12,padding:"11px 20px",background:activeNav===item.label?"rgba(201,162,39,0.07)":"transparent",borderLeft:activeNav===item.label?"2px solid #c9a227":"2px solid transparent",cursor:"pointer" }}>
-                <span style={{ fontSize:13,color:item.active?"#c9a227":"#2d3a4a",width:18,flexShrink:0 }}>{item.icon}</span>
-                <span style={{ fontSize:10,fontWeight:item.active?700:400,color:item.active?"#c9a227":"#3a4a5e",letterSpacing:"0.08em",flex:1 }}>{item.label}</span>
+              }} style={{ display:"flex",alignItems:"center",gap:12,padding:"11px 20px",background:activeNav===item.label?"rgba(201,162,39,0.07)":"transparent",borderLeft:activeNav===item.label?"2px solid #3b82f6":"2px solid transparent",cursor:"pointer" }}>
+                <span style={{ fontSize:13,color:item.active?"#3b82f6":"#2d3a4a",width:18,flexShrink:0 }}>{item.icon}</span>
+                <span style={{ fontSize:10,fontWeight:item.active?700:400,color:item.active?"#3b82f6":"#3a4a5e",letterSpacing:"0.08em",flex:1 }}>{item.label}</span>
                 {item.arrow&&<span style={{ fontSize:9,color:"#2d3a4a" }}>▶</span>}
               </div>
             ))}
           </div>
           {/* AI Engine Status */}
           <div style={{ padding:"14px 18px",borderTop:"1px solid rgba(255,255,255,0.05)" }}>
-            <div style={{ fontSize:9,color:"#3a4a5e",letterSpacing:"0.1em",fontWeight:700,marginBottom:10 }}>AI ENGINE STATUS</div>
+            <div style={{ fontSize:9,color:"#3a4a5e",letterSpacing:"0.06em",fontWeight:700,marginBottom:10 }}>AI ENGINE STATUS</div>
             <div style={{ display:"flex",alignItems:"center",gap:7,marginBottom:8 }}>
               <div style={{ width:6,height:6,borderRadius:"50%",background:"#4ade80",animation:"pulse 2s infinite",flexShrink:0 }}/>
               <span style={{ fontSize:10,color:"#4ade80",fontWeight:700 }}>ONLINE</span>
@@ -2473,7 +2473,7 @@ export default function VegasVaultApp() {
           {/* Odds ticker */}
           <div style={{ borderBottom:"1px solid rgba(255,255,255,0.05)",background:"rgba(9,12,28,0.9)" }}>
             <div style={{ display:"flex",alignItems:"center" }}>
-              <div className="vv-ticker-lbl" style={{ padding:"8px 16px",fontSize:9,fontWeight:700,letterSpacing:"0.12em",color:"#c9a227",borderRight:"1px solid rgba(255,255,255,0.05)",whiteSpace:"nowrap",flexShrink:0 }}>LIVE ODDS FEED</div>
+              <div className="vv-ticker-lbl" style={{ padding:"8px 16px",fontSize:9,fontWeight:700,letterSpacing:"0.08em",color:"#3b82f6",borderRight:"1px solid rgba(255,255,255,0.05)",whiteSpace:"nowrap",flexShrink:0 }}>LIVE ODDS FEED</div>
               <div style={{ flex:1,overflow:"hidden",padding:"8px 0" }}><OddsTicker feed={oddsFeed}/></div>
               <div style={{ padding:"0 14px",flexShrink:0 }}><Sparkline color="#3b82f6" width={56} height={22}/></div>
             </div>
@@ -2507,40 +2507,40 @@ export default function VegasVaultApp() {
             {/* Stat cards */}
             <div className="vv-stats">
               {/* Today's games */}
-              <div style={{ background:"#0b0f20",border:"1px solid rgba(255,255,255,0.06)",borderRadius:12,padding:"14px 16px" }}>
-                <div style={{ fontSize:9,color:"#3a4a5e",letterSpacing:"0.1em",fontWeight:700,marginBottom:10 }}>TODAY'S GAMES</div>
+              <div style={{ background:"#080d1c",border:"1px solid rgba(59,130,246,0.1)",borderRadius:12,padding:"14px 16px" }}>
+                <div style={{ fontSize:9,color:"#3a4a5e",letterSpacing:"0.06em",fontWeight:700,marginBottom:10 }}>TODAY'S GAMES</div>
                 <div style={{ fontSize:30,fontWeight:800,color:"#f1f5f9",letterSpacing:"-0.03em",marginBottom:4 }}>{loading?"…":games.length}</div>
                 <div style={{ fontSize:10,color:"#2d3a4a" }}>{timeStr} CT</div>
               </div>
               {/* AI Picks */}
-              <div style={{ background:"#0b0f20",border:"1px solid rgba(255,255,255,0.06)",borderRadius:12,padding:"14px 16px" }}>
-                <div style={{ fontSize:9,color:"#3a4a5e",letterSpacing:"0.1em",fontWeight:700,marginBottom:10 }}>AI PICKS GENERATED</div>
-                <div style={{ fontSize:30,fontWeight:800,color:"#c9a227",letterSpacing:"-0.03em",marginBottom:8 }}>{generated} <span style={{ fontSize:18,color:"#5a4a1a" }}>/ {loading?"…":games.length*2}</span></div>
+              <div style={{ background:"#080d1c",border:"1px solid rgba(59,130,246,0.1)",borderRadius:12,padding:"14px 16px" }}>
+                <div style={{ fontSize:9,color:"#3a4a5e",letterSpacing:"0.06em",fontWeight:700,marginBottom:10 }}>AI PICKS GENERATED</div>
+                <div style={{ fontSize:30,fontWeight:800,color:"#3b82f6",letterSpacing:"-0.03em",marginBottom:8 }}>{generated} <span style={{ fontSize:18,color:"#5a4a1a" }}>/ {loading?"…":games.length*2}</span></div>
                 <div style={{ height:2,background:"rgba(255,255,255,0.04)",borderRadius:1 }}>
-                  <div style={{ height:"100%",width:games.length?`${Math.min(100,(generated/(games.length*2))*100)}%`:"0%",background:"linear-gradient(90deg,#8b6d10,#c9a227)",borderRadius:1,transition:"width 0.4s" }}/>
+                  <div style={{ height:"100%",width:games.length?`${Math.min(100,(generated/(games.length*2))*100)}%`:"0%",background:"linear-gradient(90deg,#1d4ed8,#3b82f6)",borderRadius:1,transition:"width 0.4s" }}/>
                 </div>
               </div>
               {/* Win rate */}
-              <div style={{ background:"#0b0f20",border:"1px solid rgba(255,255,255,0.06)",borderRadius:12,padding:"14px 16px" }}>
-                <div style={{ fontSize:9,color:"#3a4a5e",letterSpacing:"0.1em",fontWeight:700,marginBottom:6 }}>WIN RATE (7D)</div>
+              <div style={{ background:"#080d1c",border:"1px solid rgba(59,130,246,0.1)",borderRadius:12,padding:"14px 16px" }}>
+                <div style={{ fontSize:9,color:"#3a4a5e",letterSpacing:"0.06em",fontWeight:700,marginBottom:6 }}>WIN RATE (7D)</div>
                 <div style={{ display:"flex",alignItems:"flex-end",justifyContent:"space-between" }}>
                   <div style={{ fontSize:30,fontWeight:800,color:"#4ade80",letterSpacing:"-0.03em" }}>{winRate !== null ? `${winRate}%` : "—"}</div>
                   <Sparkline color="#4ade80" width={70} height={34}/>
                 </div>
               </div>
               {/* Top tier */}
-              <div style={{ background:"#0b0f20",border:"1px solid rgba(255,255,255,0.06)",borderRadius:12,padding:"14px 16px" }}>
-                <div style={{ fontSize:9,color:"#3a4a5e",letterSpacing:"0.1em",fontWeight:700,marginBottom:10 }}>TOP TIER</div>
+              <div style={{ background:"#080d1c",border:"1px solid rgba(59,130,246,0.1)",borderRadius:12,padding:"14px 16px" }}>
+                <div style={{ fontSize:9,color:"#3a4a5e",letterSpacing:"0.06em",fontWeight:700,marginBottom:10 }}>TOP TIER</div>
                 <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between" }}>
                   <div style={{ fontSize:26,fontWeight:800,color:"#f1f5f9",letterSpacing:"-0.02em" }}>LOCK</div>
                   <span style={{ fontSize:24 }}>🔒</span>
                 </div>
               </div>
               {/* AI Confidence */}
-              <div style={{ background:"#0b0f20",border:"1px solid rgba(255,255,255,0.06)",borderRadius:12,padding:"14px 16px" }}>
-                <div style={{ fontSize:9,color:"#3a4a5e",letterSpacing:"0.1em",fontWeight:700,marginBottom:4 }}>AI CONFIDENCE</div>
+              <div style={{ background:"#080d1c",border:"1px solid rgba(59,130,246,0.1)",borderRadius:12,padding:"14px 16px" }}>
+                <div style={{ fontSize:9,color:"#3a4a5e",letterSpacing:"0.06em",fontWeight:700,marginBottom:4 }}>AI CONFIDENCE</div>
                 <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between" }}>
-                  <div><div style={{ fontSize:20,fontWeight:800,color:aiConfidence===null?"#c9a227":aiConfidence>=75?"#4ade80":aiConfidence>=50?"#fbbf24":"#f87171" }}>{aiConfidence===null?"—":aiConfidence>=75?"HIGH":aiConfidence>=50?"MED":"LOW"}</div><div style={{ fontSize:11,color:"#4a5568" }}>{aiConfidence!==null?`${aiConfidence}%`:"Analyze to score"}</div></div>
+                  <div><div style={{ fontSize:20,fontWeight:800,color:aiConfidence===null?"#3b82f6":aiConfidence>=75?"#4ade80":aiConfidence>=50?"#fbbf24":"#f87171" }}>{aiConfidence===null?"—":aiConfidence>=75?"HIGH":aiConfidence>=50?"MED":"LOW"}</div><div style={{ fontSize:11,color:"#4a5568" }}>{aiConfidence!==null?`${aiConfidence}%`:"Analyze to score"}</div></div>
                   <RadarChart size={64}/>
                 </div>
               </div>
@@ -2588,9 +2588,9 @@ export default function VegasVaultApp() {
               </div>
               <div style={{ display:"flex",alignItems:"center",gap:8 }}>
                 <div style={{ display:"flex",alignItems:"center",gap:6 }}>
-                <button onClick={()=>changeDate(-1)} style={{ background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:6,color:"#64748b",fontSize:13,width:28,height:28,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit" }}>‹</button>
-                <div style={{ fontSize:11,color:"#c9a227",background:"rgba(201,162,39,0.08)",border:"1px solid rgba(201,162,39,0.2)",borderRadius:6,padding:"4px 12px",minWidth:80,textAlign:"center" }}>{formatDisplayDate(selectedDate)}</div>
-                <button onClick={()=>changeDate(1)} style={{ background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:6,color:"#64748b",fontSize:13,width:28,height:28,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit" }}>›</button>
+                <button onClick={()=>changeDate(-1)} style={{ background:"rgba(255,255,255,0.04)",border:"1px solid rgba(59,130,246,0.14)",borderRadius:6,color:"#64748b",fontSize:13,width:28,height:28,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit" }}>‹</button>
+                <div style={{ fontSize:11,color:"#3b82f6",background:"rgba(59,130,246,0.08)",border:"1px solid rgba(59,130,246,0.2)",borderRadius:6,padding:"4px 12px",minWidth:80,textAlign:"center" }}>{formatDisplayDate(selectedDate)}</div>
+                <button onClick={()=>changeDate(1)} style={{ background:"rgba(255,255,255,0.04)",border:"1px solid rgba(59,130,246,0.14)",borderRadius:6,color:"#64748b",fontSize:13,width:28,height:28,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit" }}>›</button>
               </div>
                 <span style={{ fontSize:14,color:"#2d3a4a",cursor:"pointer" }}>⊟</span>
               </div>
@@ -2599,7 +2599,7 @@ export default function VegasVaultApp() {
             {/* Filter pills */}
             <div style={{ display:"flex",gap:6,marginBottom:16,flexWrap:"wrap" }}>
               {FILTERS.map(f=>(
-                <button key={f} onClick={()=>setFilter(f)} style={{ fontSize:11,fontWeight:filter===f?700:400,padding:"5px 14px",borderRadius:6,border:`1px solid ${filter===f?"rgba(201,162,39,0.5)":"rgba(255,255,255,0.07)"}`,background:filter===f?"rgba(201,162,39,0.1)":"transparent",color:filter===f?"#c9a227":"#3a4a5e",cursor:"pointer",letterSpacing:"0.05em",fontFamily:"inherit" }}>{f}</button>
+                <button key={f} onClick={()=>setFilter(f)} style={{ fontSize:11,fontWeight:filter===f?700:400,padding:"5px 14px",borderRadius:6,border:`1px solid ${filter===f?"rgba(59,130,246,0.5)":"rgba(59,130,246,0.12)"}`,background:filter===f?"rgba(59,130,246,0.1)":"transparent",color:filter===f?"#3b82f6":"#3a4a5e",cursor:"pointer",letterSpacing:"0.05em",fontFamily:"inherit" }}>{f}</button>
               ))}
             </div>
 
@@ -2607,18 +2607,18 @@ export default function VegasVaultApp() {
 
             {/* BET NOW ALERT BANNER */}
             {Object.keys(betReadyAlerts).length > 0 && (
-              <div style={{ marginBottom:12,background:"linear-gradient(135deg,rgba(201,162,39,0.12),rgba(245,158,11,0.08))",border:"1px solid rgba(201,162,39,0.35)",borderRadius:12,padding:"12px 16px",display:"flex",alignItems:"center",gap:12 }}>
+              <div style={{ marginBottom:12,background:"linear-gradient(135deg,rgba(59,130,246,0.12),rgba(245,158,11,0.08))",border:"1px solid rgba(59,130,246,0.35)",borderRadius:12,padding:"12px 16px",display:"flex",alignItems:"center",gap:12 }}>
                 <span style={{ fontSize:22 }}>🎯</span>
                 <div>
-                  <div style={{ fontSize:12,fontWeight:800,color:"#c9a227",letterSpacing:"0.06em" }}>BETS READY TO PLACE</div>
-                  <div style={{ fontSize:11,color:"#8b6d10",marginTop:2 }}>{Object.keys(betReadyAlerts).length} pick{Object.keys(betReadyAlerts).length>1?'s':''} starting within 30 minutes — check your cards below</div>
+                  <div style={{ fontSize:12,fontWeight:800,color:"#3b82f6",letterSpacing:"0.06em" }}>BETS READY TO PLACE</div>
+                  <div style={{ fontSize:11,color:"#1d4ed8",marginTop:2 }}>{Object.keys(betReadyAlerts).length} pick{Object.keys(betReadyAlerts).length>1?'s':''} starting within 30 minutes — check your cards below</div>
                 </div>
               </div>
             )}
 
             {/* Game cards */}
             {loading?(
-              <div style={{ textAlign:"center",padding:"60px 0",fontSize:11,color:"#2d3a4a",letterSpacing:"0.1em" }}>LOADING SLATE…</div>
+              <div style={{ textAlign:"center",padding:"60px 0",fontSize:11,color:"#2d3a4a",letterSpacing:"0.06em" }}>LOADING SLATE…</div>
             ):(
               <div className="vv-cards">
                 {filteredGames.map(game=>(
@@ -2631,8 +2631,8 @@ export default function VegasVaultApp() {
 
             {/* Trell alerts */}
             {trellAlerts.length>0&&(
-              <div style={{ marginTop:14,background:"#0b0f20",border:"1px solid rgba(255,255,255,0.06)",borderRadius:12,padding:14 }}>
-                <div style={{ fontSize:9,fontWeight:700,letterSpacing:"0.12em",color:"#c9a227",marginBottom:10 }}>⚡ TRELL RULE ALERTS</div>
+              <div style={{ marginTop:14,background:"#080d1c",border:"1px solid rgba(59,130,246,0.1)",borderRadius:12,padding:14 }}>
+                <div style={{ fontSize:9,fontWeight:700,letterSpacing:"0.08em",color:"#3b82f6",marginBottom:10 }}>⚡ TRELL RULE ALERTS</div>
                 {trellAlerts.map((alert,i)=>(
                   <div key={i} style={{ display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:i<trellAlerts.length-1?"1px solid rgba(255,255,255,0.04)":"none" }}>
                     <div>
@@ -2647,7 +2647,7 @@ export default function VegasVaultApp() {
 
             {/* Stacked right panel (tablet/mobile) */}
             {(activeTab==='DASHBOARD' && activeNav==='DASHBOARD') && (
-            <div className="vv-right-stacked" style={{ marginTop:16,background:"#0b0f20",border:"1px solid rgba(255,255,255,0.06)",borderRadius:12,padding:16 }}>
+            <div className="vv-right-stacked" style={{ marginTop:16,background:"#080d1c",border:"1px solid rgba(59,130,246,0.1)",borderRadius:12,padding:16 }}>
               <RightPanelContent marketScanner={marketScanner} insights={insights} aiConfidence={aiConfidence} confHistory={confHistory}/>
             </div>
             )}
@@ -2672,16 +2672,16 @@ export default function VegasVaultApp() {
           { icon:'↺',  label:'HISTORY', action:()=>setShowHistory(true), active:false, badge: pickHistory.length > 0 },
         ].map((item,i) => (
           <div key={i} onClick={item.action} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:2,padding:"6px 8px",cursor:"pointer",flex:1,position:"relative" }}>
-            <span style={{ fontSize:18,color:item.active?"#c9a227":"#475569" }}>{item.icon}</span>
-            {item.badge && <div style={{ position:"absolute",top:4,right:'25%',width:7,height:7,borderRadius:"50%",background:"#c9a227" }}/>}
-            <span style={{ fontSize:8,fontWeight:item.active?700:500,letterSpacing:"0.06em",color:item.active?"#c9a227":"#475569" }}>{item.label}</span>
+            <span style={{ fontSize:18,color:item.active?"#3b82f6":"#475569" }}>{item.icon}</span>
+            {item.badge && <div style={{ position:"absolute",top:4,right:'25%',width:7,height:7,borderRadius:"50%",background:"#3b82f6" }}/>}
+            <span style={{ fontSize:8,fontWeight:item.active?700:500,letterSpacing:"0.06em",color:item.active?"#3b82f6":"#475569" }}>{item.label}</span>
           </div>
         ))}
         {/* Login button replaces last item when not logged in */}
         {!authUser && (
           <div onClick={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}} style={{ position:"absolute",right:8,display:"flex",flexDirection:"column",alignItems:"center",gap:2,padding:"6px 8px",cursor:"pointer" }}>
-            <span style={{ fontSize:18,color:"#c9a227" }}>🔐</span>
-            <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.06em",color:"#c9a227" }}>LOGIN</span>
+            <span style={{ fontSize:18,color:"#3b82f6" }}>🔐</span>
+            <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.06em",color:"#3b82f6" }}>LOGIN</span>
           </div>
         )}
       </div>
@@ -2700,15 +2700,15 @@ export default function VegasVaultApp() {
       {showOddsMovement&&(
         <div style={{ position:"fixed",inset:0,zIndex:9000,display:"flex" }}>
           <div onClick={()=>setShowOddsMovement(false)} style={{ position:"absolute",inset:0,background:"rgba(0,0,0,0.6)",backdropFilter:"blur(8px)" }}/>
-          <div style={{ position:"relative",marginLeft:"auto",width:"100%",maxWidth:620,height:"100%",background:"#07091a",borderLeft:"1px solid rgba(255,255,255,0.07)",overflowY:"auto",display:"flex",flexDirection:"column" }}>
+          <div style={{ position:"relative",marginLeft:"auto",width:"100%",maxWidth:620,height:"100%",background:"#060a18",borderLeft:"1px solid rgba(59,130,246,0.12)",overflowY:"auto",display:"flex",flexDirection:"column" }}>
 
             {/* Header */}
-            <div style={{ padding:"18px 20px",borderBottom:"1px solid rgba(255,255,255,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:"#07091a",zIndex:10 }}>
+            <div style={{ padding:"18px 20px",borderBottom:"1px solid rgba(59,130,246,0.1)",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:"#060a18",zIndex:10 }}>
               <div>
                 <div style={{ fontSize:14,fontWeight:700,color:"#f1f5f9",letterSpacing:"0.04em" }}>📊 ODDS MOVEMENT</div>
                 <div style={{ fontSize:10,color:"#3a4a5e",marginTop:2 }}>Live FanDuel vs DraftKings vs BetMGM vs Caesars vs Bet365 · {games.length} games today</div>
               </div>
-              <button onClick={()=>setShowOddsMovement(false)} style={{ background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:8,width:32,height:32,cursor:"pointer",color:"#64748b",fontSize:14,fontFamily:"inherit" }}>✕</button>
+              <button onClick={()=>setShowOddsMovement(false)} style={{ background:"rgba(255,255,255,0.05)",border:"1px solid rgba(59,130,246,0.14)",borderRadius:8,width:32,height:32,cursor:"pointer",color:"#64748b",fontSize:14,fontFamily:"inherit" }}>✕</button>
             </div>
 
             {/* Summary bar */}
@@ -2719,15 +2719,15 @@ export default function VegasVaultApp() {
               const posEV  = mlbGames.filter(g=>g.homeEV > 0 || g.awayEV > 0).length;
               const stable = mlbGames.filter(g=>(g.lineMovement||"").toLowerCase().includes("stable")).length;
               return (
-                <div style={{ padding:"14px 20px",borderBottom:"1px solid rgba(255,255,255,0.06)",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10 }}>
+                <div style={{ padding:"14px 20px",borderBottom:"1px solid rgba(59,130,246,0.1)",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10 }}>
                   {[
-                    { label:"MOVING", value:moving, color:"#c9a227", sub:"lines" },
+                    { label:"MOVING", value:moving, color:"#3b82f6", sub:"lines" },
                     { label:"SHARP",  value:sharp,  color:"#f87171", sub:"signals" },
                     { label:"+EV",    value:posEV,  color:"#4ade80", sub:"spots" },
                     { label:"STABLE", value:stable, color:"#475569", sub:"lines" },
                   ].map((s,i)=>(
                     <div key={i} style={{ background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.05)",borderRadius:10,padding:"10px 8px",textAlign:"center" }}>
-                      <div style={{ fontSize:8,color:"#3a4a5e",letterSpacing:"0.1em",marginBottom:3 }}>{s.label}</div>
+                      <div style={{ fontSize:8,color:"#3a4a5e",letterSpacing:"0.06em",marginBottom:3 }}>{s.label}</div>
                       <div style={{ fontSize:24,fontWeight:800,color:s.color,lineHeight:1 }}>{s.value}</div>
                       <div style={{ fontSize:8,color:"#2d3a4a",marginTop:2 }}>{s.sub}</div>
                     </div>
@@ -2751,9 +2751,9 @@ export default function VegasVaultApp() {
                 const isStable  = lmLower.includes("stable");
                 const hasEV     = game.homeEV > 0 || game.awayEV > 0;
 
-                const borderColor = isSharp?"rgba(248,113,113,0.4)":isMoving?"rgba(201,162,39,0.35)":hasEV?"rgba(74,222,128,0.25)":"rgba(255,255,255,0.05)";
+                const borderColor = isSharp?"rgba(248,113,113,0.4)":isMoving?"rgba(59,130,246,0.35)":hasEV?"rgba(74,222,128,0.25)":"rgba(255,255,255,0.05)";
                 const badge = isSharp ? { label:"⚡ SHARP",color:"#f87171",bg:"rgba(248,113,113,0.12)" }
-                            : isMoving? { label:"📈 MOVING",color:"#c9a227",bg:"rgba(201,162,39,0.1)" }
+                            : isMoving? { label:"📈 MOVING",color:"#3b82f6",bg:"rgba(59,130,246,0.1)" }
                             : hasEV   ? { label:"+EV",color:"#4ade80",bg:"rgba(74,222,128,0.08)" }
                             : { label:"STABLE",color:"#475569",bg:"rgba(255,255,255,0.04)" };
 
@@ -2810,8 +2810,8 @@ export default function VegasVaultApp() {
                     </div>
 
                     {/* Line movement summary */}
-                    <div style={{ padding:"8px 10px",background:isSharp?"rgba(248,113,113,0.06)":isMoving?"rgba(201,162,39,0.05)":"rgba(255,255,255,0.02)",borderRadius:8,border:`1px solid ${isSharp?"rgba(248,113,113,0.15)":isMoving?"rgba(201,162,39,0.1)":"rgba(255,255,255,0.04)"}`,marginBottom:game.rlm||game.runLine?8:0 }}>
-                      <span style={{ fontSize:10,color:isSharp?"#f87171":isMoving?"#c9a227":"#64748b" }}>{lm}</span>
+                    <div style={{ padding:"8px 10px",background:isSharp?"rgba(248,113,113,0.06)":isMoving?"rgba(201,162,39,0.05)":"rgba(255,255,255,0.02)",borderRadius:8,border:`1px solid ${isSharp?"rgba(248,113,113,0.15)":isMoving?"rgba(59,130,246,0.1)":"rgba(255,255,255,0.04)"}`,marginBottom:game.rlm||game.runLine?8:0 }}>
+                      <span style={{ fontSize:10,color:isSharp?"#f87171":isMoving?"#3b82f6":"#64748b" }}>{lm}</span>
                     </div>
 
                     {/* RLM alert */}
@@ -2839,15 +2839,15 @@ export default function VegasVaultApp() {
           {/* Backdrop */}
           <div onClick={()=>setShowHistory(false)} style={{ position:"absolute",inset:0,background:"rgba(0,0,0,0.6)",backdropFilter:"blur(8px)" }}/>
           {/* Panel */}
-          <div style={{ position:"relative",marginLeft:"auto",width:"100%",maxWidth:560,height:"100%",background:"#07091a",borderLeft:"1px solid rgba(255,255,255,0.07)",overflowY:"auto",display:"flex",flexDirection:"column" }}>
+          <div style={{ position:"relative",marginLeft:"auto",width:"100%",maxWidth:560,height:"100%",background:"#060a18",borderLeft:"1px solid rgba(59,130,246,0.12)",overflowY:"auto",display:"flex",flexDirection:"column" }}>
 
             {/* Header */}
-            <div style={{ padding:"18px 20px",borderBottom:"1px solid rgba(255,255,255,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:"#07091a",zIndex:10 }}>
+            <div style={{ padding:"18px 20px",borderBottom:"1px solid rgba(59,130,246,0.1)",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:"#060a18",zIndex:10 }}>
               <div>
                 <div style={{ fontSize:14,fontWeight:700,color:"#f1f5f9",letterSpacing:"0.04em" }}>MY PICKS HISTORY</div>
                 <div style={{ fontSize:10,color:"#3a4a5e",marginTop:2 }}>{pickHistory.length} total picks tracked</div>
               </div>
-              <button onClick={()=>setShowHistory(false)} style={{ background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:8,width:32,height:32,cursor:"pointer",color:"#64748b",fontSize:14,fontFamily:"inherit" }}>✕</button>
+              <button onClick={()=>setShowHistory(false)} style={{ background:"rgba(255,255,255,0.05)",border:"1px solid rgba(59,130,246,0.14)",borderRadius:8,width:32,height:32,cursor:"pointer",color:"#64748b",fontSize:14,fontFamily:"inherit" }}>✕</button>
             </div>
 
             {/* Stats bar */}
@@ -2861,15 +2861,15 @@ export default function VegasVaultApp() {
               const l7 = sevenDays.filter(p=>p.result==='loss').length;
               const r7 = (w7+l7) > 0 ? Math.round((w7/(w7+l7))*100) : 0;
               return (
-                <div style={{ padding:"16px 20px",borderBottom:"1px solid rgba(255,255,255,0.06)",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12 }}>
+                <div style={{ padding:"16px 20px",borderBottom:"1px solid rgba(59,130,246,0.1)",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12 }}>
                   {[
                     { label:"ALL TIME", value:`${rate}%`, sub:`${wins}W-${losses}L`, color: rate>=60?"#4ade80":rate>=50?"#fbbf24":"#f87171" },
                     { label:"LAST 7D", value:`${r7}%`, sub:`${w7}W-${l7}L`, color: r7>=60?"#4ade80":r7>=50?"#fbbf24":"#f87171" },
                     { label:"TOTAL PICKS", value:total, sub:"tracked", color:"#94a3b8" },
-                    { label:"BEST STREAK", value:(()=>{ let s=0,m=0; for(const p of [...pickHistory].reverse()){ if(p.result==='win'){s++;m=Math.max(m,s);}else s=0;} return m; })()+"W", sub:"in a row", color:"#c9a227" },
+                    { label:"BEST STREAK", value:(()=>{ let s=0,m=0; for(const p of [...pickHistory].reverse()){ if(p.result==='win'){s++;m=Math.max(m,s);}else s=0;} return m; })()+"W", sub:"in a row", color:"#3b82f6" },
                   ].map((stat,i)=>(
                     <div key={i} style={{ background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.05)",borderRadius:10,padding:"12px 10px",textAlign:"center" }}>
-                      <div style={{ fontSize:9,color:"#3a4a5e",letterSpacing:"0.1em",marginBottom:4 }}>{stat.label}</div>
+                      <div style={{ fontSize:9,color:"#3a4a5e",letterSpacing:"0.06em",marginBottom:4 }}>{stat.label}</div>
                       <div style={{ fontSize:22,fontWeight:800,color:stat.color,lineHeight:1 }}>{stat.value}</div>
                       <div style={{ fontSize:9,color:"#2d3a4a",marginTop:3 }}>{stat.sub}</div>
                     </div>
@@ -2906,7 +2906,7 @@ export default function VegasVaultApp() {
                       <div style={{ flexShrink:0,textAlign:"center" }}>
                         {isWin && <div style={{ fontSize:13,fontWeight:800,color:"#4ade80",background:"rgba(74,222,128,0.1)",border:"1px solid rgba(74,222,128,0.3)",borderRadius:8,padding:"6px 14px" }}>✅ WIN</div>}
                         {isLoss && <div style={{ fontSize:13,fontWeight:800,color:"#f87171",background:"rgba(248,113,113,0.1)",border:"1px solid rgba(248,113,113,0.3)",borderRadius:8,padding:"6px 14px" }}>❌ LOSS</div>}
-                        {isPending && <div style={{ fontSize:11,color:"#3a4a5e",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:8,padding:"6px 14px" }}>PENDING</div>}
+                        {isPending && <div style={{ fontSize:11,color:"#3a4a5e",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(59,130,246,0.1)",borderRadius:8,padding:"6px 14px" }}>PENDING</div>}
                       </div>
                     </div>
                   );
@@ -2916,7 +2916,7 @@ export default function VegasVaultApp() {
 
             {/* Clear history button */}
             {pickHistory.length > 0 && (
-              <div style={{ padding:"12px 20px",borderTop:"1px solid rgba(255,255,255,0.05)",position:"sticky",bottom:0,background:"#07091a" }}>
+              <div style={{ padding:"12px 20px",borderTop:"1px solid rgba(255,255,255,0.05)",position:"sticky",bottom:0,background:"#060a18" }}>
                 <button onClick={()=>{ if(window.confirm('Clear all pick history?')){ setPickHistory([]); localStorage.removeItem('vv_pick_history'); }}} style={{ width:"100%",padding:"10px 0",background:"rgba(248,113,113,0.06)",border:"1px solid rgba(248,113,113,0.15)",borderRadius:8,fontSize:11,color:"#f87171",cursor:"pointer",fontFamily:"inherit",letterSpacing:"0.06em" }}>
                   Clear History
                 </button>
@@ -2928,17 +2928,17 @@ export default function VegasVaultApp() {
 
       {showAuth&&(
         <div onClick={e=>e.target===e.currentTarget&&setShowAuth(false)} style={{ position:"fixed",inset:0,zIndex:9999,background:"rgba(0,0,0,0.85)",backdropFilter:"blur(20px)",display:"flex",alignItems:"center",justifyContent:"center",padding:16 }}>
-          <div style={{ background:"#0a0d1a",border:"1px solid rgba(255,255,255,0.08)",borderRadius:20,width:"100%",maxWidth:500,maxHeight:"95vh",overflowY:"auto",boxShadow:"0 40px 100px rgba(0,0,0,0.9)" }}>
+          <div style={{ background:"#0a0d1a",border:"1px solid rgba(59,130,246,0.14)",borderRadius:20,width:"100%",maxWidth:500,maxHeight:"95vh",overflowY:"auto",boxShadow:"0 40px 100px rgba(0,0,0,0.9)" }}>
             <div style={{ padding:"28px 28px 24px" }}>
               <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20 }}>
-                <div style={{ display:"flex",gap:0,borderBottom:"1px solid rgba(255,255,255,0.07)" }}>
+                <div style={{ display:"flex",gap:0,borderBottom:"1px solid rgba(59,130,246,0.12)" }}>
                   {["login","signup","plans"].filter(m=>authMode==="plans"?m==="plans":m!=="plans").map(m=>(
-                    <button key={m} onClick={()=>{setAuthMode(m);setAuthError('');}} style={{ padding:"6px 18px",background:"none",border:"none",borderBottom:authMode===m?"2px solid #c9a227":"2px solid transparent",fontSize:11,fontWeight:authMode===m?700:400,color:authMode===m?"#c9a227":"#475569",cursor:"pointer",letterSpacing:"0.08em",fontFamily:"inherit",marginBottom:-1 }}>
+                    <button key={m} onClick={()=>{setAuthMode(m);setAuthError('');}} style={{ padding:"6px 18px",background:"none",border:"none",borderBottom:authMode===m?"2px solid #3b82f6":"2px solid transparent",fontSize:11,fontWeight:authMode===m?700:400,color:authMode===m?"#3b82f6":"#475569",cursor:"pointer",letterSpacing:"0.08em",fontFamily:"inherit",marginBottom:-1 }}>
                       {m==="login"?"SIGN IN":m==="signup"?"SIGN UP":"SUBSCRIBE"}
                     </button>
                   ))}
                 </div>
-                <button onClick={()=>setShowAuth(false)} style={{ background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:8,width:28,height:28,cursor:"pointer",color:"#64748b",fontSize:13,fontFamily:"inherit" }}>✕</button>
+                <button onClick={()=>setShowAuth(false)} style={{ background:"rgba(255,255,255,0.05)",border:"1px solid rgba(59,130,246,0.14)",borderRadius:8,width:28,height:28,cursor:"pointer",color:"#64748b",fontSize:13,fontFamily:"inherit" }}>✕</button>
               </div>
 
               {authMode==="plans" ? (
@@ -2947,32 +2947,32 @@ export default function VegasVaultApp() {
                   <div style={{ fontSize:12,color:"#475569",marginBottom:22 }}>Unlock full AI analysis on every game.</div>
                   <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14 }}>
                     {[{id:"weekly",label:"WEEKLY",price:"$19.99",period:"/week",features:["Full AI model","All games","Auto plays","Trell Rule alerts"],hl:false},{id:"monthly",label:"MONTHLY",price:"$49.99",period:"/month",features:["Everything weekly","Priority generation","Model updates","Early access"],hl:true,badge:"Best Value"}].map(p=>(
-                      <div key={p.id} style={{ background:p.hl?"rgba(201,162,39,0.06)":"rgba(255,255,255,0.02)",border:`1px solid ${p.hl?"rgba(201,162,39,0.3)":"rgba(255,255,255,0.07)"}`,borderRadius:12,padding:"16px 14px",position:"relative" }}>
-                        {p.badge&&<div style={{ position:"absolute",top:-9,left:"50%",transform:"translateX(-50%)",background:"#c9a227",color:"#000",fontSize:8,fontWeight:800,padding:"2px 10px",borderRadius:10,whiteSpace:"nowrap" }}>{p.badge}</div>}
-                        <div style={{ fontSize:10,fontWeight:700,color:p.hl?"#c9a227":"#94a3b8",letterSpacing:"0.1em",marginBottom:6 }}>{p.label}</div>
+                      <div key={p.id} style={{ background:p.hl?"rgba(201,162,39,0.06)":"rgba(255,255,255,0.02)",border:`1px solid ${p.hl?"rgba(59,130,246,0.3)":"rgba(59,130,246,0.12)"}`,borderRadius:12,padding:"16px 14px",position:"relative" }}>
+                        {p.badge&&<div style={{ position:"absolute",top:-9,left:"50%",transform:"translateX(-50%)",background:"#3b82f6",color:"#000",fontSize:8,fontWeight:800,padding:"2px 10px",borderRadius:10,whiteSpace:"nowrap" }}>{p.badge}</div>}
+                        <div style={{ fontSize:10,fontWeight:700,color:p.hl?"#3b82f6":"#94a3b8",letterSpacing:"0.06em",marginBottom:6 }}>{p.label}</div>
                         <div style={{ display:"flex",alignItems:"baseline",gap:3,marginBottom:10 }}><span style={{ fontSize:20,fontWeight:900,color:"#f1f5f9" }}>{p.price}</span><span style={{ fontSize:10,color:"#475569" }}>{p.period}</span></div>
-                        <ul style={{ listStyle:"none",marginBottom:12 }}>{p.features.map((f,i)=><li key={i} style={{ fontSize:10,color:"#64748b",marginBottom:3,display:"flex",gap:6 }}><span style={{ color:"#c9a227" }}>✓</span>{f}</li>)}</ul>
-                        <button onClick={()=>doSubscribe(p.id)} style={{ width:"100%",padding:"8px 0",background:p.hl?"linear-gradient(135deg,#c9a227,#8b6d10)":"rgba(255,255,255,0.05)",border:p.hl?"none":"1px solid rgba(255,255,255,0.1)",borderRadius:8,fontSize:10,fontWeight:700,color:p.hl?"#000":"#94a3b8",cursor:"pointer",fontFamily:"inherit" }}>Subscribe</button>
+                        <ul style={{ listStyle:"none",marginBottom:12 }}>{p.features.map((f,i)=><li key={i} style={{ fontSize:10,color:"#64748b",marginBottom:3,display:"flex",gap:6 }}><span style={{ color:"#3b82f6" }}>✓</span>{f}</li>)}</ul>
+                        <button onClick={()=>doSubscribe(p.id)} style={{ width:"100%",padding:"8px 0",background:p.hl?"linear-gradient(135deg,#3b82f6,#1d4ed8)":"rgba(255,255,255,0.05)",border:p.hl?"none":"1px solid rgba(255,255,255,0.1)",borderRadius:8,fontSize:10,fontWeight:700,color:p.hl?"#000":"#94a3b8",cursor:"pointer",fontFamily:"inherit" }}>Subscribe</button>
                       </div>
                     ))}
                   </div>
-                  <button onClick={()=>setShowAuth(false)} style={{ width:"100%",padding:"8px 0",background:"transparent",border:"1px solid rgba(255,255,255,0.07)",borderRadius:8,fontSize:10,color:"#475569",cursor:"pointer",fontFamily:"inherit" }}>Maybe later — continue to dashboard</button>
+                  <button onClick={()=>setShowAuth(false)} style={{ width:"100%",padding:"8px 0",background:"transparent",border:"1px solid rgba(59,130,246,0.12)",borderRadius:8,fontSize:10,color:"#475569",cursor:"pointer",fontFamily:"inherit" }}>Maybe later — continue to dashboard</button>
                 </div>
               ) : (
                 <div>
                   <div style={{ fontSize:20,fontWeight:700,color:"#f1f5f9",marginBottom:4 }}>{authMode==="login"?"Welcome back,":"Create your account,"}</div>
-                  <div style={{ fontSize:12,color:"#475569",marginBottom:20 }}>{authMode==="login"?"Sign in to access your ":"Join "}<span style={{ color:"#c9a227" }}>Vegas Vault AI</span>{authMode==="login"?" dashboard.":"and start winning."}</div>
+                  <div style={{ fontSize:12,color:"#475569",marginBottom:20 }}>{authMode==="login"?"Sign in to access your ":"Join "}<span style={{ color:"#3b82f6" }}>Vegas Vault AI</span>{authMode==="login"?" dashboard.":"and start winning."}</div>
                   <div style={{ marginBottom:12 }}>
-                    <div style={{ fontSize:9,color:"#475569",letterSpacing:"0.12em",fontWeight:700,marginBottom:5 }}>EMAIL ADDRESS</div>
+                    <div style={{ fontSize:9,color:"#475569",letterSpacing:"0.08em",fontWeight:700,marginBottom:5 }}>EMAIL ADDRESS</div>
                     <input type="email" placeholder="you@example.com" value={authEmail} onChange={e=>setAuthEmail(e.target.value)} style={{ width:"100%",padding:"11px 13px",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:9,color:"#e2e8f0",fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box" }}/>
                   </div>
                   <div style={{ marginBottom:16,position:"relative" }}>
-                    <div style={{ fontSize:9,color:"#475569",letterSpacing:"0.12em",fontWeight:700,marginBottom:5 }}>PASSWORD</div>
+                    <div style={{ fontSize:9,color:"#475569",letterSpacing:"0.08em",fontWeight:700,marginBottom:5 }}>PASSWORD</div>
                     <input type={showPw?"text":"password"} placeholder="Enter your password" value={authPw} onChange={e=>setAuthPw(e.target.value)} onKeyDown={e=>e.key==="Enter"&&doAuth()} style={{ width:"100%",padding:"11px 40px 11px 13px",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:9,color:"#e2e8f0",fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box" }}/>
                     <button onClick={()=>setShowPw(!showPw)} style={{ position:"absolute",right:11,top:29,background:"none",border:"none",cursor:"pointer",color:"#3a4a5e",fontSize:14 }}>{showPw?"🙈":"👁"}</button>
                   </div>
                   {authError&&<div style={{ marginBottom:12,padding:"9px 13px",background:"rgba(248,113,113,0.08)",border:"1px solid rgba(248,113,113,0.2)",borderRadius:8,fontSize:11,color:"#f87171" }}>{authError}</div>}
-                  <button onClick={doAuth} disabled={authLoading} style={{ width:"100%",padding:"13px 0",background:authLoading?"rgba(201,162,39,0.4)":"linear-gradient(135deg,#c9a227,#8b6d10)",border:"none",borderRadius:11,fontSize:12,fontWeight:700,color:"#000",cursor:authLoading?"not-allowed":"pointer",letterSpacing:"0.08em",fontFamily:"inherit",marginBottom:12 }}>
+                  <button onClick={doAuth} disabled={authLoading} style={{ width:"100%",padding:"13px 0",background:authLoading?"rgba(59,130,246,0.4)":"linear-gradient(135deg,#3b82f6,#1d4ed8)",border:"none",borderRadius:11,fontSize:12,fontWeight:700,color:"#000",cursor:authLoading?"not-allowed":"pointer",letterSpacing:"0.08em",fontFamily:"inherit",marginBottom:12 }}>
                     {authLoading?"Please wait…":authMode==="login"?"LOG IN TO VAULT →":"CREATE ACCOUNT →"}
                   </button>
                   <div style={{ textAlign:"center",fontSize:10,color:"#2d3a4a" }}>🔒 Bank-level encryption. Your data is always protected.</div>
