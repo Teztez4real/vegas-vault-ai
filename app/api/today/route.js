@@ -315,6 +315,7 @@ async function fetchNBAGames(date) {
   try {
     const month = new Date().getMonth() + 1;
     if (month >= 7 && month <= 9) return [];
+    const nbaRecords = await fetchNBARecords();
     const res = await fetch(
       `https://api.the-odds-api.com/v4/sports/basketball_nba/odds/?apiKey=${process.env.ODDS_API_KEY}&regions=us&markets=h2h,spreads,totals&oddsFormat=american`,
       { cache: 'no-store' }
@@ -346,7 +347,8 @@ async function fetchNBAGames(date) {
         rawTime: game.commence_time,
         awayML, homeML, spread, total,
         openingAwayML: 'N/A', openingHomeML: 'N/A',
-        awayRecord: 'N/A', homeRecord: 'N/A',
+        awayRecord: nbaRecords[away] || 'N/A',
+        homeRecord: nbaRecords[home] || 'N/A',
         slot: null,
       };
     });
@@ -354,6 +356,24 @@ async function fetchNBAGames(date) {
 }
 
 
+
+async function fetchNBARecords() {
+  try {
+    const res = await fetch('https://site.api.espn.com/apis/site/v2/sports/basketball/nba/standings', { cache: 'no-store' });
+    if (!res.ok) return {};
+    const data = await res.json();
+    const records = {};
+    (data.children || []).forEach(conf => {
+      (conf.standings?.entries || conf.entries || []).forEach(entry => {
+        const name = entry.team?.displayName || entry.team?.name || '';
+        const wins = entry.stats?.find(s => s.name === 'wins')?.value ?? '';
+        const losses = entry.stats?.find(s => s.name === 'losses')?.value ?? '';
+        if (name && wins !== '') records[name] = `${wins}-${losses}`;
+      });
+    });
+    return records;
+  } catch { return {}; }
+}
 
 async function fetchWNBARecords() {
   try {
