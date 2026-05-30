@@ -355,6 +355,24 @@ async function fetchNBAGames(date) {
 
 
 
+async function fetchWNBARecords() {
+  try {
+    const res = await fetch('https://site.api.espn.com/apis/site/v2/sports/basketball/wnba/standings', { cache: 'no-store' });
+    if (!res.ok) return {};
+    const data = await res.json();
+    const records = {};
+    (data.children || []).forEach(conf => {
+      (conf.standings?.entries || conf.entries || []).forEach(entry => {
+        const name = entry.team?.displayName || entry.team?.name || '';
+        const wins = entry.stats?.find(s => s.name === 'wins')?.value ?? '';
+        const losses = entry.stats?.find(s => s.name === 'losses')?.value ?? '';
+        if (name && wins !== '') records[name] = `${wins}-${losses}`;
+      });
+    });
+    return records;
+  } catch { return {}; }
+}
+
 async function fetchWNBAGames(date) {
   try {
     const res = await fetch(
@@ -752,7 +770,13 @@ export async function GET(request) {
     } catch {}
     const nbaGames = nbaPattern ? nbaGamesRaw.map((g,i) => ({ ...g, slot: nbaPattern[i]||null })) : nbaGamesRaw.map(g => ({ ...g, slot: null }));
 
-    const wnbaGames = (wnbaGamesRaw||[]).map(g => ({ ...g, slot: 'WNBA' })).sort((a,b) => { const ta = new Date(a.rawTime||0).getTime(); const tb = new Date(b.rawTime||0).getTime(); return ta - tb; });
+    const wnbaRecords = await fetchWNBARecords();
+    const wnbaGames = (wnbaGamesRaw||[]).map(g => ({
+      ...g,
+      slot: 'WNBA',
+      awayRecord: wnbaRecords[g.away] || Object.entries(wnbaRecords).find(([k]) => g.away?.includes(k.split(' ').pop()))?.[1] || 'N/A',
+      homeRecord: wnbaRecords[g.home] || Object.entries(wnbaRecords).find(([k]) => g.home?.includes(k.split(' ').pop()))?.[1] || 'N/A',
+    })).sort((a,b) => { const ta = new Date(a.rawTime||0).getTime(); const tb = new Date(b.rawTime||0).getTime(); return ta - tb; });
     const allGames = [...mlbGames, ...nbaGames, ...nflGames, ...wnbaGames];
 
     // ── LIVE AI INSIGHTS from real line movement data ────────────────────────
