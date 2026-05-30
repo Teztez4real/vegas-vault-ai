@@ -322,7 +322,16 @@ async function fetchNBAGames(date) {
     );
     if (!res.ok) return [];
     const data = await res.json();
-    return data.map((game, i) => {
+    // Filter to only games on the requested date (in CT timezone)
+    const targetDate = date || new Date().toISOString().split('T')[0];
+    const filtered = data.filter(game => {
+      const gameDate = new Date(game.commence_time);
+      // Convert to CT (UTC-5 or UTC-6)
+      const ct = new Date(gameDate.getTime() - 5 * 60 * 60 * 1000);
+      const gameDateStr = ct.toISOString().split('T')[0];
+      return gameDateStr === targetDate;
+    });
+    return filtered.map((game, i) => {
       const away = game.away_team;
       const home = game.home_team;
       let awayML = 'N/A', homeML = 'N/A', spread = 'N/A', total = 'N/A';
@@ -402,7 +411,13 @@ async function fetchWNBAGames(date) {
     );
     if (!res.ok) return [];
     const data = await res.json();
-    return data.map((game, i) => {
+    // Filter to only games on the requested date (CT timezone)
+    const targetDate = date || new Date().toISOString().split('T')[0];
+    const dateFiltered = data.filter(game => {
+      const ct = new Date(new Date(game.commence_time).getTime() - 5 * 60 * 60 * 1000);
+      return ct.toISOString().split('T')[0] === targetDate;
+    });
+    return dateFiltered.map((game, i) => {
       const away = game.away_team;
       const home = game.home_team;
       let awayML = 'N/A', homeML = 'N/A', spread = 'N/A', total = 'N/A';
