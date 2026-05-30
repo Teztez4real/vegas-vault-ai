@@ -2754,7 +2754,8 @@ export default function VegasVaultApp() {
         )}
       </div>
 
-      {activeResult&&activeGame&&activeResult.summary&&(<ErrorBoundary key={activeResult?.summary?.pick+activeGame?.id}>
+      {activeResult&&activeGame&&activeResult.summary&&(
+        <ErrorBoundary key={activeResult?.summary?.pick+activeGame?.id}>
         <PlayResult
           result={activeResult}
           game={activeGame}
@@ -2762,6 +2763,7 @@ export default function VegasVaultApp() {
           isResolved={pickHistory.some(p=>p.key===`${activeGame.id}-${activeGame.slot||'PUBLIC'}`)}
           resolvedResult={pickHistory.find(p=>p.key===`${activeGame.id}-${activeGame.slot||'PUBLIC'}`)?.result}
         />
+        </ErrorBoundary>
       )}
 
       {/* ── ODDS MOVEMENT PANEL ─────────────────────────────────────────────── */}
