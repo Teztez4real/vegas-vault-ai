@@ -2384,11 +2384,17 @@ export default function VegasVaultApp() {
       {/* ── TOP NAV ── */}
       <div style={{ height:52,borderBottom:"1px solid rgba(59,130,246,0.1)",display:"flex",alignItems:"center",background:"rgba(7,9,26,0.96)",backdropFilter:"blur(24px)",position:"sticky",top:0,zIndex:100,flexShrink:0 }}>
         <div className="vv-nav-logo" style={{ width:200,padding:"0 18px",display:"flex",alignItems:"center",gap:10,borderRight:"1px solid rgba(59,130,246,0.1)",flexShrink:0 }}>
-          <div style={{ width:30,height:30,background:"linear-gradient(135deg,#3b82f6,#1d4ed8)",borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:900,color:"#000",flexShrink:0 }}>V</div>
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M16 2L30 8V18C30 24 23 29 16 31C9 29 2 24 2 18V8L16 2Z" fill="#0a1628" stroke="#3b82f6" strokeWidth="1.5"/>
+            <path d="M10 12L16 22L22 12" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+            <path d="M13 12L16 17L19 12" stroke="#60a5fa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+          </svg>
           <div>
-            <span className="lbl" style={{ fontSize:13,fontWeight:700,color:"#f8fafc",letterSpacing:"0.06em" }}>VEGAS </span>
-            <span className="lbl" style={{ fontSize:13,fontWeight:700,color:"#3b82f6",letterSpacing:"0.06em" }}>VAULT</span>
-            <span className="lbl" style={{ fontSize:10,color:"#3a4a5e",marginLeft:4 }}>AI</span>
+            <div style={{ display:"flex",alignItems:"baseline",gap:3 }}>
+              <span className="lbl" style={{ fontSize:13,fontWeight:800,color:"#f8fafc",letterSpacing:"0.04em" }}>VEGAS</span>
+              <span className="lbl" style={{ fontSize:13,fontWeight:800,color:"#3b82f6",letterSpacing:"0.04em" }}>VAULT</span>
+            </div>
+            <div className="lbl" style={{ fontSize:9,color:"#3a4a5e",letterSpacing:"0.14em",fontWeight:600 }}>AI PLATFORM</div>
           </div>
         </div>
 
