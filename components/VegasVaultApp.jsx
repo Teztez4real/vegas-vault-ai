@@ -1397,8 +1397,35 @@ function VaultLocksView({ results, games, finalized }) {
 // ── TODAY'S SLATE VIEW ────────────────────────────────────────────────────────
 function TodaySlateView({ games, results, generating, onGenerate, liveScores, isSubscribed, finalized, onShowAuth, preAnalyzeQueue, betReadyAlerts }) {
   const [sportFilter, setSportFilter] = useState('ALL');
-  const sports = ['ALL', ...new Set(games.map(g=>g.sport).filter(Boolean))];
-  const filtered = sportFilter==='ALL' ? games : games.filter(g=>g.sport===sportFilter);
+  const wnbaGames = games.filter(g => g.sport === 'WNBA');
+  const mainGames = games.filter(g => g.sport !== 'WNBA');
+  const sports = ['ALL', ...new Set(mainGames.map(g=>g.sport).filter(Boolean))];
+  const filtered = sportFilter==='ALL' ? mainGames : mainGames.filter(g=>g.sport===sportFilter);
+
+  function SlateGameRow({ game }) {
+    return (
+      <div key={game.id} style={{ background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:12,padding:'14px 16px' }}>
+        <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8 }}>
+          <div style={{ display:'flex',alignItems:'center',gap:8 }}>
+            {game.sport !== 'WNBA' && (
+              <span style={{ fontSize:9,fontWeight:700,color:game.slot==='VEGAS'?'#f87171':'#60a5fa',background:game.slot==='VEGAS'?'rgba(248,113,113,0.1)':'rgba(96,165,250,0.1)',borderRadius:4,padding:'1px 6px' }}>{game.sport}·{game.slot}</span>
+            )}
+            <span style={{ fontSize:12,fontWeight:700,color:'#e2e8f0' }}>{game.away?.split(' ').pop()} @ {game.home?.split(' ').pop()}</span>
+          </div>
+          <span style={{ fontSize:10,color:'#3a4a5e' }}>{game.time}</span>
+        </div>
+        <div style={{ display:'flex',gap:16,fontSize:10,color:'#475569' }}>
+          <span>Away ML: <span style={{ color:(game.awayML||'').startsWith('-')?'#f87171':'#4ade80' }}>{game.awayML||'N/A'}</span></span>
+          <span>Home ML: <span style={{ color:(game.homeML||'').startsWith('-')?'#f87171':'#4ade80' }}>{game.homeML||'N/A'}</span></span>
+          {game.spread && game.spread!=='N/A' && <span>Spread: {game.spread}</span>}
+          {game.total && game.total!=='N/A' && <span>O/U: {game.total}</span>}
+        </div>
+        {game.homePitcher && game.homePitcher!=='TBD' && (
+          <div style={{ marginTop:6,fontSize:10,color:'#3a4a5e' }}>SP: {game.awayPitcher} vs {game.homePitcher}</div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -1406,32 +1433,54 @@ function TodaySlateView({ games, results, generating, onGenerate, liveScores, is
         <h1 style={{ fontSize:22,fontWeight:700,color:'#f1f5f9',letterSpacing:'-0.02em',marginBottom:4 }}>📅 Today\'s Slate</h1>
         <p style={{ fontSize:12,color:'#3a4a5e' }}>{games.length} games · full schedule</p>
       </div>
+
+      {/* Sport filter pills — excludes WNBA since it has its own section */}
       <div style={{ display:'flex',gap:6,marginBottom:16,flexWrap:'wrap' }}>
         {sports.map(s => (
           <button key={s} onClick={()=>setSportFilter(s)} style={{ padding:'5px 14px',background:sportFilter===s?'rgba(201,162,39,0.15)':'transparent',border:`1px solid ${sportFilter===s?'rgba(201,162,39,0.4)':'rgba(255,255,255,0.08)'}`,borderRadius:20,fontSize:10,fontWeight:sportFilter===s?700:400,color:sportFilter===s?'#c9a227':'#3a4a5e',cursor:'pointer',fontFamily:'inherit',letterSpacing:'0.06em' }}>{s}</button>
         ))}
       </div>
-      <div style={{ display:'grid',gap:10 }}>
-        {filtered.map(game => (
-          <div key={game.id} style={{ background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:12,padding:'14px 16px' }}>
-            <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8 }}>
-              <div style={{ display:'flex',alignItems:'center',gap:8 }}>
-                <span style={{ fontSize:9,fontWeight:700,color:game.slot==='VEGAS'?'#f87171':'#60a5fa',background:game.slot==='VEGAS'?'rgba(248,113,113,0.1)':'rgba(96,165,250,0.1)',borderRadius:4,padding:'1px 6px' }}>{game.sport}·{game.slot}</span>
-                <span style={{ fontSize:12,fontWeight:700,color:'#e2e8f0' }}>{game.away?.split(' ').pop()} @ {game.home?.split(' ').pop()}</span>
-              </div>
-              <span style={{ fontSize:10,color:'#3a4a5e' }}>{game.time}</span>
-            </div>
-            <div style={{ display:'flex',gap:16,fontSize:10,color:'#475569' }}>
-              <span>Away ML: <span style={{ color:(game.awayML||'').startsWith('-')?'#f87171':'#4ade80' }}>{game.awayML||'N/A'}</span></span>
-              <span>Home ML: <span style={{ color:(game.homeML||'').startsWith('-')?'#f87171':'#4ade80' }}>{game.homeML||'N/A'}</span></span>
-              {game.runLine && game.runLine!=='N/A' && <span>RL: {game.runLine.slice(0,20)}</span>}
-            </div>
-            {game.homePitcher && game.homePitcher!=='TBD' && (
-              <div style={{ marginTop:6,fontSize:10,color:'#3a4a5e' }}>SP: {game.awayPitcher} vs {game.homePitcher}</div>
-            )}
-          </div>
-        ))}
+
+      {/* Main slate */}
+      <div style={{ display:'grid',gap:10,marginBottom: wnbaGames.length ? 28 : 0 }}>
+        {filtered.map(game => <SlateGameRow key={game.id} game={game} />)}
       </div>
+
+      {/* WNBA Section */}
+      {wnbaGames.length > 0 && (
+        <div>
+          <div style={{ display:'flex',alignItems:'center',gap:10,marginBottom:12 }}>
+            <div style={{ flex:1,height:1,background:'rgba(255,255,255,0.05)' }}/>
+            <div style={{ display:'flex',alignItems:'center',gap:8 }}>
+              <span style={{ fontSize:11,fontWeight:700,color:'#c084fc',letterSpacing:'0.12em' }}>WNBA</span>
+              <span style={{ fontSize:9,color:'#7c3aed',background:'rgba(192,132,252,0.1)',border:'1px solid rgba(192,132,252,0.25)',borderRadius:4,padding:'2px 7px',fontWeight:600 }}>{wnbaGames.length} GAMES</span>
+            </div>
+            <div style={{ flex:1,height:1,background:'rgba(255,255,255,0.05)' }}/>
+          </div>
+          <div style={{ background:'rgba(192,132,252,0.03)',border:'1px solid rgba(192,132,252,0.1)',borderRadius:12,padding:'12px',marginBottom:8,fontSize:10,color:'#7c3aed' }}>
+            ⚡ Auto-analyzing · Pure sharp edge framework · No slot pattern
+          </div>
+          <div style={{ display:'grid',gap:10 }}>
+            {wnbaGames.map(game => (
+              <div key={game.id} style={{ background:'rgba(192,132,252,0.03)',border:'1px solid rgba(192,132,252,0.12)',borderRadius:12,padding:'14px 16px' }}>
+                <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8 }}>
+                  <div style={{ display:'flex',alignItems:'center',gap:8 }}>
+                    <span style={{ fontSize:9,fontWeight:700,color:'#c084fc',background:'rgba(192,132,252,0.1)',border:'1px solid rgba(192,132,252,0.25)',borderRadius:4,padding:'1px 6px',letterSpacing:'0.06em' }}>WNBA</span>
+                    <span style={{ fontSize:12,fontWeight:700,color:'#e2e8f0' }}>{game.away?.split(' ').pop()} @ {game.home?.split(' ').pop()}</span>
+                  </div>
+                  <span style={{ fontSize:10,color:'#3a4a5e' }}>{game.time}</span>
+                </div>
+                <div style={{ display:'flex',gap:16,fontSize:10,color:'#475569' }}>
+                  <span>Away ML: <span style={{ color:(game.awayML||'').startsWith('-')?'#f87171':'#4ade80' }}>{game.awayML||'N/A'}</span></span>
+                  <span>Home ML: <span style={{ color:(game.homeML||'').startsWith('-')?'#f87171':'#4ade80' }}>{game.homeML||'N/A'}</span></span>
+                  {game.spread && game.spread!=='N/A' && <span>Spread: {game.spread}</span>}
+                  {game.total && game.total!=='N/A' && <span>O/U: {game.total}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
