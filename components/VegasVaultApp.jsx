@@ -356,7 +356,7 @@ function PlayResult({ result, game, onClose, isResolved, resolvedResult }) {
   if (!result?.summary) return null;
   const tier = TIER_STYLES[result.summary.tier] || TIER_STYLES["3"];
   const conf = CONF_STYLES[result.summary.confidence] || CONF_STYLES.MEDIUM;
-  const a = result.analysis;
+  const a = result.analysis || result.summary || {};
   const isVegas = result.summary.slot === "VEGAS";
   const isTennis = game.sport === "Tennis";
   const baseballSteps = [
