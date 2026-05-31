@@ -2133,17 +2133,20 @@ export default function VegasVaultApp() {
               try {
                 const fresh = await generatePlay({ ...game, slot });
                 if (fresh?.summary) {
-                  const finalResult = { ...fresh, finalized: true, finalizedAt: new Date().toISOString() };
+                  // Let AI decide finalization via readyToFinalize
+                  const shouldFinalize = fresh.summary.readyToFinalize === true;
+                  const finalResult = shouldFinalize ? { ...fresh, finalized: true, finalizedAt: new Date().toISOString() } : fresh;
                   setResults(prev => ({ ...prev, [key]: finalResult }));
-                  setFinalized(prev => ({ ...prev, [key]: true }));
-                  const pick = fresh.summary?.pick || 'Pick';
-                  const tier = fresh.summary?.tierLabel || '';
-                  // Only push notification if game is in client's watchlist
-                  if (isWatchlisted) {
-                    sendNotification(
-                      `🔒 ${tier} FINALIZED — ${game.away} @ ${game.home}`,
-                      `${slot} slot: ${pick} | Line moved ${Math.abs(current - last)} pts`
-                    );
+                  if (shouldFinalize) {
+                    setFinalized(prev => ({ ...prev, [key]: true }));
+                    const pick = fresh.summary?.pick || 'Pick';
+                    const tier = fresh.summary?.tierLabel || '';
+                    if (isWatchlisted) {
+                      sendNotification(
+                        `🔒 ${tier} FINALIZED — ${game.away} @ ${game.home}`,
+                        `${slot} slot: ${pick} | Line moved ${Math.abs(current - last)} pts`
+                      );
+                    }
                   }
                 }
               } catch {}
@@ -2151,17 +2154,7 @@ export default function VegasVaultApp() {
           }
           lastLineRef.current[key] = currentML;
 
-          // Auto-finalize Tier 1 LOCK plays (AI is confident)
-          if (existing?.summary?.tierLabel === 'LOCK' && existing?.summary?.confidence === 'HIGH' && !finalized[key]) {
-            setFinalized(prev => ({ ...prev, [key]: true }));
-            setResults(prev => ({ ...prev, [key]: { ...existing, finalized: true, finalizedAt: new Date().toISOString() } }));
-            if (isWatchlisted) {
-              sendNotification(
-                `🔒 LOCK FINALIZED — ${game.away} @ ${game.home}`,
-                `${slot}: ${existing.summary?.pick} — AI has high confidence in this play`
-              );
-            }
-          }
+          // Finalization controlled by AI via readyToFinalize — no auto-finalizing
         }
       }
     }, 5 * 60 * 1000); // check every 5 minutes
