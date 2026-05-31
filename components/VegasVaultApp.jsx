@@ -2032,8 +2032,8 @@ export default function VegasVaultApp() {
 
     const checkLineupAndInjury = async () => {
       for (const game of games) {
-        if (game.sport !== 'MLB') continue;
-        const slots = ['PUBLIC', 'VEGAS'];
+        if (!['MLB','NBA','NFL','WNBA'].includes(game.sport)) continue;
+        const slots = game.sport === 'WNBA' ? ['WNBA'] : ['PUBLIC', 'VEGAS'];
         const hasResult = slots.some(slot => results[`${game.id}-${slot}`]?.summary);
         if (!hasResult) continue;
 
