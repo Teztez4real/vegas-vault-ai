@@ -1961,6 +1961,8 @@ export default function VegasVaultApp() {
       const liveKey2 = `${game.awayAbbr}|${game.homeAbbr}`;
       const live = liveScores[liveKey1] || liveScores[liveKey2];
       if (!live || live.status !== 'Final') continue;
+      // Only process games the user has watchlisted
+      if (!watchlist.includes(game.id)) continue;
 
       for (const slot of ['PUBLIC', 'VEGAS']) {
         const key = `${game.id}-${slot}`;
@@ -2260,7 +2262,7 @@ export default function VegasVaultApp() {
           if (locks > 0)  body  = `🔒 ${locks} LOCK${locks>1?'S':''} identified`;
           if (tier2s > 0) body += `${body?' · ':''}⭐ ${tier2s} Tier 2 play${tier2s>1?'s':''}`;
           if (passes > 0) body += `${body?' · ':''}${passes} pass${passes>1?'es':''}`;
-          sendNotification('✅ Vegas Vault AI — Analysis Complete', body || `Today's ${allResults.length} games analyzed.`);
+          // Analysis complete notification removed — too noisy, clients only want watchlist alerts
           try { localStorage.setItem(analysisDoneNotifKey, '1'); } catch {}
           return current;
         });
