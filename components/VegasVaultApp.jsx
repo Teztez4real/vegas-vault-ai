@@ -2026,8 +2026,63 @@ export default function VegasVaultApp() {
     }
   }, [liveScores, games]);
 
+  // ── AUTO-REANALYSIS: lineup confirmed or injury update ───────────────────────
+  useEffect(() => {
+    if (!games || !results) return;
+
+    const checkLineupAndInjury = async () => {
+      for (const game of games) {
+        if (game.sport !== 'MLB') continue;
+        const slots = ['PUBLIC', 'VEGAS'];
+        const hasResult = slots.some(slot => results[`${game.id}-${slot}`]?.summary);
+        if (!hasResult) continue;
+
+        const gameKey = `${game.id}`;
+        const currentLineup = `${game.awayLineup||''}|${game.homeLineup||''}`;
+        const lastLineup = lastLineupRef.current[gameKey];
+        const lineupJustConfirmed = lastLineup !== undefined &&
+          (lastLineup.length < 80) &&
+          currentLineup.length > 100;
+
+        const currentInjury = game.injuries || '';
+        const lastInjury = lastInjuryRef.current[gameKey];
+        const injuryChanged = lastInjury !== undefined &&
+          lastInjury !== currentInjury &&
+          currentInjury.length > (lastInjury.length || 0);
+
+        lastLineupRef.current[gameKey] = currentLineup;
+        lastInjuryRef.current[gameKey] = currentInjury;
+
+        if (!lineupJustConfirmed && !injuryChanged) continue;
+
+        const reason = lineupJustConfirmed ? 'lineup confirmed' : 'injury update';
+        console.log(`Auto-reanalyzing ${game.away} @ ${game.home} — ${reason}`);
+
+        for (const slot of slots) {
+          const key = `${game.id}-${slot}`;
+          if (!results[key]?.summary) continue;
+          try {
+            const fresh = await generatePlay({ ...game, slot });
+            if (fresh?.summary) {
+              setResults(prev => ({ ...prev, [key]: fresh }));
+              if (fresh.summary.readyToFinalize === true) {
+                setFinalized(prev => ({ ...prev, [key]: true }));
+              }
+            }
+          } catch(e) { console.error('Auto-reanalysis error:', e.message); }
+        }
+      }
+    };
+
+    checkLineupAndInjury();
+    const interval = setInterval(checkLineupAndInjury, 10 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [games]);
+
   // ── FINALIZATION: re-analyze when lines move, mark FINAL ─────────────────────
   const lastLineRef = useRef({});
+  const lastLineupRef = useRef({});  // tracks lineup state per game
+  const lastInjuryRef = useRef({});  // tracks injury state per game
 
   // ── SERVICE WORKER + PUSH NOTIFICATIONS ──────────────────────────────────────
   useEffect(() => {
