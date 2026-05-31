@@ -1265,24 +1265,76 @@ async function fetchBatterSplits(teamId, teamName, opposingPitcherHand) {
   try {
     const season = new Date().getFullYear();
     const splitType = opposingPitcherHand === 'L' ? 'vsl' : 'vsr';
-    const res = await fetch(
-      `https://statsapi.mlb.com/api/v1/teams/${teamId}/stats?stats=statSplits&group=hitting&season=${season}&sitCodes=${splitType}`,
-      { cache: 'no-store' }
-    );
-    if (!res.ok) return `${teamName} batting splits unavailable`;
-    const data = await res.json();
-    const splits = data.stats?.[0]?.splits?.[0]?.stat;
-    if (!splits) return `${teamName} batting splits unavailable`;
-
-    const avg = splits.avg || '.000';
-    const ops = splits.ops || '.000';
-    const hr = splits.homeRuns || 0;
-    const k = splits.strikeOuts || 0;
-    const ab = splits.atBats || 1;
-    const kPct = ((k / ab) * 100).toFixed(1);
-
     const handLabel = opposingPitcherHand === 'L' ? 'vs LHP' : 'vs RHP';
-    return `${teamName} ${handLabel}: AVG ${avg}, OPS ${ops}, HR ${hr}, K% ${kPct}%`;
+
+    // Fetch team-level splits AND individual player splits in parallel
+    const [teamRes, rosterRes] = await Promise.all([
+      fetch(
+        `https://statsapi.mlb.com/api/v1/teams/${teamId}/stats?stats=statSplits&group=hitting&season=${season}&sitCodes=${splitType}`,
+        { cache: 'no-store' }
+      ),
+      fetch(
+        `https://statsapi.mlb.com/api/v1/teams/${teamId}/roster?rosterType=active&season=${season}`,
+        { cache: 'no-store' }
+      ),
+    ]);
+
+    // Team-level splits
+    let teamLine = `${teamName} ${handLabel}: Data unavailable`;
+    if (teamRes.ok) {
+      const data = await teamRes.json();
+      const splits = data.stats?.[0]?.splits?.[0]?.stat;
+      if (splits) {
+        const avg = splits.avg || '.000';
+        const slg = splits.slg || '.000';
+        const obp = splits.obp || '.000';
+        const ops = splits.ops || '.000';
+        const hr = splits.homeRuns || 0;
+        const rbi = splits.rbi || 0;
+        const k = splits.strikeOuts || 0;
+        const bb = splits.baseOnBalls || 0;
+        const ab = splits.atBats || 1;
+        const kPct = ((k / ab) * 100).toFixed(1);
+        const bbPct = ((bb / ab) * 100).toFixed(1);
+        teamLine = `${teamName} ${handLabel}: AVG ${avg} | OBP ${obp} | SLG ${slg} | OPS ${ops} | HR ${hr} | RBI ${rbi} | K% ${kPct}% | BB% ${bbPct}%`;
+      }
+    }
+
+    // Individual top hitter splits (fetch stats for active roster)
+    let topHitters = '';
+    if (rosterRes.ok) {
+      const rosterData = await rosterRes.json();
+      const players = (rosterData.roster || []).filter(p => p.position?.type === 'Hitter').slice(0, 13);
+
+      const playerStats = await Promise.allSettled(
+        players.map(p =>
+          fetch(
+            `https://statsapi.mlb.com/api/v1/people/${p.person.id}/stats?stats=statSplits&group=hitting&season=${season}&sitCodes=${splitType}`,
+            { cache: 'no-store' }
+          ).then(r => r.ok ? r.json() : null)
+        )
+      );
+
+      const hitterLines = [];
+      players.forEach((p, i) => {
+        const result = playerStats[i];
+        if (result.status !== 'fulfilled' || !result.value) return;
+        const stat = result.value?.stats?.[0]?.splits?.[0]?.stat;
+        if (!stat || !stat.atBats || stat.atBats < 5) return;
+        const name = p.person.fullName.split(' ').pop();
+        const avg = stat.avg || '.---';
+        const ops = stat.ops || '.---';
+        const hr = stat.homeRuns || 0;
+        const ab = stat.atBats || 0;
+        hitterLines.push(`${name}: ${avg}/${ops} (${ab} AB, ${hr} HR)`);
+      });
+
+      if (hitterLines.length) {
+        topHitters = ` | Key hitters ${handLabel}: ${hitterLines.slice(0, 6).join(', ')}`;
+      }
+    }
+
+    return teamLine + topHitters;
   } catch {
     return `${teamName} batting splits unavailable`;
   }
