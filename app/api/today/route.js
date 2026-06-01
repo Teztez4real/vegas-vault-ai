@@ -58,9 +58,9 @@ async function fetchNFLGames(dateParam) {
     const oddsMap = oddsResult.oddsMap || oddsResult;
     if (Object.keys(oddsMap).length === 0) return [];
 
-    const games = Object.entries(oddsMap)
+    const games = (await Promise.all(Object.entries(oddsMap)
       .filter(([key]) => !key.startsWith('_'))
-      .map(([key, odds], i) => {
+      .map(async ([key, odds], i) => {
         const [away, home] = key.split('|');
         // Only include games on the selected date
         const gameDate = odds.commenceTime?.split('T')[0];
@@ -112,7 +112,8 @@ async function fetchNFLGames(dateParam) {
           week: 'N/A', gameType: 'Regular Season',
           slot: null,
         };
-      }).filter(Boolean);
+      })
+    )).filter(Boolean);
 
     return games; // slots applied externally
   } catch (err) {
@@ -280,9 +281,7 @@ async function fetchGameNarrative(away, home, sport) {
 
     if (!headlines.length) return `No recent headlines found for ${away} @ ${home}. Use your knowledge of current team narratives, recent performance stories, and public sentiment.`;
 
-    return `Recent Headlines:
-${headlines.join('
-')}`;
+    return `Recent Headlines:\n${headlines.join('\n')}`;
   } catch {
     return `Use your knowledge of current media narratives for ${away} @ ${home}.`;
   }
