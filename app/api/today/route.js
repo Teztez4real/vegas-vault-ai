@@ -1405,14 +1405,7 @@ export async function GET(request) {
     } catch {}
     const nbaGames = nbaPattern ? nbaGamesRaw.map((g,i) => ({ ...g, slot: nbaPattern[i]||null })) : nbaGamesRaw.map(g => ({ ...g, slot: null }));
 
-    const wnbaRecords = await fetchWNBARecords();
-    const wnbaGames = (wnbaGamesRaw||[]).map(g => ({
-      ...g,
-      slot: 'WNBA',
-      awayRecord: wnbaRecords[g.away] || Object.entries(wnbaRecords).find(([k]) => g.away?.includes(k.split(' ').pop()))?.[1] || 'N/A',
-      homeRecord: wnbaRecords[g.home] || Object.entries(wnbaRecords).find(([k]) => g.home?.includes(k.split(' ').pop()))?.[1] || 'N/A',
-    })).sort((a,b) => { const ta = new Date(a.rawTime||0).getTime(); const tb = new Date(b.rawTime||0).getTime(); return ta - tb; });
-    const allGames = [...mlbGames, ...nbaGames, ...nflGames, ...wnbaGames];
+    const allGames = [...mlbGames, ...nbaGames, ...nflGames];
 
     // ── LIVE AI INSIGHTS from real line movement data ────────────────────────
     const insights = [];
