@@ -26,13 +26,26 @@ export async function GET(request) {
         let isDelayed = false;
         let isPostponed = false;
 
+        // Only mark delayed if API explicitly says so
         if (detailedState?.toLowerCase().includes('delay') || codedState === 'DI' || codedState === 'DC') {
           isDelayed = true;
           displayStatus = 'Delayed';
         }
-        if (detailedState?.toLowerCase().includes('postpone') || codedState === 'PW' || codedState === 'PO') {
+        // Only mark postponed if API explicitly confirms it — never assume
+        const postponedCodes = ['PW', 'PO', 'PPD'];
+        if (
+          postponedCodes.includes(codedState) ||
+          detailedState?.toLowerCase() === 'postponed'
+        ) {
           isPostponed = true;
+          isDelayed = false; // postponed overrides delayed
           displayStatus = 'Postponed';
+        }
+        // If game has a linescore with runs, it is NOT postponed regardless of status edge cases
+        const hasScoreData = linescore?.teams?.away?.runs != null || linescore?.teams?.home?.runs != null;
+        if (hasScoreData && isPostponed) {
+          isPostponed = false;
+          displayStatus = abstractState === 'Final' ? 'Final' : 'In Progress';
         }
 
         scores.push({

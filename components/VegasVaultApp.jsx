@@ -464,10 +464,12 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
   const homeLast = game.home?.split(' ').pop();
   const liveKey3 = `${awayLast}|${homeLast}`;
   const live = liveScores?.[game.id] || liveScores?.[liveKey1] || liveScores?.[liveKey2] || liveScores?.[liveKey3];
-  const isLive = live?.status === 'Live';
-  const isFinal = live?.status === 'Final';
-  const isDelayed = live?.isDelayed || false;
-  const isPostponed = live?.isPostponed || false;
+  const isLive = live?.status === 'Live' || live?.detailedState === 'In Progress';
+  const isFinal = live?.status === 'Final' || live?.detailedState === 'Final';
+  // Never show postponed/delayed unless API explicitly confirms AND no score data exists
+  const hasScoreData = live?.awayScore != null || live?.homeScore != null;
+  const isDelayed = !hasScoreData && (live?.isDelayed || false);
+  const isPostponed = !hasScoreData && !isLive && !isFinal && (live?.isPostponed || false);
   const gameStarted = isLive || isFinal;
 
   const awayName = isTennis ? game.player1 : game.away;
