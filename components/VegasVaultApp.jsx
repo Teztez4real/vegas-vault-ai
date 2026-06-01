@@ -752,7 +752,17 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
                   <span style={{ fontSize:11,fontWeight:700,color:"#f8fafc" }}>{result.summary.pick.split(" ").pop()}</span>
                   <span style={{ fontSize:8,fontWeight:700,padding:"2px 5px",borderRadius:4,background:ts.bg,color:ts.text,border:`1px solid ${ts.border}` }}>{ts.label}</span>
                 </div>
-                <div style={{ fontSize:9,color:"#64748b",marginTop:1 }}>{result.summary.betType}</div>
+                <div style={{ fontSize:9,color:"#64748b",marginTop:1 }}>{(() => {
+                  const bt = result.summary.betType || '';
+                  const pick = result.summary.pick || '';
+                  const isAway = pick.toLowerCase().includes((game.away||'').split(' ').pop().toLowerCase()) || pick.toLowerCase().includes((game.awayAbbr||'').toLowerCase());
+                  const base = bt.replace(/\s*[+-]\d{2,4}$/, '').trim();
+                  if (base === 'ML' || base === 'Moneyline') {
+                    const p = isAway ? game.awayML : game.homeML;
+                    return p && p !== 'N/A' ? `ML ${p}` : bt;
+                  }
+                  return bt;
+                })()}</div>
               </div>
             );
           })}
