@@ -2416,7 +2416,7 @@ export default function VegasVaultApp() {
   // ── LINE MOVEMENT POLLING — every 5 minutes ───────────────────────────────
   useEffect(() => {
     function fetchLines() {
-      fetch(`/api/lines?date=${selectedDate}&sport=mlb`)
+      fetch(`/api/lines?date=${selectedDate}&sport=mlb&t=${Date.now()}`)
         .then(r => r.json())
         .then(data => {
           if (!data.movements) return;
@@ -2457,7 +2457,7 @@ export default function VegasVaultApp() {
 
     // Initial fetch after games load
     const initTimeout = setTimeout(fetchLines, 3000);
-    const linesInterval = setInterval(fetchLines, 5 * 60 * 1000); // every 5 min
+    const linesInterval = setInterval(fetchLines, 90 * 1000); // every 90 seconds
     return () => { clearTimeout(initTimeout); clearInterval(linesInterval); };
   }, [selectedDate]);
 
