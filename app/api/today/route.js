@@ -107,7 +107,7 @@ async function fetchNFLGames(dateParam) {
           h2hLast5: nflH2HMap[key] || 'Check NFL H2H history',
           injuries: 'Check rotowire.com/football/nfl/injury-report.php',
           weather: 'Check game time weather',
-          cbsPreview: 'Check CBS Sports for preview',
+          cbsPreview: await fetchGameNarrative(away, home, 'NFL'),
           gameStatus: 'Scheduled',
           week: 'N/A', gameType: 'Regular Season',
           slot: null,
@@ -255,6 +255,39 @@ async function fetchFullPitcherStats(pitcherId, pitcherName) {
   }
 }
 
+async function fetchGameNarrative(away, home, sport) {
+  try {
+    const keyword = `${away.split(' ').pop()} ${home.split(' ').pop()}`;
+    const sportKey = sport === 'MLB' ? 'baseball/mlb' : sport === 'NBA' ? 'basketball/nba' : sport === 'NFL' ? 'football/nfl' : 'baseball/mlb';
+
+    // Fetch ESPN news for both teams
+    const [awayNews, homeNews] = await Promise.all([
+      fetch(`https://site.api.espn.com/apis/site/v2/sports/${sportKey}/news?limit=3&team=${away.split(' ').pop()}`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch(`https://site.api.espn.com/apis/site/v2/sports/${sportKey}/news?limit=3&team=${home.split(' ').pop()}`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null),
+    ]);
+
+    const headlines = [];
+
+    const extractHeadlines = (data, teamName) => {
+      if (!data?.articles) return;
+      data.articles.slice(0, 2).forEach(a => {
+        if (a.headline) headlines.push(`[${teamName}] ${a.headline}`);
+      });
+    };
+
+    extractHeadlines(awayNews, away.split(' ').pop());
+    extractHeadlines(homeNews, home.split(' ').pop());
+
+    if (!headlines.length) return `No recent headlines found for ${away} @ ${home}. Use your knowledge of current team narratives, recent performance stories, and public sentiment.`;
+
+    return `Recent Headlines:
+${headlines.join('
+')}`;
+  } catch {
+    return `Use your knowledge of current media narratives for ${away} @ ${home}.`;
+  }
+}
+
 async function assembleMLBGame(game, oddsMap) {
   try {
     const away = game.teams?.away?.team?.name || 'Away';
@@ -290,7 +323,7 @@ async function assembleMLBGame(game, oddsMap) {
     const awayPitcherHand = game.teams?.away?.probablePitcher?.pitchHand?.code || 'R';
     const homePitcherHand = game.teams?.home?.probablePitcher?.pitchHand?.code || 'R';
 
-    const [injuries, umpire, weather, awayBatterSplits, homeBatterSplits, awayForm, homeForm, h2h, awayPitcherStats, homePitcherStats, awayPitcherVsOpp, homePitcherVsOpp, awayBullpen, homeBullpen, awayLineup, homeLineup] = await Promise.all([
+    const [injuries, umpire, weather, awayBatterSplits, homeBatterSplits, awayForm, homeForm, h2h, awayPitcherStats, homePitcherStats, awayPitcherVsOpp, homePitcherVsOpp, awayBullpen, homeBullpen, awayLineup, homeLineup, gameNarrative] = await Promise.all([
       awayTeamId && homeTeamId ? fetchMLBInjuries(awayTeamId, homeTeamId, away, home) : Promise.resolve('Injury data unavailable'),
       fetchUmpire(game.gamePk),
       fetchWeather(home, game.gameDate),
@@ -307,6 +340,7 @@ async function assembleMLBGame(game, oddsMap) {
       homeTeamId ? fetchBullpenStats(homeTeamId, home) : Promise.resolve('N/A'),
       fetchConfirmedLineup(game.gamePk, awayTeamId, away),
       fetchConfirmedLineup(game.gamePk, homeTeamId, home),
+      fetchGameNarrative(away, home, 'MLB'),
     ]);
 
     return {
