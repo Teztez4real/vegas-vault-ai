@@ -394,9 +394,9 @@ async function assembleMLBGame(game, oddsMap) {
       homeBatterSplits,
       awayOffense: `${away} offense — check recent run production and lineup`,
       homeOffense: `${home} offense — check recent run production and lineup`,
-      h2hLast5: h2h,
-      h2hAtHome: h2h,
-      espnH2H: h2h,
+      h2hLast5: h2h?.overall || h2h,
+      h2hAtHome: h2h?.atHome || h2h,
+      espnH2H: h2h?.overall || h2h,
       injuries,
       weather,
       umpire,
@@ -1073,9 +1073,30 @@ async function fetchMLBH2H(awayTeamId, homeTeamId, awayTeam, homeTeam) {
       parts.push(`${lastSeason}: No data`);
     }
 
-    return parts.join(' || ');
+    // Build home-specific H2H string
+    const homeOnlyParts = [];
+    const curHomeGames = curGames.filter(g => g.atHome);
+    if (curHomeGames.length) {
+      const hwh = curHomeGames.filter(g => g.homeWin).length;
+      const lastHomeGame = curHomeGames.slice(-1)[0];
+      const lastHomeResult = lastHomeGame ? `Last at home: ${lastHomeGame.homeWin ? homeTeam.split(' ').pop() : awayTeam.split(' ').pop()} ${lastHomeGame.homeScore}-${lastHomeGame.awayScore}` : '';
+      homeOnlyParts.push(`${season} at ${homeTeam.split(' ').pop()}: ${hwh}-${curHomeGames.length - hwh} | ${lastHomeResult}`);
+    } else {
+      // Fall back to last season home games
+      const lastHomeGames = lastGames.filter(g => g.atHome);
+      if (lastHomeGames.length) {
+        const hwh = lastHomeGames.filter(g => g.homeWin).length;
+        const lastHomeGame = lastHomeGames.slice(-1)[0];
+        const lastHomeResult = lastHomeGame ? `Last at home (${lastSeason}): ${lastHomeGame.homeWin ? homeTeam.split(' ').pop() : awayTeam.split(' ').pop()} ${lastHomeGame.homeScore}-${lastHomeGame.awayScore}` : '';
+        homeOnlyParts.push(`No ${season} home games yet | ${lastSeason} at ${homeTeam.split(' ').pop()}: ${hwh}-${lastHomeGames.length - hwh} | ${lastHomeResult}`);
+      } else {
+        homeOnlyParts.push('No home H2H data available');
+      }
+    }
+
+    return { overall: parts.join(' || '), atHome: homeOnlyParts.join(' || ') };
   } catch {
-    return 'H2H data unavailable — check Baseball Reference';
+    return { overall: 'H2H data unavailable — check Baseball Reference', atHome: 'Home H2H unavailable' };
   }
 }
 
