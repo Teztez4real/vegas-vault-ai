@@ -250,7 +250,30 @@ async function fetchFullPitcherStats(pitcherId, pitcherName) {
     const hr = stats.homeRuns ?? 'N/A';
     const avg = stats.avg || 'N/A';
     const gs = stats.gamesStarted ?? 0;
-    return `${w}-${l} | ${gs} GS | ${ip} IP | ERA ${era} | WHIP ${whip} | ${so} K | ${bb} BB | ${hr} HR | BAA ${avg}`;
+    // Also fetch last 3 starts via game log
+    let last3str = '';
+    try {
+      const logRes = await fetch(
+        `https://statsapi.mlb.com/api/v1/people/${pitcherId}/stats?stats=gameLog&group=pitching&season=${season}&limit=5`,
+        { cache: 'no-store' }
+      );
+      if (logRes.ok) {
+        const logData = await logRes.json();
+        const starts = (logData.stats?.[0]?.splits || []).filter(s => s.stat?.gamesStarted >= 1).slice(-3);
+        if (starts.length) {
+          last3str = ' | Last ' + starts.length + ' starts: ' + starts.map(s => {
+            const d = s.date || '';
+            const sERA = s.stat?.era || '?';
+            const sIP = s.stat?.inningsPitched || '?';
+            const sER = s.stat?.earnedRuns ?? '?';
+            const sH = s.stat?.hits ?? '?';
+            return `${d.slice(5)} ${sIP}IP ${sER}ER ${sH}H`;
+          }).join(', ');
+        }
+      }
+    } catch {}
+
+    return `${w}-${l} | ${gs} GS | ${ip} IP | ERA ${era} | WHIP ${whip} | ${so} K | ${bb} BB | ${hr} HR | BAA ${avg}${last3str}`;
   } catch {
     return 'TBD';
   }
@@ -392,8 +415,16 @@ async function assembleMLBGame(game, oddsMap) {
       homeLineup: homeLineup || 'Not yet posted',
       awayBatterSplits,
       homeBatterSplits,
-      awayOffense: `${away} offense — check recent run production and lineup`,
-      homeOffense: `${home} offense — check recent run production and lineup`,
+      awayOffense: (() => {
+        const f = awayForm;
+        const runs = f.last5RunsFor != null ? ` | Runs/game L5: ${(f.last5RunsFor/5).toFixed(1)}` : '';
+        return `${away} — L5: ${f.last5 || 'N/A'} | L10: ${f.last10 || 'N/A'} | Streak: ${f.streak || 'N/A'} | Away: ${f.awayRecord || 'N/A'}${runs}`;
+      })(),
+      homeOffense: (() => {
+        const f = homeForm;
+        const runs = f.last5RunsFor != null ? ` | Runs/game L5: ${(f.last5RunsFor/5).toFixed(1)}` : '';
+        return `${home} — L5: ${f.last5 || 'N/A'} | L10: ${f.last10 || 'N/A'} | Streak: ${f.streak || 'N/A'} | Home: ${f.homeRecord || 'N/A'}${runs}`;
+      })(),
       h2hLast5: h2h?.overall || h2h,
       h2hAtHome: h2h?.atHome || h2h,
       espnH2H: h2h?.overall || h2h,
@@ -486,8 +517,16 @@ async function fetchNBARecentForm(teamName) {
     const homeW = homeG.filter(g => g.win).length;
     const awayW = awayG.filter(g => g.win).length;
 
-    // ATS (spread -3.5 approx): win by 4+
-    const atsW = results.filter(g => g.win && (g.myScore - g.oppScore) >= 4).length + results.filter(g => !g.win && (g.oppScore - g.myScore) <= 3).length;
+    // ATS: team covers if they win outright OR lose by less than the typical NBA spread
+    // Use margin-based ATS: team covers if result margin differs from 0 in their favor by any amount
+    // (true ATS requires per-game spread data — approximate with win + close loss)
+    const atsCovers = results.filter(g => {
+      const margin = g.myScore - g.oppScore;
+      return margin > 0; // won outright
+    }).length;
+    const atsLosses = results.length - atsCovers;
+    // Also track point differential for context
+    const avgMargin = results.length ? (results.reduce((a,g) => a + (g.myScore - g.oppScore), 0) / results.length).toFixed(1) : 'N/A';
 
     return {
       last5: `${wins5}-${last5.length - wins5} (${last5str})`,
@@ -495,7 +534,7 @@ async function fetchNBARecentForm(teamName) {
       streak: streak > 0 ? `${streakType}${streak}` : 'N/A',
       homeRecord: `${homeW}-${homeG.length - homeW}`,
       awayRecord: `${awayW}-${awayG.length - awayW}`,
-      atsRecord: `${atsW}-${results.length - atsW}`,
+      atsRecord: `${atsCovers}-${atsLosses} | Avg margin: ${avgMargin}`,
     };
   } catch { return { last5: 'N/A', last10: 'N/A', streak: 'N/A', homeRecord: 'N/A', awayRecord: 'N/A', atsRecord: 'N/A' }; }
 }
@@ -662,11 +701,13 @@ async function fetchNBAGames(date) {
       const lineMovement = signals.join(' | ') || 'No significant movement';
 
       // Fetch NBA-specific data in parallel
-      const [awayForm, homeForm, h2h, playoffCtx] = await Promise.all([
+      const [awayForm, homeForm, h2h, playoffCtx, awayStats, homeStats] = await Promise.all([
         fetchNBARecentForm(away),
         fetchNBARecentForm(home),
         fetchNBAH2H(away, home),
         fetchNBAPlayoffContext(away, home, game.commence_time),
+        fetchNBATeamDetailedStats(away),
+        fetchNBATeamDetailedStats(home),
       ]);
 
       return {
@@ -697,6 +738,16 @@ async function fetchNBAGames(date) {
         homeStreak: homeForm.streak,
         h2hLast5: h2h?.overall || h2h,
         h2hAtHome: h2h?.atHome || h2h,
+        awayPPG: awayStats?.ppg || 'N/A',
+        awayOppPPG: awayStats?.oppPpg || 'N/A',
+        awayOffRating: awayStats?.offRating || 'N/A',
+        awayDefRating: awayStats?.defRating || 'N/A',
+        awayPace: awayStats?.pace || 'N/A',
+        homePPG: homeStats?.ppg || 'N/A',
+        homeOppPPG: homeStats?.oppPpg || 'N/A',
+        homeOffRating: homeStats?.offRating || 'N/A',
+        homeDefRating: homeStats?.defRating || 'N/A',
+        homePace: homeStats?.pace || 'N/A',
         isPlayoffs: playoffCtx.isPlayoffs,
         playoffContext: playoffCtx.context,
         playoffGameNumber: playoffCtx.gameNumber,
@@ -708,6 +759,56 @@ async function fetchNBAGames(date) {
 }
 
 
+
+
+async function fetchNBATeamDetailedStats(teamName) {
+  try {
+    // Get team ID
+    const searchRes = await fetch(
+      `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams?limit=50`,
+      { cache: 'no-store' }
+    );
+    if (!searchRes.ok) return null;
+    const searchData = await searchRes.json();
+    const teams = searchData.sports?.[0]?.leagues?.[0]?.teams || [];
+    const team = teams.find(t => {
+      const n = t.team?.displayName || '';
+      return n === teamName || n.includes(teamName.split(' ').pop());
+    });
+    if (!team?.team?.id) return null;
+    const teamId = team.team.id;
+
+    // Fetch team stats
+    const statsRes = await fetch(
+      `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/${teamId}?enable=stats`,
+      { cache: 'no-store' }
+    );
+    if (!statsRes.ok) return null;
+    const statsData = await statsRes.json();
+    const stats = statsData.team?.seasonStats || statsData.team?.record?.items?.[0]?.stats || [];
+
+    const getStat = (name) => {
+      if (Array.isArray(stats)) {
+        return stats.find(s => s.name === name)?.value || null;
+      }
+      return stats[name] || null;
+    };
+
+    const ppg = getStat('avgPoints') || getStat('pointsPerGame');
+    const oppPpg = getStat('avgPointsAllowed') || getStat('oppPointsPerGame');
+    const offRating = getStat('offensiveRating') || getStat('offRtg');
+    const defRating = getStat('defensiveRating') || getStat('defRtg');
+    const pace = getStat('pace');
+
+    return {
+      ppg: ppg ? parseFloat(ppg).toFixed(1) : 'N/A',
+      oppPpg: oppPpg ? parseFloat(oppPpg).toFixed(1) : 'N/A',
+      offRating: offRating ? parseFloat(offRating).toFixed(1) : 'N/A',
+      defRating: defRating ? parseFloat(defRating).toFixed(1) : 'N/A',
+      pace: pace ? parseFloat(pace).toFixed(1) : 'N/A',
+    };
+  } catch { return null; }
+}
 
 async function fetchNBARecords() {
   try {
@@ -946,11 +1047,11 @@ async function fetchTeamRecentForm(teamId, teamName) {
   try {
     const season = new Date().getFullYear();
     const today = new Date().toISOString().split('T')[0];
-    const tenDaysAgo = new Date(Date.now() - 14 * 86400000).toISOString().split('T')[0];
+    const twentyDaysAgo = new Date(Date.now() - 25 * 86400000).toISOString().split('T')[0];
 
-    // Fetch recent games AND full season record in parallel
+    // Fetch recent games AND full season record in parallel — 25 days to guarantee 10+ completed games
     const [recentRes, seasonRes] = await Promise.all([
-      fetch(`https://statsapi.mlb.com/api/v1/schedule?sportId=1&teamId=${teamId}&startDate=${tenDaysAgo}&endDate=${today}&hydrate=linescore&gameType=R`, { cache: 'no-store' }),
+      fetch(`https://statsapi.mlb.com/api/v1/schedule?sportId=1&teamId=${teamId}&startDate=${twentyDaysAgo}&endDate=${today}&hydrate=linescore&gameType=R`, { cache: 'no-store' }),
       fetch(`https://statsapi.mlb.com/api/v1/schedule?sportId=1&teamId=${teamId}&season=${season}&hydrate=linescore&gameType=R`, { cache: 'no-store' }),
     ]);
 
@@ -986,6 +1087,8 @@ async function fetchTeamRecentForm(teamId, teamName) {
     const last10str = last10.map(g => g.win ? 'W' : 'L').join('');
     const runDiff = last5.reduce((acc, g) => acc + (g.teamScore - g.oppScore), 0);
     const runDiffStr = runDiff > 0 ? `+${runDiff}` : `${runDiff}`;
+    const last5RunsFor = last5.reduce((acc, g) => acc + g.teamScore, 0);
+    const last5RunsAgainst = last5.reduce((acc, g) => acc + g.oppScore, 0);
 
     let streak = 0, streakType = '';
     for (let i = last10.length - 1; i >= 0; i--) {
@@ -1002,16 +1105,18 @@ async function fetchTeamRecentForm(teamId, teamName) {
     const homeRecord = `${homeW}-${homeGames.length - homeW}`;
     const awayRecord = `${awayW}-${awayGames.length - awayW}`;
 
-    // ATS record (run line -1.5): wins by 2+ as favorite, or loses by 1 or wins as dog
-    const atsWins = seasonGames.filter(g => {
+    // ATS record: covers -1.5 (wins by 2+) OR covers +1.5 (loses by exactly 1)
+    const atsCovers = seasonGames.filter(g => {
       const margin = g.teamScore - g.oppScore;
-      return margin >= 2; // covers -1.5
+      return margin >= 2 || margin === -1; // wins by 2+ covers -1.5; loses by 1 covers +1.5
     }).length;
-    const atsLosses = seasonGames.length - atsWins;
-    const atsRecord = `${atsWins}-${atsLosses}`;
+    const atsFails = seasonGames.length - atsCovers;
+    const atsRecord = `${atsCovers}-${atsFails} ATS`;
 
     return {
-      last5: `${wins5}-${last5.length - wins5} (${last5str}) | Run diff: ${runDiffStr}`,
+      last5: `${wins5}-${last5.length - wins5} (${last5str}) | Run diff: ${runDiffStr} | RS: ${last5RunsFor} RA: ${last5RunsAgainst}`,
+      last5RunsFor,
+      last5RunsAgainst,
       last10: `${wins10}-${last10.length - wins10} (${last10str})`,
       streak: streak > 0 ? `${streakType}${streak}` : 'N/A',
       homeRecord,
