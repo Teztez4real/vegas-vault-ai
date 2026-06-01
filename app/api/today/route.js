@@ -148,7 +148,7 @@ async function fetchOdds(sport) {
     if (!res.ok) { console.error('Odds API error:', res.status); return { oddsMap: {}, bookmakerCount: 0 }; }
 
     const data = await res.json();
-    console.log('Odds API games:', data.length);
+    console.log('Odds API games:', data.length, 'first game markets:', data[0]?.bookmakers?.[0]?.markets?.map(m=>m.key));
     const oddsMap = {};
 
     data.forEach(game => {
