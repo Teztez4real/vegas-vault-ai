@@ -754,11 +754,17 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
                 </div>
                 <div style={{ fontSize:9,color:"#64748b",marginTop:1 }}>{(() => {
                   const bt = result.summary.betType || '';
-                  const pick = result.summary.pick || '';
-                  const isAway = pick.toLowerCase().includes((game.away||'').split(' ').pop().toLowerCase()) || pick.toLowerCase().includes((game.awayAbbr||'').toLowerCase());
+                  const pick = (result.summary.pick || '').toLowerCase();
+                  const away = (game.away || '').toLowerCase();
+                  const home = (game.home || '').toLowerCase();
+                  const awayAbbr = (game.awayAbbr || '').toLowerCase();
+                  const homeAbbr = (game.homeAbbr || '').toLowerCase();
+                  // Match pick to away or home by checking full name OR abbreviation
+                  const isAway = pick === away || pick === awayAbbr || away.includes(pick) || pick.includes(away) || pick === awayAbbr;
+                  const isHome = pick === home || pick === homeAbbr || home.includes(pick) || pick.includes(home);
                   const base = bt.replace(/\s*[+-]\d{2,4}$/, '').trim();
                   if (base === 'ML' || base === 'Moneyline') {
-                    const raw = isAway ? game.dkAwayML ?? game.awayML : game.dkHomeML ?? game.homeML;
+                    const raw = isAway ? (game.dkAwayML ?? game.awayML) : (game.dkHomeML ?? game.homeML);
                     const p = raw != null ? (typeof raw === 'string' ? raw : (raw > 0 ? '+'+raw : String(raw))) : null;
                     return p && p !== 'N/A' ? `ML ${p}` : bt;
                   }
