@@ -2768,10 +2768,6 @@ export default function VegasVaultApp() {
                     </div>
                   );
                 })}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ── HISTORY PANEL ────────────────────────────────────────────────────── */}
       {showHistory&&(
