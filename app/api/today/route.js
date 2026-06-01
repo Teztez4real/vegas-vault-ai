@@ -530,24 +530,33 @@ async function fetchNBAH2H(awayTeam, homeTeam) {
 
     if (!h2hGames.length) return `No ${season} season H2H games yet`;
 
-    const results = h2hGames.map(e => {
+    const parseGame = (e) => {
       const comp = e.competitions[0];
       const homeComp = comp.competitors?.find(c => c.homeAway === 'home' && (c.team?.displayName || '').includes(homeTeam.split(' ').pop()));
       const awayComp = comp.competitors?.find(c => c.homeAway === 'away');
       const homeScore = parseInt(homeComp?.score || 0);
       const awayScore = parseInt(awayComp?.score || 0);
       const homeWin = homeScore > awayScore;
-      return `${homeWin ? homeTeam.split(' ').pop() : awayTeam.split(' ').pop()} ${homeScore}-${awayScore}`;
-    });
+      const atHome = !!homeComp;
+      return { homeWin, homeScore, awayScore, atHome };
+    };
 
-    const homeWins = h2hGames.filter(e => {
-      const comp = e.competitions[0];
-      const homeComp = comp.competitors?.find(c => c.homeAway === 'home' && (c.team?.displayName || '').includes(homeTeam.split(' ').pop()));
-      return parseInt(homeComp?.score || 0) > parseInt(comp.competitors?.find(c => c.homeAway === 'away')?.score || 0);
-    }).length;
+    const parsed = h2hGames.map(parseGame);
+    const homeWins = parsed.filter(g => g.homeWin).length;
+    const results = parsed.map(g => `${g.homeWin ? homeTeam.split(' ').pop() : awayTeam.split(' ').pop()} ${g.homeScore}-${g.awayScore}`);
 
-    return `${season} Season: ${homeTeam.split(' ').pop()} ${homeWins}-${h2hGames.length - homeWins} vs ${awayTeam.split(' ').pop()} | Games: ${results.join(', ')}`;
-  } catch { return 'H2H unavailable'; }
+    // Home venue H2H — games where home team hosted
+    const homeVenueGames = parsed.filter(g => g.atHome);
+    let atHomeStr = 'No home venue H2H this season';
+    if (homeVenueGames.length) {
+      const hvw = homeVenueGames.filter(g => g.homeWin).length;
+      const lastHome = homeVenueGames.slice(-1)[0];
+      atHomeStr = `At ${homeTeam.split(' ').pop()}: ${hvw}-${homeVenueGames.length - hvw} | Last: ${lastHome.homeWin ? homeTeam.split(' ').pop() : awayTeam.split(' ').pop()} ${lastHome.homeScore}-${lastHome.awayScore}`;
+    }
+
+    const overall = `${season} Season: ${homeTeam.split(' ').pop()} ${homeWins}-${h2hGames.length - homeWins} vs ${awayTeam.split(' ').pop()} | Recent: ${results.slice(-3).join(', ')}`;
+    return { overall, atHome: atHomeStr };
+  } catch { return { overall: 'H2H unavailable', atHome: 'Home venue H2H unavailable' }; }
 }
 
 async function fetchNBAPlayoffContext(awayTeam, homeTeam, date) {
@@ -686,7 +695,8 @@ async function fetchNBAGames(date) {
         homeLast5: homeForm.last5,
         homeLast10: homeForm.last10,
         homeStreak: homeForm.streak,
-        h2h,
+        h2hLast5: h2h?.overall || h2h,
+        h2hAtHome: h2h?.atHome || h2h,
         isPlayoffs: playoffCtx.isPlayoffs,
         playoffContext: playoffCtx.context,
         playoffGameNumber: playoffCtx.gameNumber,
