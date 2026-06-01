@@ -758,7 +758,8 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
                   const isAway = pick.toLowerCase().includes((game.away||'').split(' ').pop().toLowerCase()) || pick.toLowerCase().includes((game.awayAbbr||'').toLowerCase());
                   const base = bt.replace(/\s*[+-]\d{2,4}$/, '').trim();
                   if (base === 'ML' || base === 'Moneyline') {
-                    const p = isAway ? game.awayML : game.homeML;
+                    const raw = isAway ? game.dkAwayML ?? game.awayML : game.dkHomeML ?? game.homeML;
+                    const p = raw != null ? (typeof raw === 'string' ? raw : (raw > 0 ? '+'+raw : String(raw))) : null;
                     return p && p !== 'N/A' ? `ML ${p}` : bt;
                   }
                   return bt;
