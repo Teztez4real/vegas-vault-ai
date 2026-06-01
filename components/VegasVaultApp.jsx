@@ -752,7 +752,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
                   <span style={{ fontSize:11,fontWeight:700,color:"#f8fafc" }}>{result.summary.pick.split(" ").pop()}</span>
                   <span style={{ fontSize:8,fontWeight:700,padding:"2px 5px",borderRadius:4,background:ts.bg,color:ts.text,border:`1px solid ${ts.border}` }}>{ts.label}</span>
                 </div>
-                <div style={{ fontSize:9,color:"#64748b",marginTop:1 }}>{liveBetType}</div>
+                <div style={{ fontSize:9,color:"#64748b",marginTop:1 }}>{result.summary.betType}</div>
               </div>
             );
           })}
