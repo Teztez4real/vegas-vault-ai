@@ -250,24 +250,23 @@ async function fetchFullPitcherStats(pitcherId, pitcherName) {
     const hr = stats.homeRuns ?? 'N/A';
     const avg = stats.avg || 'N/A';
     const gs = stats.gamesStarted ?? 0;
-    // Also fetch last 3 starts via game log
+    // Fetch last 3 starts in parallel with a timeout to avoid delays
     let last3str = '';
     try {
-      const logRes = await fetch(
-        `https://statsapi.mlb.com/api/v1/people/${pitcherId}/stats?stats=gameLog&group=pitching&season=${season}&limit=5`,
-        { cache: 'no-store' }
-      );
+      const logRes = await Promise.race([
+        fetch(`https://statsapi.mlb.com/api/v1/people/${pitcherId}/stats?stats=gameLog&group=pitching&season=${season}&limit=5`, { cache: 'no-store' }),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 3000))
+      ]);
       if (logRes.ok) {
         const logData = await logRes.json();
         const starts = (logData.stats?.[0]?.splits || []).filter(s => s.stat?.gamesStarted >= 1).slice(-3);
         if (starts.length) {
           last3str = ' | Last ' + starts.length + ' starts: ' + starts.map(s => {
-            const d = s.date || '';
-            const sERA = s.stat?.era || '?';
             const sIP = s.stat?.inningsPitched || '?';
             const sER = s.stat?.earnedRuns ?? '?';
             const sH = s.stat?.hits ?? '?';
-            return `${d.slice(5)} ${sIP}IP ${sER}ER ${sH}H`;
+            const d = (s.date || '').slice(5);
+            return `${d} ${sIP}IP ${sER}ER ${sH}H`;
           }).join(', ');
         }
       }
@@ -778,12 +777,12 @@ async function fetchNBATeamDetailedStats(teamName) {
     if (!team?.team?.id) return null;
     const teamId = team.team.id;
 
-    // Fetch team stats
-    const statsRes = await fetch(
-      `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/${teamId}?enable=stats`,
-      { cache: 'no-store' }
-    );
-    if (!statsRes.ok) return null;
+    // Fetch team stats with timeout
+    const statsRes = await Promise.race([
+      fetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/${teamId}?enable=stats`, { cache: 'no-store' }),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 3000))
+    ]).catch(() => null);
+    if (!statsRes?.ok) return null;
     const statsData = await statsRes.json();
     const stats = statsData.team?.seasonStats || statsData.team?.record?.items?.[0]?.stats || [];
 
