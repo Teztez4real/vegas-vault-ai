@@ -359,6 +359,33 @@ function PlayResult({ result, game, onClose, isResolved, resolvedResult }) {
   const a = result.analysis || result.summary || {};
   const isVegas = result.summary.slot === "VEGAS";
   const isTennis = game.sport === "Tennis";
+
+  // Always show LIVE price from game odds, not the stale price from AI analysis
+  const getLivePrice = () => {
+    if (!result.summary?.pick || !result.summary?.betType) return result.summary?.betType || '';
+    const pick = result.summary.pick;
+    const betType = result.summary.betType || '';
+    const isAway = pick.toLowerCase().includes((game.away || '').split(' ').pop().toLowerCase()) ||
+                   pick.toLowerCase().includes((game.awayAbbr || '').toLowerCase());
+    const isHome = !isAway;
+
+    // Strip stale price from betType (e.g. "ML -102" → "ML", "+1.5 -110" → "+1.5")
+    const betBase = betType.replace(/\s*[+-]\d{2,4}$/, '').trim();
+
+    if (betBase === 'ML' || betBase === 'Moneyline') {
+      const livePrice = isAway ? game.awayML : game.homeML;
+      return livePrice && livePrice !== 'N/A' ? `ML ${livePrice}` : betType;
+    }
+    if (betBase.includes('+1.5') || betBase.includes('Run Line +1.5')) {
+      const livePrice = isAway ? game.awayRunLine || game.spread : game.homeRunLine;
+      return `+1.5`;
+    }
+    if (betBase.includes('-1.5') || betBase.includes('Run Line -1.5')) {
+      return `-1.5`;
+    }
+    return betType;
+  };
+  const liveBetType = getLivePrice();
   const baseballSteps = [
     {label:"Matchup Foundation",key:"matchupFoundation"},{label:"Records",key:"records"},
     {label:"Recent Form",key:"recentForm"},{label:"Head to Head",key:"headToHead"},
@@ -405,7 +432,7 @@ function PlayResult({ result, game, onClose, isResolved, resolvedResult }) {
           </div>
           <div style={{ display:"flex",alignItems:"baseline",gap:12,marginBottom:10 }}>
             <span style={{ fontSize:30,fontWeight:800,color:"#f8fafc",letterSpacing:"-0.02em" }}>{result.summary.pick}</span>
-            <span style={{ fontSize:17,fontWeight:600,color:"#3b82f6",background:"rgba(59,130,246,0.1)",padding:"2px 10px",borderRadius:6,border:"1px solid rgba(59,130,246,0.2)" }}>{result.summary.betType}</span>
+            <span style={{ fontSize:17,fontWeight:600,color:"#3b82f6",background:"rgba(59,130,246,0.1)",padding:"2px 10px",borderRadius:6,border:"1px solid rgba(59,130,246,0.2)" }}>{liveBetType}</span>
           </div>
           <p style={{ fontSize:13,color:"#94a3b8",lineHeight:1.7,margin:0 }}>{result.summary.verdict}</p>
         </div>
@@ -725,7 +752,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
                   <span style={{ fontSize:11,fontWeight:700,color:"#f8fafc" }}>{result.summary.pick.split(" ").pop()}</span>
                   <span style={{ fontSize:8,fontWeight:700,padding:"2px 5px",borderRadius:4,background:ts.bg,color:ts.text,border:`1px solid ${ts.border}` }}>{ts.label}</span>
                 </div>
-                <div style={{ fontSize:9,color:"#64748b",marginTop:1 }}>{result.summary.betType}</div>
+                <div style={{ fontSize:9,color:"#64748b",marginTop:1 }}>{liveBetType}</div>
               </div>
             );
           })}
