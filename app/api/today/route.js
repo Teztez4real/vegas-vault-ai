@@ -861,6 +861,7 @@ async function fetchWNBAGames(date) {
         fetchWNBAH2H(away, home),
       ]);
 
+      console.log("WNBA forms:", JSON.stringify({away: awayForm, home: homeForm, h2h: h2h?.slice(0,80)}));
       const wnbaAbbrMap = {'Atlanta Dream':'Dream','Chicago Sky':'Sky','Connecticut Sun':'Sun','Dallas Wings':'Wings','Indiana Fever':'Fever','Las Vegas Aces':'Aces','Los Angeles Sparks':'Sparks','Minnesota Lynx':'Lynx','New York Liberty':'Liberty','Phoenix Mercury':'Mercury','Seattle Storm':'Storm','Washington Mystics':'Mystics','Toronto Tempo':'Tempo'};
 
       return {
