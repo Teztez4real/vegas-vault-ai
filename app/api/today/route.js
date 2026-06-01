@@ -1349,12 +1349,11 @@ export async function GET(request) {
     const dateParam = searchParams.get('date') || todayStr();
     const isPast = dateParam < todayStr();
 
-    const [scheduleGames, mlbOddsResult, nbaGamesRaw, nflGamesRaw, wnbaGamesRaw] = await Promise.all([
+    const [scheduleGames, mlbOddsResult, nbaGamesRaw, nflGamesRaw] = await Promise.all([
       fetchMLBSchedule(dateParam),
       isPast ? Promise.resolve({ oddsMap: {}, bookmakerCount: 0 }) : fetchOdds('baseball_mlb'),
       isPast ? Promise.resolve([]) : fetchNBAGames(dateParam),
       isPast ? Promise.resolve([]) : fetchNFLGames(dateParam),
-      isPast ? Promise.resolve([]) : fetchWNBAGames(dateParam),
     ]);
     const mlbOdds = mlbOddsResult.oddsMap || mlbOddsResult;
     const mlbBookmakerCount = mlbOddsResult.bookmakerCount || 0;
