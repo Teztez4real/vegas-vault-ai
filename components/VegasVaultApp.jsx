@@ -434,7 +434,7 @@ function PlayResult({ result, game, onClose, isResolved, resolvedResult }) {
             <span style={{ fontSize:30,fontWeight:800,color:"#f8fafc",letterSpacing:"-0.02em" }}>{result.summary.pick}</span>
             <span style={{ fontSize:17,fontWeight:600,color:"#3b82f6",background:"rgba(59,130,246,0.1)",padding:"2px 10px",borderRadius:6,border:"1px solid rgba(59,130,246,0.2)" }}>{liveBetType}</span>
           </div>
-          {result.summary.saferPlay && typeof result.summary.saferPlay === 'object' && (
+          {result.summary.saferPlay && typeof result.summary.saferPlay === 'object' && result.summary.saferPlay.pick && (
             <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:8,padding:"7px 12px",background:"rgba(34,197,94,0.06)",border:"1px solid rgba(34,197,94,0.2)",borderRadius:8 }}>
               <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.08em",color:"#22c55e" }}>SAFER PLAY</span>
               <span style={{ fontSize:14,fontWeight:700,color:"#f8fafc" }}>{result.summary.saferPlay.pick}</span>
@@ -776,13 +776,17 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
                   }
                   return bt;
                 })()}</div>
-                {result.summary.saferPlay && typeof result.summary.saferPlay === 'object' && (
-                  <div style={{ marginTop:5, paddingTop:5, borderTop:'1px solid rgba(255,255,255,0.06)' }}>
-                    <div style={{ fontSize:7,fontWeight:700,letterSpacing:'0.07em',color:'#22c55e',marginBottom:2 }}>SAFER PLAY</div>
-                    <div style={{ fontSize:10,fontWeight:700,color:'#f8fafc' }}>{(result.summary.saferPlay.pick||'').split(' ').pop()}</div>
-                    <div style={{ fontSize:9,color:'#64748b',marginTop:1 }}>{result.summary.saferPlay.betType}</div>
-                  </div>
-                )}
+                {result.summary.saferPlay && (() => {
+                  const sp = typeof result.summary.saferPlay === 'object' ? result.summary.saferPlay : null;
+                  if (!sp?.pick) return null;
+                  return (
+                    <div style={{ marginTop:5, paddingTop:5, borderTop:'1px solid rgba(255,255,255,0.06)' }}>
+                      <div style={{ fontSize:7,fontWeight:700,letterSpacing:'0.07em',color:'#22c55e',marginBottom:2 }}>SAFER PLAY</div>
+                      <div style={{ fontSize:10,fontWeight:700,color:'#f8fafc' }}>{(sp.pick||'').split(' ').pop()}</div>
+                      <div style={{ fontSize:9,color:'#64748b',marginTop:1 }}>{sp.betType}</div>
+                    </div>
+                  );
+                })()}
               </div>
             );
           })}
