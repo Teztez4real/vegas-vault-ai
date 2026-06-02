@@ -1886,7 +1886,7 @@ function PropsAIView({ games, isSubscribed }) {
                             }
                           }}
                           disabled={isGen}
-                          style={{ position:'relative',padding:'6px 10px',borderRadius:8,border:`1px solid ${result ? tbd : 'rgba(255,255,255,0.07)'}`,background:result ? tb : 'rgba(255,255,255,0.02)',cursor:isGen?'wait':'pointer',textAlign:'left',minWidth:80,transition:'all 0.15s',opacity:isGen?0.7:1 }}>
+                          style={{ position:'relative',padding:'6px 10px',borderRadius:8,border:`1px solid ${result ? tbd : 'rgba(255,255,255,0.07)'}`,background:result ? tb : 'rgba(255,255,255,0.02)',cursor:isGen?'wait':'pointer',textAlign:'left',minWidth:72,maxWidth:'calc(50% - 4px)',flex:'1 1 72px',transition:'all 0.15s',opacity:isGen?0.7:1 }}>
                           <div style={{ fontSize:9,fontWeight:700,color:result ? tc : '#475569',letterSpacing:'0.05em',marginBottom:1 }}>{pType.toUpperCase()}</div>
                           <div style={{ fontSize:13,fontWeight:800,color:result ? tc : '#94a3b8',lineHeight:1 }}>
                             {isGen ? (
@@ -1918,7 +1918,7 @@ function PropsAIView({ games, isSubscribed }) {
       {activeProp && activeResult && (
         <div style={{ position:'fixed',inset:0,background:'rgba(0,0,10,0.88)',zIndex:9999,display:'flex',alignItems:'flex-end',justifyContent:'center' }}
           onClick={e => { if (e.target===e.currentTarget) setActiveProp(null); }}>
-          <div style={{ background:'#080f1e',border:'1px solid rgba(139,92,246,0.2)',borderRadius:'20px 20px 0 0',width:'100%',maxWidth:480,maxHeight:'90vh',overflowY:'auto',paddingBottom:32 }}>
+          <div style={{ background:'#080f1e',border:'1px solid rgba(139,92,246,0.2)',borderRadius:'20px 20px 0 0',width:'100%',maxWidth:480,maxHeight:'92vh',overflowY:'auto',paddingBottom:40,WebkitOverflowScrolling:'touch' }}>
 
             {/* Drag handle */}
             <div style={{ padding:'14px 20px 0',textAlign:'center' }}>
@@ -3196,9 +3196,9 @@ export default function VegasVaultApp() {
         {[
           { icon:'⊞', label:'HOME', action:()=>{ setActiveTab('DASHBOARD'); setActiveNav('DASHBOARD'); }, active: activeTab==='DASHBOARD' && activeNav==='DASHBOARD' },
           { icon:'📅', label:'SLATE', action:()=>setActiveNav("TODAY'S SLATE"), active: activeNav==="TODAY'S SLATE" },
+          { icon:'◇',  label:'PROPS', action:()=>setActiveNav('PROPS AI'), active: activeNav==='PROPS AI' },
           { icon:'📊', label:'ODDS', action:()=>setShowOddsMovement(true), active:false },
           { icon:'⚙',  label:'SETTINGS', action:()=>window.location.href='/settings', active:false },
-          { icon:'↺',  label:'HISTORY', action:()=>setShowHistory(true), active:false, badge: pickHistory.length > 0 },
         ].map((item,i) => (
           <div key={i} onClick={item.action} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:2,padding:"6px 8px",cursor:"pointer",flex:1,position:"relative" }}>
             <span style={{ fontSize:18,color:item.active?"#3b82f6":"#475569" }}>{item.icon}</span>
