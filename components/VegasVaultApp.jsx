@@ -1702,42 +1702,294 @@ function AIAnalyzerView({ games, results, generating, onGenerate, isSubscribed }
 
 // ── PROPS AI VIEW ─────────────────────────────────────────────────────────────
 function PropsAIView({ games, isSubscribed }) {
-  const propTypes = ['Player HR', 'Pitcher Ks', 'Player Hits', 'RBI Props', 'First 5 Innings', 'Team Totals'];
+  const { useState: useLocalState, useEffect: useLocalEffect } = React;
+  const [props, setProps] = useLocalState([]);
+  const [propResults, setPropResults] = useLocalState({});
+  const [generating, setGenerating] = useLocalState(null);
+  const [activeGame, setActiveGame] = useLocalState(null);
+  const [activeProp, setActiveProp] = useLocalState(null);
+  const [sportFilter, setSportFilter] = useLocalState('ALL');
+  const [loadingProps, setLoadingProps] = useLocalState(false);
+  const [manualForm, setManualForm] = useLocalState({ playerName:'', propType:'', line:'', overPrice:'', underPrice:'', context:'' });
+  const [showManual, setShowManual] = useLocalState(false);
+
+  const TIER_COLORS = { '1': '#f59e0b', '2': '#fbbf24', '3': '#64748b' };
+  const TIER_LABELS = { '1': 'LOCK', '2': 'TIER 2', '3': 'PASS' };
+
+  // Fetch props from Odds API for today's games
+  useLocalEffect(() => {
+    if (!games.length) return;
+    setLoadingProps(true);
+    const sports = [...new Set(games.map(g => g.sport))];
+    Promise.all(sports.map(sport =>
+      fetch(`/api/props?sport=${sport}`).then(r => r.json()).catch(() => ({ props: [] }))
+    )).then(results => {
+      const all = results.flatMap(r => r.props || []);
+      // Match props to today's games
+      const matched = all.filter(p => {
+        return games.some(g =>
+          (g.away?.toLowerCase().includes(p.away?.split(' ').pop()?.toLowerCase()) ||
+           g.home?.toLowerCase().includes(p.home?.split(' ').pop()?.toLowerCase()))
+        );
+      });
+      setProps(matched);
+      setLoadingProps(false);
+    });
+  }, [games]);
+
+  const filteredGames = sportFilter === 'ALL' ? games : games.filter(g => g.sport === sportFilter);
+  const sports = ['ALL', ...new Set(games.map(g => g.sport))];
+
+  async function analyzeProp(propData) {
+    const key = `${propData.playerName}-${propData.propType}-${propData.line}`;
+    setGenerating(key);
+    try {
+      const res = await fetch('/api/props', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(propData),
+      });
+      const result = await res.json();
+      setPropResults(prev => ({ ...prev, [key]: result }));
+      setActiveProp({ ...propData, key });
+    } catch (err) {
+      console.error('Props analyze error:', err);
+    } finally {
+      setGenerating(null);
+    }
+  }
+
+  async function analyzeManual() {
+    if (!manualForm.playerName || !manualForm.propType || !manualForm.line) return;
+    const game = activeGame || games[0];
+    if (!game) return;
+    await analyzeProp({
+      sport: game.sport,
+      away: game.away,
+      home: game.home,
+      time: game.time,
+      playerName: manualForm.playerName,
+      playerTeam: game.away,
+      propType: manualForm.propType,
+      line: manualForm.line,
+      overPrice: manualForm.overPrice || '-110',
+      underPrice: manualForm.underPrice || '-110',
+      opponent: game.home,
+      context: manualForm.context,
+    });
+    setShowManual(false);
+  }
+
+  const activeResult = activeProp ? propResults[activeProp.key] : null;
 
   return (
     <div>
-      <div style={{ marginBottom:20 }}>
+      {/* Header */}
+      <div style={{ marginBottom:16 }}>
         <h1 style={{ fontSize:22,fontWeight:700,color:'#f1f5f9',letterSpacing:'-0.02em',marginBottom:4 }}>◇ Props AI</h1>
-        <p style={{ fontSize:12,color:'#3a4a5e' }}>Player props & alternate lines analysis</p>
+        <p style={{ fontSize:12,color:'#64748b' }}>Discrepancy-based player & game props analysis</p>
       </div>
 
-      <div style={{ background:'rgba(201,162,39,0.06)',border:'1px solid rgba(59,130,246,0.2)',borderRadius:12,padding:'16px',marginBottom:20 }}>
-        <div style={{ fontSize:11,fontWeight:700,color:'#3b82f6',marginBottom:6 }}>🚧 Coming Soon</div>
-        <div style={{ fontSize:12,color:'#64748b' }}>Props AI is being built out. It will analyze player props, first-inning lines, team totals, and alternate spreads using the Vegas Vault model.</div>
-      </div>
-
-      <div style={{ display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:10 }}>
-        {propTypes.map((prop,i) => (
-          <div key={i} style={{ background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.05)',borderRadius:10,padding:'14px',textAlign:'center',opacity:0.5 }}>
-            <div style={{ fontSize:11,fontWeight:700,color:'#475569',marginBottom:4 }}>{prop}</div>
-            <div style={{ fontSize:9,color:'#2d3a4a',letterSpacing:'0.08em' }}>COMING SOON</div>
-          </div>
+      {/* Sport filter */}
+      <div style={{ display:'flex',gap:6,marginBottom:14,flexWrap:'wrap' }}>
+        {sports.map(s => (
+          <button key={s} onClick={() => setSportFilter(s)} style={{ fontSize:10,fontWeight:700,padding:'4px 10px',borderRadius:6,border:`1px solid ${sportFilter===s?'rgba(59,130,246,0.6)':'rgba(255,255,255,0.08)'}`,background:sportFilter===s?'rgba(59,130,246,0.15)':'transparent',color:sportFilter===s?'#60a5fa':'#64748b',cursor:'pointer',letterSpacing:'0.06em' }}>
+            {s}
+          </button>
         ))}
+        <button onClick={() => setShowManual(!showManual)} style={{ fontSize:10,fontWeight:700,padding:'4px 10px',borderRadius:6,border:'1px solid rgba(34,197,94,0.4)',background:'rgba(34,197,94,0.08)',color:'#22c55e',cursor:'pointer',marginLeft:'auto' }}>
+          + Manual Entry
+        </button>
       </div>
 
-      {games.length > 0 && (
-        <div style={{ marginTop:20 }}>
-          <div style={{ fontSize:10,fontWeight:700,color:'#3a4a5e',letterSpacing:'0.1em',marginBottom:10 }}>TODAY\'S GAMES ({games.length})</div>
-          {games.filter(g=>g.sport==='MLB').slice(0,6).map((game,i) => (
-            <div key={game.id||i} style={{ background:'rgba(255,255,255,0.01)',border:'1px solid rgba(255,255,255,0.04)',borderRadius:10,padding:'10px 14px',marginBottom:6,display:'flex',justifyContent:'space-between',alignItems:'center' }}>
-              <span style={{ fontSize:11,color:'#64748b' }}>{game.away?.split(' ').pop()} @ {game.home?.split(' ').pop()}</span>
-              <div style={{ display:'flex',gap:6 }}>
-                {['HR','Ks','Hits'].map(t => (
-                  <span key={t} style={{ fontSize:9,background:'rgba(255,255,255,0.04)',border:'1px solid rgba(59,130,246,0.1)',borderRadius:4,padding:'2px 6px',color:'#2d3a4a' }}>{t}</span>
+      {/* Manual entry form */}
+      {showManual && (
+        <div style={{ background:'rgba(34,197,94,0.04)',border:'1px solid rgba(34,197,94,0.2)',borderRadius:12,padding:14,marginBottom:14 }}>
+          <div style={{ fontSize:11,fontWeight:700,color:'#22c55e',marginBottom:10 }}>MANUAL PROP ENTRY</div>
+          <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:8 }}>
+            {[['playerName','Player Name'],['propType','Prop Type (e.g. Hits, Points)'],['line','Line (e.g. 1.5)'],['overPrice','Over Price (e.g. -115)'],['underPrice','Under Price (e.g. -105)']].map(([k,label]) => (
+              <input key={k} placeholder={label} value={manualForm[k]} onChange={e => setManualForm(p=>({...p,[k]:e.target.value}))}
+                style={{ fontSize:11,padding:'7px 10px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:6,color:'#f1f5f9',outline:'none' }}/>
+            ))}
+          </div>
+          <div style={{ display:'flex',gap:6,marginBottom:8 }}>
+            <select value={activeGame?.id||''} onChange={e => setActiveGame(games.find(g=>g.id===e.target.value)||null)}
+              style={{ flex:1,fontSize:11,padding:'7px 10px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:6,color:'#f1f5f9',outline:'none' }}>
+              <option value=''>Select Game</option>
+              {games.map(g => <option key={g.id} value={g.id}>{g.away?.split(' ').pop()} @ {g.home?.split(' ').pop()} ({g.sport})</option>)}
+            </select>
+          </div>
+          <textarea placeholder="Additional context (optional)..." value={manualForm.context} onChange={e => setManualForm(p=>({...p,context:e.target.value}))}
+            style={{ width:'100%',fontSize:11,padding:'7px 10px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:6,color:'#f1f5f9',outline:'none',resize:'vertical',minHeight:50,boxSizing:'border-box',marginBottom:8 }}/>
+          <button onClick={analyzeManual} disabled={!!generating} style={{ fontSize:11,fontWeight:700,padding:'8px 18px',borderRadius:7,border:'none',background:'#22c55e',color:'#000',cursor:generating?'not-allowed':'pointer',opacity:generating?0.6:1 }}>
+            {generating ? 'Analyzing...' : 'Analyze Prop'}
+          </button>
+        </div>
+      )}
+
+      {/* Games list with props */}
+      {filteredGames.map(game => {
+        const gameProps = props.filter(p =>
+          p.away?.toLowerCase().includes(game.away?.split(' ').pop()?.toLowerCase()) ||
+          p.home?.toLowerCase().includes(game.home?.split(' ').pop()?.toLowerCase())
+        );
+        // Group by player
+        const byPlayer = {};
+        gameProps.forEach(p => {
+          const key = p.playerName || 'Unknown';
+          if (!byPlayer[key]) byPlayer[key] = [];
+          byPlayer[key].push(p);
+        });
+
+        return (
+          <div key={game.id} style={{ marginBottom:14 }}>
+            {/* Game header */}
+            <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 12px',background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:8,marginBottom:8 }}>
+              <div>
+                <span style={{ fontSize:9,fontWeight:700,color:'#64748b',letterSpacing:'0.08em',marginRight:6 }}>{game.sport}</span>
+                <span style={{ fontSize:13,fontWeight:700,color:'#f1f5f9' }}>{game.away?.split(' ').pop()} @ {game.home?.split(' ').pop()}</span>
+              </div>
+              <span style={{ fontSize:10,color:'#475569' }}>{game.time}</span>
+            </div>
+
+            {loadingProps && !gameProps.length && (
+              <div style={{ fontSize:11,color:'#475569',padding:'8px 12px' }}>Loading props...</div>
+            )}
+
+            {/* Players */}
+            {Object.entries(byPlayer).slice(0,10).map(([playerName, playerProps]) => {
+              // Group by prop type — pick one Over and one Under per type
+              const propTypes = {};
+              playerProps.forEach(p => {
+                if (!propTypes[p.propType]) propTypes[p.propType] = { over: null, under: null, line: p.line };
+                if (p.side === 'Over') propTypes[p.propType].over = p.price;
+                if (p.side === 'Under') propTypes[p.propType].under = p.price;
+              });
+
+              return (
+                <div key={playerName} style={{ background:'rgba(255,255,255,0.01)',border:'1px solid rgba(255,255,255,0.05)',borderRadius:8,padding:'10px 12px',marginBottom:6 }}>
+                  <div style={{ fontSize:12,fontWeight:700,color:'#e2e8f0',marginBottom:8 }}>{playerName}</div>
+                  <div style={{ display:'flex',flexWrap:'wrap',gap:6 }}>
+                    {Object.entries(propTypes).map(([pType, pData]) => {
+                      const propKey = `${playerName}-${pType}-${pData.line}`;
+                      const result = propResults[propKey];
+                      const isGen = generating === propKey;
+
+                      return (
+                        <button key={pType} onClick={() => {
+                          if (result) {
+                            setActiveProp({ playerName, propType: pType, line: pData.line, key: propKey, sport: game.sport, away: game.away, home: game.home });
+                          } else {
+                            analyzeProp({
+                              sport: game.sport, away: game.away, home: game.home, time: game.time,
+                              playerName, playerTeam: playerProps[0]?.playerTeam || '',
+                              propType: pType, line: pData.line,
+                              overPrice: pData.over ? (pData.over > 0 ? '+'+pData.over : String(pData.over)) : '-110',
+                              underPrice: pData.under ? (pData.under > 0 ? '+'+pData.under : String(pData.under)) : '-110',
+                              opponent: game.home,
+                            });
+                          }
+                        }}
+                        disabled={isGen}
+                        style={{ fontSize:10,padding:'5px 10px',borderRadius:6,border:`1px solid ${result ? (TIER_COLORS[result.summary?.tier]||'#64748b') : 'rgba(59,130,246,0.3)'}`,background:result?`rgba(59,130,246,0.08)`:'rgba(59,130,246,0.05)',color:result?(TIER_COLORS[result.summary?.tier]||'#64748b'):'#60a5fa',cursor:isGen?'not-allowed':'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:1 }}>
+                          <span style={{ fontWeight:700 }}>{pType}</span>
+                          <span style={{ color:'#475569' }}>{pData.line}</span>
+                          {result && <span style={{ fontSize:8,fontWeight:700,color:TIER_COLORS[result.summary?.tier]||'#64748b' }}>{result.summary?.pick} • {TIER_LABELS[result.summary?.tier]}</span>}
+                          {isGen && <span style={{ fontSize:8,color:'#60a5fa' }}>analyzing...</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+
+            {!loadingProps && !Object.keys(byPlayer).length && (
+              <div style={{ fontSize:11,color:'#2d3a4a',padding:'8px 12px',textAlign:'center' }}>
+                No props available from DraftKings for this game.
+                <button onClick={() => setShowManual(true)} style={{ display:'block',margin:'6px auto 0',fontSize:10,color:'#22c55e',background:'none',border:'none',cursor:'pointer',textDecoration:'underline' }}>Enter manually</button>
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {/* Prop result modal */}
+      {activeProp && activeResult && (
+        <div style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',zIndex:9999,display:'flex',alignItems:'flex-end',justifyContent:'center' }}
+          onClick={e => { if (e.target === e.currentTarget) setActiveProp(null); }}>
+          <div style={{ background:'#0f172a',border:'1px solid rgba(59,130,246,0.2)',borderRadius:'16px 16px 0 0',width:'100%',maxWidth:480,maxHeight:'88vh',overflowY:'auto',padding:'20px 20px 32px' }}>
+            {/* Handle */}
+            <div style={{ width:36,height:4,background:'rgba(255,255,255,0.15)',borderRadius:2,margin:'0 auto 16px' }}/>
+
+            {/* Prop header */}
+            <div style={{ marginBottom:14 }}>
+              <div style={{ fontSize:9,fontWeight:700,letterSpacing:'0.1em',color:'#64748b',marginBottom:4 }}>
+                {activeResult.sport} • {activeResult.game}
+              </div>
+              <div style={{ fontSize:22,fontWeight:800,color:'#f8fafc' }}>{activeProp.playerName}</div>
+              <div style={{ fontSize:13,color:'#64748b' }}>{activeProp.propType} • Line: {activeProp.line}</div>
+            </div>
+
+            {/* Primary play */}
+            <div style={{ background:'rgba(59,130,246,0.06)',border:'1px solid rgba(59,130,246,0.2)',borderRadius:10,padding:'12px 14px',marginBottom:10 }}>
+              <div style={{ fontSize:9,fontWeight:700,letterSpacing:'0.1em',color:'#3b82f6',marginBottom:6 }}>PRIMARY PLAY</div>
+              <div style={{ display:'flex',alignItems:'center',gap:10,marginBottom:4 }}>
+                <span style={{ fontSize:26,fontWeight:800,color:'#f8fafc' }}>{activeResult.summary?.pick} {activeResult.summary?.line}</span>
+                <span style={{ fontSize:14,fontWeight:600,color:'#3b82f6' }}>{activeResult.summary?.price}</span>
+                <span style={{ marginLeft:'auto',fontSize:10,fontWeight:700,padding:'3px 8px',borderRadius:5,background:'rgba(245,158,11,0.12)',border:'1px solid rgba(245,158,11,0.3)',color:TIER_COLORS[activeResult.summary?.tier]||'#64748b' }}>
+                  {TIER_LABELS[activeResult.summary?.tier]||'TIER 3'}
+                </span>
+              </div>
+              <div style={{ fontSize:11,color:'#94a3b8' }}>Projection: {activeResult.summary?.projection} • Discrepancy: {activeResult.summary?.discrepancySize}</div>
+              <p style={{ fontSize:12,color:'#cbd5e1',lineHeight:1.6,margin:'8px 0 0' }}>{activeResult.summary?.verdict}</p>
+            </div>
+
+            {/* Safer play */}
+            {activeResult.summary?.saferPlay?.pick && (
+              <div style={{ background:'rgba(34,197,94,0.05)',border:'1px solid rgba(34,197,94,0.2)',borderRadius:10,padding:'10px 14px',marginBottom:10 }}>
+                <div style={{ fontSize:9,fontWeight:700,letterSpacing:'0.1em',color:'#22c55e',marginBottom:4 }}>SAFER PLAY</div>
+                <div style={{ display:'flex',alignItems:'center',gap:8 }}>
+                  <span style={{ fontSize:16,fontWeight:700,color:'#f8fafc' }}>{activeResult.summary.saferPlay.pick} {activeResult.summary.saferPlay.line}</span>
+                  <span style={{ fontSize:13,color:'#22c55e' }}>{activeResult.summary.saferPlay.price}</span>
+                </div>
+                <div style={{ fontSize:11,color:'#64748b',marginTop:3 }}>{activeResult.summary.saferPlay.reasoning}</div>
+              </div>
+            )}
+
+            {/* Analysis breakdown */}
+            {activeResult.analysis && (
+              <div style={{ marginBottom:10 }}>
+                <div style={{ fontSize:9,fontWeight:700,letterSpacing:'0.1em',color:'#3b82f6',marginBottom:8 }}>ANALYSIS BREAKDOWN</div>
+                {[
+                  ['Prop Line Audit', activeResult.analysis.propLineAudit],
+                  ['Player Baseline', activeResult.analysis.playerBaseline],
+                  ['Matchup Context', activeResult.analysis.matchupContext],
+                  ['Situational Factors', activeResult.analysis.situationalFactors],
+                  ['vs This Opponent', activeResult.analysis.historicalVsOpponent],
+                  ['Discrepancy Calc', activeResult.analysis.discrepancyCalc],
+                  ['Game Props', activeResult.analysis.gamePropsAnalysis],
+                ].filter(([,v]) => v).map(([label, value]) => (
+                  <div key={label} style={{ marginBottom:8,paddingBottom:8,borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ fontSize:9,fontWeight:700,color:'#475569',letterSpacing:'0.08em',marginBottom:2 }}>{label.toUpperCase()}</div>
+                    <div style={{ fontSize:12,color:'#94a3b8',lineHeight:1.6 }}>{value}</div>
+                  </div>
                 ))}
               </div>
-            </div>
-          ))}
+            )}
+
+            {/* Final verdict */}
+            {activeResult.finalVerdict && (
+              <div style={{ background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:10,padding:'12px 14px' }}>
+                <div style={{ fontSize:9,fontWeight:700,letterSpacing:'0.1em',color:'#3b82f6',marginBottom:6 }}>FINAL VERDICT</div>
+                <p style={{ fontSize:13,color:'#e2e8f0',lineHeight:1.7,margin:0 }}>{activeResult.finalVerdict}</p>
+              </div>
+            )}
+
+            <button onClick={() => setActiveProp(null)} style={{ width:'100%',marginTop:14,padding:'12px',borderRadius:10,border:'1px solid rgba(255,255,255,0.1)',background:'rgba(255,255,255,0.04)',color:'#94a3b8',fontSize:13,cursor:'pointer' }}>
+              Close
+            </button>
+          </div>
         </div>
       )}
     </div>
