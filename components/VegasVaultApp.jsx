@@ -2155,9 +2155,40 @@ export default function VegasVaultApp() {
   // ── SERVICE WORKER + PUSH NOTIFICATIONS ──────────────────────────────────────
   useEffect(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
-    // Register service worker for mobile push
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
+    navigator.serviceWorker.register('/sw.js').then(async (reg) => {
+      // Subscribe to Web Push for background notifications (app closed)
+      if (!('PushManager' in window)) return;
+      const VAPID_PUBLIC = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+      if (!VAPID_PUBLIC) return;
+      try {
+        let sub = await reg.pushManager.getSubscription();
+        if (!sub) {
+          sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC),
+          });
+        }
+        // Save subscription to server
+        const user = (await sb.auth.getUser())?.data?.user;
+        await fetch('/api/push/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            subscription: sub.toJSON(),
+            userId: user?.id || null,
+            email: user?.email || null,
+          }),
+        });
+      } catch {}
+    }).catch(() => {});
   }, []);
+
+  function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+  }
 
   async function requestNotificationPermission() {
     if (typeof window === 'undefined' || !('Notification' in window)) return false;

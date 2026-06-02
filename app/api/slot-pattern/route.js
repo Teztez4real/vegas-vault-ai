@@ -68,6 +68,22 @@ export async function POST(request) {
       );
 
     if (error) throw error;
+
+    // Send push notification to all subscribers — games are ready
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'https://vegas-vault-ai-l6jk.vercel.app'}/api/push/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: '🔒 Vegas Vault AI — Games Ready',
+          body: `Today's ${sport.toUpperCase()} slot pattern is set. Games are ready to be analyzed.`,
+          url: '/',
+          tag: 'vv-games-ready',
+          adminKey: process.env.ADMIN_SECRET_KEY,
+        }),
+      });
+    } catch {}
+
     return NextResponse.json({ success: true, date, sport, pattern });
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 });
