@@ -1710,8 +1710,7 @@ function PropsAIView({ games, isSubscribed }) {
   const [activeProp, setActiveProp] = useLocalState(null);
   const [sportFilter, setSportFilter] = useLocalState('ALL');
   const [loadingProps, setLoadingProps] = useLocalState(false);
-  const [manualForm, setManualForm] = useLocalState({ playerName:'', propType:'', line:'', overPrice:'', underPrice:'', context:'' });
-  const [showManual, setShowManual] = useLocalState(false);
+
 
   const TIER_COLORS = { '1': '#f59e0b', '2': '#fbbf24', '3': '#64748b' };
   const TIER_LABELS = { '1': 'LOCK', '2': 'TIER 2', '3': 'PASS' };
@@ -1759,26 +1758,7 @@ function PropsAIView({ games, isSubscribed }) {
     }
   }
 
-  async function analyzeManual() {
-    if (!manualForm.playerName || !manualForm.propType || !manualForm.line) return;
-    const game = activeGame || games[0];
-    if (!game) return;
-    await analyzeProp({
-      sport: game.sport,
-      away: game.away,
-      home: game.home,
-      time: game.time,
-      playerName: manualForm.playerName,
-      playerTeam: game.away,
-      propType: manualForm.propType,
-      line: manualForm.line,
-      overPrice: manualForm.overPrice || '-110',
-      underPrice: manualForm.underPrice || '-110',
-      opponent: game.home,
-      context: manualForm.context,
-    });
-    setShowManual(false);
-  }
+
 
   const activeResult = activeProp ? propResults[activeProp.key] : null;
 
@@ -1797,35 +1777,10 @@ function PropsAIView({ games, isSubscribed }) {
             {s}
           </button>
         ))}
-        <button onClick={() => setShowManual(!showManual)} style={{ fontSize:10,fontWeight:700,padding:'4px 10px',borderRadius:6,border:'1px solid rgba(34,197,94,0.4)',background:'rgba(34,197,94,0.08)',color:'#22c55e',cursor:'pointer',marginLeft:'auto' }}>
-          + Manual Entry
-        </button>
+
       </div>
 
-      {/* Manual entry form */}
-      {showManual && (
-        <div style={{ background:'rgba(34,197,94,0.04)',border:'1px solid rgba(34,197,94,0.2)',borderRadius:12,padding:14,marginBottom:14 }}>
-          <div style={{ fontSize:11,fontWeight:700,color:'#22c55e',marginBottom:10 }}>MANUAL PROP ENTRY</div>
-          <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:8 }}>
-            {[['playerName','Player Name'],['propType','Prop Type (e.g. Hits, Points)'],['line','Line (e.g. 1.5)'],['overPrice','Over Price (e.g. -115)'],['underPrice','Under Price (e.g. -105)']].map(([k,label]) => (
-              <input key={k} placeholder={label} value={manualForm[k]} onChange={e => setManualForm(p=>({...p,[k]:e.target.value}))}
-                style={{ fontSize:11,padding:'7px 10px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:6,color:'#f1f5f9',outline:'none' }}/>
-            ))}
-          </div>
-          <div style={{ display:'flex',gap:6,marginBottom:8 }}>
-            <select value={activeGame?.id||''} onChange={e => setActiveGame(games.find(g=>g.id===e.target.value)||null)}
-              style={{ flex:1,fontSize:11,padding:'7px 10px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:6,color:'#f1f5f9',outline:'none' }}>
-              <option value=''>Select Game</option>
-              {games.map(g => <option key={g.id} value={g.id}>{g.away?.split(' ').pop()} @ {g.home?.split(' ').pop()} ({g.sport})</option>)}
-            </select>
-          </div>
-          <textarea placeholder="Additional context (optional)..." value={manualForm.context} onChange={e => setManualForm(p=>({...p,context:e.target.value}))}
-            style={{ width:'100%',fontSize:11,padding:'7px 10px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:6,color:'#f1f5f9',outline:'none',resize:'vertical',minHeight:50,boxSizing:'border-box',marginBottom:8 }}/>
-          <button onClick={analyzeManual} disabled={!!generating} style={{ fontSize:11,fontWeight:700,padding:'8px 18px',borderRadius:7,border:'none',background:'#22c55e',color:'#000',cursor:generating?'not-allowed':'pointer',opacity:generating?0.6:1 }}>
-            {generating ? 'Analyzing...' : 'Analyze Prop'}
-          </button>
-        </div>
-      )}
+
 
       {/* Games list with props */}
       {filteredGames.map(game => {
@@ -1906,8 +1861,7 @@ function PropsAIView({ games, isSubscribed }) {
 
             {!loadingProps && !Object.keys(byPlayer).length && (
               <div style={{ fontSize:11,color:'#2d3a4a',padding:'8px 12px',textAlign:'center' }}>
-                No props available from DraftKings for this game.
-                <button onClick={() => setShowManual(true)} style={{ display:'block',margin:'6px auto 0',fontSize:10,color:'#22c55e',background:'none',border:'none',cursor:'pointer',textDecoration:'underline' }}>Enter manually</button>
+                No props available from DraftKings for this game yet.
               </div>
             )}
           </div>

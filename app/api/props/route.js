@@ -7,14 +7,14 @@ export const maxDuration = 60;
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+// ── POST: Analyze a prop ──────────────────────────────────────────────────────
 export async function POST(req) {
   try {
     const propData = await req.json();
-
     const prompt = buildPropsPrompt(propData);
 
     const message = await client.messages.create({
-      model: 'claude-opus-4-5-20251101',
+      model: 'claude-sonnet-4-6',
       max_tokens: 2000,
       messages: [{ role: 'user', content: prompt }],
     });
@@ -28,18 +28,12 @@ export async function POST(req) {
     } catch {
       result = {
         summary: {
-          pick: 'Parse Error',
-          line: propData.line,
-          price: 'N/A',
-          tier: '3',
-          tierLabel: 'Tier 3',
-          confidence: 'LOW',
-          discrepancySize: 'SMALL',
-          projection: 'N/A',
+          pick: 'Parse Error', line: propData.line, price: 'N/A',
+          tier: '3', tierLabel: 'Tier 3', confidence: 'LOW',
+          discrepancySize: 'SMALL', projection: 'N/A',
           verdict: 'AI response could not be parsed. Please re-analyze.',
         },
         parseError: true,
-        rawText: clean.slice(0, 500),
       };
     }
 
@@ -50,68 +44,99 @@ export async function POST(req) {
   }
 }
 
-// Fetch player props from Odds API for a given game
+// ── GET: Fetch all props for today's games automatically ──────────────────────
 export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url);
-    const sport = searchParams.get('sport') || 'baseball_mlb';
-    const eventId = searchParams.get('eventId');
+    const sport = searchParams.get('sport') || 'MLB';
     const oddsKey = process.env.ODDS_API_KEY;
 
     if (!oddsKey) return NextResponse.json({ props: [] });
 
-    // Map sport to odds API format
     const sportMap = {
       'MLB': 'baseball_mlb',
       'NBA': 'basketball_nba',
       'NFL': 'americanfootball_nfl',
-      'Tennis': 'tennis_atp',
+      'Tennis': 'tennis_atp_french_open',
       'WNBA': 'basketball_wnba',
     };
-    const apiSport = sportMap[sport] || sport;
+    const apiSport = sportMap[sport] || 'baseball_mlb';
 
-    // Fetch player props markets
-    const markets = sport === 'MLB'
-      ? 'batter_hits,batter_home_runs,batter_rbis,batter_total_bases,batter_strikeouts,pitcher_strikeouts,pitcher_hits_allowed,pitcher_earned_runs'
-      : sport === 'NBA'
-      ? 'player_points,player_rebounds,player_assists,player_threes,player_blocks,player_steals'
-      : sport === 'NFL'
-      ? 'player_pass_tds,player_pass_yards,player_rush_yards,player_reception_yards,player_receptions'
-      : 'player_points,player_assists';
+    const marketsMap = {
+      'MLB': 'batter_hits,batter_home_runs,batter_rbis,batter_total_bases,pitcher_strikeouts,pitcher_hits_allowed,pitcher_earned_runs',
+      'NBA': 'player_points,player_rebounds,player_assists,player_threes,player_blocks,player_steals',
+      'NFL': 'player_pass_tds,player_pass_yards,player_rush_yards,player_reception_yards,player_receptions',
+      'Tennis': 'match_winner',
+      'WNBA': 'player_points,player_rebounds,player_assists',
+    };
+    const markets = marketsMap[sport] || marketsMap['MLB'];
 
-    const url = eventId
-      ? `https://api.the-odds-api.com/v4/sports/${apiSport}/events/${eventId}/odds?apiKey=${oddsKey}&regions=us&markets=${markets}&bookmakers=draftkings&oddsFormat=american`
-      : `https://api.the-odds-api.com/v4/sports/${apiSport}/odds?apiKey=${oddsKey}&regions=us&markets=${markets}&bookmakers=draftkings&oddsFormat=american`;
+    // Step 1: Get today's events for this sport
+    const eventsRes = await fetch(
+      `https://api.the-odds-api.com/v4/sports/${apiSport}/events?apiKey=${oddsKey}`,
+      { cache: 'no-store' }
+    );
+    if (!eventsRes.ok) return NextResponse.json({ props: [] });
+    const events = await eventsRes.json();
 
-    const res = await fetch(url, { cache: 'no-store' });
-    if (!res.ok) return NextResponse.json({ props: [] });
+    // Filter to today only
+    const today = new Date().toISOString().split('T')[0];
+    const todayEvents = (events || []).filter(e => {
+      const d = e.commence_time?.split('T')[0];
+      return d === today;
+    });
 
-    const data = await res.json();
-    const events = Array.isArray(data) ? data : [data];
+    if (!todayEvents.length) return NextResponse.json({ props: [] });
 
+    // Step 2: Fetch props per event in parallel (limit to 8 games to save API credits)
     const props = [];
-    for (const event of events) {
-      if (!event?.bookmakers?.length) continue;
-      const dk = event.bookmakers.find(b => b.key === 'draftkings');
-      if (!dk) continue;
+    await Promise.allSettled(
+      todayEvents.slice(0, 8).map(async (event) => {
+        try {
+          const propRes = await fetch(
+            `https://api.the-odds-api.com/v4/sports/${apiSport}/events/${event.id}/odds?apiKey=${oddsKey}&regions=us&markets=${markets}&bookmakers=draftkings&oddsFormat=american`,
+            { cache: 'no-store' }
+          );
+          if (!propRes.ok) return;
+          const propData = await propRes.json();
+          const dk = propData.bookmakers?.find(b => b.key === 'draftkings');
+          if (!dk) return;
 
-      for (const market of dk.markets || []) {
-        for (const outcome of market.outcomes || []) {
-          props.push({
-            eventId: event.id,
-            away: event.away_team,
-            home: event.home_team,
-            commenceTime: event.commence_time,
-            marketKey: market.key,
-            playerName: outcome.description || outcome.name,
-            propType: market.key.replace(/_/g, ' ').replace('player ', '').replace('batter ', '').replace('pitcher ', ''),
-            line: outcome.point,
-            side: outcome.name, // Over/Under
-            price: outcome.price,
-          });
-        }
-      }
-    }
+          for (const market of dk.markets || []) {
+            // Group outcomes by player (description field)
+            const byPlayer = {};
+            for (const outcome of market.outcomes || []) {
+              const player = outcome.description || outcome.name;
+              if (!byPlayer[player]) byPlayer[player] = { over: null, under: null, line: outcome.point };
+              if (outcome.name === 'Over') byPlayer[player].over = outcome.price;
+              if (outcome.name === 'Under') byPlayer[player].under = outcome.price;
+            }
+
+            for (const [playerName, pData] of Object.entries(byPlayer)) {
+              if (!pData.line && pData.line !== 0) continue;
+              props.push({
+                eventId: event.id,
+                away: event.away_team,
+                home: event.home_team,
+                commenceTime: event.commence_time,
+                sport,
+                marketKey: market.key,
+                propType: market.key
+                  .replace('batter_', '')
+                  .replace('pitcher_', '')
+                  .replace('player_', '')
+                  .replace(/_/g, ' ')
+                  .replace(/\b\w/g, c => c.toUpperCase()),
+                playerName,
+                line: pData.line,
+                overPrice: pData.over != null ? (pData.over > 0 ? `+${pData.over}` : String(pData.over)) : '-110',
+                underPrice: pData.under != null ? (pData.under > 0 ? `+${pData.under}` : String(pData.under)) : '-110',
+              });
+            }
+          }
+        } catch {}
+      })
+    );
 
     return NextResponse.json({ props });
   } catch (err) {
