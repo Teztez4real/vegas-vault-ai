@@ -776,14 +776,19 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
                   }
                   return bt;
                 })()}</div>
-                {result.summary.saferPlay && (() => {
-                  const sp = typeof result.summary.saferPlay === 'object' ? result.summary.saferPlay : null;
-                  if (!sp?.pick) return null;
+                {(() => {
+                  const sp = result.summary.saferPlay;
+                  if (!sp) return null;
+                  // Handle both object and string formats
+                  const spObj = typeof sp === 'object' ? sp : null;
+                  const spPick = spObj?.pick || '';
+                  const spBet = spObj?.betType || (typeof sp === 'string' ? sp : '');
+                  if (!spPick && !spBet) return null;
                   return (
                     <div style={{ marginTop:5, paddingTop:5, borderTop:'1px solid rgba(255,255,255,0.06)' }}>
                       <div style={{ fontSize:7,fontWeight:700,letterSpacing:'0.07em',color:'#22c55e',marginBottom:2 }}>SAFER PLAY</div>
-                      <div style={{ fontSize:10,fontWeight:700,color:'#f8fafc' }}>{(sp.pick||'').split(' ').pop()}</div>
-                      <div style={{ fontSize:9,color:'#64748b',marginTop:1 }}>{sp.betType}</div>
+                      {spPick && <div style={{ fontSize:10,fontWeight:700,color:'#f8fafc' }}>{spPick.split(' ').pop()}</div>}
+                      {spBet && <div style={{ fontSize:9,color:'#64748b',marginTop:1 }}>{spBet}</div>}
                     </div>
                   );
                 })()}
