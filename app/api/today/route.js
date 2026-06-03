@@ -292,7 +292,19 @@ async function assembleMLBGame(game, oddsMap) {
     const away = game.teams?.away?.team?.name || 'Away';
     const home = game.teams?.home?.team?.name || 'Home';
     const key = `${away}@${home}`;
-    const odds = oddsMap[key] || {};
+
+    // Fuzzy match — try exact first, then last-word match
+    let odds = oddsMap[key];
+    if (!odds || (!odds.awayML || odds.awayML === 'N/A')) {
+      const awayLast = away.split(' ').pop().toLowerCase();
+      const homeLast = home.split(' ').pop().toLowerCase();
+      const fuzzyKey = Object.keys(oddsMap).find(k => {
+        const [a, h] = k.split('@');
+        return a?.toLowerCase().includes(awayLast) && h?.toLowerCase().includes(homeLast);
+      });
+      if (fuzzyKey) odds = oddsMap[fuzzyKey];
+    }
+    odds = odds || {};
     const status = game.status?.abstractGameState || '';
     const isFinal = status === 'Final';
     const awayScore = game.teams?.away?.score;

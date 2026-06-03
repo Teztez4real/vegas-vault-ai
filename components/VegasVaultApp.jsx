@@ -665,9 +665,11 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
       )}
 
       {/* Sportsbook-style odds row */}
-      {!isTennis && (game.awayML || game.homeML || game.spread || game.total) && (() => {
-        const awayOdds = game.dkAwayML!=null?(typeof game.dkAwayML==='string'?game.dkAwayML:(game.dkAwayML>0?'+'+game.dkAwayML:String(game.dkAwayML))):game.awayML||'—';
-        const homeOdds = game.dkHomeML!=null?(typeof game.dkHomeML==='string'?game.dkHomeML:(game.dkHomeML>0?'+'+game.dkHomeML:String(game.dkHomeML))):game.homeML||'—';
+      {!isTennis && (game.awayML || game.homeML || game.spread || game.total || game.dkAwayML || game.dkHomeML) && (() => {
+        const rawAway = game.dkAwayML ?? game.awayML;
+        const rawHome = game.dkHomeML ?? game.homeML;
+        const awayOdds = rawAway && rawAway !== 'N/A' ? (typeof rawAway==='string'?rawAway:(rawAway>0?'+'+rawAway:String(rawAway))) : '—';
+        const homeOdds = rawHome && rawHome !== 'N/A' ? (typeof rawHome==='string'?rawHome:(rawHome>0?'+'+rawHome:String(rawHome))) : '—';
         const spreadVal = game.dkSpread||game.spread||'—';
         const totalVal = String(game.dkTotal||game.total||'—');
         const hasMovement = game.lineMovement && !['No significant movement','N/A','No significant movement detected'].includes(game.lineMovement);
