@@ -442,7 +442,7 @@ function PlayResult({ result, game, onClose, isResolved, resolvedResult }) {
           {/* SECONDARY PLAY */}
           {result.summary.saferPlay && typeof result.summary.saferPlay === 'object' && result.summary.saferPlay.pick && (
             <div style={{ marginBottom:8,padding:"10px 12px",background:"rgba(34,197,94,0.06)",border:"1px solid rgba(34,197,94,0.2)",borderRadius:10 }}>
-              <div style={{ fontSize:9,fontWeight:700,letterSpacing:"0.1em",color:"#22c55e",marginBottom:4 }}>SECONDARY PLAY</div>
+              <div style={{ fontSize:9,fontWeight:700,letterSpacing:"0.1em",color:"#22c55e",marginBottom:4 }}>2ND PLAY</div>
               <div style={{ display:"flex",alignItems:"baseline",gap:10,marginBottom:3 }}>
                 <span style={{ fontSize:22,fontWeight:800,color:"#f8fafc" }}>{result.summary.saferPlay.pick}</span>
                 <span style={{ fontSize:14,fontWeight:600,color:"#22c55e" }}>{result.summary.saferPlay.betType}</span>
@@ -803,7 +803,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
                       <div style={{ fontSize:7,fontWeight:700,letterSpacing:'0.07em',color:'#22c55e',marginBottom:2 }}>SECONDARY</div>
                       <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center' }}>
                         {spPick && <span style={{ fontSize:11,fontWeight:700,color:'#f8fafc' }}>{spPick.split(' ').pop()}</span>}
-                        <span style={{ fontSize:8,fontWeight:600,color:'#22c55e' }}>SAFER</span>
+                        <span style={{ fontSize:8,fontWeight:600,color:'#22c55e' }}>2ND PLAY</span>
                       </div>
                       {spBet && <div style={{ fontSize:9,color:'#64748b',marginTop:1 }}>{spBet}</div>}
                     </div>
