@@ -1704,6 +1704,7 @@ function AIAnalyzerView({ games, results, generating, onGenerate, isSubscribed }
 function PropsAIView({ games, isSubscribed }) {
   const { useState: useLocalState, useEffect: useLocalEffect } = React;
   const [props, setProps] = useLocalState([]);
+  const [openingLines, setOpeningLines] = useLocalState({});
   const [propResults, setPropResults] = useLocalState({});
   const [generating, setGenerating] = useLocalState(null);
   const [activeGame, setActiveGame] = useLocalState(null);
@@ -1727,7 +1728,6 @@ function PropsAIView({ games, isSubscribed }) {
       fetch(`/api/props?sport=${sport}`).then(r => r.json()).catch(() => ({ props: [] }))
     )).then(results => {
       const all = results.flatMap(r => r.props || []);
-      // Match props to today's games
       const matched = all.filter(p => {
         return games.some(g =>
           (g.away?.toLowerCase().includes(p.away?.split(' ').pop()?.toLowerCase()) ||
@@ -1735,6 +1735,17 @@ function PropsAIView({ games, isSubscribed }) {
         );
       });
       setProps(matched);
+      // Store opening lines (only set once — never overwrite)
+      setOpeningLines(prev => {
+        const updated = { ...prev };
+        matched.forEach(p => {
+          const key = `${p.playerName}-${p.propType}`;
+          if (!updated[key]) {
+            updated[key] = { line: p.line, overPrice: p.overPrice, underPrice: p.underPrice, time: new Date().toISOString() };
+          }
+        });
+        return updated;
+      });
       setLoadingProps(false);
     });
   }, [games]);
@@ -1875,10 +1886,21 @@ function PropsAIView({ games, isSubscribed }) {
                             if (result) {
                               setActiveProp({ playerName, propType:pType, line:pData.line, key:propKey, sport:game.sport, away:game.away, home:game.home });
                             } else {
+                              const opKey = `${playerName}-${pType}`;
+                              const opening = openingLines[opKey];
+                              const lineMoved = opening && opening.line !== pData.line
+                                ? `Moved from ${opening.line} to ${pData.line} (${pData.line > opening.line ? 'UP' : 'DOWN'})`
+                                : opening ? 'No movement since tracking began' : 'No opening line data';
+                              const priceMoved = opening && opening.overPrice !== pData.over
+                                ? `Over price moved from ${opening.overPrice} to ${pData.over > 0 ? '+'+pData.over : pData.over}`
+                                : 'No price movement';
                               analyzeProp({
                                 sport:game.sport, away:game.away, home:game.home, time:game.time,
                                 playerName, playerTeam:playerProps[0]?.playerTeam||'',
                                 propType:pType, line:pData.line,
+                                openingLine: opening?.line || 'Unknown',
+                                lineMovement: lineMoved,
+                                priceMovement: priceMoved,
                                 overPrice:pData.over?(pData.over>0?`+${pData.over}`:String(pData.over)):'-110',
                                 underPrice:pData.under?(pData.under>0?`+${pData.under}`:String(pData.under)):'-110',
                                 opponent:game.home,
@@ -1900,9 +1922,16 @@ function PropsAIView({ games, isSubscribed }) {
                           {result && (
                             <div style={{ fontSize:8,fontWeight:700,color:tc,marginTop:2,letterSpacing:'0.06em' }}>{TIER_LABELS[tier]}</div>
                           )}
-                          {!result && !isGen && (
-                            <div style={{ fontSize:8,color:'#2d3a4a',marginTop:2 }}>tap to analyze</div>
-                          )}
+                          {!result && !isGen && (() => {
+                            const opKey = `${playerName}-${pType}`;
+                            const opening = openingLines[opKey];
+                            const moved = opening && opening.line !== pData.line;
+                            return (
+                              <div style={{ fontSize:8,marginTop:2,color: moved ? '#f59e0b' : '#2d3a4a' }}>
+                                {moved ? `${opening.line} → ${pData.line}` : 'tap to analyze'}
+                              </div>
+                            );
+                          })()}
                         </button>
                       );
                     })}
