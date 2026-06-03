@@ -29,7 +29,8 @@ export async function POST(request) {
 5. If lineup says "Not yet confirmed" — analyze based on typical lineup depth and season stats.
 6. NEVER return plain text. ALWAYS return valid JSON.
 7. If the analysis does not support a confident play — tier MUST be PASS. Do not force a pick.
-7. Return valid JSON only. No preamble.`
+8. saferPlay is MANDATORY — you must ALWAYS include a saferPlay object with pick, betType, and reasoning. If the primary play is already the safest option, provide an alternate expression of the same edge (e.g. if primary is ML, secondary is the run line or vice versa). Never leave saferPlay empty or null.
+9. Return valid JSON only. No preamble.`
         }
       ],
     });
@@ -72,6 +73,27 @@ export async function POST(request) {
     if (result.summary && !result.analysis) {
       result.analysis = result.summary;
     }
+
+    // Ensure saferPlay is always a proper object — never missing
+    if (result.summary && (!result.summary.saferPlay || typeof result.summary.saferPlay === 'string')) {
+      const primary = result.summary.pick || '';
+      const primaryBet = result.summary.betType || 'ML';
+      // Generate a fallback secondary based on primary bet type
+      let fallbackBet = primaryBet;
+      if (primaryBet.includes('ML') || primaryBet.toLowerCase().includes('moneyline')) {
+        fallbackBet = '+1.5';
+      } else if (primaryBet.includes('-1.5')) {
+        fallbackBet = 'ML';
+      } else if (primaryBet.includes('+1.5')) {
+        fallbackBet = 'ML';
+      }
+      result.summary.saferPlay = {
+        pick: primary,
+        betType: fallbackBet,
+        reasoning: 'Alternative expression of the same edge with different risk profile.',
+      };
+    }
+
     return NextResponse.json(result);
   } catch (err) {
     console.error('Generate error:', err.message);
