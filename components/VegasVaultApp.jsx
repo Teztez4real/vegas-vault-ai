@@ -666,10 +666,13 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
 
       {/* Sportsbook-style odds row */}
       {!isTennis && (game.awayML || game.homeML || game.spread || game.total || game.dkAwayML || game.dkHomeML) && (() => {
-        const rawAway = game.dkAwayML ?? game.awayML;
-        const rawHome = game.dkHomeML ?? game.homeML;
-        const awayOdds = rawAway && rawAway !== 'N/A' ? (typeof rawAway==='string'?rawAway:(rawAway>0?'+'+rawAway:String(rawAway))) : '—';
-        const homeOdds = rawHome && rawHome !== 'N/A' ? (typeof rawHome==='string'?rawHome:(rawHome>0?'+'+rawHome:String(rawHome))) : '—';
+        const fmtOdds = (v) => {
+          if (!v || v === 'N/A' || v === 'null') return null;
+          if (typeof v === 'string') return v;
+          return v > 0 ? '+'+v : String(v);
+        };
+        const awayOdds = fmtOdds(game.dkAwayML) || fmtOdds(game.awayML) || '—';
+        const homeOdds = fmtOdds(game.dkHomeML) || fmtOdds(game.homeML) || '—';
         const spreadVal = game.dkSpread||game.spread||'—';
         const totalVal = String(game.dkTotal||game.total||'—');
         const hasMovement = game.lineMovement && !['No significant movement','N/A','No significant movement detected'].includes(game.lineMovement);
@@ -2796,15 +2799,15 @@ export default function VegasVaultApp() {
               openingHomeML: fmtN(mv.openHome) || mv.openHome || game.openingHomeML,
               openingAwayML: fmtN(mv.openAway) || mv.openAway || game.openingAwayML,
               pinHomeML:     mv.pinHomeML     || game.pinHomeML,
-              dkAwayML:      mv.dkAwayML      || game.dkAwayML,
-              dkHomeML:      mv.dkHomeML      || game.dkHomeML,
-              dkSpread:      mv.dkSpread      || game.dkSpread,
-              dkTotal:       mv.dkTotal       || game.dkTotal,
+              dkAwayML:      mv.dkAwayML || (game.dkAwayML !== 'N/A' ? game.dkAwayML : null),
+              dkHomeML:      mv.dkHomeML || (game.dkHomeML !== 'N/A' ? game.dkHomeML : null),
+              dkSpread:      mv.dkSpread || (game.dkSpread !== 'N/A' ? game.dkSpread : null),
+              dkTotal:       mv.dkTotal  || (game.dkTotal  !== 'N/A' ? game.dkTotal  : null),
               // Live price updates from Sharp API
-              awayML:        fmtN(mv.currentAwayML) || mv.awayML || game.awayML,
-              homeML:        fmtN(mv.currentHomeML) || mv.homeML || game.homeML,
-              spread:        mv.spread        || game.spread,
-              total:         mv.total         || game.total,
+              awayML:        fmtN(mv.currentAwayML) || mv.awayML || (game.awayML !== 'N/A' ? game.awayML : null),
+              homeML:        fmtN(mv.currentHomeML) || mv.homeML || (game.homeML !== 'N/A' ? game.homeML : null),
+              spread:        mv.spread || (game.spread !== 'N/A' ? game.spread : null),
+              total:         mv.total  || (game.total  !== 'N/A' ? game.total  : null),
               publicBettingPct: mv.publicBettingPct ?? game.publicBettingPct,
               sharpMoneyPct:    mv.sharpMoneyPct    ?? game.sharpMoneyPct,
             };
