@@ -197,6 +197,7 @@ async function fetchOdds(sport) {
       oddsMap[key] = { awayML, homeML, spread, total, openingAwayML: pricingStr||'N/A', openingHomeML: pricingStr||'N/A', lineMovement: signals.join(' | ')||'No significant movement', pricingStr };
     });
 
+    console.log('OddsMap keys:', Object.keys(oddsMap).join(' | '));
     return { oddsMap, bookmakerCount: 5 };
   } catch(e) { console.error('fetchOdds error:', e.message); return { oddsMap: {}, bookmakerCount: 0 }; }
 }
@@ -293,16 +294,30 @@ async function assembleMLBGame(game, oddsMap) {
     const home = game.teams?.home?.team?.name || 'Home';
     const key = `${away}@${home}`;
 
-    // Fuzzy match — try exact first, then last-word match
+    // Fuzzy match — try exact first, then last-word match, then any-word match
     let odds = oddsMap[key];
     if (!odds || (!odds.awayML || odds.awayML === 'N/A')) {
       const awayLast = away.split(' ').pop().toLowerCase();
       const homeLast = home.split(' ').pop().toLowerCase();
-      const fuzzyKey = Object.keys(oddsMap).find(k => {
+      // Try last word match
+      let fuzzyKey = Object.keys(oddsMap).find(k => {
         const [a, h] = k.split('@');
         return a?.toLowerCase().includes(awayLast) && h?.toLowerCase().includes(homeLast);
       });
+      // Try any word match if still not found
+      if (!fuzzyKey) {
+        fuzzyKey = Object.keys(oddsMap).find(k => {
+          const [a, h] = k.split('@');
+          const awayWords = away.toLowerCase().split(' ');
+          const homeWords = home.toLowerCase().split(' ');
+          return awayWords.some(w => w.length > 3 && a?.toLowerCase().includes(w)) &&
+                 homeWords.some(w => w.length > 3 && h?.toLowerCase().includes(w));
+        });
+      }
       if (fuzzyKey) odds = oddsMap[fuzzyKey];
+    }
+    if (!odds || !odds.awayML || odds.awayML === 'N/A') {
+      console.log('No odds found for:', key, '| Available keys:', Object.keys(oddsMap).slice(0,3));
     }
     odds = odds || {};
     const status = game.status?.abstractGameState || '';
