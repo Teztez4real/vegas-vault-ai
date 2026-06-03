@@ -445,8 +445,11 @@ async function fetchNBARecentForm(teamName) {
     if (!team?.team?.id) return { last5: 'N/A', last10: 'N/A', streak: 'N/A', homeRecord: 'N/A', awayRecord: 'N/A', atsRecord: 'N/A' };
 
     const teamId = team.team.id;
+    // NBA 2025-26 season = season=2026
+    const currentYear = new Date().getFullYear();
+    const nbaSeasonYear = new Date().getMonth() >= 9 ? currentYear + 1 : currentYear; // Oct+ = next year's season
     const res = await fetch(
-      `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/${teamId}/schedule?season=2025`,
+      `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/${teamId}/schedule?season=${nbaSeasonYear}`,
       { cache: 'no-store' }
     );
     if (!res.ok) return { last5: 'N/A', last10: 'N/A', streak: 'N/A', homeRecord: 'N/A', awayRecord: 'N/A', atsRecord: 'N/A' };
@@ -502,7 +505,7 @@ async function fetchNBARecentForm(teamName) {
 
 async function fetchNBAH2H(awayTeam, homeTeam) {
   try {
-    const season = 2025;
+    const season = new Date().getMonth() >= 9 ? new Date().getFullYear() + 1 : new Date().getFullYear();
     const res = await fetch(
       `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams?limit=50`,
       { cache: 'no-store' }
@@ -711,18 +714,33 @@ async function fetchNBAGames(date) {
 
 async function fetchNBARecords() {
   try {
+    // Try standings first
     const res = await fetch('https://site.api.espn.com/apis/site/v2/sports/basketball/nba/standings', { cache: 'no-store' });
-    if (!res.ok) return {};
-    const data = await res.json();
     const records = {};
-    (data.children || []).forEach(conf => {
-      (conf.standings?.entries || conf.entries || []).forEach(entry => {
-        const name = entry.team?.displayName || entry.team?.name || '';
-        const wins = entry.stats?.find(s => s.name === 'wins')?.value ?? '';
-        const losses = entry.stats?.find(s => s.name === 'losses')?.value ?? '';
-        if (name && wins !== '') records[name] = `${wins}-${losses}`;
+    if (res.ok) {
+      const data = await res.json();
+      (data.children || []).forEach(conf => {
+        (conf.standings?.entries || conf.entries || []).forEach(entry => {
+          const name = entry.team?.displayName || entry.team?.name || '';
+          const wins = entry.stats?.find(s => s.name === 'wins')?.value ?? '';
+          const losses = entry.stats?.find(s => s.name === 'losses')?.value ?? '';
+          if (name && wins !== '') records[name] = `${wins}-${losses}`;
+        });
       });
-    });
+    }
+    // If standings empty (offseason/playoffs), try teams endpoint for season records
+    if (!Object.keys(records).length) {
+      const teamsRes = await fetch('https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams?limit=50', { cache: 'no-store' });
+      if (teamsRes.ok) {
+        const teamsData = await teamsRes.json();
+        const teams = teamsData.sports?.[0]?.leagues?.[0]?.teams || [];
+        teams.forEach(t => {
+          const name = t.team?.displayName || '';
+          const rec = t.team?.record?.items?.[0]?.summary || '';
+          if (name && rec) records[name] = rec;
+        });
+      }
+    }
     return records;
   } catch { return {}; }
 }
