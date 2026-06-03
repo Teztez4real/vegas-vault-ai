@@ -16,25 +16,36 @@ export async function POST(req) {
     const message = await client.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 2000,
-      messages: [{ role: 'user', content: prompt }],
+      messages: [
+        { role: 'user', content: prompt },
+        { role: 'assistant', content: '{' }, // Force JSON start
+      ],
     });
 
-    const raw = message.content?.[0]?.text || '';
-    const clean = raw.replace(/```json|```/g, '').trim();
-
+    const raw = '{' + (message.content?.[0]?.text || '');
+    // Extract JSON — find the outermost { }
     let result;
     try {
+      const clean = raw.replace(/```json|```/g, '').trim();
+      // Try direct parse first
       result = JSON.parse(clean);
     } catch {
-      result = {
-        summary: {
-          pick: 'Parse Error', line: propData.line, price: 'N/A',
-          tier: '3', tierLabel: 'Tier 3', confidence: 'LOW',
-          discrepancySize: 'SMALL', projection: 'N/A',
-          verdict: 'AI response could not be parsed. Please re-analyze.',
-        },
-        parseError: true,
-      };
+      try {
+        // Try extracting JSON block
+        const match = raw.match(/\{[\s\S]*\}/);
+        if (match) result = JSON.parse(match[0]);
+        else throw new Error('No JSON found');
+      } catch {
+        result = {
+          summary: {
+            pick: 'Parse Error', line: propData.line, price: 'N/A',
+            tier: '3', tierLabel: 'Tier 3', confidence: 'LOW',
+            discrepancySize: 'SMALL', projection: 'N/A',
+            verdict: 'Re-analyze to get the full breakdown.',
+          },
+          parseError: true,
+        };
+      }
     }
 
     return NextResponse.json(result);
