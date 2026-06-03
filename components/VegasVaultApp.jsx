@@ -430,16 +430,24 @@ function PlayResult({ result, game, onClose, isResolved, resolvedResult }) {
             {result.summary.isScamPlay&&<span style={{ fontSize:10,fontWeight:700,padding:"4px 12px",borderRadius:6,background:"rgba(59,130,246,0.08)",border:"1px solid rgba(59,130,246,0.25)",color:"#3b82f6",letterSpacing:"0.08em" }}>⚡ SCAM PLAY</span>}
             <span style={{ fontSize:10,padding:"4px 12px",borderRadius:6,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(59,130,246,0.14)",color:conf.color,marginLeft:"auto" }}>Confidence: <strong>{result.summary.confidence}</strong></span>
           </div>
-          <div style={{ display:"flex",alignItems:"baseline",gap:12,marginBottom:6 }}>
-            <span style={{ fontSize:30,fontWeight:800,color:"#f8fafc",letterSpacing:"-0.02em" }}>{result.summary.pick}</span>
-            <span style={{ fontSize:17,fontWeight:600,color:"#3b82f6",background:"rgba(59,130,246,0.1)",padding:"2px 10px",borderRadius:6,border:"1px solid rgba(59,130,246,0.2)" }}>{liveBetType}</span>
+          {/* PRIMARY PLAY */}
+          <div style={{ marginBottom:8,padding:"10px 12px",background:"rgba(59,130,246,0.06)",border:"1px solid rgba(59,130,246,0.2)",borderRadius:10 }}>
+            <div style={{ fontSize:9,fontWeight:700,letterSpacing:"0.1em",color:"#3b82f6",marginBottom:4 }}>PRIMARY PLAY</div>
+            <div style={{ display:"flex",alignItems:"baseline",gap:12 }}>
+              <span style={{ fontSize:28,fontWeight:800,color:"#f8fafc",letterSpacing:"-0.02em" }}>{result.summary.pick}</span>
+              <span style={{ fontSize:16,fontWeight:600,color:"#3b82f6" }}>{liveBetType}</span>
+            </div>
           </div>
+
+          {/* SECONDARY PLAY */}
           {result.summary.saferPlay && typeof result.summary.saferPlay === 'object' && result.summary.saferPlay.pick && (
-            <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:8,padding:"7px 12px",background:"rgba(34,197,94,0.06)",border:"1px solid rgba(34,197,94,0.2)",borderRadius:8 }}>
-              <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.08em",color:"#22c55e" }}>SAFER PLAY</span>
-              <span style={{ fontSize:14,fontWeight:700,color:"#f8fafc" }}>{result.summary.saferPlay.pick}</span>
-              <span style={{ fontSize:13,fontWeight:600,color:"#22c55e" }}>{result.summary.saferPlay.betType}</span>
-              {result.summary.saferPlay.reasoning && <span style={{ fontSize:11,color:"#94a3b8",marginLeft:4 }}>{result.summary.saferPlay.reasoning}</span>}
+            <div style={{ marginBottom:8,padding:"10px 12px",background:"rgba(34,197,94,0.06)",border:"1px solid rgba(34,197,94,0.2)",borderRadius:10 }}>
+              <div style={{ fontSize:9,fontWeight:700,letterSpacing:"0.1em",color:"#22c55e",marginBottom:4 }}>SECONDARY PLAY</div>
+              <div style={{ display:"flex",alignItems:"baseline",gap:10,marginBottom:3 }}>
+                <span style={{ fontSize:22,fontWeight:800,color:"#f8fafc" }}>{result.summary.saferPlay.pick}</span>
+                <span style={{ fontSize:14,fontWeight:600,color:"#22c55e" }}>{result.summary.saferPlay.betType}</span>
+              </div>
+              {result.summary.saferPlay.reasoning && <div style={{ fontSize:11,color:"#94a3b8" }}>{result.summary.saferPlay.reasoning}</div>}
             </div>
           )}
           <p style={{ fontSize:13,color:"#94a3b8",lineHeight:1.7,margin:0 }}>{result.summary.verdict}</p>
@@ -756,38 +764,47 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
             return(
               <div key={slot} style={{ flex:1,background:iw?"rgba(192,132,252,0.05)":iv?"rgba(248,113,113,0.05)":"rgba(96,165,250,0.05)",border:iw?"1px solid rgba(192,132,252,0.2)":iv?"1px solid rgba(248,113,113,0.15)":"1px solid rgba(96,165,250,0.15)",borderRadius:7,padding:"6px 8px" }}>
                 <div style={{ fontSize:8,fontWeight:700,letterSpacing:"0.06em",color:iw?"#c084fc":iv?"#f87171":"#60a5fa",marginBottom:3 }}>{slot}</div>
-                <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center" }}>
-                  <span style={{ fontSize:11,fontWeight:700,color:"#f8fafc" }}>{result.summary.pick.split(" ").pop()}</span>
-                  <span style={{ fontSize:8,fontWeight:700,padding:"2px 5px",borderRadius:4,background:ts.bg,color:ts.text,border:`1px solid ${ts.border}` }}>{ts.label}</span>
+
+                {/* PRIMARY PLAY */}
+                <div style={{ marginBottom:5 }}>
+                  <div style={{ fontSize:7,fontWeight:700,letterSpacing:'0.07em',color:'#3b82f6',marginBottom:2 }}>PRIMARY</div>
+                  <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center" }}>
+                    <span style={{ fontSize:11,fontWeight:700,color:"#f8fafc" }}>{result.summary.pick.split(" ").pop()}</span>
+                    <span style={{ fontSize:8,fontWeight:700,padding:"2px 5px",borderRadius:4,background:ts.bg,color:ts.text,border:`1px solid ${ts.border}` }}>{ts.label}</span>
+                  </div>
+                  <div style={{ fontSize:9,color:"#64748b",marginTop:1 }}>{(() => {
+                    const bt = result.summary.betType || '';
+                    const pick = (result.summary.pick || '').toLowerCase();
+                    const away = (game.away || '').toLowerCase();
+                    const home = (game.home || '').toLowerCase();
+                    const awayAbbr = (game.awayAbbr || '').toLowerCase();
+                    const homeAbbr = (game.homeAbbr || '').toLowerCase();
+                    const isAway = pick === away || pick === awayAbbr || away.includes(pick) || pick.includes(away) || pick === awayAbbr;
+                    const base = bt.replace(/\s*[+-]\d{2,4}$/, '').trim();
+                    if (base === 'ML' || base === 'Moneyline') {
+                      const raw = isAway ? (game.dkAwayML ?? game.awayML) : (game.dkHomeML ?? game.homeML);
+                      const p = raw != null ? (typeof raw === 'string' ? raw : (raw > 0 ? '+'+raw : String(raw))) : null;
+                      return p && p !== 'N/A' ? `ML ${p}` : bt;
+                    }
+                    return bt;
+                  })()}</div>
                 </div>
-                <div style={{ fontSize:9,color:"#64748b",marginTop:1 }}>{(() => {
-                  const bt = result.summary.betType || '';
-                  const pick = (result.summary.pick || '').toLowerCase();
-                  const away = (game.away || '').toLowerCase();
-                  const home = (game.home || '').toLowerCase();
-                  const awayAbbr = (game.awayAbbr || '').toLowerCase();
-                  const homeAbbr = (game.homeAbbr || '').toLowerCase();
-                  const isAway = pick === away || pick === awayAbbr || away.includes(pick) || pick.includes(away) || pick === awayAbbr;
-                  const base = bt.replace(/\s*[+-]\d{2,4}$/, '').trim();
-                  if (base === 'ML' || base === 'Moneyline') {
-                    const raw = isAway ? (game.dkAwayML ?? game.awayML) : (game.dkHomeML ?? game.homeML);
-                    const p = raw != null ? (typeof raw === 'string' ? raw : (raw > 0 ? '+'+raw : String(raw))) : null;
-                    return p && p !== 'N/A' ? `ML ${p}` : bt;
-                  }
-                  return bt;
-                })()}</div>
+
+                {/* SECONDARY PLAY */}
                 {(() => {
                   const sp = result.summary.saferPlay;
                   if (!sp) return null;
-                  // Handle both object and string formats
                   const spObj = typeof sp === 'object' ? sp : null;
                   const spPick = spObj?.pick || '';
                   const spBet = spObj?.betType || (typeof sp === 'string' ? sp : '');
                   if (!spPick && !spBet) return null;
                   return (
-                    <div style={{ marginTop:5, paddingTop:5, borderTop:'1px solid rgba(255,255,255,0.06)' }}>
-                      <div style={{ fontSize:7,fontWeight:700,letterSpacing:'0.07em',color:'#22c55e',marginBottom:2 }}>SAFER PLAY</div>
-                      {spPick && <div style={{ fontSize:10,fontWeight:700,color:'#f8fafc' }}>{spPick.split(' ').pop()}</div>}
+                    <div style={{ paddingTop:5, borderTop:'1px solid rgba(255,255,255,0.06)' }}>
+                      <div style={{ fontSize:7,fontWeight:700,letterSpacing:'0.07em',color:'#22c55e',marginBottom:2 }}>SECONDARY</div>
+                      <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center' }}>
+                        {spPick && <span style={{ fontSize:11,fontWeight:700,color:'#f8fafc' }}>{spPick.split(' ').pop()}</span>}
+                        <span style={{ fontSize:8,fontWeight:600,color:'#22c55e' }}>SAFER</span>
+                      </div>
                       {spBet && <div style={{ fontSize:9,color:'#64748b',marginTop:1 }}>{spBet}</div>}
                     </div>
                   );
