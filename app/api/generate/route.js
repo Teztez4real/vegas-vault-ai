@@ -22,15 +22,15 @@ export async function POST(request) {
         {
           role: 'user',
           content: prompt + `\n\nCRITICAL INSTRUCTIONS:
-1. You MUST return a complete JSON object — no exceptions, no plain text responses.
-2. If odds say N/A — estimate based on records and matchup context.
-3. If H2H says "See MLB Stats" — use records and recent form to infer advantage.
-4. If injuries say "Check rotowire" — assume both teams healthy unless stated otherwise.
-5. If lineup says "Not yet confirmed" — analyze based on typical lineup depth and season stats.
-6. NEVER return plain text. ALWAYS return valid JSON.
-7. If the analysis does not support a confident play — tier MUST be PASS. Do not force a pick.
-8. saferPlay is MANDATORY — you must ALWAYS include a saferPlay object with pick, betType, and reasoning. The secondary MUST use a different market than the primary: if primary is ML → secondary is run line or total; if primary is run line → secondary is ML or total; if primary is total → secondary is ML or run line. The total (OVER/UNDER) must always be evaluated as a bet type option. Never leave saferPlay empty or null.
-9. Return valid JSON only. No preamble.`
+1. Return complete valid JSON only — no plain text, no markdown, no preamble.
+2. If odds say N/A — estimate from records and matchup.
+3. If H2H unavailable — use records and recent form.
+4. If injuries unavailable — assume healthy unless stated.
+5. If lineup unconfirmed — use typical depth and season stats.
+6. PASS IS THE CORRECT ANSWER when the edge is not clear. Do not force picks. A game with no real edge MUST be Tier 3 PASS. Forcing a pick on a 50/50 game is how you lose. It is better to pass 8 games and win 4 than to play 12 and win 6.
+7. Only pick a side when you can state ONE SPECIFIC CONCRETE reason the line is wrong. If you cannot state that reason clearly, the pick is PASS.
+8. saferPlay is MANDATORY — always include a saferPlay object with pick, betType, and reasoning. Secondary MUST use a different market than primary: ML → run line or total; run line → ML or total; total → ML or run line. Never null.
+9. The verdict must be ONE plain sentence. Example: "Tigers ML +123 — they own this pitcher historically and the line is inflated by public momentum." Not a paragraph.`
         }
       ],
     });
