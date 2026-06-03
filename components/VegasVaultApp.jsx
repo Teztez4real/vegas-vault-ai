@@ -2449,6 +2449,24 @@ export default function VegasVaultApp() {
   const lastLineupRef = useRef({});  // tracks lineup state per game
   const lastInjuryRef = useRef({});  // tracks injury state per game
 
+  // ── LOAD STORED ANALYSES (background-analyzed games) ─────────────────────────
+  useEffect(() => {
+    if (!selectedDate) return;
+    fetch(`/api/auto-analyze?date=${selectedDate}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.analyses && Object.keys(data.analyses).length) {
+          setResults(prev => {
+            const merged = { ...data.analyses };
+            // Don't overwrite fresh in-session results
+            Object.keys(prev).forEach(k => { merged[k] = prev[k]; });
+            return merged;
+          });
+        }
+      })
+      .catch(() => {});
+  }, [selectedDate]);
+
   // ── SERVICE WORKER + PUSH NOTIFICATIONS ──────────────────────────────────────
   useEffect(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;

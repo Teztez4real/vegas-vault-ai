@@ -1,16 +1,23 @@
 {
   "functions": {
-    "app/api/generate/route.js": {
-      "maxDuration": 60
+    "app/api/generate/route.js": { "maxDuration": 60 },
+    "app/api/topplay/route.js": { "maxDuration": 60 },
+    "app/api/today/route.js": { "maxDuration": 60 },
+    "app/api/lines/route.js": { "maxDuration": 30 },
+    "app/api/auto-analyze/route.js": { "maxDuration": 300 }
+  },
+  "crons": [
+    {
+      "path": "/api/auto-analyze",
+      "schedule": "0 14 * * *"
     },
-    "app/api/topplay/route.js": {
-      "maxDuration": 60
+    {
+      "path": "/api/auto-analyze",
+      "schedule": "0 17 * * *"
     },
-    "app/api/today/route.js": {
-      "maxDuration": 60
-    },
-    "app/api/lines/route.js": {
-      "maxDuration": 30
+    {
+      "path": "/api/auto-analyze",
+      "schedule": "0 20 * * *"
     }
-  }
+  ]
 }
