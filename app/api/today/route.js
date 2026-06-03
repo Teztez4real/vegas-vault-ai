@@ -153,8 +153,8 @@ async function fetchOdds(sport) {
     const oddsMap = {};
 
     data.forEach(game => {
-      const away = game.away_team;
-      const home = game.home_team;
+      const away = (game.away_team || '').trim();
+      const home = (game.home_team || '').trim();
       const key = `${away}@${home}`;
       let awayML = 'N/A', homeML = 'N/A', spread = 'N/A', total = 'N/A';
       const bookPrices = {};
@@ -290,8 +290,8 @@ async function fetchGameNarrative(away, home, sport) {
 
 async function assembleMLBGame(game, oddsMap) {
   try {
-    const away = game.teams?.away?.team?.name || 'Away';
-    const home = game.teams?.home?.team?.name || 'Home';
+    const away = (game.teams?.away?.team?.name || 'Away').trim();
+    const home = (game.teams?.home?.team?.name || 'Home').trim();
     const key = `${away}@${home}`;
 
     // Fuzzy match — try exact first, then last-word match, then any-word match
@@ -383,6 +383,10 @@ async function assembleMLBGame(game, oddsMap) {
       isFinal,
       awayML: odds.awayML || 'N/A',
       homeML: odds.homeML || 'N/A',
+      dkAwayML: odds.awayML || 'N/A',
+      dkHomeML: odds.homeML || 'N/A',
+      dkSpread: odds.spread || 'N/A',
+      dkTotal: odds.total || 'N/A',
       openingAwayML: odds.pricingStr || odds.openingAwayML || 'N/A',
       openingHomeML: odds.pricingStr || odds.openingHomeML || 'N/A',
       spread: odds.spread || 'N/A',
