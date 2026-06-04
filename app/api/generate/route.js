@@ -102,10 +102,11 @@ export async function POST(request) {
       ));
     }
 
-    // Counter-argument kills a LOW confidence edge → PASS
-    if (stage2.counterValid && stage2.confidence === 'LOW') {
+    // Only pass if counter is valid AND confidence is LOW AND edge is weak
+    // A valid counter on a MEDIUM confidence play just means Tier 2 — don't pass
+    if (stage2.counterValid && stage2.confidence === 'LOW' && stage2.edgeType === 'NONE') {
       return NextResponse.json(passResult(
-        `Edge exists but counter-argument is valid and confidence is low: ${stage2.counterArgument}`,
+        `Edge is too weak to play: ${stage2.counterArgument}`,
         slot
       ));
     }
