@@ -486,7 +486,7 @@ function PlayResult({ result, game, onClose, isResolved, resolvedResult }) {
         {expanded&&(
           <div style={{ padding:"0 22px 22px" }}>
             <div style={{ borderTop:"1px solid rgba(255,255,255,0.05)",paddingTop:4 }}>
-              {steps.map((s,i)=><AnalysisRow key={s.key} index={i+1} label={s.label} value={a[s.key]||"—"} />)}
+              {steps.filter(s => a[s.key] && a[s.key] !== "—" && a[s.key] !== "N/A" && a[s.key] !== "null").map((s,i)=><AnalysisRow key={s.key} index={i+1} label={s.label} value={a[s.key]} />)}
             </div>
             <div style={{ marginTop:18 }}>
               <div style={{ fontSize:9,fontWeight:700,letterSpacing:"0.08em",color:"#3b82f6",marginBottom:10 }}>SCAM PLAY ANALYSIS</div>
