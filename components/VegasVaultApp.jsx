@@ -328,6 +328,13 @@ function AnalysisRow({ index, label, value }) {
 }
 
 function ScamPlayBlock({ scam }) {
+  // Handle string format from new 4-stage engine
+  if (typeof scam === 'string' && scam && scam !== 'N/A') return (
+    <div style={{ background:"rgba(201,162,39,0.04)",border:"1px solid rgba(59,130,246,0.2)",borderRadius:10,padding:"12px 14px" }}>
+      <div style={{ fontSize:9,fontWeight:700,letterSpacing:"0.08em",color:"#3b82f6",background:"rgba(59,130,246,0.1)",padding:"3px 8px",borderRadius:4,display:"inline-block",marginBottom:8 }}>⚡ SCAM PLAY</div>
+      <div style={{ fontSize:12,color:"#e2e8f0",lineHeight:1.65 }}>{scam}</div>
+    </div>
+  );
   if (!scam?.active) return (
     <div style={{ padding:"10px 14px",background:"rgba(74,222,128,0.05)",border:"1px solid rgba(74,222,128,0.15)",borderRadius:8,display:"flex",alignItems:"center",gap:8 }}>
       <span style={{ color:"#4ade80" }}>✓</span>
@@ -386,33 +393,47 @@ function PlayResult({ result, game, onClose, isResolved, resolvedResult }) {
     return betType;
   };
   const liveBetType = getLivePrice();
-  const baseballSteps = [
-    {label:"Matchup Foundation",key:"matchupFoundation"},{label:"Records",key:"records"},
-    {label:"Recent Form",key:"recentForm"},{label:"Head to Head",key:"headToHead"},
-    {label:"Hitter & Lineup",key:"hitterLineup"},{label:"Pitching",key:"pitching"},
-    {label:"Game Script",key:"gameScript"},{label:"Series Context",key:"seriesContext"},
-    {label:"Trell Rule",key:"trellRule"},{label:"Pricing",key:"pricingComprehension"},
-    {label:"Line Movement",key:"lineMovement"},{label:"Vegas vs Public",key:"vegasVsPublic"},
-  ];
-  const tennisSteps = [
-    {label:"Matchup Foundation",key:"matchupFoundation"},{label:"Rankings & Tier",key:"rankingsTier"},
-    {label:"Surface Analysis",key:"surfaceAnalysis"},{label:"Recent Form",key:"recentForm"},
-    {label:"Tournament Context",key:"tournamentContext"},{label:"Fatigue & Schedule",key:"fatigueScheduling"},
-    {label:"Head to Head",key:"headToHead"},{label:"Serve & Return",key:"serveReturn"},
-    {label:"Mental & Psych",key:"mentalPsychological"},{label:"Injury Check",key:"injuryCheck"},
-    {label:"Pricing Intelligence",key:"pricingIntelligence"},{label:"Game Script",key:"gameScript"},
-  ];
-  const wnbaSteps = [
-    {label:"Matchup Foundation",key:"matchupFoundation"},{label:"Records",key:"records"},
-    {label:"Recent Form",key:"recentForm"},{label:"Head to Head",key:"headToHead"},
-    {label:"Lineup & Roster",key:"lineupAnalysis"},{label:"Fatigue & Travel",key:"fatigueTravel"},
-    {label:"Game Script",key:"gameScript"},{label:"Series Context",key:"seriesContext"},
-    {label:"Trell Rule",key:"trellRule"},{label:"Pricing",key:"pricingComprehension"},
-    {label:"Line Movement",key:"lineMovement"},{label:"Public vs Sharp",key:"vegasVsPublicPropaganda"},
-    {label:"Discrepancies",key:"discrepancies"},
-  ];
   const isWNBA = game.sport === "WNBA";
-  const steps = isTennis ? tennisSteps : isWNBA ? wnbaSteps : baseballSteps;
+  const isNBA = game.sport === "NBA";
+  const isNFL = game.sport === "NFL";
+  // New 4-stage fields (shown first, only if they have data)
+  const stageFields = [
+    {label:"Price vs Data",key:"priceVsDataAudit"},
+    {label:"Matchup",key:"matchupFoundation"},
+    {label:"Recent Form",key:"recentForm"},
+    {label:"Head to Head",key:"headToHead"},
+    {label:"Pitching",key:"pitching"},
+    {label:"Pace & Ratings",key:"paceRatings"},
+    {label:"QB Matchup",key:"qbMatchup"},
+    {label:"Injuries",key:"injuries"},
+    {label:"Weather",key:"weather"},
+    {label:"Situational",key:"situational"},
+    {label:"Trell Rule",key:"trellRule"},
+    {label:"Sharp Money",key:"sharpMoney"},
+    {label:"Propaganda",key:"propaganda"},
+    {label:"Game Script",key:"gameScript"},
+    {label:"Market Logic",key:"marketLogic"},
+    {label:"Edge Strength",key:"edgeStrength"},
+  ];
+  // Legacy fields for old analyses
+  const legacyFields = [
+    {label:"Records",key:"records"},
+    {label:"Hitter & Lineup",key:"hitterLineup"},
+    {label:"Series Context",key:"seriesContext"},
+    {label:"Pricing",key:"pricingComprehension"},
+    {label:"Line Movement",key:"lineMovement"},
+    {label:"Vegas vs Public",key:"vegasVsPublic"},
+    {label:"Rankings & Tier",key:"rankingsTier"},
+    {label:"Surface Analysis",key:"surfaceAnalysis"},
+    {label:"Tournament Context",key:"tournamentContext"},
+    {label:"Fatigue & Schedule",key:"fatigueScheduling"},
+    {label:"Serve & Return",key:"serveReturn"},
+    {label:"Mental & Psych",key:"mentalPsychological"},
+    {label:"Injury Check",key:"injuryCheck"},
+    {label:"Pricing Intelligence",key:"pricingIntelligence"},
+  ];
+  // Combine — stageFields first, then any legacy fields that have data
+  const steps = [...stageFields, ...legacyFields];
   return (
     <div onClick={e=>e.target===e.currentTarget&&onClose()} style={{ position:"fixed",inset:0,zIndex:300,background:"rgba(0,0,0,0.82)",backdropFilter:"blur(18px)",display:"flex",alignItems:"center",justifyContent:"center",padding:16 }}>
       <div style={{ background:"#090d18",border:"1px solid rgba(255,255,255,0.09)",borderRadius:20,width:"100%",maxWidth:660,maxHeight:"92vh",overflowY:"auto",boxShadow:"0 40px 100px rgba(0,0,0,0.9)" }}>
