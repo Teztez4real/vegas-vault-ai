@@ -447,6 +447,8 @@ async function assembleMLBGame(game, oddsMap) {
       cbsPreview: `${away} @ ${home} — check CBS Sports for full preview and public narrative`,
       seriesGame,
       seriesLength,
+      seriesContext: `Game ${seriesGame} of ${seriesLength}${seriesLength === 3 ? ' (3-game series)' : seriesLength === 4 ? ' (4-game series)' : ''}${seriesGame === seriesLength ? ' — SERIES FINALE' : seriesGame === 1 ? ' — SERIES OPENER' : ''}`,
+      gameNumber: seriesGame,
       slot: null,
     };
   } catch { return null; }
@@ -753,6 +755,9 @@ async function fetchNBAGames(date) {
         playoffContext: playoffCtx.context,
         playoffGameNumber: playoffCtx.gameNumber,
         playoffSeriesRecord: playoffCtx.seriesRecord,
+        seriesContext: playoffCtx.context || 'Regular Season',
+        seriesRecord: playoffCtx.seriesRecord || 'N/A',
+        gameNumber: playoffCtx.gameNumber || null,
         slot: null,
       };
     }));
