@@ -1758,16 +1758,6 @@ function PropsAIView({ games, isSubscribed }) {
 
   const SPORT_ACCENT = { MLB:'#3b82f6', NBA:'#f97316', NFL:'#22c55e', Tennis:'#a78bfa', WNBA:'#f472b6', ALL:'#64748b' };
 
-  // Not subscribed — show lock screen
-  if (!isSubscribed) return (
-    <div style={{ display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'60px 20px',textAlign:'center' }}>
-      <div style={{ fontSize:36,marginBottom:16 }}>🔒</div>
-      <div style={{ fontSize:18,fontWeight:800,color:'#f1f5f9',marginBottom:8 }}>Props AI</div>
-      <div style={{ fontSize:13,color:'#475569',marginBottom:24,lineHeight:1.6 }}>Subscribe to unlock player and game props analysis across all sports.</div>
-      <div style={{ fontSize:10,fontWeight:700,color:'#3b82f6',background:'rgba(59,130,246,0.1)',border:'1px solid rgba(59,130,246,0.3)',borderRadius:8,padding:'10px 24px',letterSpacing:'0.08em' }}>SUBSCRIBE TO UNLOCK</div>
-    </div>
-  );
-
   // Fetch props from Odds API for today's games
   useLocalEffect(() => {
     if (!games.length) return;
@@ -1829,6 +1819,16 @@ function PropsAIView({ games, isSubscribed }) {
 
   return (
     <div style={{ paddingBottom:32 }}>
+
+      {/* ── Subscription lock ── */}
+      {!isSubscribed ? (
+        <div style={{ display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'60px 20px',textAlign:'center' }}>
+          <div style={{ fontSize:36,marginBottom:16 }}>🔒</div>
+          <div style={{ fontSize:18,fontWeight:800,color:'#f1f5f9',marginBottom:8 }}>Props AI</div>
+          <div style={{ fontSize:13,color:'#475569',marginBottom:24,lineHeight:1.6 }}>Subscribe to unlock player and game props analysis across all sports.</div>
+          <div style={{ fontSize:10,fontWeight:700,color:'#3b82f6',background:'rgba(59,130,246,0.1)',border:'1px solid rgba(59,130,246,0.3)',borderRadius:8,padding:'10px 24px',letterSpacing:'0.08em' }}>SUBSCRIBE TO UNLOCK</div>
+        </div>
+      ) : (<>
 
       {/* ── Header ── */}
       <div style={{ marginBottom:20, paddingBottom:16, borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
@@ -2087,6 +2087,7 @@ function PropsAIView({ games, isSubscribed }) {
         </div>
       )}
     </div>
+    </>)}
   );
 }
 
