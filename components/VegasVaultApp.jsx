@@ -763,8 +763,8 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
         );
       })()}
 
-      {/* Lock badge */}
-      {isLock && (
+      {/* Lock badge — only show if subscribed */}
+      {isSubscribed && isLock && (
         <div style={{ display:"flex",justifyContent:"center",marginBottom:10 }}>
           <div style={{ display:"flex",alignItems:"center",gap:6,background:"rgba(59,130,246,0.1)",border:"1px solid rgba(59,130,246,0.3)",borderRadius:8,padding:"5px 18px",fontSize:12,fontWeight:800,color:"#3b82f6",letterSpacing:"0.08em" }}>
             🔒 LOCK
@@ -772,8 +772,8 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
         </div>
       )}
 
-      {/* Result strip */}
-      {hasAnyResult && !isLock && (
+      {/* Result strip — only show if subscribed */}
+      {isSubscribed && hasAnyResult && !isLock && (
         <div style={{ display:"flex",gap:6,marginBottom:10 }}>
           {([["PUBLIC",resultPublic],["VEGAS",resultVegas],["WNBA",resultWNBA]]).map(([slot,result])=>{
             if(!result)return null;
@@ -833,7 +833,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
             {isLive ? "🔴 GAME IN PROGRESS — LOCKED" : "⬛ FINAL — ANALYSIS LOCKED"}
           </span>
         </div>
-      ) : !isSubscribed ? (
+      ) : (!isSubscribed) ? (
         <div onClick={()=>{ if(onShowAuth) onShowAuth(); else window.location.href='/settings'; }} style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"10px 0",background:"rgba(7,9,26,0.6)",border:"1px solid rgba(59,130,246,0.2)",borderRadius:8,cursor:"pointer" }}>
           <span style={{ fontSize:13 }}>🔒</span>
           <span style={{ fontSize:10,fontWeight:700,color:"#3b82f6",letterSpacing:"0.08em" }}>SUBSCRIBE TO UNLOCK</span>
@@ -3113,7 +3113,7 @@ export default function VegasVaultApp() {
             <>
             {/* Greeting */}
             <div style={{ marginBottom:18 }}>
-              <h1 style={{ fontSize:22,fontWeight:700,color:"#f1f5f9",letterSpacing:"-0.02em",marginBottom:4 }}>{greeting}, Teztez4real.</h1>
+              <h1 style={{ fontSize:22,fontWeight:700,color:"#f1f5f9",letterSpacing:"-0.02em",marginBottom:4 }}>{greeting}.</h1>
               <p style={{ fontSize:12,color:"#3a4a5e" }}>Vegas Vault AI is scanning <span style={{ color:"#3b82f6",cursor:"pointer" }}>{bookmakerCount > 0 ? `${bookmakerCount} sportsbooks` : "sportsbooks"}...</span></p>
             </div>
 
