@@ -16,22 +16,34 @@ async function runStage(prompt, maxTokens = 800) {
     model: 'claude-sonnet-4-6',
     max_tokens: maxTokens,
     messages: [
-      { role: 'user', content: prompt + '\n\nRespond with ONLY a valid JSON object. No preamble, no markdown, no explanation. Start with { and end with }.' },
+      { role: 'user', content: prompt + '\n\nIMPORTANT: Your entire response must be a single valid JSON object. Start your response with { and end with }. Do not include any text before or after the JSON.' },
     ],
   });
 
-  const raw = msg.content?.[0]?.text || '';
-  const clean = raw.replace(/```json|```/g, '').trim();
+  const raw = (msg.content?.[0]?.text || '').trim();
 
-  try {
-    return JSON.parse(clean);
-  } catch {
-    const match = clean.match(/\{[\s\S]*\}/);
-    if (match) {
-      try { return JSON.parse(match[0]); } catch {}
-    }
-    return null;
+  // Try 1: direct parse
+  try { return JSON.parse(raw); } catch {}
+
+  // Try 2: strip markdown fences
+  const stripped = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+  try { return JSON.parse(stripped); } catch {}
+
+  // Try 3: extract first {...} block
+  const match = stripped.match(/\{[\s\S]*\}/);
+  if (match) {
+    try { return JSON.parse(match[0]); } catch {}
   }
+
+  // Try 4: find JSON start
+  const jsonStart = stripped.indexOf('{');
+  const jsonEnd = stripped.lastIndexOf('}');
+  if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+    try { return JSON.parse(stripped.slice(jsonStart, jsonEnd + 1)); } catch {}
+  }
+
+  console.error('Stage parse failed. Raw response:', raw.slice(0, 200));
+  return null;
 }
 
 function getStages(sport) {
@@ -87,7 +99,9 @@ export async function POST(request) {
     const stages = getStages(sport);
 
     // ── STAGE 1: Data Summary ──────────────────────────────────────────────
-    const stage1 = await runStage(stages.s1(game), 600);
+    let stage1 = await runStage(stages.s1(game), 600);
+    // Retry once if parse failed
+    if (!stage1) stage1 = await runStage(stages.s1(game), 600);
     if (!stage1) return NextResponse.json(passResult('Data summary failed — pass.', slot));
 
     // ── STAGE 2: Edge Filter (GATEKEEPER) ─────────────────────────────────
