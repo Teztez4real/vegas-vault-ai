@@ -855,10 +855,18 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
             </div>
           );
           if (hasRes) return (
-            <div style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"9px 0",background:slotBg,border:`1px solid ${slotBorder}`,borderRadius:8 }}>
+            <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,padding:"9px 12px",background:slotBg,border:`1px solid ${slotBorder}`,borderRadius:8 }}>
               <span style={{ fontSize:9,fontWeight:700,color:slotColor,letterSpacing:"0.08em" }}>
                 {finalized?.[key] ? `🔒 ${game.slot} — FINAL` : `✓ ${game.slot} — ANALYZED`}
               </span>
+              {!finalized?.[key] && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onGenerate(game, game.slot); }}
+                  style={{ fontSize:8,fontWeight:700,color:'#64748b',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:4,padding:'2px 8px',cursor:'pointer',letterSpacing:'0.06em',fontFamily:'inherit' }}
+                >
+                  ↺ RE-ANALYZE
+                </button>
+              )}
             </div>
           );
           return (
