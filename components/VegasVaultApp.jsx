@@ -673,8 +673,10 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
         };
         const awayOdds = fmtOdds(game.dkAwayML) || fmtOdds(game.awayML) || '—';
         const homeOdds = fmtOdds(game.dkHomeML) || fmtOdds(game.homeML) || '—';
-        const spreadVal = game.dkSpread||game.spread||'—';
-        const totalVal = String(game.dkTotal||game.total||'—');
+        const fmtSpread = (v) => (!v || v === 'N/A' || v === 'null' || v === 'undefined') ? null : String(v);
+        const fmtTotal = (v) => (!v || v === 'N/A' || v === 'null' || v === 'undefined') ? null : String(v);
+        const spreadVal = fmtSpread(game.dkSpread) || fmtSpread(game.spread) || '—';
+        const totalVal = fmtTotal(game.dkTotal) || fmtTotal(game.total) || '—';
         const hasMovement = game.lineMovement && !['No significant movement','N/A','No significant movement detected'].includes(game.lineMovement);
         const awayColor = awayOdds.startsWith('-') ? '#f87171' : '#4ade80';
         const homeColor = homeOdds.startsWith('-') ? '#f87171' : '#4ade80';
@@ -2801,8 +2803,8 @@ export default function VegasVaultApp() {
               pinHomeML:     mv.pinHomeML     || game.pinHomeML,
               dkAwayML:      mv.dkAwayML || (game.dkAwayML !== 'N/A' ? game.dkAwayML : null),
               dkHomeML:      mv.dkHomeML || (game.dkHomeML !== 'N/A' ? game.dkHomeML : null),
-              dkSpread:      mv.dkSpread || (game.dkSpread !== 'N/A' ? game.dkSpread : null),
-              dkTotal:       mv.dkTotal  || (game.dkTotal  !== 'N/A' ? game.dkTotal  : null),
+              dkSpread: mv.dkSpread || (game.dkSpread && game.dkSpread !== 'N/A' ? game.dkSpread : null),
+              dkTotal:  mv.dkTotal  || (game.dkTotal  && game.dkTotal  !== 'N/A' ? game.dkTotal  : null),
               // Live price updates from Sharp API
               awayML:        fmtN(mv.currentAwayML) || mv.awayML || (game.awayML !== 'N/A' ? game.awayML : null),
               homeML:        fmtN(mv.currentHomeML) || mv.homeML || (game.homeML !== 'N/A' ? game.homeML : null),
