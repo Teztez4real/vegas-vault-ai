@@ -2910,6 +2910,12 @@ export default function VegasVaultApp() {
   const wnbaFilteredGames = games.filter(g => g.sport === 'WNBA').sort((a,b) => new Date(a.rawTime||a.time) - new Date(b.rawTime||b.time));
 
   async function handleGenerate(game,slot){
+    if (!isSubscribed) { setShowAuth(true); setAuthMode('login'); setAuthError(''); return; }
+    // Lock play once game has started — no changing plays during a game
+    const liveEntry = liveScores?.[game.id];
+    const gameIsLive = liveEntry?.status === 'Live' || liveEntry?.detailedState === 'In Progress';
+    const gameIsFinal = liveEntry?.isFinal || liveEntry?.detailedState === 'Final' || liveEntry?.detailedState === 'Game Over';
+    if (gameIsLive || gameIsFinal) return;
     const key=`${game.id}-${slot}`;
     setGenerating(key); setError(null);
     try{
