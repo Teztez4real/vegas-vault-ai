@@ -114,7 +114,7 @@ export async function POST(request) {
     };
 
     // ── STAGE 2: Edge Filter ───────────────────────────────────────────────
-    const stage2 = await runStage(stages.s2(game, stage1), 800);
+    const stage2 = await runStage(stages.s2(game, stage1), 1000);
     if (!stage2) return NextResponse.json(passResult('Edge analysis failed — please re-analyze.', slot));
 
     // No edge or weak edge → PASS immediately
@@ -135,44 +135,62 @@ export async function POST(request) {
     }
 
     // ── STAGE 3: Market Selection ──────────────────────────────────────────
-    const stage3 = await runStage(stages.s3(game, stage1, stage2), 500);
+    const stage3 = await runStage(stages.s3(game, stage1, stage2), 700);
     if (!stage3?.pick) return NextResponse.json(passResult('Market selection failed — pass.', slot));
 
     // ── STAGE 4: Final Verdict ─────────────────────────────────────────────
-    const stage4 = await runStage(stages.s4(game, stage1, stage2, stage3), 1000);
+    const stage4 = await runStage(stages.s4(game, stage1, stage2, stage3), 2000);
 
-    if (!stage4?.summary) {
-      // Fallback from stages 2+3 if stage 4 parse fails
-      return NextResponse.json({
-        summary: {
-          tier: stage2.confidence === 'HIGH' ? '1' : '2',
-          tierLabel: stage2.confidence === 'HIGH' ? 'LOCK' : 'Tier 2',
-          pick: stage3.pick,
-          betType: stage3.betType,
-          slot,
-          confidence: stage2.confidence,
-          isScamPlay: slot === 'VEGAS',
-          verdict: `${stage3.pick} ${stage3.betType} — ${stage2.edgeReason}`,
-          signalCount: 'N/A',
-          propagandaFade: false,
-        },
-        analysis: {
-          matchupFoundation: `${stage1.awayFacts} vs ${stage1.homeFacts}`,
-          pitching: stage1.pitchingFacts || stage1.matchupFacts || '',
-          situational: stage1.situationalFacts,
-          edgeStrength: stage2.edgeReason,
-          marketLogic: stage3.marketReason,
-        },
-        finalVerdict: `${stage3.pick} ${stage3.betType} — ${stage2.edgeReason}`,
-      });
-    }
+    // Build complete result — use stage4 if available, fill gaps from earlier stages
+    const analysis = stage4?.analysis || {};
 
-    // Ensure required fields
-    if (!stage4.summary.slot) stage4.summary.slot = slot;
-    if (!stage4.summary.isScamPlay) stage4.summary.isScamPlay = slot === 'VEGAS';
-    if (!stage4.analysis) stage4.analysis = {};
+    const result = {
+      summary: stage4?.summary || {
+        tier: stage2.confidence === 'HIGH' ? '1' : '2',
+        tierLabel: stage2.confidence === 'HIGH' ? 'LOCK' : 'Tier 2',
+        pick: stage3.pick,
+        betType: stage3.betType,
+        slot,
+        confidence: stage2.confidence,
+        isScamPlay: slot === 'VEGAS',
+        verdict: `${stage3.pick} ${stage3.betType} — ${stage2.edgeReason}`,
+        signalCount: 'N/A',
+        propagandaFade: stage2.propagandaCheck?.toLowerCase().includes('hype') || false,
+      },
+      analysis: {
+        // From Stage 4 AI output
+        priceVsDataAudit: analysis.priceVsDataAudit || `Line: Away ${game.awayML} Home ${game.homeML}. Edge: ${stage2.edgeReason}`,
+        matchupFoundation: analysis.matchupFoundation || `${stage1.awayFacts} | ${stage1.homeFacts}`,
+        recentForm: analysis.recentForm || stage1.recentForm,
+        headToHead: analysis.headToHead || stage1.headToHead,
+        pitching: analysis.pitching || stage1.pitchingFacts,
+        paceRatings: analysis.paceRatings || stage1.matchupFacts,
+        qbMatchup: analysis.qbMatchup,
+        injuries: analysis.injuries || stage1.injuries,
+        weather: analysis.weather || stage1.weather,
+        situational: analysis.situational || stage1.situationalFacts,
+        trellRule: analysis.trellRule || 'Not triggered',
+        sharpMoney: analysis.sharpMoney || stage1.lineFacts,
+        propaganda: analysis.propaganda || stage2.propagandaCheck,
+        scamPlay: analysis.scamPlay || (slot === 'VEGAS' ? stage2.edgeReason : null),
+        gameScript: analysis.gameScript,
+        marketLogic: analysis.marketLogic || stage3.marketReason,
+        edgeStrength: analysis.edgeStrength || stage2.edgeReason,
+      },
+      finalVerdict: stage4?.finalVerdict || `${stage3.pick} ${stage3.betType} — ${stage2.edgeReason}`,
+    };
 
-    return NextResponse.json(stage4);
+    // Clean up null/undefined fields
+    Object.keys(result.analysis).forEach(k => {
+      if (!result.analysis[k] || result.analysis[k] === 'N/A' || result.analysis[k] === 'undefined') {
+        delete result.analysis[k];
+      }
+    });
+
+    result.summary.slot = slot;
+    result.summary.isScamPlay = slot === 'VEGAS';
+
+    return NextResponse.json(result);
 
   } catch (err) {
     console.error('Generate error:', err.message);
