@@ -17,12 +17,11 @@ export async function POST(req) {
       model: 'claude-sonnet-4-6',
       max_tokens: 2000,
       messages: [
-        { role: 'user', content: prompt },
-        { role: 'assistant', content: '{' }, // Force JSON start
+        { role: 'user', content: prompt + '\n\nRespond with ONLY a valid JSON object. No preamble, no markdown. Start with { and end with }.' },
       ],
     });
 
-    const raw = '{' + (message.content?.[0]?.text || '');
+    const raw = message.content?.[0]?.text || '';
     // Extract JSON — find the outermost { }
     let result;
     try {

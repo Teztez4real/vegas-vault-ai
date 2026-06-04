@@ -16,12 +16,11 @@ async function runStage(prompt, maxTokens = 800) {
     model: 'claude-sonnet-4-6',
     max_tokens: maxTokens,
     messages: [
-      { role: 'user', content: prompt },
-      { role: 'assistant', content: '{' },
+      { role: 'user', content: prompt + '\n\nRespond with ONLY a valid JSON object. No preamble, no markdown, no explanation. Start with { and end with }.' },
     ],
   });
 
-  const raw = '{' + (msg.content?.[0]?.text || '');
+  const raw = msg.content?.[0]?.text || '';
   const clean = raw.replace(/```json|```/g, '').trim();
 
   try {
