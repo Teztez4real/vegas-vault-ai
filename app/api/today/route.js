@@ -344,9 +344,14 @@ async function assembleMLBGame(game, oddsMap) {
     const awayPitcher = game.teams?.away?.probablePitcher?.fullName || 'TBD';
     const homePitcher = game.teams?.home?.probablePitcher?.fullName || 'TBD';
 
-    // Series context
-    const seriesGame = game.seriesGameNumber || 1;
-    const seriesLength = game.gamesInSeries || 3;
+    // Series context — MLB API fields
+    const seriesGame = game.seriesGameNumber || game.gameNumber || 1;
+    const seriesLength = game.gamesInSeries || game.scheduledInnings || 3;
+    // Also try to extract from description e.g. "Game 2 of 3"
+    const descMatch = (game.description || game.seriesDescription || '').match(/Game (\d+) of (\d+)/i);
+    const finalSeriesGame = descMatch ? parseInt(descMatch[1]) : seriesGame;
+    const finalSeriesLength = descMatch ? parseInt(descMatch[2]) : seriesLength;
+    console.log(`Series context for ${away}@${home}: Game ${finalSeriesGame} of ${finalSeriesLength} | raw seriesGameNumber=${game.seriesGameNumber} gamesInSeries=${game.gamesInSeries} description="${game.description || ''}"`);
 
     // Pitcher IDs for detailed stats fetch
     const awayPitcherId = game.teams?.away?.probablePitcher?.id;
@@ -447,8 +452,9 @@ async function assembleMLBGame(game, oddsMap) {
       cbsPreview: `${away} @ ${home} — check CBS Sports for full preview and public narrative`,
       seriesGame,
       seriesLength,
-      seriesContext: `Game ${seriesGame} of ${seriesLength}${seriesLength === 3 ? ' (3-game series)' : seriesLength === 4 ? ' (4-game series)' : ''}${seriesGame === seriesLength ? ' — SERIES FINALE' : seriesGame === 1 ? ' — SERIES OPENER' : ''}`,
-      gameNumber: seriesGame,
+      seriesContext: `Game ${finalSeriesGame} of ${finalSeriesLength}${finalSeriesGame === finalSeriesLength ? ' — SERIES FINALE' : finalSeriesGame === 1 ? ' — Series Opener' : ''}`,
+      gameNumber: finalSeriesGame,
+      gamesInSeries: finalSeriesLength,
       slot: null,
     };
   } catch { return null; }
