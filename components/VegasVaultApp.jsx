@@ -3125,15 +3125,15 @@ export default function VegasVaultApp() {
 
             {/* ── VIEW ROUTER ── */}
             {activeTab==='ALERTS' ? (
-              {isSubscribed ? <AlertsView betReadyAlerts={betReadyAlerts} trellAlerts={trellAlerts} games={games} results={results} pickHistory={pickHistory} watchlist={watchlist}/> : <SubscribeLock feature="Alerts"/>}
+              isSubscribed ? <AlertsView betReadyAlerts={betReadyAlerts} trellAlerts={trellAlerts} games={games} results={results} pickHistory={pickHistory} watchlist={watchlist}/> : <SubscribeLock feature="Alerts"/>
             ) : activeTab==='WATCHLIST' ? (
-              {isSubscribed ? <WatchlistView watchlist={watchlist} toggleWatch={toggleWatch} games={games} results={results} finalized={finalized}/> : <SubscribeLock feature="Watchlist"/>}
+              isSubscribed ? <WatchlistView watchlist={watchlist} toggleWatch={toggleWatch} games={games} results={results} finalized={finalized}/> : <SubscribeLock feature="Watchlist"/>
             ) : activeNav==='SHARP MONEY' ? (
-              {isSubscribed ? <SharpMoneyView games={games} marketScanner={marketScanner}/> : <SubscribeLock feature="Sharp Money"/>}
+              isSubscribed ? <SharpMoneyView games={games} marketScanner={marketScanner}/> : <SubscribeLock feature="Sharp Money"/>
             ) : activeNav==='VAULT LOCKS' ? (
-              {isSubscribed ? <VaultLocksView results={results} games={games} finalized={finalized}/> : <SubscribeLock feature="Vault Locks"/>}
+              isSubscribed ? <VaultLocksView results={results} games={games} finalized={finalized}/> : <SubscribeLock feature="Vault Locks"/>
             ) : activeNav==='AI ANALYZER' ? (
-              {isSubscribed ? <AIAnalyzerView games={games} results={results} generating={generating} onGenerate={handleGenerate} isSubscribed={isSubscribed}/> : <SubscribeLock feature="AI Analyzer"/>}
+              isSubscribed ? <AIAnalyzerView games={games} results={results} generating={generating} onGenerate={handleGenerate} isSubscribed={isSubscribed}/> : <SubscribeLock feature="AI Analyzer"/>
             ) : activeNav==="TODAY'S SLATE" ? (
               <TodaySlateView games={games} results={results} generating={generating} onGenerate={handleGenerate} liveScores={liveScores} isSubscribed={isSubscribed} finalized={finalized} onShowAuth={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}} preAnalyzeQueue={preAnalyzeQueue} betReadyAlerts={betReadyAlerts}/>
             ) : activeNav==='PROPS AI' ? (
