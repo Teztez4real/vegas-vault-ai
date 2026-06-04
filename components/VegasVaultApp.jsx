@@ -1524,25 +1524,29 @@ function SharpMoneyView({ games, marketScanner }) {
 // ── VAULT LOCKS VIEW ──────────────────────────────────────────────────────────
 function VaultLocksView({ results, games, finalized }) {
   const locks = Object.entries(results)
-    .filter(([key, val]) => {
-      const tier = val?.summary?.tier || val?.tier;
-      const label = val?.summary?.tierLabel || val?.tierLabel || '';
-      return tier === '1' || label === 'LOCK';
-    })
+    .filter(([key, val]) => { const s = typeof val === 'string' ? val : JSON.stringify(val||''); return s.includes('Tier 1') || s.includes('LOCK') || s.includes('🔒'); })
     .map(([key, val]) => {
-      const parts = key.split('-');
-      const slot = parts[parts.length - 1];
-      const gameId = parts.slice(0, -1).join('-');
+      const [gameId, slot] = key.split('-');
       const game = games.find(g => String(g.id) === gameId);
-      const summary = val?.summary || val;
-      return { key, slot, game, summary };
+      return { key, slot, game, analysis: val };
     });
+
+  // Extract pick line from analysis
+  function extractPick(analysis) {
+    const lines = analysis.split('\n');
+    for (const line of lines) {
+      if (line.includes('FINAL PICK') || line.includes('Final Pick') || line.includes('BET:') || line.includes('PLAY:')) {
+        return line.replace(/[*#]/g,'').trim().slice(0,80);
+      }
+    }
+    return 'See full analysis';
+  }
 
   return (
     <div>
       <div style={{ marginBottom:20 }}>
         <h1 style={{ fontSize:22,fontWeight:700,color:'#f1f5f9',letterSpacing:'-0.02em',marginBottom:4 }}>🔒 Vault Locks</h1>
-        <p style={{ fontSize:12,color:'#3a4a5e' }}>{locks.length} Tier 1 lock{locks.length !== 1 ? 's' : ''} identified today</p>
+        <p style={{ fontSize:12,color:'#3a4a5e' }}>{locks.length} Tier 1 locks identified today</p>
       </div>
 
       {locks.length === 0 ? (
@@ -1551,19 +1555,16 @@ function VaultLocksView({ results, games, finalized }) {
           <div style={{ fontSize:14,fontWeight:600,color:'#2d3a4a',marginBottom:6 }}>No locks generated yet</div>
           <div style={{ fontSize:12,color:'#1e2a3a' }}>Generate game analyses — Tier 1 picks appear here automatically.</div>
         </div>
-      ) : locks.map((lock) => (
-        <div key={lock.key} style={{ background:'rgba(74,222,128,0.05)',border:'1px solid rgba(74,222,128,0.3)',borderRadius:12,padding:'16px',marginBottom:12 }}>
+      ) : locks.map((lock,i) => (
+        <div key={lock.key} style={{ background:'rgba(201,162,39,0.06)',border:'1px solid rgba(59,130,246,0.3)',borderRadius:12,padding:'16px',marginBottom:12 }}>
           <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:8 }}>
             <span style={{ fontSize:16 }}>🔒</span>
             <span style={{ fontSize:9,fontWeight:700,color:lock.slot==='VEGAS'?'#f87171':'#60a5fa',background:lock.slot==='VEGAS'?'rgba(248,113,113,0.1)':'rgba(96,165,250,0.1)',borderRadius:4,padding:'1px 6px' }}>{lock.slot}</span>
             {lock.game && <span style={{ fontSize:12,fontWeight:700,color:'#f1f5f9' }}>{lock.game.away?.split(' ').pop()} @ {lock.game.home?.split(' ').pop()}</span>}
             {lock.game && <span style={{ fontSize:10,color:'#3a4a5e' }}>{lock.game.time}</span>}
           </div>
-          <div style={{ fontSize:15,fontWeight:800,color:'#4ade80',marginBottom:4 }}>
-            {lock.summary?.pick} {lock.summary?.betType}
-          </div>
-          <div style={{ fontSize:11,color:'#94a3b8',lineHeight:1.5 }}>{lock.summary?.verdict}</div>
-          {finalized?.[lock.key] && <span style={{ fontSize:9,color:'#475569',background:'rgba(255,255,255,0.04)',borderRadius:4,padding:'2px 6px',marginTop:6,display:'inline-block' }}>FINALIZED</span>}
+          <div style={{ fontSize:12,fontWeight:700,color:'#3b82f6',marginBottom:6 }}>{extractPick(lock.analysis)}</div>
+          {finalized?.[lock.key] && <span style={{ fontSize:9,color:'#475569',background:'rgba(255,255,255,0.04)',borderRadius:4,padding:'2px 6px' }}>FINALIZED</span>}
         </div>
       ))}
     </div>
