@@ -570,15 +570,15 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
       onClick={()=>hasAnyResult&&onCardClick(game)}
       style={{
         background: isLock ? "linear-gradient(145deg,#0d1a10,#081210)" : "#0a0f1c",
-        border: `1px solid ${isLock?"rgba(74,222,128,0.3)":hasAnyResult?(tier?.border||"rgba(59,130,246,0.2)"):"rgba(59,130,246,0.12)"}`,
+        border: `1px solid ${(isLock&&isSubscribed)?"rgba(74,222,128,0.3)":hasAnyResult&&isSubscribed?(tier?.border||"rgba(59,130,246,0.2)"):"rgba(59,130,246,0.12)"}`,
         borderRadius:12, padding:"14px 16px",
         cursor:hasAnyResult?"pointer":"default",
         position:"relative", overflow:"hidden",
-        boxShadow: isLock ? "0 0 30px rgba(74,222,128,0.08)" : "none",
+        boxShadow: (isLock && isSubscribed) ? "0 0 30px rgba(74,222,128,0.08)" : "none",
       }}
     >
       {/* Gold glow top border for locks */}
-      {isLock && <div style={{ position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,transparent,#3b82f6 40%,#3b82f6 60%,transparent)" }} />}
+      {isLock && isSubscribed && <div style={{ position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,transparent,#3b82f6 40%,#3b82f6 60%,transparent)" }} />}
 
       {/* Header row */}
       <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
@@ -603,7 +603,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
           {hasAnyResult && (bestResult?.error || bestResult?.parseError) && (
             <span style={{ fontSize:9,fontWeight:700,color:"#f87171",background:"rgba(248,113,113,0.1)",border:"1px solid rgba(248,113,113,0.3)",borderRadius:4,padding:"2px 8px",letterSpacing:"0.06em" }}>⚠ RE-ANALYZE</span>
           )}
-          {betReady && !gameStarted && (
+          {betReady && !gameStarted && isSubscribed && (
             <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.06em",color:"#000",background:"linear-gradient(135deg,#3b82f6,#f59e0b)",padding:"2px 10px",borderRadius:4,animation:"pulse 1.5s infinite" }}>🎯 BET NOW</span>
           )}
           {!betReady && finalized && (finalized[`${game.id}-PUBLIC`] || finalized[`${game.id}-VEGAS`]) && (
@@ -678,7 +678,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
       <div style={{ marginBottom:12 }}>
         <div style={{ display:"flex",justifyContent:"space-between",marginBottom:5 }}>
           <span style={{ fontSize:8,color:"#1d4ed8",fontWeight:700,letterSpacing:"0.08em" }}>PUBLIC BETTING {publicPct}%</span>
-          <span style={{ fontSize:8,color:"#059669",fontWeight:700,letterSpacing:"0.08em" }}>SHARP MONEY {sharpPct}%</span>
+          {isSubscribed && <span style={{ fontSize:8,color:"#059669",fontWeight:700,letterSpacing:"0.08em" }}>SHARP MONEY {sharpPct}%</span>}
         </div>
         <div style={{ height:3,borderRadius:2,overflow:"hidden",display:"flex",background:"rgba(255,255,255,0.04)" }}>
           <div style={{ width:`${publicPct}%`,background:"linear-gradient(90deg,#1e40af,#3b82f6)",borderRadius:"2px 0 0 2px" }} />
@@ -754,7 +754,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
                 </div>
               </div>
             </div>
-            {hasMovement && (
+            {hasMovement && isSubscribed && (
               <div style={{ marginTop:5,padding:'4px 8px',background:'rgba(248,113,113,0.06)',border:'1px solid rgba(248,113,113,0.2)',borderRadius:6,fontSize:9,color:'#f87171',fontWeight:600 }}>
                 ⚡ {game.lineMovement}
               </div>
@@ -1517,6 +1517,19 @@ function SharpMoneyView({ games, marketScanner }) {
           <div style={{ fontSize:13,color:'#2d3a4a' }}>No sharp signals detected yet.<br/>Lines are stable across all games.</div>
         </div>
       )}
+    </div>
+  );
+}
+
+
+// ── SUBSCRIBE LOCK PLACEHOLDER ────────────────────────────────────────────────
+function SubscribeLock({ feature }) {
+  return (
+    <div style={{ display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'60px 20px',textAlign:'center' }}>
+      <div style={{ fontSize:36,marginBottom:16 }}>🔒</div>
+      <div style={{ fontSize:18,fontWeight:800,color:'#f1f5f9',marginBottom:8 }}>{feature}</div>
+      <div style={{ fontSize:13,color:'#475569',marginBottom:24,lineHeight:1.6 }}>Subscribe to unlock {feature} and all Vegas Vault AI features.</div>
+      <div style={{ fontSize:10,fontWeight:700,color:'#3b82f6',background:'rgba(59,130,246,0.1)',border:'1px solid rgba(59,130,246,0.3)',borderRadius:8,padding:'10px 24px',letterSpacing:'0.08em' }}>SUBSCRIBE TO UNLOCK</div>
     </div>
   );
 }
@@ -3106,15 +3119,15 @@ export default function VegasVaultApp() {
 
             {/* ── VIEW ROUTER ── */}
             {activeTab==='ALERTS' ? (
-              <AlertsView betReadyAlerts={betReadyAlerts} trellAlerts={trellAlerts} games={games} results={results} pickHistory={pickHistory} watchlist={watchlist}/>
+              {isSubscribed ? <AlertsView betReadyAlerts={betReadyAlerts} trellAlerts={trellAlerts} games={games} results={results} pickHistory={pickHistory} watchlist={watchlist}/> : <SubscribeLock feature="Alerts"/>}
             ) : activeTab==='WATCHLIST' ? (
-              <WatchlistView watchlist={watchlist} toggleWatch={toggleWatch} games={games} results={results} finalized={finalized}/>
+              {isSubscribed ? <WatchlistView watchlist={watchlist} toggleWatch={toggleWatch} games={games} results={results} finalized={finalized}/> : <SubscribeLock feature="Watchlist"/>}
             ) : activeNav==='SHARP MONEY' ? (
-              <SharpMoneyView games={games} marketScanner={marketScanner}/>
+              {isSubscribed ? <SharpMoneyView games={games} marketScanner={marketScanner}/> : <SubscribeLock feature="Sharp Money"/>}
             ) : activeNav==='VAULT LOCKS' ? (
-              <VaultLocksView results={results} games={games} finalized={finalized}/>
+              {isSubscribed ? <VaultLocksView results={results} games={games} finalized={finalized}/> : <SubscribeLock feature="Vault Locks"/>}
             ) : activeNav==='AI ANALYZER' ? (
-              <AIAnalyzerView games={games} results={results} generating={generating} onGenerate={handleGenerate} isSubscribed={isSubscribed}/>
+              {isSubscribed ? <AIAnalyzerView games={games} results={results} generating={generating} onGenerate={handleGenerate} isSubscribed={isSubscribed}/> : <SubscribeLock feature="AI Analyzer"/>}
             ) : activeNav==="TODAY'S SLATE" ? (
               <TodaySlateView games={games} results={results} generating={generating} onGenerate={handleGenerate} liveScores={liveScores} isSubscribed={isSubscribed} finalized={finalized} onShowAuth={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}} preAnalyzeQueue={preAnalyzeQueue} betReadyAlerts={betReadyAlerts}/>
             ) : activeNav==='PROPS AI' ? (
