@@ -503,7 +503,7 @@ function PlayResult({ result, game, onClose, isResolved, resolvedResult }) {
 
 // ── GAME CARD — matches reference image exactly ───────────────────────────────
 
-function GameCard({ game, onGenerate, results, generating, onCardClick, liveScores, isSubscribed, finalized, isQueued, betReady, onShowAuth, watchlist, onToggleWatch }) {
+function GameCard({ game, onGenerate, results, generating, onCardClick, liveScores, isSubscribed, finalized, isQueued, betReady, onShowAuth, watchlist, onToggleWatch, pickHistory }) {
   const resultPublic = results[`${game.id}-PUBLIC`];
   const resultWNBA   = null;
   const resultVegas  = results[`${game.id}-VEGAS`];
@@ -854,21 +854,35 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
               <span style={{ fontSize:10,fontWeight:600,color:slotColor,letterSpacing:"0.06em" }}>ANALYZING {game.slot}…</span>
             </div>
           );
-          if (hasRes) return (
-            <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,padding:"9px 12px",background:slotBg,border:`1px solid ${slotBorder}`,borderRadius:8 }}>
-              <span style={{ fontSize:9,fontWeight:700,color:slotColor,letterSpacing:"0.08em" }}>
-                {finalized?.[key] ? `🔒 ${game.slot} — FINAL` : `✓ ${game.slot} — ANALYZED`}
-              </span>
-              {!finalized?.[key] && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); onGenerate(game, game.slot); }}
-                  style={{ fontSize:8,fontWeight:700,color:'#64748b',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:4,padding:'2px 8px',cursor:'pointer',letterSpacing:'0.06em',fontFamily:'inherit' }}
-                >
-                  ↺ RE-ANALYZE
-                </button>
-              )}
-            </div>
-          );
+          if (hasRes) {
+            // Look up win/loss from pick history
+            const historyEntry = pickHistory?.find(p => p.key === key);
+            const pickResult = historyEntry?.result || null;
+            const isWin = pickResult === 'win';
+            const isLoss = pickResult === 'loss';
+            const resultColor = isWin ? '#22c55e' : isLoss ? '#f87171' : slotColor;
+            const resultBg = isWin ? 'rgba(34,197,94,0.08)' : isLoss ? 'rgba(248,113,113,0.08)' : slotBg;
+            const resultBorder = isWin ? 'rgba(34,197,94,0.4)' : isLoss ? 'rgba(248,113,113,0.4)' : slotBorder;
+            return (
+              <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,padding:"9px 12px",background:resultBg,border:`1px solid ${resultBorder}`,borderRadius:8 }}>
+                <div style={{ display:'flex',alignItems:'center',gap:6 }}>
+                  {isWin && <span style={{ fontSize:14 }}>✅</span>}
+                  {isLoss && <span style={{ fontSize:14 }}>❌</span>}
+                  <span style={{ fontSize:9,fontWeight:700,color:resultColor,letterSpacing:"0.08em" }}>
+                    {isWin ? `WIN — ${game.slot}` : isLoss ? `LOSS — ${game.slot}` : finalized?.[key] ? `🔒 ${game.slot} — FINAL` : `✓ ${game.slot} — ANALYZED`}
+                  </span>
+                </div>
+                {!finalized?.[key] && !pickResult && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onGenerate(game, game.slot); }}
+                    style={{ fontSize:8,fontWeight:700,color:'#64748b',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:4,padding:'2px 8px',cursor:'pointer',letterSpacing:'0.06em',fontFamily:'inherit' }}
+                  >
+                    ↺ RE-ANALYZE
+                  </button>
+                )}
+              </div>
+            );
+          }
           return (
             isWNBAGame ? (
               <div onClick={()=>onGenerate(game, 'WNBA')} style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"9px 0",background:"rgba(192,132,252,0.08)",border:"1px solid rgba(192,132,252,0.25)",borderRadius:8,cursor:"pointer" }}>
@@ -3223,7 +3237,7 @@ export default function VegasVaultApp() {
                 )}
                 <div className="vv-cards">
                   {filteredGames.map(game=>(
-                    <GameCard key={game.id} game={game} results={results} generating={generating} onGenerate={handleGenerate} onCardClick={handleCardClick} liveScores={liveScores} isSubscribed={isSubscribed} finalized={finalized} isQueued={preAnalyzeQueue.some(q=>q.game.id===game.id)} betReady={betReadyAlerts[`${game.id}-PUBLIC`]||betReadyAlerts[`${game.id}-VEGAS`]} onShowAuth={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}} watchlist={watchlist} onToggleWatch={toggleWatch}/>
+                    <GameCard key={game.id} game={game} results={results} generating={generating} onGenerate={handleGenerate} onCardClick={handleCardClick} liveScores={liveScores} isSubscribed={isSubscribed} finalized={finalized} isQueued={preAnalyzeQueue.some(q=>q.game.id===game.id)} betReady={betReadyAlerts[`${game.id}-PUBLIC`]||betReadyAlerts[`${game.id}-VEGAS`]} onShowAuth={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}} watchlist={watchlist} onToggleWatch={toggleWatch} pickHistory={pickHistory}/>
                   ))}
                 </div>
               </>
