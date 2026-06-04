@@ -42,7 +42,22 @@ async function runStage(prompt, maxTokens = 800) {
     try { return JSON.parse(stripped.slice(jsonStart, jsonEnd + 1)); } catch {}
   }
 
-  console.error('Stage parse failed. Raw response:', raw.slice(0, 200));
+  console.error('Stage parse failed. Raw:', raw.slice(0, 500));
+  
+  // Last resort: try to manually extract key-value pairs and build object
+  try {
+    const obj = {};
+    const kvPattern = /"([^"]+)"\s*:\s*"([^"]*(?:\\.[^"]*)*)"/g;
+    let kv;
+    while ((kv = kvPattern.exec(stripped)) !== null) {
+      obj[kv[1]] = kv[2];
+    }
+    if (Object.keys(obj).length > 0) {
+      console.log('Recovered via KV extraction:', Object.keys(obj).join(','));
+      return obj;
+    }
+  } catch {}
+  
   return null;
 }
 
@@ -98,15 +113,15 @@ export async function POST(request) {
     const sport = game.sport || 'MLB';
     const stages = getStages(sport);
 
-    // ── STAGE 1: Data Summary ──────────────────────────────────────────────
-    let stage1 = await runStage(stages.s1(game), 600);
-    // Retry once if parse failed
-    if (!stage1) stage1 = await runStage(stages.s1(game), 600);
-    if (!stage1) return NextResponse.json(passResult('Data summary failed — pass.', slot));
+    // ── STAGE 1+2: Data Summary + Edge Filter ─────────────────────────────
+    // Run Stage 1 first
+    let stage1 = await runStage(stages.s1(game), 700);
+    if (!stage1) stage1 = await runStage(stages.s1(game), 700); // retry once
+    if (!stage1) return NextResponse.json(passResult('Data collection failed — please re-analyze.', slot));
 
-    // ── STAGE 2: Edge Filter (GATEKEEPER) ─────────────────────────────────
-    const stage2 = await runStage(stages.s2(game, stage1), 700);
-    if (!stage2) return NextResponse.json(passResult('Edge analysis failed — pass.', slot));
+    // Then Stage 2 using Stage 1 output
+    const stage2 = await runStage(stages.s2(game, stage1), 800);
+    if (!stage2) return NextResponse.json(passResult('Edge analysis failed — please re-analyze.', slot));
 
     // No edge or weak edge → PASS immediately
     if (!stage2.edgeExists || stage2.edgeSide === 'PASS') {
