@@ -1772,6 +1772,9 @@ function PropsAIView({ games, isSubscribed }) {
   const SPORT_ACCENT = { MLB:'#3b82f6', NBA:'#f97316', NFL:'#22c55e', Tennis:'#a78bfa', WNBA:'#f472b6', ALL:'#64748b' };
 
   // Fetch props from Odds API for today's games
+  // Subscription gate — after all hooks
+  const _notSubscribed = !isSubscribed;
+
   useLocalEffect(() => {
     if (!games.length) return;
     setLoadingProps(true);
@@ -1841,7 +1844,9 @@ function PropsAIView({ games, isSubscribed }) {
           <div style={{ fontSize:13,color:'#475569',marginBottom:24,lineHeight:1.6 }}>Subscribe to unlock player and game props analysis across all sports.</div>
           <div style={{ fontSize:10,fontWeight:700,color:'#3b82f6',background:'rgba(59,130,246,0.1)',border:'1px solid rgba(59,130,246,0.3)',borderRadius:8,padding:'10px 24px',letterSpacing:'0.08em' }}>SUBSCRIBE TO UNLOCK</div>
         </div>
-      ) : (<>
+      ) : null}
+
+      {isSubscribed && <>
 
       {/* ── Header ── */}
       <div style={{ marginBottom:20, paddingBottom:16, borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
@@ -2005,6 +2010,8 @@ function PropsAIView({ games, isSubscribed }) {
         );
       })}
 
+      </>}
+
       {/* ── Result Modal ── */}
       {activeProp && activeResult && (
         <div style={{ position:'fixed',inset:0,background:'rgba(0,0,10,0.88)',zIndex:9999,display:'flex',alignItems:'flex-end',justifyContent:'center' }}
@@ -2100,7 +2107,6 @@ function PropsAIView({ games, isSubscribed }) {
         </div>
       )}
     </div>
-    </>}
   );
 }
 
