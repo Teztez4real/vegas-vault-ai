@@ -99,13 +99,21 @@ export async function POST(request) {
     const sport = game.sport || 'MLB';
     const stages = getStages(sport);
 
-    // ── STAGE 1+2: Data Summary + Edge Filter ─────────────────────────────
-    // Run Stage 1 first
-    let stage1 = await runStage(stages.s1(game), 700);
-    if (!stage1) stage1 = await runStage(stages.s1(game), 700); // retry once
-    if (!stage1) return NextResponse.json(passResult('Data collection failed — please re-analyze.', slot));
+    // ── STAGE 1: Build data summary directly from game object (no AI call) ──
+    const stage1 = {
+      awayFacts: `${game.away}: ${game.awayRecord || 'N/A'} | L5: ${game.awayLast5 || 'N/A'} | L10: ${game.awayLast10 || 'N/A'} | Streak: ${game.awayStreak || 'N/A'}`,
+      homeFacts: `${game.home}: ${game.homeRecord || 'N/A'} | L5: ${game.homeLast5 || 'N/A'} | L10: ${game.homeLast10 || 'N/A'} | Streak: ${game.homeStreak || 'N/A'}`,
+      recentForm: `Away L5 ${game.awayLast5 || 'N/A'} L10 ${game.awayLast10 || 'N/A'} | Home L5 ${game.homeLast5 || 'N/A'} L10 ${game.homeLast10 || 'N/A'}`,
+      headToHead: `Overall: ${game.h2hLast5 || 'N/A'} | At home venue: ${game.h2hAtHome || 'N/A'}`,
+      pitchingFacts: `Away: ${game.awayPitcher || 'TBD'} ${game.awayPitcherStats || ''} | Home: ${game.homePitcher || 'TBD'} ${game.homePitcherStats || ''}`,
+      matchupFacts: `Away PPG ${game.awayPPG || 'N/A'} OppPPG ${game.awayOppPPG || 'N/A'} | Home PPG ${game.homePPG || 'N/A'} OppPPG ${game.homeOppPPG || 'N/A'} | Pace Away ${game.awayPace || 'N/A'} Home ${game.homePace || 'N/A'}`,
+      situationalFacts: `Series: ${game.seriesContext || 'N/A'} | Week: ${game.week || 'N/A'}`,
+      injuries: game.injuries || 'None reported',
+      weather: game.weather || 'N/A',
+      lineFacts: `ML Away ${game.awayML || 'N/A'} Home ${game.homeML || 'N/A'} | Spread ${game.spread || 'N/A'} (Away ${game.awaySpreadPrice || '-110'} Home ${game.homeSpreadPrice || '-110'}) | Total ${game.total || 'N/A'} (o${game.overPrice || '-110'} u${game.underPrice || '-110'}) | Movement: ${game.lineMovement || 'None'} | Sharp: ${game.sharpSignal || 'None'}`,
+    };
 
-    // Then Stage 2 using Stage 1 output
+    // ── STAGE 2: Edge Filter ───────────────────────────────────────────────
     const stage2 = await runStage(stages.s2(game, stage1), 800);
     if (!stage2) return NextResponse.json(passResult('Edge analysis failed — please re-analyze.', slot));
 
