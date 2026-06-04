@@ -157,6 +157,7 @@ async function fetchOdds(sport) {
       const home = (game.home_team || '').trim();
       const key = `${away}@${home}`;
       let awayML = 'N/A', homeML = 'N/A', spread = 'N/A', total = 'N/A';
+      let awaySpreadPrice = null, homeSpreadPrice = null, overPrice = null, underPrice = null;
       const bookPrices = {};
       const _raw = {};
 
@@ -175,10 +176,18 @@ async function fetchOdds(sport) {
             if (o.name === home) { bookPrices[label].home = fmt(o.price); _raw[bm.key].home = o.price; }
           });
           if (mkt.key === 'spreads') mkt.outcomes?.forEach(o => {
-            if (o.name === home && spread === 'N/A') spread = o.point > 0 ? `+${o.point}` : `${o.point}`;
+            if (o.name === home && spread === 'N/A') {
+              spread = o.point > 0 ? `+${o.point}` : `${o.point}`;
+              homeSpreadPrice = fmt(o.price);
+            }
+            if (o.name === away && !awaySpreadPrice) {
+              awaySpreadPrice = fmt(o.price);
+            }
           });
           if (mkt.key === 'totals') mkt.outcomes?.forEach(o => {
             if (o.name === 'Over' && total === 'N/A') total = o.point;
+            if (o.name === 'Over' && !overPrice) overPrice = fmt(o.price);
+            if (o.name === 'Under' && !underPrice) underPrice = fmt(o.price);
           });
         });
       });
@@ -194,7 +203,7 @@ async function fetchOdds(sport) {
       if (b365 && dk && Math.abs(b365-dk) >= 10) signals.push(`B365 ${fmt(b365)} vs DK ${fmt(dk)} — sharp on ${b365<dk?away.split(' ').pop():home.split(' ').pop()}`);
       if (fd && dk && Math.abs(fd-dk) >= 8) signals.push(`FD ${fmt(fd)} vs DK ${fmt(dk)} — divergence on ${fd<dk?away.split(' ').pop():home.split(' ').pop()}`);
 
-      oddsMap[key] = { awayML, homeML, spread, total, openingAwayML: pricingStr||'N/A', openingHomeML: pricingStr||'N/A', lineMovement: signals.join(' | ')||'No significant movement', pricingStr };
+      oddsMap[key] = { awayML, homeML, spread, total, awaySpreadPrice: awaySpreadPrice||'-110', homeSpreadPrice: homeSpreadPrice||'-110', overPrice: overPrice||'-110', underPrice: underPrice||'-110', openingAwayML: pricingStr||'N/A', openingHomeML: pricingStr||'N/A', lineMovement: signals.join(' | ')||'No significant movement', pricingStr };
     });
 
     console.log('OddsMap keys:', Object.keys(oddsMap).join(' | '));
@@ -387,6 +396,10 @@ async function assembleMLBGame(game, oddsMap) {
       dkHomeML: odds.homeML || 'N/A',
       dkSpread: odds.spread || 'N/A',
       dkTotal: odds.total || 'N/A',
+      awaySpreadPrice: odds.awaySpreadPrice || '-110',
+      homeSpreadPrice: odds.homeSpreadPrice || '-110',
+      overPrice: odds.overPrice || '-110',
+      underPrice: odds.underPrice || '-110',
       openingAwayML: odds.pricingStr || odds.openingAwayML || 'N/A',
       openingHomeML: odds.pricingStr || odds.openingHomeML || 'N/A',
       spread: odds.spread || 'N/A',
@@ -656,6 +669,7 @@ async function fetchNBAGames(date) {
       const away = game.away_team;
       const home = game.home_team;
       let awayML = 'N/A', homeML = 'N/A', spread = 'N/A', total = 'N/A';
+      let awaySpreadPrice = null, homeSpreadPrice = null, overPrice = null, underPrice = null;
       game.bookmakers?.[0]?.markets?.forEach(mkt => {
         if (mkt.key === 'h2h') mkt.outcomes?.forEach(o => {
           if (o.name === away) awayML = fmt(o.price);
@@ -731,6 +745,10 @@ async function fetchNBAGames(date) {
         homeStreak: homeForm.streak,
         h2hLast5: h2h?.overall || h2h,
         h2hAtHome: h2h?.atHome || h2h,
+        awaySpreadPrice: game.awaySpreadPrice || '-110',
+        homeSpreadPrice: game.homeSpreadPrice || '-110',
+        overPrice: game.overPrice || '-110',
+        underPrice: game.underPrice || '-110',
         isPlayoffs: playoffCtx.isPlayoffs,
         playoffContext: playoffCtx.context,
         playoffGameNumber: playoffCtx.gameNumber,
@@ -916,6 +934,7 @@ async function fetchWNBAGames(date) {
       const away = game.away_team;
       const home = game.home_team;
       let awayML = 'N/A', homeML = 'N/A', spread = 'N/A', total = 'N/A';
+      let awaySpreadPrice = null, homeSpreadPrice = null, overPrice = null, underPrice = null;
 
       // Per-book pricing for discrepancy analysis
       const PRIORITY = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'bet365'];
