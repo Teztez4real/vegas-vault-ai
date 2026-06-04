@@ -2100,7 +2100,7 @@ function PropsAIView({ games, isSubscribed }) {
         </div>
       )}
     </div>
-    </>)}
+    </>}
   );
 }
 
