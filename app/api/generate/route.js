@@ -22,42 +22,28 @@ async function runStage(prompt, maxTokens = 800) {
 
   const raw = (msg.content?.[0]?.text || '').trim();
 
-  // Try 1: direct parse
-  try { return JSON.parse(raw); } catch {}
+  // Strip ALL variations of markdown fences first
+  const stripped = raw
+    .replace(/^```json\s*/i, '')
+    .replace(/^```\s*/i, '')
+    .replace(/```\s*$/i, '')
+    .trim();
 
-  // Try 2: strip markdown fences
-  const stripped = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+  // Try 1: direct parse of stripped
   try { return JSON.parse(stripped); } catch {}
 
-  // Try 3: extract first {...} block
-  const match = stripped.match(/\{[\s\S]*\}/);
-  if (match) {
-    try { return JSON.parse(match[0]); } catch {}
+  // Try 2: find outermost { } block
+  const start = stripped.indexOf('{');
+  const end = stripped.lastIndexOf('}');
+  if (start !== -1 && end > start) {
+    const jsonStr = stripped.slice(start, end + 1);
+    try { return JSON.parse(jsonStr); } catch {}
   }
 
-  // Try 4: find JSON start
-  const jsonStart = stripped.indexOf('{');
-  const jsonEnd = stripped.lastIndexOf('}');
-  if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
-    try { return JSON.parse(stripped.slice(jsonStart, jsonEnd + 1)); } catch {}
-  }
+  // Try 3: direct parse of raw
+  try { return JSON.parse(raw); } catch {}
 
-  console.error('Stage parse failed. Raw:', raw.slice(0, 500));
-  
-  // Last resort: try to manually extract key-value pairs and build object
-  try {
-    const obj = {};
-    const kvPattern = /"([^"]+)"\s*:\s*"([^"]*(?:\\.[^"]*)*)"/g;
-    let kv;
-    while ((kv = kvPattern.exec(stripped)) !== null) {
-      obj[kv[1]] = kv[2];
-    }
-    if (Object.keys(obj).length > 0) {
-      console.log('Recovered via KV extraction:', Object.keys(obj).join(','));
-      return obj;
-    }
-  } catch {}
-  
+  console.error('Stage parse failed. First 300 chars:', raw.slice(0, 300));
   return null;
 }
 
