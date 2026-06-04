@@ -15,36 +15,36 @@ async function runStage(prompt, maxTokens = 800) {
   const msg = await ai.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: maxTokens,
-    messages: [
-      { role: 'user', content: prompt + '\n\nIMPORTANT: Your entire response must be a single valid JSON object. Start your response with { and end with }. Do not include any text before or after the JSON.' },
-    ],
+    messages: [{ role: 'user', content: prompt + '\n\nRespond with a JSON object only. No markdown. No explanation.' }],
   });
 
-  const raw = (msg.content?.[0]?.text || '').trim();
+  let raw = (msg.content?.[0]?.text || '').trim();
 
-  // Strip ALL variations of markdown fences first
-  const stripped = raw
-    .replace(/^```json\s*/i, '')
-    .replace(/^```\s*/i, '')
-    .replace(/```\s*$/i, '')
-    .trim();
-
-  // Try 1: direct parse of stripped
-  try { return JSON.parse(stripped); } catch {}
-
-  // Try 2: find outermost { } block
-  const start = stripped.indexOf('{');
-  const end = stripped.lastIndexOf('}');
-  if (start !== -1 && end > start) {
-    const jsonStr = stripped.slice(start, end + 1);
-    try { return JSON.parse(jsonStr); } catch {}
+  // Remove markdown fences character by character approach
+  if (raw.startsWith('`')) {
+    const firstBrace = raw.indexOf('{');
+    if (firstBrace > 0) raw = raw.slice(firstBrace);
+  }
+  if (raw.endsWith('`')) {
+    const lastBrace = raw.lastIndexOf('}');
+    if (lastBrace > 0) raw = raw.slice(0, lastBrace + 1);
   }
 
-  // Try 3: direct parse of raw
-  try { return JSON.parse(raw); } catch {}
+  // Find JSON boundaries
+  const s = raw.indexOf('{');
+  const e = raw.lastIndexOf('}');
+  if (s === -1 || e === -1 || e <= s) {
+    console.error('No JSON found in response:', raw.slice(0, 200));
+    return null;
+  }
 
-  console.error('Stage parse failed. First 300 chars:', raw.slice(0, 300));
-  return null;
+  const jsonStr = raw.slice(s, e + 1);
+  try {
+    return JSON.parse(jsonStr);
+  } catch (err) {
+    console.error('JSON parse error:', err.message, '| str:', jsonStr.slice(0, 200));
+    return null;
+  }
 }
 
 function getStages(sport) {
