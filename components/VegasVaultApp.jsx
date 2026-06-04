@@ -403,6 +403,8 @@ function PlayResult({ result, game, onClose, isResolved, resolvedResult }) {
     {label:"Recent Form",key:"recentForm"},
     {label:"Head to Head",key:"headToHead"},
     {label:"Pitching",key:"pitching"},
+    {label:"Hitter & Lineup",key:"hitterLineup"},
+    {label:"Series Context",key:"seriesContext"},
     {label:"Pace & Ratings",key:"paceRatings"},
     {label:"QB Matchup",key:"qbMatchup"},
     {label:"Injuries",key:"injuries"},

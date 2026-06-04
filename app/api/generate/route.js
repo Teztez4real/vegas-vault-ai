@@ -101,16 +101,19 @@ export async function POST(request) {
 
     // ── STAGE 1: Build data summary directly from game object (no AI call) ──
     const stage1 = {
-      awayFacts: `${game.away}: ${game.awayRecord || 'N/A'} | L5: ${game.awayLast5 || 'N/A'} | L10: ${game.awayLast10 || 'N/A'} | Streak: ${game.awayStreak || 'N/A'}`,
-      homeFacts: `${game.home}: ${game.homeRecord || 'N/A'} | L5: ${game.homeLast5 || 'N/A'} | L10: ${game.homeLast10 || 'N/A'} | Streak: ${game.homeStreak || 'N/A'}`,
-      recentForm: `Away L5 ${game.awayLast5 || 'N/A'} L10 ${game.awayLast10 || 'N/A'} | Home L5 ${game.homeLast5 || 'N/A'} L10 ${game.homeLast10 || 'N/A'}`,
-      headToHead: `Overall: ${game.h2hLast5 || 'N/A'} | At home venue: ${game.h2hAtHome || 'N/A'}`,
-      pitchingFacts: `Away: ${game.awayPitcher || 'TBD'} ${game.awayPitcherStats || ''} | Home: ${game.homePitcher || 'TBD'} ${game.homePitcherStats || ''}`,
-      matchupFacts: `Away PPG ${game.awayPPG || 'N/A'} OppPPG ${game.awayOppPPG || 'N/A'} | Home PPG ${game.homePPG || 'N/A'} OppPPG ${game.homeOppPPG || 'N/A'} | Pace Away ${game.awayPace || 'N/A'} Home ${game.homePace || 'N/A'}`,
-      situationalFacts: `Series: ${game.seriesContext || 'N/A'} | Week: ${game.week || 'N/A'}`,
+      awayFacts: `${game.away}: ${game.awayRecord || 'N/A'} | L5: ${game.awayLast5 || 'N/A'} | L10: ${game.awayLast10 || 'N/A'} | Streak: ${game.awayStreak || 'N/A'} | Away record: ${game.awayAwayRecord || 'N/A'}`,
+      homeFacts: `${game.home}: ${game.homeRecord || 'N/A'} | L5: ${game.homeLast5 || 'N/A'} | L10: ${game.homeLast10 || 'N/A'} | Streak: ${game.homeStreak || 'N/A'} | Home record: ${game.homeHomeRecord || 'N/A'}`,
+      recentForm: `Away L5 ${game.awayLast5 || 'N/A'} L10 ${game.awayLast10 || 'N/A'} streak ${game.awayStreak || 'N/A'} | Home L5 ${game.homeLast5 || 'N/A'} L10 ${game.homeLast10 || 'N/A'} streak ${game.homeStreak || 'N/A'}`,
+      headToHead: `Overall H2H: ${game.h2hLast5 || 'N/A'} | Last time at this home venue: ${game.h2hAtHome || 'N/A'}`,
+      pitchingFacts: `Away starter: ${game.awayPitcher || 'TBD'} | ${game.awayPitcherStats || 'Stats N/A'} | Home starter: ${game.homePitcher || 'TBD'} | ${game.homePitcherStats || 'Stats N/A'} | Away bullpen: ${game.awayBullpen || 'N/A'} | Home bullpen: ${game.homeBullpen || 'N/A'}`,
+      hitterLineup: `Away offense: ${game.awayOffense || game.awayLineup || 'N/A'} | Home offense: ${game.homeOffense || game.homeLineup || 'N/A'} | Away batter splits vs pitcher: ${game.awayBatterSplits || 'N/A'} | Home batter splits vs pitcher: ${game.homeBatterSplits || 'N/A'}`,
+      seriesContext: `${game.seriesContext || game.gameNumber || 'N/A'} | Game type: ${game.gameType || 'Regular Season'} | Series record: ${game.seriesRecord || 'N/A'}`,
+      matchupFacts: `Away PPG ${game.awayPPG || 'N/A'} OppPPG ${game.awayOppPPG || 'N/A'} OffRtg ${game.awayOffRating || 'N/A'} DefRtg ${game.awayDefRating || 'N/A'} | Home PPG ${game.homePPG || 'N/A'} OppPPG ${game.homeOppPPG || 'N/A'} OffRtg ${game.homeOffRating || 'N/A'} DefRtg ${game.homeDefRating || 'N/A'}`,
+      situationalFacts: `Series: ${game.seriesContext || 'N/A'} | Week: ${game.week || 'N/A'} | Rest: Away ${game.awayRest || 'N/A'} Home ${game.homeRest || 'N/A'} | B2B: Away ${game.awayB2B ? 'YES' : 'No'} Home ${game.homeB2B ? 'YES' : 'No'}`,
       injuries: game.injuries || 'None reported',
       weather: game.weather || 'N/A',
-      lineFacts: `ML Away ${game.awayML || 'N/A'} Home ${game.homeML || 'N/A'} | Spread ${game.spread || 'N/A'} (Away ${game.awaySpreadPrice || '-110'} Home ${game.homeSpreadPrice || '-110'}) | Total ${game.total || 'N/A'} (o${game.overPrice || '-110'} u${game.underPrice || '-110'}) | Movement: ${game.lineMovement || 'None'} | Sharp: ${game.sharpSignal || 'None'}`,
+      umpire: game.umpire || 'N/A',
+      lineFacts: `ML Away ${game.awayML || 'N/A'} Home ${game.homeML || 'N/A'} | Run Line ${game.spread || 'N/A'} (Away ${game.awaySpreadPrice || '-110'} Home ${game.homeSpreadPrice || '-110'}) | Total ${game.total || 'N/A'} (o${game.overPrice || '-110'} u${game.underPrice || '-110'}) | Movement: ${game.lineMovement || 'None'} | Sharp: ${game.sharpSignal || 'None'}`,
     };
 
     // ── STAGE 2: Edge Filter ───────────────────────────────────────────────
@@ -168,7 +171,10 @@ export async function POST(request) {
         qbMatchup: analysis.qbMatchup,
         injuries: analysis.injuries || stage1.injuries,
         weather: analysis.weather || stage1.weather,
+        hitterLineup: analysis.hitterLineup || stage1.hitterLineup,
+        seriesContext: analysis.seriesContext || stage1.seriesContext,
         situational: analysis.situational || stage1.situationalFacts,
+        umpire: stage1.umpire !== 'N/A' ? stage1.umpire : null,
         trellRule: analysis.trellRule || 'Not triggered',
         sharpMoney: analysis.sharpMoney || stage1.lineFacts,
         propaganda: analysis.propaganda || stage2.propagandaCheck,
