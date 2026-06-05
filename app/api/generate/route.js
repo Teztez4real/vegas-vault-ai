@@ -4,6 +4,8 @@ import {
   buildStage1Prompt, buildStage2Prompt, buildStage3Prompt, buildStage4Prompt,
   buildNBAStage1Prompt, buildNBAStage2Prompt, buildNBAStage3Prompt, buildNBAStage4Prompt,
   buildNFLStage1Prompt, buildNFLStage2Prompt, buildNFLStage3Prompt, buildNFLStage4Prompt,
+  buildTennisStage1Prompt, buildTennisStage2Prompt, buildTennisStage3Prompt, buildTennisStage4Prompt,
+  buildWNBAStage1Prompt, buildWNBAStage2Prompt, buildWNBAStage3Prompt, buildWNBAStage4Prompt,
 } from '@/lib/analysisEngine';
 
 export const runtime = 'nodejs';
@@ -60,7 +62,19 @@ function getStages(sport) {
     s3: buildNFLStage3Prompt,
     s4: buildNFLStage4Prompt,
   };
-  // MLB, Tennis, WNBA — use base engine
+  if (sport === 'Tennis') return {
+    s1: buildTennisStage1Prompt,
+    s2: buildTennisStage2Prompt,
+    s3: buildTennisStage3Prompt,
+    s4: buildTennisStage4Prompt,
+  };
+  if (sport === 'WNBA') return {
+    s1: buildWNBAStage1Prompt,
+    s2: buildWNBAStage2Prompt,
+    s3: buildWNBAStage3Prompt,
+    s4: buildWNBAStage4Prompt,
+  };
+  // MLB only — base engine
   return {
     s1: buildStage1Prompt,
     s2: buildStage2Prompt,
