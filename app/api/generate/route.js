@@ -128,15 +128,16 @@ export async function POST(request) {
       weather: game.weather || 'N/A',
       umpire: game.umpire || 'N/A',
       lineFacts: (() => {
-        // Spread: game.spread is home team value. Away is opposite.
-        const homeSpread = game.spread || game.dkSpread || null;
-        const awaySpread = homeSpread ? (parseFloat(homeSpread) > 0 ? '-' + parseFloat(homeSpread).toFixed(1) : '+' + Math.abs(parseFloat(homeSpread)).toFixed(1)) : null;
-        const awaySpreadPrice = game.awaySpreadPrice && game.awaySpreadPrice !== '-110' ? game.awaySpreadPrice : (game.dkSpread ? '-110' : '-110');
-        const homeSpreadPrice = game.homeSpreadPrice && game.homeSpreadPrice !== '-110' ? game.homeSpreadPrice : '-110';
-        const overPrice  = game.overPrice  && game.overPrice  !== '-110' ? game.overPrice  : '-110';
-        const underPrice = game.underPrice && game.underPrice !== '-110' ? game.underPrice : '-110';
-        const openingLine = game.openingAwayML || game.pricingStr ? `Opening: Away ${game.openingAwayML || 'N/A'} Home ${game.openingHomeML || 'N/A'} | ` : '';
-        return \`${openingLine}ML: Away ${game.awayML || 'N/A'} / Home ${game.homeML || 'N/A'} | Spread: Away \${awaySpread || 'N/A'} \${awaySpreadPrice} / Home \${homeSpread || 'N/A'} \${homeSpreadPrice} | Total: \${game.total || game.dkTotal || 'N/A'} (Over \${overPrice} / Under \${underPrice}) | Movement: \${game.lineMovement || 'None'} | Sharp: \${game.sharpSignal || 'None'}\`;
+        const hs = game.spread || game.dkSpread || null;
+        const hsNum = hs ? parseFloat(hs) : null;
+        const awaySpread = hsNum !== null ? (hsNum > 0 ? '-'+hsNum.toFixed(1) : '+'+Math.abs(hsNum).toFixed(1)) : 'N/A';
+        const asp = game.awaySpreadPrice || '-110';
+        const hsp = game.homeSpreadPrice || '-110';
+        const op  = game.overPrice  || '-110';
+        const up  = game.underPrice || '-110';
+        const tot = game.total || game.dkTotal || 'N/A';
+        const open = (game.openingAwayML || game.pricingStr) ? ('Opening: Away ' + (game.openingAwayML||'N/A') + ' Home ' + (game.openingHomeML||'N/A') + ' | ') : '';
+        return open + 'ML: Away ' + (game.awayML||'N/A') + ' / Home ' + (game.homeML||'N/A') + ' | Spread: Away ' + awaySpread + ' ' + asp + ' / Home ' + (hs||'N/A') + ' ' + hsp + ' | Total: ' + tot + ' (Over ' + op + ' / Under ' + up + ') | Movement: ' + (game.lineMovement||'None') + ' | Sharp: ' + (game.sharpSignal||'None');
       })(),
     };
 
