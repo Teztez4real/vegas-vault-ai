@@ -834,7 +834,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
           </span>
         </div>
       ) : (!isSubscribed) ? (
-        <div onClick={()=>{ if(onShowAuth) onShowAuth(); else window.location.href='/settings'; }} style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"10px 0",background:"rgba(7,9,26,0.6)",border:"1px solid rgba(59,130,246,0.2)",borderRadius:8,cursor:"pointer" }}>
+        <div onClick={()=>{ if(onShowAuth) onShowAuth('plans'); else window.location.href='/subscribe'; }} style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"10px 0",background:"rgba(7,9,26,0.6)",border:"1px solid rgba(59,130,246,0.2)",borderRadius:8,cursor:"pointer" }}>
           <span style={{ fontSize:13 }}>🔒</span>
           <span style={{ fontSize:10,fontWeight:700,color:"#3b82f6",letterSpacing:"0.08em" }}>SUBSCRIBE TO UNLOCK</span>
         </div>
@@ -1523,13 +1523,13 @@ function SharpMoneyView({ games, marketScanner }) {
 
 
 // ── SUBSCRIBE LOCK PLACEHOLDER ────────────────────────────────────────────────
-function SubscribeLock({ feature }) {
+function SubscribeLock({ feature, onShowAuth }) {
   return (
     <div style={{ display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'60px 20px',textAlign:'center' }}>
       <div style={{ fontSize:36,marginBottom:16 }}>🔒</div>
       <div style={{ fontSize:18,fontWeight:800,color:'#f1f5f9',marginBottom:8 }}>{feature}</div>
       <div style={{ fontSize:13,color:'#475569',marginBottom:24,lineHeight:1.6 }}>Subscribe to unlock {feature} and all Vegas Vault AI features.</div>
-      <div style={{ fontSize:10,fontWeight:700,color:'#3b82f6',background:'rgba(59,130,246,0.1)',border:'1px solid rgba(59,130,246,0.3)',borderRadius:8,padding:'10px 24px',letterSpacing:'0.08em' }}>SUBSCRIBE TO UNLOCK</div>
+      <div onClick={()=>onShowAuth&&onShowAuth('plans')} style={{ fontSize:10,fontWeight:700,color:'#3b82f6',background:'rgba(59,130,246,0.1)',border:'1px solid rgba(59,130,246,0.3)',borderRadius:8,padding:'10px 24px',letterSpacing:'0.08em',cursor:'pointer' }}>SUBSCRIBE TO UNLOCK</div>
     </div>
   );
 }
@@ -3107,7 +3107,7 @@ export default function VegasVaultApp() {
               <button onClick={doSignOut} style={{ fontSize:10,color:"#475569",background:"transparent",border:"1px solid rgba(59,130,246,0.14)",borderRadius:6,padding:"4px 10px",cursor:"pointer",fontFamily:"inherit" }}>Sign Out</button>
             </div>
           ) : (
-            <button onClick={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}} style={{ display:"flex",alignItems:"center",gap:7,background:"linear-gradient(135deg,#3b82f6,#1d4ed8)",border:"none",borderRadius:8,padding:"7px 16px",fontSize:11,fontWeight:700,color:"#000",cursor:"pointer",letterSpacing:"0.06em",fontFamily:"inherit" }}>
+            <button onClick={()=>{setShowAuth(true);setAuthMode(authUser ? 'plans' : 'login');setAuthError('');}} style={{ display:"flex",alignItems:"center",gap:7,background:"linear-gradient(135deg,#3b82f6,#1d4ed8)",border:"none",borderRadius:8,padding:"7px 16px",fontSize:11,fontWeight:700,color:"#000",cursor:"pointer",letterSpacing:"0.06em",fontFamily:"inherit" }}>
               🔒 Login / Sign Up
             </button>
           )}
@@ -3164,17 +3164,17 @@ export default function VegasVaultApp() {
 
             {/* ── VIEW ROUTER ── */}
             {activeTab==='ALERTS' ? (
-              isSubscribed ? <AlertsView betReadyAlerts={betReadyAlerts} trellAlerts={trellAlerts} games={games} results={results} pickHistory={pickHistory} watchlist={watchlist}/> : <SubscribeLock feature="Alerts"/>
+              isSubscribed ? <AlertsView betReadyAlerts={betReadyAlerts} trellAlerts={trellAlerts} games={games} results={results} pickHistory={pickHistory} watchlist={watchlist}/> : <SubscribeLock feature="Alerts" onShowAuth={(mode)=>{setShowAuth(true);setAuthMode(mode||'plans');setAuthError('');}}/>
             ) : activeTab==='WATCHLIST' ? (
-              isSubscribed ? <WatchlistView watchlist={watchlist} toggleWatch={toggleWatch} games={games} results={results} finalized={finalized}/> : <SubscribeLock feature="Watchlist"/>
+              isSubscribed ? <WatchlistView watchlist={watchlist} toggleWatch={toggleWatch} games={games} results={results} finalized={finalized}/> : <SubscribeLock feature="Watchlist" onShowAuth={(mode)=>{setShowAuth(true);setAuthMode(mode||'plans');setAuthError('');}}/>
             ) : activeNav==='SHARP MONEY' ? (
-              isSubscribed ? <SharpMoneyView games={games} marketScanner={marketScanner}/> : <SubscribeLock feature="Sharp Money"/>
+              isSubscribed ? <SharpMoneyView games={games} marketScanner={marketScanner}/> : <SubscribeLock feature="Sharp Money" onShowAuth={(mode)=>{setShowAuth(true);setAuthMode(mode||'plans');setAuthError('');}}/>
             ) : activeNav==='VAULT LOCKS' ? (
-              isSubscribed ? <VaultLocksView results={results} games={games} finalized={finalized}/> : <SubscribeLock feature="Vault Locks"/>
+              isSubscribed ? <VaultLocksView results={results} games={games} finalized={finalized}/> : <SubscribeLock feature="Vault Locks" onShowAuth={(mode)=>{setShowAuth(true);setAuthMode(mode||'plans');setAuthError('');}}/>
             ) : activeNav==='AI ANALYZER' ? (
-              isSubscribed ? <AIAnalyzerView games={games} results={results} generating={generating} onGenerate={handleGenerate} isSubscribed={isSubscribed}/> : <SubscribeLock feature="AI Analyzer"/>
+              isSubscribed ? <AIAnalyzerView games={games} results={results} generating={generating} onGenerate={handleGenerate} isSubscribed={isSubscribed}/> : <SubscribeLock feature="AI Analyzer" onShowAuth={(mode)=>{setShowAuth(true);setAuthMode(mode||'plans');setAuthError('');}}/>
             ) : activeNav==="TODAY'S SLATE" ? (
-              <TodaySlateView games={games} results={results} generating={generating} onGenerate={handleGenerate} liveScores={liveScores} isSubscribed={isSubscribed} finalized={finalized} onShowAuth={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}} preAnalyzeQueue={preAnalyzeQueue} betReadyAlerts={betReadyAlerts}/>
+              <TodaySlateView games={games} results={results} generating={generating} onGenerate={handleGenerate} liveScores={liveScores} isSubscribed={isSubscribed} finalized={finalized} onShowAuth={(mode)=>{setShowAuth(true);setAuthMode(mode||'login');setAuthError('');}} preAnalyzeQueue={preAnalyzeQueue} betReadyAlerts={betReadyAlerts}/>
             ) : activeNav==='PROPS AI' ? (
               <PropsAIView games={games} isSubscribed={isSubscribed}/>
             ) : (
@@ -3285,7 +3285,7 @@ export default function VegasVaultApp() {
                       <TopPlayBanner
                         topPlay={{ result: tp.result, slot: tp.slot, away: tp.game.away, home: tp.game.home, time: tp.game.time, game_key: `${tp.game.away}|${tp.game.home}`, away_abbr: tp.game.awayAbbr, home_abbr: tp.game.homeAbbr }}
                         loading={false} results={results} games={games} pickHistory={pickHistory}
-                        isSubscribed={isSubscribed} onShowAuth={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}}
+                        isSubscribed={isSubscribed} onShowAuth={(mode)=>{setShowAuth(true);setAuthMode(mode||'login');setAuthError('');}}
                         onForceRefresh={null} isAdmin={authUser?.email===ADMIN_EMAIL}
                         watchlist={watchlist} onToggleWatch={toggleWatch} sport={sport}
                       />
@@ -3297,7 +3297,7 @@ export default function VegasVaultApp() {
                     <TopPlayBanner
                       topPlay={{ result: sportTopPlays.WNBA.result, slot: 'WNBA', away: sportTopPlays.WNBA.game.away, home: sportTopPlays.WNBA.game.home, time: sportTopPlays.WNBA.game.time, game_key: `${sportTopPlays.WNBA.game.away}|${sportTopPlays.WNBA.game.home}`, away_abbr: sportTopPlays.WNBA.game.awayAbbr, home_abbr: sportTopPlays.WNBA.game.homeAbbr }}
                       loading={false} results={results} games={games} pickHistory={pickHistory}
-                      isSubscribed={isSubscribed} onShowAuth={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}}
+                      isSubscribed={isSubscribed} onShowAuth={(mode)=>{setShowAuth(true);setAuthMode(mode||'login');setAuthError('');}}
                       onForceRefresh={null} isAdmin={authUser?.email===ADMIN_EMAIL}
                       watchlist={watchlist} onToggleWatch={toggleWatch} sport="WNBA"
                     />
@@ -3305,7 +3305,7 @@ export default function VegasVaultApp() {
                 )}
                 <div className="vv-cards">
                   {filteredGames.map(game=>(
-                    <GameCard key={game.id} game={game} results={results} generating={generating} onGenerate={handleGenerate} onCardClick={handleCardClick} liveScores={liveScores} isSubscribed={isSubscribed} finalized={finalized} isQueued={preAnalyzeQueue.some(q=>q.game.id===game.id)} betReady={betReadyAlerts[`${game.id}-PUBLIC`]||betReadyAlerts[`${game.id}-VEGAS`]} onShowAuth={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}} watchlist={watchlist} onToggleWatch={toggleWatch} pickHistory={pickHistory}/>
+                    <GameCard key={game.id} game={game} results={results} generating={generating} onGenerate={handleGenerate} onCardClick={handleCardClick} liveScores={liveScores} isSubscribed={isSubscribed} finalized={finalized} isQueued={preAnalyzeQueue.some(q=>q.game.id===game.id)} betReady={betReadyAlerts[`${game.id}-PUBLIC`]||betReadyAlerts[`${game.id}-VEGAS`]} onShowAuth={(mode)=>{setShowAuth(true);setAuthMode(mode||'login');setAuthError('');}} watchlist={watchlist} onToggleWatch={toggleWatch} pickHistory={pickHistory}/>
                   ))}
                 </div>
               </>
