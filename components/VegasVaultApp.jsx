@@ -2920,6 +2920,10 @@ export default function VegasVaultApp() {
               dkHomeML:      mv.dkHomeML || (game.dkHomeML !== 'N/A' ? game.dkHomeML : null),
               dkSpread: mv.dkSpread || (game.dkSpread && game.dkSpread !== 'N/A' ? game.dkSpread : null),
               dkTotal:  mv.dkTotal  || (game.dkTotal  && game.dkTotal  !== 'N/A' ? game.dkTotal  : null),
+              awaySpreadPrice: mv.awaySpreadPrice || game.awaySpreadPrice || '-110',
+              homeSpreadPrice: mv.homeSpreadPrice || game.homeSpreadPrice || '-110',
+              overPrice:  mv.overPrice  || game.overPrice  || '-110',
+              underPrice: mv.underPrice || game.underPrice || '-110',
               // Live price updates from Sharp API
               awayML:        fmtN(mv.currentAwayML) || mv.awayML || (game.awayML !== 'N/A' ? game.awayML : null),
               homeML:        fmtN(mv.currentHomeML) || mv.homeML || (game.homeML !== 'N/A' ? game.homeML : null),

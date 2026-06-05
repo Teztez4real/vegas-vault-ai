@@ -59,6 +59,14 @@ async function fetchAllBooks(sportKey) {
               if (o.name === away) games[key].books[book].awayML = o.price;
               if (o.name === home) games[key].books[book].homeML = o.price;
             });
+            if (mkt.key === 'spreads') mkt.outcomes?.forEach(o => {
+              if (o.name === away) { games[key].books[book].awaySpread = o.point; games[key].books[book].awaySpreadPrice = o.price; }
+              if (o.name === home) { games[key].books[book].homeSpread = o.point; games[key].books[book].homeSpreadPrice = o.price; }
+            });
+            if (mkt.key === 'totals') mkt.outcomes?.forEach(o => {
+              if (o.name === 'Over')  { games[key].books[book].total = o.point; games[key].books[book].overPrice = o.price; }
+              if (o.name === 'Under') { games[key].books[book].underPrice = o.price; }
+            });
           });
         });
       }
@@ -141,6 +149,10 @@ function buildGames(gamesMap) {
       currentAwayML: bestBook.awayML,
       spread: spreadVal != null ? (spreadVal > 0 ? `+${spreadVal}` : `${spreadVal}`) : null,
       total: totalVal || null,
+      awaySpreadPrice: (() => { const b = Object.values(event.books).find(b => b.awaySpreadPrice != null); return b ? fmt(b.awaySpreadPrice) : null; })(),
+      homeSpreadPrice: (() => { const b = Object.values(event.books).find(b => b.homeSpreadPrice != null); return b ? fmt(b.homeSpreadPrice) : null; })(),
+      overPrice:  (() => { const b = Object.values(event.books).find(b => b.overPrice != null); return b ? fmt(b.overPrice) : null; })(),
+      underPrice: (() => { const b = Object.values(event.books).find(b => b.underPrice != null); return b ? fmt(b.underPrice) : null; })(),
       commenceTime: event.commenceTime,
       bolHomeML: bolBook?.homeML,
       dkAwayML:  dkBook?.awayML,
