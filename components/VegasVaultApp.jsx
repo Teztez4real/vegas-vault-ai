@@ -2171,7 +2171,20 @@ export default function VegasVaultApp() {
             syncLoad(uid, 'pick_history'),
           ]);
           if (wl) setWatchlist(wl);
-          else { try { const s = localStorage.getItem('vv_watchlist'); if(s) setWatchlist(JSON.parse(s)); } catch {} }
+          else {
+            try { const s = localStorage.getItem('vv_watchlist'); if(s) setWatchlist(JSON.parse(s)); } catch {}
+            // Check Supabase for active subscription
+            try {
+              const { data: subData } = await _supabase.from('subscriptions').select('status,current_period_end').eq('email', session.user.email).single();
+              if (subData?.status === 'active') {
+                const periodEnd = new Date(subData.current_period_end);
+                if (periodEnd > new Date()) {
+                  setIsSubscribed(true);
+                  localStorage.setItem('vv_subscribed', '1');
+                }
+              }
+            } catch {}
+          }
           if (res) setResults(res);
           if (fin) setFinalized(fin);
           if (hist) setPickHistory(hist);
@@ -3555,6 +3568,21 @@ export default function VegasVaultApp() {
             {/* Clear history button */}
             {pickHistory.length > 0 && (
               <div style={{ padding:"12px 20px",borderTop:"1px solid rgba(255,255,255,0.05)",position:"sticky",bottom:0,background:"#060a18" }}>
+                {isSubscribed && authUser?.email !== ADMIN_EMAIL && (
+                  <button onClick={async () => {
+                    const { data: { session } } = await _supabase.auth.getSession();
+                    if (!session) return;
+                    const res = await fetch('/api/stripe/portal', {
+                      method: 'POST',
+                      headers: { Authorization: 'Bearer ' + session.access_token }
+                    });
+                    const { url, error } = await res.json();
+                    if (url) window.location.href = url;
+                    else alert(error || 'Could not open billing portal');
+                  }} style={{ width:"100%",padding:"10px 0",background:"rgba(59,130,246,0.06)",border:"1px solid rgba(59,130,246,0.2)",borderRadius:8,fontSize:11,color:"#60a5fa",cursor:"pointer",fontFamily:"inherit",letterSpacing:"0.06em",marginBottom:8 }}>
+                    💳 Manage Subscription
+                  </button>
+                )}
                 <button onClick={()=>{ if(window.confirm('Clear all pick history?')){ setPickHistory([]); if(authUser?.id) syncDelete(authUser.id,'pick_history'); }}} style={{ width:"100%",padding:"10px 0",background:"rgba(248,113,113,0.06)",border:"1px solid rgba(248,113,113,0.15)",borderRadius:8,fontSize:11,color:"#f87171",cursor:"pointer",fontFamily:"inherit",letterSpacing:"0.06em" }}>
                   Clear History
                 </button>
