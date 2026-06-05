@@ -2120,14 +2120,14 @@ export default function VegasVaultApp() {
   const [insights, setInsights]       = useState(INSIGHTS);
   const [results, setResults] = useState(() => {
     try {
-      const saved = typeof window !== 'undefined' && localStorage.getItem('vv_results');
-      return saved ? JSON.parse(saved) : {};
+      // Don't pre-load from localStorage — will load from Supabase per user
+      return {};
     } catch { return {}; }
   });
   const [finalized, setFinalized] = useState(() => {
     try {
-      const saved = typeof window !== 'undefined' && localStorage.getItem('vv_finalized');
-      return saved ? JSON.parse(saved) : {};
+      // Don't pre-load from localStorage — will load from Supabase per user
+      return {};
     } catch { return {}; }
   });
   const [preAnalyzing, setPreAnalyzing] = useState(false);
@@ -2236,8 +2236,8 @@ export default function VegasVaultApp() {
   const [winRate, setWinRate] = useState(null);
   const [pickHistory, setPickHistory] = useState(() => {
     try {
-      const saved = typeof window !== 'undefined' && localStorage.getItem('vv_pick_history');
-      return saved ? JSON.parse(saved) : [];
+      // Don't pre-load from localStorage — will load from Supabase per user
+      return [];
     } catch { return []; }
   });
   const [aiConfidence, setAiConfidence] = useState(null);
@@ -2521,19 +2521,8 @@ export default function VegasVaultApp() {
   // ── LOAD STORED ANALYSES (background-analyzed games) ─────────────────────────
   useEffect(() => {
     if (!selectedDate) return;
-    fetch(`/api/auto-analyze?date=${selectedDate}`)
-      .then(r => r.json())
-      .then(data => {
-        if (data.analyses && Object.keys(data.analyses).length) {
-          setResults(prev => {
-            const merged = { ...data.analyses };
-            // Don't overwrite fresh in-session results
-            Object.keys(prev).forEach(k => { merged[k] = prev[k]; });
-            return merged;
-          });
-        }
-      })
-      .catch(() => {});
+    // Don't load shared auto-analyze results — each user gets their own analyses
+    // Results are loaded per-user from Supabase on login
   }, [selectedDate]);
 
   // ── SERVICE WORKER + PUSH NOTIFICATIONS ──────────────────────────────────────
@@ -2603,8 +2592,7 @@ export default function VegasVaultApp() {
     setPreAnalyzeQueue([]);
     setBetReadyAlerts({});
     try {
-      localStorage.removeItem('vv_results');
-      localStorage.removeItem('vv_finalized');
+      // Results cleared for this user only via syncDelete
     } catch {}
   }
 
@@ -2703,7 +2691,7 @@ export default function VegasVaultApp() {
   // ── PERSIST RESULTS TO LOCALSTORAGE ──────────────────────────────────────────
   useEffect(() => {
     try { localStorage.setItem('vv_results', JSON.stringify(results)); } catch {}
-    if (authUser?.id) syncSave(authUser.id, 'results', results);
+    if (authUser?.id) syncSave(authUser.id, 'results', results); // scoped to this user only
   }, [results]);
 
   useEffect(() => {
@@ -2713,8 +2701,7 @@ export default function VegasVaultApp() {
 
   // Persist pick history
   useEffect(() => {
-    try { localStorage.setItem('vv_pick_history', JSON.stringify(pickHistory)); } catch {}
-    if (authUser?.id) syncSave(authUser.id, 'pick_history', pickHistory);
+    if (authUser?.id) syncSave(authUser.id, 'pick_history', pickHistory); // user-scoped
   }, [pickHistory]);
 
   // ── WIN RATE & AI CONFIDENCE ──────────────────────────────────────────────────
@@ -3568,7 +3555,7 @@ export default function VegasVaultApp() {
             {/* Clear history button */}
             {pickHistory.length > 0 && (
               <div style={{ padding:"12px 20px",borderTop:"1px solid rgba(255,255,255,0.05)",position:"sticky",bottom:0,background:"#060a18" }}>
-                <button onClick={()=>{ if(window.confirm('Clear all pick history?')){ setPickHistory([]); localStorage.removeItem('vv_pick_history'); }}} style={{ width:"100%",padding:"10px 0",background:"rgba(248,113,113,0.06)",border:"1px solid rgba(248,113,113,0.15)",borderRadius:8,fontSize:11,color:"#f87171",cursor:"pointer",fontFamily:"inherit",letterSpacing:"0.06em" }}>
+                <button onClick={()=>{ if(window.confirm('Clear all pick history?')){ setPickHistory([]); if(authUser?.id) syncDelete(authUser.id,'pick_history'); }}} style={{ width:"100%",padding:"10px 0",background:"rgba(248,113,113,0.06)",border:"1px solid rgba(248,113,113,0.15)",borderRadius:8,fontSize:11,color:"#f87171",cursor:"pointer",fontFamily:"inherit",letterSpacing:"0.06em" }}>
                   Clear History
                 </button>
               </div>
