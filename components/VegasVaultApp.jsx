@@ -614,7 +614,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
           )}
         </div>
         <div style={{ display:"flex",alignItems:"center",gap:10 }}>
-          <span style={{ fontSize:10,color:"#4a5568",fontVariantNumeric:"tabular-nums" }}>{game.time}</span>
+          <span style={{ fontSize:10,color:"#4a5568",fontVariantNumeric:"tabular-nums" }}>{live?.updatedTime || live?.scheduledTime || game.time}</span>
           <span
             onClick={(e)=>{ e.stopPropagation(); if(onToggleWatch) onToggleWatch(game.id); }}
             title={watchlist?.includes(game.id) ? "Remove from watchlist" : "Add to watchlist"}

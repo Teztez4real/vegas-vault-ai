@@ -68,6 +68,13 @@ export async function GET(request) {
           isDelayed,
           isPostponed,
           startTime: game.gameDate,
+          updatedTime: (() => {
+            // Use rescheduled time if available, otherwise original
+            const t = game.rescheduleDate || game.gameDate;
+            if (!t) return null;
+            const d = new Date(t);
+            return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) + ' CT';
+          })(),
           date: d.date,
         });
       }
