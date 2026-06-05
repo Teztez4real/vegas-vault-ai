@@ -498,15 +498,22 @@ async function fetchNBARecentForm(teamName) {
     const teamId = team.team.id;
     // NBA 2025-26 season = season=2026
     const currentYear = new Date().getFullYear();
-    const nbaSeasonYear = new Date().getMonth() >= 9 ? currentYear + 1 : currentYear; // Oct+ = next year's season
-    const res = await fetch(
-      `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/${teamId}/schedule?season=${nbaSeasonYear}`,
-      { cache: 'no-store' }
-    );
-    if (!res.ok) return { last5: 'N/A', last10: 'N/A', streak: 'N/A', homeRecord: 'N/A', awayRecord: 'N/A', atsRecord: 'N/A' };
-    const data = await res.json();
+    const nbaSeasonYear = new Date().getMonth() >= 9 ? currentYear + 1 : currentYear;
 
-    const games = (data.events || []).filter(e => e.competitions?.[0]?.status?.type?.completed);
+    // Fetch regular season AND playoffs separately then combine
+    const [regRes, playRes] = await Promise.all([
+      fetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/${teamId}/schedule?season=${nbaSeasonYear}&seasontype=2`, { cache: 'no-store' }),
+      fetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/${teamId}/schedule?season=${nbaSeasonYear}&seasontype=3`, { cache: 'no-store' }),
+    ]);
+
+    const regData = regRes.ok ? await regRes.json() : { events: [] };
+    const playData = playRes.ok ? await playRes.json() : { events: [] };
+
+    // Combine and sort by date
+    const allEvents = [...(regData.events || []), ...(playData.events || [])];
+    const games = allEvents
+      .filter(e => e.competitions?.[0]?.status?.type?.completed)
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
     const results = games.map(e => {
       const comp = e.competitions[0];
       const isHome = comp.competitors?.[0]?.homeAway === 'home' && comp.competitors?.[0]?.team?.id === teamId ||
@@ -567,15 +574,17 @@ async function fetchNBAH2H(awayTeam, homeTeam) {
     const homeT = teams.find(t => (t.team?.displayName || '').includes(homeTeam.split(' ').pop()));
     if (!homeT?.team?.id) return 'H2H unavailable';
 
-    const schedRes = await fetch(
-      `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/${homeT.team.id}/schedule?season=${season}`,
-      { cache: 'no-store' }
-    );
-    if (!schedRes.ok) return 'H2H unavailable';
-    const schedData = await schedRes.json();
+    // Fetch both regular season and playoff schedule
+    const [schedRes, playoffRes] = await Promise.all([
+      fetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/${homeT.team.id}/schedule?season=${season}&seasontype=2`, { cache: 'no-store' }),
+      fetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/${homeT.team.id}/schedule?season=${season}&seasontype=3`, { cache: 'no-store' }),
+    ]);
+    const schedData = schedRes.ok ? await schedRes.json() : { events: [] };
+    const playoffData = playoffRes.ok ? await playoffRes.json() : { events: [] };
+    const allEvents = [...(schedData.events || []), ...(playoffData.events || [])];
 
     const awayKeyword = awayTeam.split(' ').pop();
-    const h2hGames = (schedData.events || []).filter(e => {
+    const h2hGames = allEvents.filter(e => {
       const comp = e.competitions?.[0];
       const completed = comp?.status?.type?.completed;
       const hasAway = comp?.competitors?.some(c => (c.team?.displayName || '').includes(awayKeyword));
