@@ -127,7 +127,17 @@ export async function POST(request) {
       injuries: game.injuries || 'None reported',
       weather: game.weather || 'N/A',
       umpire: game.umpire || 'N/A',
-      lineFacts: `ML Away ${game.awayML || 'N/A'} Home ${game.homeML || 'N/A'} | Run Line ${game.spread || 'N/A'} (Away ${game.awaySpreadPrice || '-110'} Home ${game.homeSpreadPrice || '-110'}) | Total ${game.total || 'N/A'} (o${game.overPrice || '-110'} u${game.underPrice || '-110'}) | Movement: ${game.lineMovement || 'None'} | Sharp: ${game.sharpSignal || 'None'}`,
+      lineFacts: (() => {
+        // Spread: game.spread is home team value. Away is opposite.
+        const homeSpread = game.spread || game.dkSpread || null;
+        const awaySpread = homeSpread ? (parseFloat(homeSpread) > 0 ? '-' + parseFloat(homeSpread).toFixed(1) : '+' + Math.abs(parseFloat(homeSpread)).toFixed(1)) : null;
+        const awaySpreadPrice = game.awaySpreadPrice && game.awaySpreadPrice !== '-110' ? game.awaySpreadPrice : (game.dkSpread ? '-110' : '-110');
+        const homeSpreadPrice = game.homeSpreadPrice && game.homeSpreadPrice !== '-110' ? game.homeSpreadPrice : '-110';
+        const overPrice  = game.overPrice  && game.overPrice  !== '-110' ? game.overPrice  : '-110';
+        const underPrice = game.underPrice && game.underPrice !== '-110' ? game.underPrice : '-110';
+        const openingLine = game.openingAwayML || game.pricingStr ? `Opening: Away ${game.openingAwayML || 'N/A'} Home ${game.openingHomeML || 'N/A'} | ` : '';
+        return \`${openingLine}ML: Away ${game.awayML || 'N/A'} / Home ${game.homeML || 'N/A'} | Spread: Away \${awaySpread || 'N/A'} \${awaySpreadPrice} / Home \${homeSpread || 'N/A'} \${homeSpreadPrice} | Total: \${game.total || game.dkTotal || 'N/A'} (Over \${overPrice} / Under \${underPrice}) | Movement: \${game.lineMovement || 'None'} | Sharp: \${game.sharpSignal || 'None'}\`;
+      })(),
     };
 
     // ── STAGE 2: Edge Filter ───────────────────────────────────────────────
