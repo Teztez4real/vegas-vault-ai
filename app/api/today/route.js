@@ -351,7 +351,6 @@ async function assembleMLBGame(game, oddsMap) {
     const descMatch = (game.description || game.seriesDescription || '').match(/Game (\d+) of (\d+)/i);
     const finalSeriesGame = descMatch ? parseInt(descMatch[1]) : seriesGame;
     const finalSeriesLength = descMatch ? parseInt(descMatch[2]) : seriesLength;
-    console.log(`Series context for ${away}@${home}: Game ${finalSeriesGame} of ${finalSeriesLength} | raw seriesGameNumber=${game.seriesGameNumber} gamesInSeries=${game.gamesInSeries} description="${game.description || ''}"`);
 
     // Pitcher IDs for detailed stats fetch
     const awayPitcherId = game.teams?.away?.probablePitcher?.id;
