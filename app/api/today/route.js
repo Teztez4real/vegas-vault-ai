@@ -128,7 +128,7 @@ async function fetchNFLGames(dateParam) {
 async function fetchMLBSchedule(date) {
   const dateStr = date || todayStr();
   const res = await fetch(
-    `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${dateStr}&hydrate=team,probablePitcher,linescore,stats,person,flags,game(seriesStatus,seriesGameNumber,gamesInSeries)`,
+    `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${dateStr}&hydrate=team,probablePitcher,linescore,stats,person,flags,game(seriesStatus)`,
     { cache: 'no-store' }
   );
   const data = await res.json();
@@ -344,24 +344,14 @@ async function assembleMLBGame(game, oddsMap) {
     const awayPitcher = game.teams?.away?.probablePitcher?.fullName || 'TBD';
     const homePitcher = game.teams?.home?.probablePitcher?.fullName || 'TBD';
 
-    // Series context — try every known MLB API field location
-    const rawSeriesGame = 
-      game.seriesGameNumber ||
-      game.gameNumber ||
-      game.seriesStatus?.gameNumber ||
-      game.flags?.seriesGameNumber ||
-      null;
-    const rawSeriesLength = 
-      game.gamesInSeries ||
-      game.seriesStatus?.gamesInSeries ||
-      game.flags?.gamesInSeries ||
-      null;
-    // Try description field e.g. "Game 2 of 3" or "Game 2"
-    const descStr = game.description || game.seriesDescription || game.seriesStatus?.description || '';
-    const descMatch = descStr.match(/Game\s*(\d+)(?:\s*of\s*(\d+))?/i);
-    const finalSeriesGame = descMatch ? parseInt(descMatch[1]) : (rawSeriesGame || 1);
-    const finalSeriesLength = descMatch?.[2] ? parseInt(descMatch[2]) : (rawSeriesLength || 3);
-    console.log(`Series: ${away}@${home} Game ${finalSeriesGame}/${finalSeriesLength} | raw: seriesGameNumber=${game.seriesGameNumber} gamesInSeries=${game.gamesInSeries} desc="${descStr}" flags=${JSON.stringify(game.flags||{})}`);
+    // Series context — MLB API fields
+    const seriesGame = game.seriesGameNumber || game.gameNumber || 1;
+    const seriesLength = game.gamesInSeries || game.scheduledInnings || 3;
+    // Also try to extract from description e.g. "Game 2 of 3"
+    const descMatch = (game.description || game.seriesDescription || '').match(/Game (\d+) of (\d+)/i);
+    const finalSeriesGame = descMatch ? parseInt(descMatch[1]) : seriesGame;
+    const finalSeriesLength = descMatch ? parseInt(descMatch[2]) : seriesLength;
+    console.log(`Series context for ${away}@${home}: Game ${finalSeriesGame} of ${finalSeriesLength} | raw seriesGameNumber=${game.seriesGameNumber} gamesInSeries=${game.gamesInSeries} description="${game.description || ''}"`);
 
     // Pitcher IDs for detailed stats fetch
     const awayPitcherId = game.teams?.away?.probablePitcher?.id;
