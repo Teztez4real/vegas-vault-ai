@@ -2193,6 +2193,8 @@ export default function VegasVaultApp() {
       const { data: { subscription } } = sb.auth.onAuthStateChange(async (_e, session) => {
         if (session?.user) {
           setAuthUser(session.user);
+          // If modal is open after signup/login, advance to plans
+          setAuthMode(prev => (prev === 'login' || prev === 'signup') ? 'plans' : prev);
           if (session.user.email === ADMIN_EMAIL) { localStorage.setItem('vv_admin','1'); setIsSubscribed(true); }
           else {
             // Always check Supabase for live subscription status
@@ -3107,7 +3109,7 @@ export default function VegasVaultApp() {
               <button onClick={doSignOut} style={{ fontSize:10,color:"#475569",background:"transparent",border:"1px solid rgba(59,130,246,0.14)",borderRadius:6,padding:"4px 10px",cursor:"pointer",fontFamily:"inherit" }}>Sign Out</button>
             </div>
           ) : (
-            <button onClick={()=>{setShowAuth(true);setAuthMode(authUser ? 'plans' : 'login');setAuthError('');}} style={{ display:"flex",alignItems:"center",gap:7,background:"linear-gradient(135deg,#3b82f6,#1d4ed8)",border:"none",borderRadius:8,padding:"7px 16px",fontSize:11,fontWeight:700,color:"#000",cursor:"pointer",letterSpacing:"0.06em",fontFamily:"inherit" }}>
+            <button onClick={()=>{setShowAuth(true);setAuthMode(authUser ? 'plans' : 'signup');setAuthError('');}} style={{ display:"flex",alignItems:"center",gap:7,background:"linear-gradient(135deg,#3b82f6,#1d4ed8)",border:"none",borderRadius:8,padding:"7px 16px",fontSize:11,fontWeight:700,color:"#000",cursor:"pointer",letterSpacing:"0.06em",fontFamily:"inherit" }}>
               🔒 Login / Sign Up
             </button>
           )}
@@ -3174,7 +3176,7 @@ export default function VegasVaultApp() {
             ) : activeNav==='AI ANALYZER' ? (
               isSubscribed ? <AIAnalyzerView games={games} results={results} generating={generating} onGenerate={handleGenerate} isSubscribed={isSubscribed}/> : <SubscribeLock feature="AI Analyzer" onShowAuth={(mode)=>{setShowAuth(true);setAuthMode(mode||'plans');setAuthError('');}}/>
             ) : activeNav==="TODAY'S SLATE" ? (
-              <TodaySlateView games={games} results={results} generating={generating} onGenerate={handleGenerate} liveScores={liveScores} isSubscribed={isSubscribed} finalized={finalized} onShowAuth={(mode)=>{setShowAuth(true);setAuthMode(mode||'login');setAuthError('');}} preAnalyzeQueue={preAnalyzeQueue} betReadyAlerts={betReadyAlerts}/>
+              <TodaySlateView games={games} results={results} generating={generating} onGenerate={handleGenerate} liveScores={liveScores} isSubscribed={isSubscribed} finalized={finalized} onShowAuth={(mode)=>{setShowAuth(true);setAuthMode(authUser ? (mode||'plans') : 'signup');setAuthError('');}} preAnalyzeQueue={preAnalyzeQueue} betReadyAlerts={betReadyAlerts}/>
             ) : activeNav==='PROPS AI' ? (
               <PropsAIView games={games} isSubscribed={isSubscribed}/>
             ) : (
@@ -3285,7 +3287,7 @@ export default function VegasVaultApp() {
                       <TopPlayBanner
                         topPlay={{ result: tp.result, slot: tp.slot, away: tp.game.away, home: tp.game.home, time: tp.game.time, game_key: `${tp.game.away}|${tp.game.home}`, away_abbr: tp.game.awayAbbr, home_abbr: tp.game.homeAbbr }}
                         loading={false} results={results} games={games} pickHistory={pickHistory}
-                        isSubscribed={isSubscribed} onShowAuth={(mode)=>{setShowAuth(true);setAuthMode(mode||'login');setAuthError('');}}
+                        isSubscribed={isSubscribed} onShowAuth={(mode)=>{setShowAuth(true);setAuthMode(authUser ? (mode||'plans') : 'signup');setAuthError('');}}
                         onForceRefresh={null} isAdmin={authUser?.email===ADMIN_EMAIL}
                         watchlist={watchlist} onToggleWatch={toggleWatch} sport={sport}
                       />
@@ -3297,7 +3299,7 @@ export default function VegasVaultApp() {
                     <TopPlayBanner
                       topPlay={{ result: sportTopPlays.WNBA.result, slot: 'WNBA', away: sportTopPlays.WNBA.game.away, home: sportTopPlays.WNBA.game.home, time: sportTopPlays.WNBA.game.time, game_key: `${sportTopPlays.WNBA.game.away}|${sportTopPlays.WNBA.game.home}`, away_abbr: sportTopPlays.WNBA.game.awayAbbr, home_abbr: sportTopPlays.WNBA.game.homeAbbr }}
                       loading={false} results={results} games={games} pickHistory={pickHistory}
-                      isSubscribed={isSubscribed} onShowAuth={(mode)=>{setShowAuth(true);setAuthMode(mode||'login');setAuthError('');}}
+                      isSubscribed={isSubscribed} onShowAuth={(mode)=>{setShowAuth(true);setAuthMode(authUser ? (mode||'plans') : 'signup');setAuthError('');}}
                       onForceRefresh={null} isAdmin={authUser?.email===ADMIN_EMAIL}
                       watchlist={watchlist} onToggleWatch={toggleWatch} sport="WNBA"
                     />
@@ -3305,7 +3307,7 @@ export default function VegasVaultApp() {
                 )}
                 <div className="vv-cards">
                   {filteredGames.map(game=>(
-                    <GameCard key={game.id} game={game} results={results} generating={generating} onGenerate={handleGenerate} onCardClick={handleCardClick} liveScores={liveScores} isSubscribed={isSubscribed} finalized={finalized} isQueued={preAnalyzeQueue.some(q=>q.game.id===game.id)} betReady={betReadyAlerts[`${game.id}-PUBLIC`]||betReadyAlerts[`${game.id}-VEGAS`]} onShowAuth={(mode)=>{setShowAuth(true);setAuthMode(mode||'login');setAuthError('');}} watchlist={watchlist} onToggleWatch={toggleWatch} pickHistory={pickHistory}/>
+                    <GameCard key={game.id} game={game} results={results} generating={generating} onGenerate={handleGenerate} onCardClick={handleCardClick} liveScores={liveScores} isSubscribed={isSubscribed} finalized={finalized} isQueued={preAnalyzeQueue.some(q=>q.game.id===game.id)} betReady={betReadyAlerts[`${game.id}-PUBLIC`]||betReadyAlerts[`${game.id}-VEGAS`]} onShowAuth={(mode)=>{setShowAuth(true);setAuthMode(authUser ? (mode||'plans') : 'signup');setAuthError('');}} watchlist={watchlist} onToggleWatch={toggleWatch} pickHistory={pickHistory}/>
                   ))}
                 </div>
               </>
