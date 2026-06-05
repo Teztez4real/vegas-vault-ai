@@ -703,7 +703,13 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
         const hasMovement = game.lineMovement && !['No significant movement','N/A','No significant movement detected'].includes(game.lineMovement);
         const awayColor = awayOdds.startsWith('-') ? '#f87171' : '#4ade80';
         const homeColor = homeOdds.startsWith('-') ? '#f87171' : '#4ade80';
-        const awaySpread = spreadVal !== '—' ? (spreadVal.startsWith('-') ? '+'+spreadVal.slice(1) : '-'+spreadVal.replace('+','')) : '—';
+        // spreadVal is home team spread (e.g. -1.5). Away is the opposite.
+        const awaySpread = (() => {
+          if (spreadVal === '—') return '—';
+          const num = parseFloat(spreadVal);
+          if (isNaN(num)) return spreadVal;
+          return num > 0 ? '-' + num.toFixed(1) : '+' + Math.abs(num).toFixed(1);
+        })();
         return (
           <div style={{ marginBottom:10 }}>
             <div style={{ display:'flex',alignItems:'center',gap:5,marginBottom:5 }}>
