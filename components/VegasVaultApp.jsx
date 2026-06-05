@@ -2178,7 +2178,6 @@ export default function VegasVaultApp() {
           ]);
           if (wl) setWatchlist(wl);
           else {
-            try { const s = localStorage.getItem('vv_watchlist'); if(s) setWatchlist(JSON.parse(s)); } catch {}
             // Check Supabase for active subscription
             try {
               const { data: subData } = await _supabase.from('subscriptions').select('status,current_period_end').eq('email', session.user.email).single();
@@ -2251,7 +2250,7 @@ export default function VegasVaultApp() {
 
   async function doSignOut() {
     try { const sb = getSB(); if (sb) await sb.auth.signOut(); } catch(e) {}
-    setAuthUser(null); localStorage.removeItem('vv_admin'); localStorage.removeItem('vv_subscribed'); setIsSubscribed(false);
+    setAuthUser(null); localStorage.removeItem('vv_admin'); localStorage.removeItem('vv_subscribed'); localStorage.removeItem('vv_results'); localStorage.removeItem('vv_finalized'); localStorage.removeItem('vv_watchlist'); setIsSubscribed(false); setResults({}); setFinalized({}); setWatchlist([]); setPickHistory([]);
   }
 
   async function doSubscribe(plan) {
@@ -2653,7 +2652,6 @@ export default function VegasVaultApp() {
   function toggleWatch(gameId) {
     setWatchlist(prev => {
       const updated = prev.includes(gameId) ? prev.filter(id => id !== gameId) : [...prev, gameId];
-      try { localStorage.setItem('vv_watchlist', JSON.stringify(updated)); } catch {}
       if (authUser?.id) syncSave(authUser.id, 'watchlist', updated);
       return updated;
     });
@@ -2744,12 +2742,10 @@ export default function VegasVaultApp() {
 
   // ── PERSIST RESULTS TO LOCALSTORAGE ──────────────────────────────────────────
   useEffect(() => {
-    try { localStorage.setItem('vv_results', JSON.stringify(results)); } catch {}
     if (authUser?.id) syncSave(authUser.id, 'results', results); // scoped to this user only
   }, [results]);
 
   useEffect(() => {
-    try { localStorage.setItem('vv_finalized', JSON.stringify(finalized)); } catch {}
     if (authUser?.id) syncSave(authUser.id, 'finalized', finalized);
   }, [finalized]);
 
