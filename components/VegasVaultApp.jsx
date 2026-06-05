@@ -2190,7 +2190,7 @@ export default function VegasVaultApp() {
           if (hist) setPickHistory(hist);
         }
       });
-      const { data: { subscription } } = sb.auth.onAuthStateChange((_e, session) => {
+      const { data: { subscription } } = sb.auth.onAuthStateChange(async (_e, session) => {
         if (session?.user) {
           setAuthUser(session.user);
           if (session.user.email === ADMIN_EMAIL) { localStorage.setItem('vv_admin','1'); setIsSubscribed(true); }
