@@ -2195,8 +2195,18 @@ export default function VegasVaultApp() {
           setAuthUser(session.user);
           if (session.user.email === ADMIN_EMAIL) { localStorage.setItem('vv_admin','1'); setIsSubscribed(true); }
           else {
-            const sub = typeof window !== 'undefined' && localStorage.getItem('vv_subscribed');
-            if (sub) setIsSubscribed(true);
+            // Always check Supabase for live subscription status
+            try {
+              const { data: subData } = await _supabase.from('subscriptions').select('status,current_period_end').eq('email', session.user.email).single();
+              if (subData?.status === 'active' && new Date(subData.current_period_end) > new Date()) {
+                setIsSubscribed(true); localStorage.setItem('vv_subscribed', '1');
+              } else {
+                setIsSubscribed(false); localStorage.removeItem('vv_subscribed');
+              }
+            } catch {
+              const sub = typeof window !== 'undefined' && localStorage.getItem('vv_subscribed');
+              if (sub) setIsSubscribed(true);
+            }
           }
         } else {
           setAuthUser(null);
@@ -2530,6 +2540,29 @@ export default function VegasVaultApp() {
   const lastLineRef = useRef({});
   const lastLineupRef = useRef({});  // tracks lineup state per game
   const lastInjuryRef = useRef({});  // tracks injury state per game
+
+  // ── HANDLE STRIPE SUCCESS REDIRECT ───────────────────────────────────────────
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('subscribed') === 'true') {
+      // Stripe redirected back — re-check subscription status
+      _supabase.auth.getSession().then(async ({ data: { session } }) => {
+        if (!session) return;
+        // Poll until webhook fires (up to 5 seconds)
+        for (let i = 0; i < 5; i++) {
+          const { data: subData } = await _supabase.from('subscriptions').select('status,current_period_end').eq('email', session.user.email).single();
+          if (subData?.status === 'active' && new Date(subData.current_period_end) > new Date()) {
+            setIsSubscribed(true); localStorage.setItem('vv_subscribed', '1');
+            break;
+          }
+          await new Promise(r => setTimeout(r, 1000));
+        }
+      });
+      // Clean URL
+      window.history.replaceState({}, '', '/dashboard');
+    }
+  }, []);
 
   // ── LOAD STORED ANALYSES (background-analyzed games) ─────────────────────────
   useEffect(() => {
