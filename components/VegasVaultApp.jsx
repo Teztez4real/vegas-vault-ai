@@ -2716,7 +2716,7 @@ export default function VegasVaultApp() {
 
   // ── PERSIST RESULTS TO LOCALSTORAGE ──────────────────────────────────────────
   useEffect(() => {
-    if (authUser?.id) syncSave(authUser.id, 'results', results); // scoped to this user only
+    if (authUser?.id) syncSave(authUser.id, 'results', results); // scoped to this user only — all dates
   }, [results]);
 
   useEffect(() => {
@@ -2978,7 +2978,7 @@ export default function VegasVaultApp() {
     const d = new Date(selectedDate + 'T12:00:00');
     d.setDate(d.getDate() + offset);
     setSelectedDate(d.toISOString().split('T')[0]);
-    setResults({}); localStorage.removeItem('vv_results'); // clear results when changing date
+    // Results are preserved per user in Supabase — analyzed plays stay locked regardless of date
   }
   function formatDisplayDate(dateStr) {
     const d = new Date(dateStr + 'T12:00:00');
