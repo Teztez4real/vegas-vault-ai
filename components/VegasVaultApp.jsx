@@ -694,12 +694,14 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
           if (typeof v === 'string') return v;
           return v > 0 ? '+'+v : String(v);
         };
-        const awayOdds = fmtOdds(game.dkAwayML) || fmtOdds(game.awayML) || '—';
-        const homeOdds = fmtOdds(game.dkHomeML) || fmtOdds(game.homeML) || '—';
+        // ALWAYS show DraftKings lines only — never fall through to other sources
+        const awayOdds = fmtOdds(game.dkAwayML) || '—';
+        const homeOdds = fmtOdds(game.dkHomeML) || '—';
         const fmtSpread = (v) => (!v || v === 'N/A' || v === 'null' || v === 'undefined') ? null : String(v);
         const fmtTotal = (v) => (!v || v === 'N/A' || v === 'null' || v === 'undefined') ? null : String(v);
-        const spreadVal = fmtSpread(game.dkSpread) || fmtSpread(game.spread) || '—';
-        const totalVal = fmtTotal(game.dkTotal) || fmtTotal(game.total) || '—';
+        // ALWAYS show DraftKings spread/total only — no fallback to other sources
+        const spreadVal = fmtSpread(game.dkSpread) || '—';
+        const totalVal  = fmtTotal(game.dkTotal)  || '—';
         const hasMovement = game.lineMovement && !['No significant movement','N/A','No significant movement detected'].includes(game.lineMovement);
         const awayColor = awayOdds.startsWith('-') ? '#f87171' : '#4ade80';
         const homeColor = homeOdds.startsWith('-') ? '#f87171' : '#4ade80';
@@ -2884,6 +2886,7 @@ export default function VegasVaultApp() {
             const fmtN = (n) => n == null ? null : (n > 0 ? `+${n}` : `${n}`);
             return {
               ...game,
+              // Only update these from the lines poll
               lineMovement:  mv.lineMovement  || game.lineMovement,
               rlm:           mv.rlm           ?? game.rlm,
               moveType:      mv.moveType      || game.moveType,
@@ -2892,21 +2895,18 @@ export default function VegasVaultApp() {
               openingHomeML: fmtN(mv.openHome) || mv.openHome || game.openingHomeML,
               openingAwayML: fmtN(mv.openAway) || mv.openAway || game.openingAwayML,
               pinHomeML:     mv.pinHomeML     || game.pinHomeML,
-              // Always use DraftKings as source of truth
-              dkAwayML:        mv.dkAwayML != null ? mv.dkAwayML : game.dkAwayML,
-              dkHomeML:        mv.dkHomeML != null ? mv.dkHomeML : game.dkHomeML,
-              awayML:          mv.dkAwayML != null ? fmtN(mv.dkAwayML) : (mv.awayML || game.awayML || null),
-              homeML:          mv.dkHomeML != null ? fmtN(mv.dkHomeML) : (mv.homeML || game.homeML || null),
-              spread:          mv.spread || (game.spread && game.spread !== 'N/A' ? game.spread : null),
-              total:           mv.total  || (game.total  && game.total  !== 'N/A' ? game.total  : null),
-              dkSpread:        mv.dkSpread || game.dkSpread || null,
-              dkTotal:         mv.dkTotal  || game.dkTotal  || null,
-              awaySpreadPrice: mv.awaySpreadPrice || game.awaySpreadPrice || null,
-              homeSpreadPrice: mv.homeSpreadPrice || game.homeSpreadPrice || null,
-              overPrice:       mv.overPrice  || game.overPrice  || null,
-              underPrice:      mv.underPrice || game.underPrice || null,
               publicBettingPct: mv.publicBettingPct ?? game.publicBettingPct,
               sharpMoneyPct:    mv.sharpMoneyPct    ?? game.sharpMoneyPct,
+              // DraftKings lines ONLY — only update if mv has a real DK value
+              dkAwayML:        mv.dkAwayML != null ? mv.dkAwayML : game.dkAwayML,
+              dkHomeML:        mv.dkHomeML != null ? mv.dkHomeML : game.dkHomeML,
+              dkSpread:        mv.dkSpread  != null ? mv.dkSpread  : game.dkSpread,
+              dkTotal:         mv.dkTotal   != null ? mv.dkTotal   : game.dkTotal,
+              awaySpreadPrice: mv.awaySpreadPrice != null ? mv.awaySpreadPrice : game.awaySpreadPrice,
+              homeSpreadPrice: mv.homeSpreadPrice != null ? mv.homeSpreadPrice : game.homeSpreadPrice,
+              overPrice:       mv.overPrice  != null ? mv.overPrice  : game.overPrice,
+              underPrice:      mv.underPrice != null ? mv.underPrice : game.underPrice,
+              // Never overwrite awayML/homeML/spread/total — card reads from dk fields only
             };
           }));
         })
