@@ -2868,11 +2868,17 @@ export default function VegasVaultApp() {
         .then(r => r.json())
         .then(data => {
           if (!data.movements) return;
+          const lastWord = (n) => (n||'').trim().split(' ').pop().toLowerCase();
           const normT = (n) => (n||'').toLowerCase().replace(/^(the |los |san |new |st\. |st |fort |las )/, '').replace(/[^a-z]/g,'');
           setGames(prev => prev.map(game => {
             const key = `${game.away}|${game.home}`;
             const normKey = `${normT(game.away)}|${normT(game.home)}`;
-            const mv = data.movements[key] || Object.values(data.movements).find(m => `${normT(m.away)}|${normT(m.home)}` === normKey);
+            const awayLast = lastWord(game.away);
+            const homeLast = lastWord(game.home);
+            // Strict match: exact key, then normalized, then last-word (both must match)
+            const mv = data.movements[key] 
+              || Object.values(data.movements).find(m => `${normT(m.away)}|${normT(m.home)}` === normKey)
+              || Object.values(data.movements).find(m => lastWord(m.away) === awayLast && lastWord(m.home) === homeLast);
             if (!mv) return game;
             // Build formatted opening ML strings
             const fmtN = (n) => n == null ? null : (n > 0 ? `+${n}` : `${n}`);
@@ -2886,21 +2892,19 @@ export default function VegasVaultApp() {
               openingHomeML: fmtN(mv.openHome) || mv.openHome || game.openingHomeML,
               openingAwayML: fmtN(mv.openAway) || mv.openAway || game.openingAwayML,
               pinHomeML:     mv.pinHomeML     || game.pinHomeML,
-              dkAwayML:      mv.dkAwayML || game.dkAwayML || null,
-              dkHomeML:      mv.dkHomeML || game.dkHomeML || null,
-              awayML:        mv.awayML || game.awayML || null,
-              homeML:        mv.homeML || game.homeML || null,
-              dkSpread: mv.dkSpread || (game.dkSpread && game.dkSpread !== 'N/A' ? game.dkSpread : null),
-              dkTotal:  mv.dkTotal  || (game.dkTotal  && game.dkTotal  !== 'N/A' ? game.dkTotal  : null),
-              awaySpreadPrice: mv.awaySpreadPrice || game.awaySpreadPrice || '-110',
-              homeSpreadPrice: mv.homeSpreadPrice || game.homeSpreadPrice || '-110',
-              overPrice:  mv.overPrice  || game.overPrice  || '-110',
-              underPrice: mv.underPrice || game.underPrice || '-110',
-              // Live price updates from Sharp API
-              awayML:        fmtN(mv.currentAwayML) || mv.awayML || (game.awayML !== 'N/A' ? game.awayML : null),
-              homeML:        fmtN(mv.currentHomeML) || mv.homeML || (game.homeML !== 'N/A' ? game.homeML : null),
-              spread:        mv.spread || (game.spread !== 'N/A' ? game.spread : null),
-              total:         mv.total  || (game.total  !== 'N/A' ? game.total  : null),
+              // Always use DraftKings as source of truth
+              dkAwayML:        mv.dkAwayML != null ? mv.dkAwayML : game.dkAwayML,
+              dkHomeML:        mv.dkHomeML != null ? mv.dkHomeML : game.dkHomeML,
+              awayML:          mv.dkAwayML != null ? fmtN(mv.dkAwayML) : (mv.awayML || game.awayML || null),
+              homeML:          mv.dkHomeML != null ? fmtN(mv.dkHomeML) : (mv.homeML || game.homeML || null),
+              spread:          mv.spread || (game.spread && game.spread !== 'N/A' ? game.spread : null),
+              total:           mv.total  || (game.total  && game.total  !== 'N/A' ? game.total  : null),
+              dkSpread:        mv.dkSpread || game.dkSpread || null,
+              dkTotal:         mv.dkTotal  || game.dkTotal  || null,
+              awaySpreadPrice: mv.awaySpreadPrice || game.awaySpreadPrice || null,
+              homeSpreadPrice: mv.homeSpreadPrice || game.homeSpreadPrice || null,
+              overPrice:       mv.overPrice  || game.overPrice  || null,
+              underPrice:      mv.underPrice || game.underPrice || null,
               publicBettingPct: mv.publicBettingPct ?? game.publicBettingPct,
               sharpMoneyPct:    mv.sharpMoneyPct    ?? game.sharpMoneyPct,
             };
