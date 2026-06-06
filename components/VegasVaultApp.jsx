@@ -2888,6 +2888,8 @@ export default function VegasVaultApp() {
               pinHomeML:     mv.pinHomeML     || game.pinHomeML,
               dkAwayML:      mv.dkAwayML || game.dkAwayML || null,
               dkHomeML:      mv.dkHomeML || game.dkHomeML || null,
+              awayML:        mv.awayML || game.awayML || null,
+              homeML:        mv.homeML || game.homeML || null,
               dkSpread: mv.dkSpread || (game.dkSpread && game.dkSpread !== 'N/A' ? game.dkSpread : null),
               dkTotal:  mv.dkTotal  || (game.dkTotal  && game.dkTotal  !== 'N/A' ? game.dkTotal  : null),
               awaySpreadPrice: mv.awaySpreadPrice || game.awaySpreadPrice || '-110',
