@@ -48,28 +48,3 @@ a {
   }
 }
 
-/* ── Light mode ── */
-[data-theme="light"] {
-  --bg: #f1f5f9;
-  --bg2: #ffffff;
-  --text: #0f172a;
-  --text2: #475569;
-  --border: rgba(0,0,0,0.08);
-}
-
-[data-theme="light"] body {
-  background: #f1f5f9 !important;
-  color: #0f172a !important;
-}
-
-[data-theme="light"] .vv-card {
-  background: #ffffff !important;
-  border-color: rgba(0,0,0,0.08) !important;
-  color: #0f172a !important;
-}
-
-/* ── Dark mode (default) ── */
-[data-theme="dark"] body {
-  background: #080808 !important;
-  color: #f1f5f9 !important;
-}

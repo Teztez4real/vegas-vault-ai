@@ -18,10 +18,6 @@ export default function SettingsPage() {
   const [slotMsg, setSlotMsg] = useState('');
   const [clearMsg, setClearMsg] = useState('');
   const [testMsg, setTestMsg] = useState('');
-  const [theme, setTheme] = useState(() => {
-    if (typeof window !== 'undefined') return localStorage.getItem('vv_theme') || 'dark';
-    return 'dark';
-  });
 
   useEffect(() => {
     if (typeof window !== 'undefined' && 'Notification' in window)
@@ -31,29 +27,6 @@ export default function SettingsPage() {
       setLoading(false);
     });
   }, []);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem('vv_theme', theme);
-    document.documentElement.setAttribute('data-theme', theme);
-    if (theme === 'light') {
-      document.documentElement.style.setProperty('--bg', '#f1f5f9');
-      document.documentElement.style.setProperty('--bg2', '#ffffff');
-      document.documentElement.style.setProperty('--text', '#0f172a');
-      document.documentElement.style.setProperty('--text2', '#475569');
-      document.documentElement.style.setProperty('--border', 'rgba(0,0,0,0.08)');
-      document.body.style.background = '#f1f5f9';
-      document.body.style.color = '#0f172a';
-    } else {
-      document.documentElement.style.setProperty('--bg', '#080808');
-      document.documentElement.style.setProperty('--bg2', '#0f172a');
-      document.documentElement.style.setProperty('--text', '#f1f5f9');
-      document.documentElement.style.setProperty('--text2', '#94a3b8');
-      document.documentElement.style.setProperty('--border', 'rgba(255,255,255,0.08)');
-      document.body.style.background = '#080808';
-      document.body.style.color = '#f1f5f9';
-    }
-  }, [theme]);
 
   useEffect(() => {
     fetch(`/api/slot-pattern?date=${slotDate}&sport=${slotSport}`)
@@ -228,22 +201,6 @@ export default function SettingsPage() {
                   {slotSaving ? 'Saving...' : `Save ${slotSport.toUpperCase()} Pattern for ${slotDate}`}
                 </button>
                 {slotMsg && <div style={{ marginTop:10, fontSize:11, color: slotMsg.startsWith('✅') ? '#4ade80' : '#f87171', textAlign:'center' }}>{slotMsg}</div>}
-              </div>
-
-              {/* Theme Toggle */}
-              <div style={{ ...S.row }}>
-                <div>
-                  <div style={{ fontSize:12, fontWeight:600, color:'#e2e8f0', marginBottom:3 }}>Display Mode</div>
-                  <div style={{ fontSize:11, color:'#475569' }}>Switch between dark and light mode</div>
-                </div>
-                <div style={{ display:'flex', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, overflow:'hidden' }}>
-                  <button onClick={() => { setTheme('dark'); localStorage.setItem('vv_theme','dark'); window.dispatchEvent(new StorageEvent('storage',{key:'vv_theme',newValue:'dark'})); }} style={{ padding:'7px 14px', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit', letterSpacing:'0.05em', border:'none', background: theme === 'dark' ? '#c9a227' : 'transparent', color: theme === 'dark' ? '#000' : '#64748b', transition:'all 0.15s' }}>
-                    🌙 Dark
-                  </button>
-                  <button onClick={() => { setTheme('light'); localStorage.setItem('vv_theme','light'); window.dispatchEvent(new StorageEvent('storage',{key:'vv_theme',newValue:'light'})); }} style={{ padding:'7px 14px', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit', letterSpacing:'0.05em', border:'none', background: theme === 'light' ? '#c9a227' : 'transparent', color: theme === 'light' ? '#000' : '#64748b', transition:'all 0.15s' }}>
-                    ☀️ Light
-                  </button>
-                </div>
               </div>
 
               {/* Clear Plays */}
