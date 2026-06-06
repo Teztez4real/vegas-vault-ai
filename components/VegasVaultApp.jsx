@@ -1910,8 +1910,12 @@ function PropsAIView({ games, isSubscribed }) {
           const propTypes = {};
           playerProps.forEach(p => {
             if (!propTypes[p.propType]) propTypes[p.propType] = { over:null, under:null, line:p.line };
-            if (p.side === 'Over')  propTypes[p.propType].over  = p.price;
-            if (p.side === 'Under') propTypes[p.propType].under = p.price;
+            // Use DraftKings prices directly from API
+            if (p.overPrice)  propTypes[p.propType].over  = p.overPrice;
+            if (p.underPrice) propTypes[p.propType].under = p.underPrice;
+            // Also handle side-based format as fallback
+            if (p.side === 'Over')  propTypes[p.propType].over  = p.price || p.overPrice;
+            if (p.side === 'Under') propTypes[p.propType].under = p.price || p.underPrice;
           });
 
           return (
