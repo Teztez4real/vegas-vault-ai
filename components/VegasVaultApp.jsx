@@ -1860,7 +1860,7 @@ function PropsAIView({ games, isSubscribed }) {
           <div style={{ width:32,height:32,borderRadius:8,background:'linear-gradient(135deg,rgba(139,92,246,0.3),rgba(59,130,246,0.2))',border:'1px solid rgba(139,92,246,0.3)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16 }}>◇</div>
           <div>
             <h1 style={{ fontSize:20,fontWeight:800,color:'#f1f5f9',letterSpacing:'-0.03em',margin:0,lineHeight:1 }}>Props AI</h1>
-            <p style={{ fontSize:11,color:'#475569',margin:0,marginTop:2 }}>PrizePicks-style · Powered by DraftKings</p>
+            <p style={{ fontSize:11,color:'#475569',margin:0,marginTop:2 }}>Player props · Powered by DraftKings</p>
           </div>
         </div>
       </div>
@@ -1880,9 +1880,9 @@ function PropsAIView({ games, isSubscribed }) {
 
       {/* ── Loading shimmer ── */}
       {loadingProps && (
-        <div style={{ display:'flex',flexDirection:'column',gap:8 }}>
-          {[1,2,3,4].map(i => (
-            <div key={i} style={{ height:80,borderRadius:14,background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.05)',overflow:'hidden',position:'relative' }}>
+        <div style={{ display:'flex',flexDirection:'column',gap:10 }}>
+          {[1,2,3].map(i => (
+            <div key={i} style={{ height:200,borderRadius:16,background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.05)',overflow:'hidden',position:'relative' }}>
               <div style={{ position:'absolute',inset:0,background:'linear-gradient(90deg,transparent,rgba(255,255,255,0.03),transparent)',animation:'shimmer 1.5s infinite' }}/>
             </div>
           ))}
@@ -1890,7 +1890,7 @@ function PropsAIView({ games, isSubscribed }) {
         </div>
       )}
 
-      {/* ── PrizePicks-style prop cards ── */}
+      {/* ── Player prop cards ── */}
       {!loadingProps && filteredGames.map(game => {
         const gameProps = props.filter(p =>
           p.away?.toLowerCase().includes(game.away?.split(' ').pop()?.toLowerCase()) ||
@@ -1905,102 +1905,142 @@ function PropsAIView({ games, isSubscribed }) {
         const sportColor = SPORT_ACCENT[game.sport] || '#3b82f6';
         if (!Object.keys(byPlayer).length) return null;
 
-        return (
-          <div key={game.id} style={{ marginBottom:20 }}>
-            {/* Game label */}
-            <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:10,paddingLeft:2 }}>
-              <span style={{ fontSize:9,fontWeight:800,letterSpacing:'0.1em',color:sportColor,background:`${sportColor}18`,border:`1px solid ${sportColor}30`,padding:'2px 8px',borderRadius:4 }}>{game.sport}</span>
-              <span style={{ fontSize:12,fontWeight:700,color:'#94a3b8' }}>{game.away?.split(' ').pop()} @ {game.home?.split(' ').pop()}</span>
-              <span style={{ fontSize:10,color:'#334155',marginLeft:'auto' }}>{game.time}</span>
-            </div>
+        return Object.entries(byPlayer).slice(0,12).map(([playerName, playerProps]) => {
+          const initials = playerName.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+          const propTypes = {};
+          playerProps.forEach(p => {
+            if (!propTypes[p.propType]) propTypes[p.propType] = { over:null, under:null, line:p.line };
+            if (p.side === 'Over')  propTypes[p.propType].over  = p.price;
+            if (p.side === 'Under') propTypes[p.propType].under = p.price;
+          });
 
-            {/* Player prop cards — PrizePicks style */}
-            <div style={{ display:'flex',flexDirection:'column',gap:8 }}>
-              {Object.entries(byPlayer).slice(0,10).map(([playerName, playerProps]) => {
-                const propTypes = {};
-                playerProps.forEach(p => {
-                  if (!propTypes[p.propType]) propTypes[p.propType] = { over:null, under:null, line:p.line, overPrice:null, underPrice:null };
-                  if (p.side === 'Over')  { propTypes[p.propType].over = p.price; propTypes[p.propType].overPrice = p.price; }
-                  if (p.side === 'Under') { propTypes[p.propType].under = p.price; propTypes[p.propType].underPrice = p.price; }
-                });
+          return (
+            <div key={`${game.id}-${playerName}`} style={{ background:'rgba(10,15,30,0.95)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:16,marginBottom:16,overflow:'hidden' }}>
 
-                return Object.entries(propTypes).map(([pType, pData]) => {
-                  const propKey = `${playerName}-${pType}-${pData.line}`;
-                  const result = propResults[propKey];
-                  const isGen = generating === propKey;
-                  const opKey = `${playerName}-${pType}`;
-                  const opening = openingLines[opKey];
-                  const moved = opening && opening.line !== pData.line;
+              {/* ── Player header (dark gradient like PrizePicks) ── */}
+              <div style={{ background:'linear-gradient(135deg,rgba(15,25,50,0.95),rgba(20,10,40,0.9))',padding:'16px 16px 14px',position:'relative',borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
+                <div style={{ display:'flex',alignItems:'flex-end',justifyContent:'space-between' }}>
+                  <div>
+                    <div style={{ fontSize:11,color:'#64748b',fontWeight:600,marginBottom:2 }}>{game.sport} · {game.away?.split(' ').pop()} @ {game.home?.split(' ').pop()}</div>
+                    <div style={{ fontSize:13,color:'#94a3b8',fontWeight:500 }}>{playerProps[0]?.playerTeam || ''}</div>
+                    <div style={{ fontSize:26,fontWeight:900,color:'#f8fafc',letterSpacing:'-0.02em',lineHeight:1.1 }}>{playerName.split(' ')[0]}</div>
+                    <div style={{ fontSize:26,fontWeight:900,color:'#f8fafc',letterSpacing:'-0.02em',lineHeight:1.1 }}>{playerName.split(' ').slice(1).join(' ')}</div>
+                  </div>
+                  {/* Avatar circle */}
+                  <div style={{ width:64,height:64,borderRadius:12,background:`linear-gradient(135deg,${sportColor}40,${sportColor}20)`,border:`2px solid ${sportColor}50`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
+                    <span style={{ fontSize:20,fontWeight:900,color:sportColor }}>{initials}</span>
+                  </div>
+                </div>
 
-                  // Result summary
-                  const tier = result?.summary?.tier;
-                  const pick = result?.summary?.pick; // 'Over' or 'Under'
-                  const isOver = pick?.toLowerCase() === 'over';
-                  const isUnder = pick?.toLowerCase() === 'under';
-                  const tierColor = tier === '1' ? '#f59e0b' : tier === '2' ? '#3b82f6' : '#475569';
-                  const verdict = result?.summary?.verdict || result?.analysis?.propLineAudit || '';
-                  // Summarize to one short sentence
-                  const summary = verdict.length > 90 ? verdict.slice(0,87)+'...' : verdict;
+                {/* Game matchup bar */}
+                <div style={{ marginTop:12,background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:10,padding:'8px 12px',display:'flex',alignItems:'center',justifyContent:'space-between' }}>
+                  <div style={{ display:'flex',alignItems:'center',gap:8 }}>
+                    <div style={{ width:28,height:28,borderRadius:6,background:`${sportColor}25`,border:`1px solid ${sportColor}40`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,fontWeight:800,color:sportColor }}>{game.away?.split(' ').pop()?.slice(0,3).toUpperCase()}</div>
+                    <span style={{ fontSize:11,fontWeight:700,color:'#94a3b8' }}>{game.away?.split(' ').pop()}</span>
+                  </div>
+                  <div style={{ textAlign:'center' }}>
+                    <div style={{ fontSize:9,color:'#475569',fontWeight:600' }}>Today · {game.time}</div>
+                  </div>
+                  <div style={{ display:'flex',alignItems:'center',gap:8 }}>
+                    <span style={{ fontSize:11,fontWeight:700,color:'#94a3b8' }}>{game.home?.split(' ').pop()}</span>
+                    <div style={{ width:28,height:28,borderRadius:6,background:`${sportColor}25`,border:`1px solid ${sportColor}40`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,fontWeight:800,color:sportColor }}>{game.home?.split(' ').pop()?.slice(0,3).toUpperCase()}</div>
+                  </div>
+                </div>
+              </div>
 
-                  return (
-                    <div key={propKey} style={{ background:'rgba(15,23,42,0.7)',border:`1px solid ${result ? tierColor+'40' : 'rgba(255,255,255,0.06)'}`,borderRadius:14,padding:'14px 14px 12px',backdropFilter:'blur(4px)',cursor:'pointer' }}
-                      onClick={() => result ? setActiveProp({ playerName, propType:pType, line:pData.line, key:propKey, sport:game.sport, away:game.away, home:game.home }) : null}
-                    >
-                      {/* Row 1: Avatar + Name + Prop type + Line */}
-                      <div style={{ display:'flex',alignItems:'center',gap:12,marginBottom:10 }}>
-                        {/* Avatar */}
-                        <div style={{ width:42,height:42,borderRadius:10,background:`linear-gradient(135deg,${sportColor}35,${sportColor}15)`,border:`1px solid ${sportColor}40`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
-                          <span style={{ fontSize:13,fontWeight:800,color:sportColor }}>{playerName.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}</span>
-                        </div>
-                        {/* Name + prop */}
-                        <div style={{ flex:1,minWidth:0 }}>
-                          <div style={{ fontSize:13,fontWeight:700,color:'#f1f5f9',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis' }}>{playerName}</div>
-                          <div style={{ display:'flex',alignItems:'center',gap:6,marginTop:2 }}>
-                            <span style={{ fontSize:10,color:'#64748b',fontWeight:600 }}>{pType.toUpperCase()}</span>
-                            {moved && <span style={{ fontSize:8,color:'#f59e0b',fontWeight:700 }}>{opening.line}→{pData.line}</span>}
-                            {tier && <span style={{ fontSize:8,fontWeight:800,color:tierColor,background:`${tierColor}18`,padding:'1px 5px',borderRadius:4,letterSpacing:'0.05em' }}>{tier==='1'?'LOCK':tier==='2'?'TIER 2':'PASS'}</span>}
-                          </div>
-                        </div>
-                        {/* Line number — big like PrizePicks */}
-                        <div style={{ textAlign:'right',flexShrink:0 }}>
-                          <div style={{ fontSize:24,fontWeight:900,color:'#f8fafc',lineHeight:1 }}>{pData.line}</div>
-                          <div style={{ fontSize:9,color:'#475569',marginTop:1 }}>{game.sport} PROJ</div>
-                        </div>
+              {/* ── Individual prop rows ── */}
+              {Object.entries(propTypes).map(([pType, pData]) => {
+                const propKey = `${playerName}-${pType}-${pData.line}`;
+                const result = propResults[propKey];
+                const isGen = generating === propKey;
+                const opKey = `${playerName}-${pType}`;
+                const opening = openingLines[opKey];
+                const moved = opening && opening.line !== pData.line;
+                const tier = result?.summary?.tier;
+                const pick = result?.summary?.pick?.toLowerCase();
+                const isOver = pick?.includes('over') || pick?.includes('more');
+                const isUnder = pick?.includes('under') || pick?.includes('less');
+                const tierColor = tier === '1' ? '#f59e0b' : tier === '2' ? '#3b82f6' : '#64748b';
+                const verdict = result?.summary?.verdict || '';
+                const summary = verdict.length > 100 ? verdict.slice(0,97)+'...' : verdict;
+
+                const doAnalyze = () => {
+                  const op = openingLines[opKey];
+                  const lineMoved = op && op.line !== pData.line ? `Moved from ${op.line} to ${pData.line} (${pData.line > op.line ? 'UP' : 'DOWN'})` : 'No movement';
+                  analyzeProp({
+                    sport:game.sport, away:game.away, home:game.home, time:game.time,
+                    playerName, playerTeam:playerProps[0]?.playerTeam||'',
+                    propType:pType, line:pData.line,
+                    openingLine:op?.line||'Unknown', lineMovement:lineMoved, priceMovement:'N/A',
+                    overPrice:pData.over?(pData.over>0?`+${pData.over}`:String(pData.over)):'-110',
+                    underPrice:pData.under?(pData.under>0?`+${pData.under}`:String(pData.under)):'-110',
+                    opponent:game.home,
+                  });
+                };
+
+                return (
+                  <div key={pType} style={{ padding:'14px 16px',borderBottom:'1px solid rgba(255,255,255,0.04)',cursor:result?'pointer':'default' }}
+                    onClick={() => result && setActiveProp({ playerName, propType:pType, line:pData.line, key:propKey, sport:game.sport, away:game.away, home:game.home })}>
+
+                    {/* Line + prop type row */}
+                    <div style={{ display:'flex',alignItems:'center',gap:12,marginBottom:10 }}>
+                      {/* Direction indicator */}
+                      <div style={{ fontSize:16,color:isOver?'#22c55e':isUnder?'#f87171':'#334155',fontWeight:900,width:16,textAlign:'center' }}>
+                        {isOver ? '↑' : isUnder ? '↓' : '·'}
                       </div>
-
-                      {/* Row 2: OVER / UNDER buttons like PrizePicks */}
-                      <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:6 }}>
-                        <button
-                          onClick={e => { e.stopPropagation(); if (!result && !isGen) { const op=openingLines[opKey]; const lineMoved=op&&op.line!==pData.line?`Moved from ${op.line} to ${pData.line} (${pData.line>op.line?'UP':'DOWN'})`:'No movement'; analyzeProp({ sport:game.sport,away:game.away,home:game.home,time:game.time,playerName,playerTeam:playerProps[0]?.playerTeam||'',propType:pType,line:pData.line,openingLine:op?.line||'Unknown',lineMovement:lineMoved,priceMovement:'N/A',overPrice:pData.over?(pData.over>0?`+${pData.over}`:String(pData.over)):'-110',underPrice:pData.under?(pData.under>0?`+${pData.under}`:String(pData.under)):'-110',opponent:game.home }); }}}
-                          style={{ padding:'8px 0',borderRadius:8,border:`1.5px solid ${isOver&&result?'#22c55e':'rgba(34,197,94,0.25)'}`,background:isOver&&result?'rgba(34,197,94,0.12)':'rgba(34,197,94,0.04)',color:isOver&&result?'#22c55e':'#4ade80',fontSize:11,fontWeight:700,cursor:isGen?'wait':'pointer',letterSpacing:'0.05em',fontFamily:'inherit' }}>
-                          {isGen ? '···' : <>↑ MORE <span style={{ fontSize:10,color:'rgba(74,222,128,0.6)',marginLeft:2 }}>{pData.over?(pData.over>0?'+'+pData.over:pData.over):''}</span></>}
-                        </button>
-                        <button
-                          onClick={e => { e.stopPropagation(); if (!result && !isGen) { const op=openingLines[opKey]; const lineMoved=op&&op.line!==pData.line?`Moved from ${op.line} to ${pData.line} (${pData.line>op.line?'UP':'DOWN'})`:'No movement'; analyzeProp({ sport:game.sport,away:game.away,home:game.home,time:game.time,playerName,playerTeam:playerProps[0]?.playerTeam||'',propType:pType,line:pData.line,openingLine:op?.line||'Unknown',lineMovement:lineMoved,priceMovement:'N/A',overPrice:pData.over?(pData.over>0?`+${pData.over}`:String(pData.over)):'-110',underPrice:pData.under?(pData.under>0?`+${pData.under}`:String(pData.under)):'-110',opponent:game.home }); }}}
-                          style={{ padding:'8px 0',borderRadius:8,border:`1.5px solid ${isUnder&&result?'#f87171':'rgba(248,113,113,0.25)'}`,background:isUnder&&result?'rgba(248,113,113,0.12)':'rgba(248,113,113,0.04)',color:isUnder&&result?'#f87171':'#fca5a5',fontSize:11,fontWeight:700,cursor:isGen?'wait':'pointer',letterSpacing:'0.05em',fontFamily:'inherit' }}>
-                          {isGen ? '···' : <>↓ LESS <span style={{ fontSize:10,color:'rgba(252,165,165,0.6)',marginLeft:2 }}>{pData.under?(pData.under>0?'+'+pData.under:pData.under):''}</span></>}
-                        </button>
+                      {/* Big line number */}
+                      <div style={{ fontSize:28,fontWeight:900,color:'#f8fafc',lineHeight:1,minWidth:60 }}>{pData.line}</div>
+                      <div>
+                        <div style={{ fontSize:12,color:'#94a3b8',fontWeight:700 }}>{pType}</div>
+                        {moved && <div style={{ fontSize:9,color:'#f59e0b',fontWeight:700,marginTop:1 }}>{opening.line} → {pData.line}</div>}
                       </div>
-
-                      {/* Row 3: AI summary if analyzed */}
-                      {result && summary && (
-                        <div style={{ marginTop:10,paddingTop:10,borderTop:'1px solid rgba(255,255,255,0.05)' }}>
-                          <div style={{ fontSize:9,fontWeight:700,color:tierColor,letterSpacing:'0.08em',marginBottom:4 }}>AI SUMMARY</div>
-                          <div style={{ fontSize:11,color:'#94a3b8',lineHeight:1.55 }}>{summary}</div>
-                        </div>
-                      )}
-
-                      {/* Tap to analyze hint */}
-                      {!result && !isGen && (
-                        <div style={{ marginTop:8,textAlign:'center',fontSize:9,color:'#1e293b' }}>tap ↑ MORE or ↓ LESS to analyze</div>
-                      )}
+                      <div style={{ marginLeft:'auto',display:'flex',alignItems:'center',gap:6 }}>
+                        {tier && (
+                          <span style={{ fontSize:8,fontWeight:800,color:tierColor,background:`${tierColor}18`,border:`1px solid ${tierColor}30`,padding:'2px 7px',borderRadius:4,letterSpacing:'0.06em' }}>
+                            {tier==='1'?'🔒 LOCK':tier==='2'?'TIER 2':'PASS'}
+                          </span>
+                        )}
+                        {/* Analyze button */}
+                        {!result && (
+                          <button onClick={e => { e.stopPropagation(); doAnalyze(); }} disabled={isGen}
+                            style={{ padding:'6px 14px',borderRadius:8,border:'1px solid rgba(59,130,246,0.4)',background:'rgba(59,130,246,0.1)',color:'#60a5fa',fontSize:10,fontWeight:700,cursor:isGen?'wait':'pointer',letterSpacing:'0.05em',fontFamily:'inherit',opacity:isGen?0.6:1 }}>
+                            {isGen ? '···' : 'Analyze'}
+                          </button>
+                        )}
+                        {result && (
+                          <button onClick={e => { e.stopPropagation(); doAnalyze(); }} disabled={isGen}
+                            style={{ padding:'6px 14px',borderRadius:8,border:'1px solid rgba(255,255,255,0.1)',background:'transparent',color:'#475569',fontSize:10,fontWeight:700,cursor:isGen?'wait':'pointer',letterSpacing:'0.05em',fontFamily:'inherit' }}>
+                            {isGen ? '···' : '↺'}
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  );
-                });
+
+                    {/* Prices row */}
+                    <div style={{ display:'flex',gap:10,marginBottom:summary?10:0 }}>
+                      <div style={{ flex:1,padding:'6px 10px',borderRadius:8,background:isOver&&result?'rgba(34,197,94,0.1)':'rgba(34,197,94,0.04)',border:`1px solid ${isOver&&result?'rgba(34,197,94,0.4)':'rgba(34,197,94,0.15)'}`,textAlign:'center' }}>
+                        <div style={{ fontSize:9,color:'#4ade80',fontWeight:700,letterSpacing:'0.05em' }}>OVER</div>
+                        <div style={{ fontSize:11,color:'#86efac',fontWeight:600,marginTop:1 }}>{pData.over?(pData.over>0?'+'+pData.over:pData.over):'-110'}</div>
+                      </div>
+                      <div style={{ flex:1,padding:'6px 10px',borderRadius:8,background:isUnder&&result?'rgba(248,113,113,0.1)':'rgba(248,113,113,0.04)',border:`1px solid ${isUnder&&result?'rgba(248,113,113,0.4)':'rgba(248,113,113,0.15)'}`,textAlign:'center' }}>
+                        <div style={{ fontSize:9,color:'#f87171',fontWeight:700,letterSpacing:'0.05em' }}>UNDER</div>
+                        <div style={{ fontSize:11,color:'#fca5a5',fontWeight:600,marginTop:1 }}>{pData.under?(pData.under>0?'+'+pData.under:pData.under):'-110'}</div>
+                      </div>
+                    </div>
+
+                    {/* AI summary */}
+                    {summary && (
+                      <div style={{ marginTop:10,padding:'8px 10px',background:'rgba(255,255,255,0.02)',borderRadius:8,border:'1px solid rgba(255,255,255,0.04)' }}>
+                        <span style={{ fontSize:9,fontWeight:700,color:tierColor,letterSpacing:'0.06em',marginRight:6 }}>AI:</span>
+                        <span style={{ fontSize:11,color:'#64748b',lineHeight:1.5 }}>{summary}</span>
+                      </div>
+                    )}
+                  </div>
+                );
               })}
             </div>
-          </div>
-        );
+          );
+        });
       })}
 
       {/* ── Result Modal ── */}
@@ -2015,19 +2055,19 @@ function PropsAIView({ games, isSubscribed }) {
               <div style={{ fontSize:9,fontWeight:700,letterSpacing:'0.12em',color:'#475569',marginBottom:6 }}>{activeResult.sport} · {activeResult.game}</div>
               <div style={{ fontSize:24,fontWeight:800,color:'#f8fafc',letterSpacing:'-0.02em',marginBottom:2 }}>{activeProp.playerName}</div>
               <div style={{ display:'flex',gap:8,alignItems:'center' }}>
-                <span style={{ fontSize:11,fontWeight:600,color:'#64748b' }}>{activeProp.propType}</span>
+                <span style={{ fontSize:11,color:'#64748b' }}>{activeProp.propType}</span>
                 <span style={{ width:3,height:3,borderRadius:'50%',background:'#334155',display:'inline-block' }}/>
                 <span style={{ fontSize:11,color:'#64748b' }}>Line: <strong style={{ color:'#94a3b8' }}>{activeProp.line}</strong></span>
               </div>
             </div>
             <div style={{ margin:'14px 16px 8px',background:'linear-gradient(135deg,rgba(59,130,246,0.1),rgba(139,92,246,0.06))',border:'1px solid rgba(59,130,246,0.25)',borderRadius:14,padding:'14px 16px' }}>
-              <div style={{ fontSize:8,fontWeight:800,letterSpacing:'0.12em',color:'#3b82f6',marginBottom:10 }}>ANALYSIS</div>
-              <div style={{ fontSize:28,fontWeight:900,color:'#f8fafc',letterSpacing:'-0.03em',lineHeight:1,marginBottom:6 }}>{activeResult.summary?.pick} {activeResult.summary?.line}</div>
+              <div style={{ fontSize:8,fontWeight:800,letterSpacing:'0.12em',color:'#3b82f6',marginBottom:8 }}>PRIMARY PLAY</div>
+              <div style={{ fontSize:28,fontWeight:900,color:'#f8fafc',marginBottom:6 }}>{activeResult.summary?.pick} {activeResult.summary?.line}</div>
               <p style={{ fontSize:12,color:'#94a3b8',lineHeight:1.65,margin:0 }}>{activeResult.summary?.verdict}</p>
             </div>
             {activeResult.analysis && (
               <div style={{ margin:'0 16px 8px' }}>
-                {[['Prop Audit',activeResult.analysis.propLineAudit],['Player Form',activeResult.analysis.playerBaseline],['Matchup',activeResult.analysis.matchupContext],['Situation',activeResult.analysis.situationalFactors],['vs Opponent',activeResult.analysis.historicalVsOpponent],['Edge Calc',activeResult.analysis.discrepancyCalc]].filter(([,v])=>v).map(([label,value])=>(
+                {[['Prop Line Audit',activeResult.analysis.propLineAudit],['Player Baseline',activeResult.analysis.playerBaseline],['Matchup',activeResult.analysis.matchupContext],['Situational',activeResult.analysis.situationalFactors],['vs Opponent',activeResult.analysis.historicalVsOpponent],['Edge Calc',activeResult.analysis.discrepancyCalc]].filter(([,v])=>v).map(([label,value])=>(
                   <div key={label} style={{ marginBottom:6,padding:'10px 12px',background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.04)',borderRadius:10 }}>
                     <div style={{ fontSize:9,fontWeight:700,color:'#334155',marginBottom:4 }}>{label.toUpperCase()}</div>
                     <div style={{ fontSize:12,color:'#64748b',lineHeight:1.65 }}>{value}</div>
@@ -2036,7 +2076,7 @@ function PropsAIView({ games, isSubscribed }) {
               </div>
             )}
             <div style={{ padding:'0 16px' }}>
-              <button onClick={() => setActiveProp(null)} style={{ width:'100%',padding:'13px',borderRadius:12,border:'1px solid rgba(255,255,255,0.08)',background:'rgba(255,255,255,0.03)',color:'#64748b',fontSize:13,fontWeight:600,cursor:'pointer',letterSpacing:'0.02em' }}>Close</button>
+              <button onClick={() => setActiveProp(null)} style={{ width:'100%',padding:'13px',borderRadius:12,border:'1px solid rgba(255,255,255,0.08)',background:'rgba(255,255,255,0.03)',color:'#64748b',fontSize:13,fontWeight:600,cursor:'pointer' }}>Close</button>
             </div>
           </div>
         </div>
