@@ -139,23 +139,19 @@ function buildGames(gamesMap) {
     const spreadVal = Object.values(event.books).find(b => b.spread != null)?.spread;
     const totalVal = Object.values(event.books).find(b => b.total != null)?.total;
 
-    // Always use DraftKings as the source of truth for displayed lines
-    const displayBook = dkBook || bestBook;
-
-    // DK spread and total
-    const dkSpreadVal = dkBook?.homeSpread ?? dkBook?.awaySpread != null ? -dkBook.awaySpread : null;
-    const dkTotalVal  = dkBook?.total ?? null;
+    // ONLY use DraftKings — if DK not available, return null prices (never use another book)
+    if (!dkBook || dkBook.homeML == null) return null; // skip game if no DK data
 
     return {
       key,
       away: event.away,
       home: event.home,
-      homeML: fmt(displayBook.homeML),
-      awayML: fmt(displayBook.awayML),
-      currentHomeML: displayBook.homeML,
-      currentAwayML: displayBook.awayML,
-      spread: dkBook?.homeSpread != null ? (dkBook.homeSpread > 0 ? `+${dkBook.homeSpread}` : `${dkBook.homeSpread}`) : (spreadVal != null ? (spreadVal > 0 ? `+${spreadVal}` : `${spreadVal}`) : null),
-      total: dkTotalVal || totalVal || null,
+      homeML: fmt(dkBook.homeML),
+      awayML: fmt(dkBook.awayML),
+      currentHomeML: dkBook.homeML,
+      currentAwayML: dkBook.awayML,
+      spread: dkBook.homeSpread != null ? (dkBook.homeSpread > 0 ? `+${dkBook.homeSpread}` : `${dkBook.homeSpread}`) : null,
+      total: dkBook.total || null,
       awaySpreadPrice: dkBook?.awaySpreadPrice != null ? fmt(dkBook.awaySpreadPrice) : null,
       homeSpreadPrice: dkBook?.homeSpreadPrice != null ? fmt(dkBook.homeSpreadPrice) : null,
       overPrice:  dkBook?.overPrice  != null ? fmt(dkBook.overPrice)  : null,
