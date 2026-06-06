@@ -237,10 +237,10 @@ export default function SettingsPage() {
                   <div style={{ fontSize:11, color:'#475569' }}>Switch between dark and light mode</div>
                 </div>
                 <div style={{ display:'flex', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, overflow:'hidden' }}>
-                  <button onClick={() => setTheme('dark')} style={{ padding:'7px 14px', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit', letterSpacing:'0.05em', border:'none', background: theme === 'dark' ? '#c9a227' : 'transparent', color: theme === 'dark' ? '#000' : '#64748b', transition:'all 0.15s' }}>
+                  <button onClick={() => { setTheme('dark'); localStorage.setItem('vv_theme','dark'); window.dispatchEvent(new StorageEvent('storage',{key:'vv_theme',newValue:'dark'})); }} style={{ padding:'7px 14px', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit', letterSpacing:'0.05em', border:'none', background: theme === 'dark' ? '#c9a227' : 'transparent', color: theme === 'dark' ? '#000' : '#64748b', transition:'all 0.15s' }}>
                     🌙 Dark
                   </button>
-                  <button onClick={() => setTheme('light')} style={{ padding:'7px 14px', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit', letterSpacing:'0.05em', border:'none', background: theme === 'light' ? '#c9a227' : 'transparent', color: theme === 'light' ? '#000' : '#64748b', transition:'all 0.15s' }}>
+                  <button onClick={() => { setTheme('light'); localStorage.setItem('vv_theme','light'); window.dispatchEvent(new StorageEvent('storage',{key:'vv_theme',newValue:'light'})); }} style={{ padding:'7px 14px', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit', letterSpacing:'0.05em', border:'none', background: theme === 'light' ? '#c9a227' : 'transparent', color: theme === 'light' ? '#000' : '#64748b', transition:'all 0.15s' }}>
                     ☀️ Light
                   </button>
                 </div>

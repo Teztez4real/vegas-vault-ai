@@ -2094,6 +2094,7 @@ function PropsAIView({ games, isSubscribed }) {
 
 export default function VegasVaultApp() {
   const [games, setGames]             = useState([]);
+  const [theme, setTheme]             = useState(() => typeof window !== 'undefined' ? (localStorage.getItem('vv_theme') || 'dark') : 'dark');
   const [trellAlerts, setTrellAlerts] = useState([]);
   const [oddsFeed, setOddsFeed]       = useState(ODDS_FEED);
   const [marketScanner, setMarketScanner] = useState({ reverseLineMovement:7, sharpMoneyDetected:5, publicHeavy:6, vegasTrapAlert:3 });
@@ -2522,18 +2523,17 @@ export default function VegasVaultApp() {
   const lastLineupRef = useRef({});  // tracks lineup state per game
   const lastInjuryRef = useRef({});  // tracks injury state per game
 
-  // ── APPLY SAVED THEME ON LOAD ────────────────────────────────────────────────
+  // ── APPLY SAVED THEME ON LOAD + LISTEN FOR CHANGES ─────────────────────────
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const saved = localStorage.getItem('vv_theme') || 'dark';
-    document.documentElement.setAttribute('data-theme', saved);
-    if (saved === 'light') {
-      document.body.style.background = '#f1f5f9';
-      document.body.style.color = '#0f172a';
-    } else {
-      document.body.style.background = '#080808';
-      document.body.style.color = '#f1f5f9';
-    }
+    setTheme(saved);
+    // Listen for theme changes from settings page
+    const onStorage = (e) => {
+      if (e.key === 'vv_theme') setTheme(e.newValue || 'dark');
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
   }, []);
 
   // ── HANDLE STRIPE SUCCESS REDIRECT ───────────────────────────────────────────
@@ -3010,8 +3010,10 @@ export default function VegasVaultApp() {
   const hour = new Date().getHours();
   const greeting = hour<12?"Good morning":hour<17?"Good afternoon":"Good evening";
 
+  const isLight = theme === 'light';
+
   return (
-    <div style={{ fontFamily:"'Inter','SF Pro Display',-apple-system,sans-serif",background:"#060a18",minHeight:"100vh",color:"#e2e8f0",display:"flex",flexDirection:"column" }}>
+    <div style={{ fontFamily:"'Inter','SF Pro Display',-apple-system,sans-serif",background:isLight?"#f1f5f9":"#060a18",minHeight:"100vh",color:isLight?"#0f172a":"#e2e8f0",display:"flex",flexDirection:"column" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
         @keyframes spin { to { transform: rotate(360deg); } }
