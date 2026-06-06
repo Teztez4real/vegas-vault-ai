@@ -2522,6 +2522,20 @@ export default function VegasVaultApp() {
   const lastLineupRef = useRef({});  // tracks lineup state per game
   const lastInjuryRef = useRef({});  // tracks injury state per game
 
+  // ── APPLY SAVED THEME ON LOAD ────────────────────────────────────────────────
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const saved = localStorage.getItem('vv_theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', saved);
+    if (saved === 'light') {
+      document.body.style.background = '#f1f5f9';
+      document.body.style.color = '#0f172a';
+    } else {
+      document.body.style.background = '#080808';
+      document.body.style.color = '#f1f5f9';
+    }
+  }, []);
+
   // ── HANDLE STRIPE SUCCESS REDIRECT ───────────────────────────────────────────
   useEffect(() => {
     if (typeof window === 'undefined') return;
