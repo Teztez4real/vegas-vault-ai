@@ -712,7 +712,6 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
         })();
         return (
           <div style={{ marginBottom:10 }}>
-            <div style={{ marginBottom:5 }}>
             <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:5 }}>
               {/* Moneyline */}
               <div style={{ background:'rgba(255,255,255,0.02)',border:'1px solid rgba(59,130,246,0.14)',borderRadius:8,overflow:'hidden' }}>
