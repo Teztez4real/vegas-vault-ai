@@ -694,14 +694,12 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
           if (typeof v === 'string') return v;
           return v > 0 ? '+'+v : String(v);
         };
-        // ALWAYS show DraftKings lines only — never fall through to other sources
-        const awayOdds = fmtOdds(game.dkAwayML) || '—';
-        const homeOdds = fmtOdds(game.dkHomeML) || '—';
+        const awayOdds = fmtOdds(game.dkAwayML) || fmtOdds(game.awayML) || '—';
+        const homeOdds = fmtOdds(game.dkHomeML) || fmtOdds(game.homeML) || '—';
         const fmtSpread = (v) => (!v || v === 'N/A' || v === 'null' || v === 'undefined') ? null : String(v);
         const fmtTotal = (v) => (!v || v === 'N/A' || v === 'null' || v === 'undefined') ? null : String(v);
-        // ALWAYS show DraftKings spread/total only — no fallback to other sources
-        const spreadVal = fmtSpread(game.dkSpread) || '—';
-        const totalVal  = fmtTotal(game.dkTotal)  || '—';
+        const spreadVal = fmtSpread(game.dkSpread) || fmtSpread(game.spread) || '—';
+        const totalVal = fmtTotal(game.dkTotal) || fmtTotal(game.total) || '—';
         const hasMovement = game.lineMovement && !['No significant movement','N/A','No significant movement detected'].includes(game.lineMovement);
         const awayColor = awayOdds.startsWith('-') ? '#f87171' : '#4ade80';
         const homeColor = homeOdds.startsWith('-') ? '#f87171' : '#4ade80';
@@ -2870,23 +2868,16 @@ export default function VegasVaultApp() {
         .then(r => r.json())
         .then(data => {
           if (!data.movements) return;
-          const lastWord = (n) => (n||'').trim().split(' ').pop().toLowerCase();
           const normT = (n) => (n||'').toLowerCase().replace(/^(the |los |san |new |st\. |st |fort |las )/, '').replace(/[^a-z]/g,'');
           setGames(prev => prev.map(game => {
             const key = `${game.away}|${game.home}`;
             const normKey = `${normT(game.away)}|${normT(game.home)}`;
-            const awayLast = lastWord(game.away);
-            const homeLast = lastWord(game.home);
-            // Strict match: exact key, then normalized, then last-word (both must match)
-            const mv = data.movements[key] 
-              || Object.values(data.movements).find(m => `${normT(m.away)}|${normT(m.home)}` === normKey)
-              || Object.values(data.movements).find(m => lastWord(m.away) === awayLast && lastWord(m.home) === homeLast);
+            const mv = data.movements[key] || Object.values(data.movements).find(m => `${normT(m.away)}|${normT(m.home)}` === normKey);
             if (!mv) return game;
             // Build formatted opening ML strings
             const fmtN = (n) => n == null ? null : (n > 0 ? `+${n}` : `${n}`);
             return {
               ...game,
-              // Only update these from the lines poll
               lineMovement:  mv.lineMovement  || game.lineMovement,
               rlm:           mv.rlm           ?? game.rlm,
               moveType:      mv.moveType      || game.moveType,
@@ -2895,18 +2886,21 @@ export default function VegasVaultApp() {
               openingHomeML: fmtN(mv.openHome) || mv.openHome || game.openingHomeML,
               openingAwayML: fmtN(mv.openAway) || mv.openAway || game.openingAwayML,
               pinHomeML:     mv.pinHomeML     || game.pinHomeML,
+              dkAwayML:      mv.dkAwayML || game.dkAwayML || null,
+              dkHomeML:      mv.dkHomeML || game.dkHomeML || null,
+              dkSpread: mv.dkSpread || (game.dkSpread && game.dkSpread !== 'N/A' ? game.dkSpread : null),
+              dkTotal:  mv.dkTotal  || (game.dkTotal  && game.dkTotal  !== 'N/A' ? game.dkTotal  : null),
+              awaySpreadPrice: mv.awaySpreadPrice || game.awaySpreadPrice || '-110',
+              homeSpreadPrice: mv.homeSpreadPrice || game.homeSpreadPrice || '-110',
+              overPrice:  mv.overPrice  || game.overPrice  || '-110',
+              underPrice: mv.underPrice || game.underPrice || '-110',
+              // Live price updates from Sharp API
+              awayML:        fmtN(mv.currentAwayML) || mv.awayML || (game.awayML !== 'N/A' ? game.awayML : null),
+              homeML:        fmtN(mv.currentHomeML) || mv.homeML || (game.homeML !== 'N/A' ? game.homeML : null),
+              spread:        mv.spread || (game.spread !== 'N/A' ? game.spread : null),
+              total:         mv.total  || (game.total  !== 'N/A' ? game.total  : null),
               publicBettingPct: mv.publicBettingPct ?? game.publicBettingPct,
               sharpMoneyPct:    mv.sharpMoneyPct    ?? game.sharpMoneyPct,
-              // DraftKings lines ONLY — only update if mv has a real DK value
-              dkAwayML:        mv.dkAwayML != null ? mv.dkAwayML : game.dkAwayML,
-              dkHomeML:        mv.dkHomeML != null ? mv.dkHomeML : game.dkHomeML,
-              dkSpread:        mv.dkSpread  != null ? mv.dkSpread  : game.dkSpread,
-              dkTotal:         mv.dkTotal   != null ? mv.dkTotal   : game.dkTotal,
-              awaySpreadPrice: mv.awaySpreadPrice != null ? mv.awaySpreadPrice : game.awaySpreadPrice,
-              homeSpreadPrice: mv.homeSpreadPrice != null ? mv.homeSpreadPrice : game.homeSpreadPrice,
-              overPrice:       mv.overPrice  != null ? mv.overPrice  : game.overPrice,
-              underPrice:      mv.underPrice != null ? mv.underPrice : game.underPrice,
-              // Never overwrite awayML/homeML/spread/total — card reads from dk fields only
             };
           }));
         })

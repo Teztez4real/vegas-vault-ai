@@ -139,23 +139,20 @@ function buildGames(gamesMap) {
     const spreadVal = Object.values(event.books).find(b => b.spread != null)?.spread;
     const totalVal = Object.values(event.books).find(b => b.total != null)?.total;
 
-    // ONLY use DraftKings — if DK not available, return null prices (never use another book)
-    if (!dkBook || dkBook.homeML == null) return null; // skip game if no DK data
-
     return {
       key,
       away: event.away,
       home: event.home,
-      homeML: fmt(dkBook.homeML),
-      awayML: fmt(dkBook.awayML),
-      currentHomeML: dkBook.homeML,
-      currentAwayML: dkBook.awayML,
-      spread: dkBook.homeSpread != null ? (dkBook.homeSpread > 0 ? `+${dkBook.homeSpread}` : `${dkBook.homeSpread}`) : null,
-      total: dkBook.total || null,
-      awaySpreadPrice: dkBook?.awaySpreadPrice != null ? fmt(dkBook.awaySpreadPrice) : null,
-      homeSpreadPrice: dkBook?.homeSpreadPrice != null ? fmt(dkBook.homeSpreadPrice) : null,
-      overPrice:  dkBook?.overPrice  != null ? fmt(dkBook.overPrice)  : null,
-      underPrice: dkBook?.underPrice != null ? fmt(dkBook.underPrice) : null,
+      homeML: fmt(bestBook.homeML),
+      awayML: fmt(bestBook.awayML),
+      currentHomeML: bestBook.homeML,
+      currentAwayML: bestBook.awayML,
+      spread: spreadVal != null ? (spreadVal > 0 ? `+${spreadVal}` : `${spreadVal}`) : null,
+      total: totalVal || null,
+      awaySpreadPrice: (() => { const b = Object.values(event.books).find(b => b.awaySpreadPrice != null); return b ? fmt(b.awaySpreadPrice) : null; })(),
+      homeSpreadPrice: (() => { const b = Object.values(event.books).find(b => b.homeSpreadPrice != null); return b ? fmt(b.homeSpreadPrice) : null; })(),
+      overPrice:  (() => { const b = Object.values(event.books).find(b => b.overPrice != null); return b ? fmt(b.overPrice) : null; })(),
+      underPrice: (() => { const b = Object.values(event.books).find(b => b.underPrice != null); return b ? fmt(b.underPrice) : null; })(),
       commenceTime: event.commenceTime,
       bolHomeML: bolBook?.homeML,
       dkAwayML:  dkBook?.awayML,
@@ -224,9 +221,8 @@ export async function GET(request) {
       movements[game.key] = {
         away: game.away,
         home: game.home,
-        // Always show DraftKings ML — if DK not available fall back to best book
-        homeML: game.dkHomeML != null ? fmt(game.dkHomeML) : game.homeML,
-        awayML: game.dkAwayML != null ? fmt(game.dkAwayML) : game.awayML,
+        homeML: game.homeML,
+        awayML: game.awayML,
         commenceTime: game.commenceTime,
         bolHomeML: fmt(game.bolHomeML),
         dkAwayML:  fmt(game.dkAwayML),
@@ -234,15 +230,6 @@ export async function GET(request) {
         dkSpread:  game.dkSpread || null,
         dkTotal:   game.dkTotal  || null,
         fdHomeML:  fmt(game.fdHomeML),
-        // DK spread/total/prices for display
-        currentAwayML: game.dkAwayML ?? game.currentAwayML,
-        currentHomeML: game.dkHomeML ?? game.currentHomeML,
-        spread:    game.spread,
-        total:     game.total,
-        awaySpreadPrice: game.awaySpreadPrice,
-        homeSpreadPrice: game.homeSpreadPrice,
-        overPrice:  game.overPrice,
-        underPrice: game.underPrice,
         ...mv,
       };
     }
