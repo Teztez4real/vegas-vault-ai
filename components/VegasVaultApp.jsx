@@ -1939,7 +1939,7 @@ function PropsAIView({ games, isSubscribed }) {
                     <span style={{ fontSize:11,fontWeight:700,color:'#94a3b8' }}>{game.away?.split(' ').pop()}</span>
                   </div>
                   <div style={{ textAlign:'center' }}>
-                    <div style={{ fontSize:9,color:'#475569',fontWeight:600' }}>Today · {game.time}</div>
+                    <div style={{ fontSize:9,color:'#475569',fontWeight:600 }}>Today · {game.time}</div>
                   </div>
                   <div style={{ display:'flex',alignItems:'center',gap:8 }}>
                     <span style={{ fontSize:11,fontWeight:700,color:'#94a3b8' }}>{game.home?.split(' ').pop()}</span>
