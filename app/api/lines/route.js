@@ -27,7 +27,7 @@ function fmt(price) {
 
 // ── FETCH ALL BOOKS (to compare sharp vs public) ──────────────────────────────
 
-async function fetchAllBooks(sportKey) {
+async function fetchAllBooks(sportKey, dateStr) {
   const sharpKey = process.env.SHARPAPI_KEY;
   const games = {};
 
@@ -45,7 +45,16 @@ async function fetchAllBooks(sportKey) {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
 
+      // Filter to requested date only (CT timezone = UTC-5)
+      const [yr, mo, dy] = dateStr.split('-').map(Number);
+      const dayStart = new Date(Date.UTC(yr, mo - 1, dy, 5, 0, 0));
+      const dayEnd   = new Date(Date.UTC(yr, mo - 1, dy + 1, 4, 59, 59));
+
       for (const game of data) {
+        // Skip games not on the requested date
+        const gt = new Date(game.commence_time);
+        if (gt < dayStart || gt > dayEnd) continue;
+
         const away = game.away_team;
         const home = game.home_team;
         const key = `${away}|${home}`;
@@ -179,7 +188,7 @@ export async function GET(request) {
     await purgeOld(dateParam);
 
     // Fetch all books
-    const gamesMap = await fetchAllBooks(sportKey);
+    const gamesMap = await fetchAllBooks(sportKey, dateParam);
     if (!Object.keys(gamesMap).length) {
       return NextResponse.json({ movements: {}, summary: { sharp: 0, moving: 0, stable: 0, total: 0 }, fetchedAt: new Date().toISOString() });
     }
