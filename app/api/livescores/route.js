@@ -70,11 +70,14 @@ export async function GET(request) {
           startTime: game.gameDate,
           updatedTime: (() => {
             // Use rescheduled time if available, otherwise original
-            const t = game.rescheduleDate || game.gameDate;
+            const t = game.rescheduleDate || game.statusDescription?.match(/\d+:\d+ [AP]M/)
+              ? game.gameDate : game.rescheduleDate || game.gameDate;
             if (!t) return null;
-            const d = new Date(t);
-            return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) + ' CT';
+            const dt = new Date(t);
+            return dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) + ' CT';
           })(),
+          // isFinal is true ONLY if game actually completed — not if delayed/postponed
+          isFinal: abstractState === 'Final' && !isDelayed && !isPostponed,
           date: d.date,
         });
       }

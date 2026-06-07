@@ -521,7 +521,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
   const liveKey3 = `${awayLast}|${homeLast}`;
   const live = liveScores?.[game.id] || liveScores?.[liveKey1] || liveScores?.[liveKey2] || liveScores?.[liveKey3];
   const isLive = live?.status === 'Live' || live?.detailedState === 'In Progress';
-  const isFinal = live?.status === 'Final' || live?.detailedState === 'Final';
+  const isFinal = live?.isFinal === true || (live?.status === 'Final' && !live?.isDelayed && !live?.isPostponed);
   // Never show postponed/delayed unless API explicitly confirms AND no score data exists
   const hasScoreData = live?.awayScore != null || live?.homeScore != null;
   const isDelayed = !hasScoreData && (live?.isDelayed || false);
@@ -2925,7 +2925,7 @@ export default function VegasVaultApp() {
     // Lock play once game has started — no changing plays during a game
     const liveEntry = liveScores?.[game.id];
     const gameIsLive = liveEntry?.status === 'Live' || liveEntry?.detailedState === 'In Progress';
-    const gameIsFinal = liveEntry?.isFinal || liveEntry?.detailedState === 'Final' || liveEntry?.detailedState === 'Game Over';
+    const gameIsFinal = liveEntry?.isFinal === true;
     if (gameIsLive || gameIsFinal) return;
     const key=`${game.id}-${slot}`;
     setGenerating(key); setError(null);
