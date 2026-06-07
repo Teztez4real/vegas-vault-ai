@@ -157,7 +157,7 @@ function buildGames(gamesMap) {
       bolHomeML: bolBook?.homeML,
       dkAwayML:  dkBook?.awayML,
       dkHomeML:  dkBook?.homeML,
-      dkSpread:  dkBook?.spread != null ? (dkBook.spread > 0 ? `+${dkBook.spread}` : `${dkBook.spread}`) : (spreadVal != null ? (spreadVal > 0 ? `+${spreadVal}` : `${spreadVal}`) : null),
+      dkSpread:  dkBook?.homeSpread != null ? (dkBook.homeSpread > 0 ? `+${dkBook.homeSpread}` : `${dkBook.homeSpread}`) : (spreadVal != null ? (spreadVal > 0 ? `+${spreadVal}` : `${spreadVal}`) : null),
       dkTotal:   dkBook?.total || totalVal || null,
       fdHomeML:  fdBook?.homeML,
       sharpSignal,
