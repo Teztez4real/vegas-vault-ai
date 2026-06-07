@@ -687,8 +687,8 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
       </div>
       )}
 
-      {/* Sportsbook-style odds row */}
-      {!isTennis && (game.awayML || game.homeML || game.spread || game.total || game.dkAwayML || game.dkHomeML) && (() => {
+      {/* Sportsbook-style odds row — always show for non-tennis games */}
+      {!isTennis && (() => {
         const fmtOdds = (v) => {
           if (!v || v === 'N/A' || v === 'null') return null;
           if (typeof v === 'string') return v;
