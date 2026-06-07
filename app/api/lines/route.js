@@ -45,16 +45,7 @@ async function fetchAllBooks(sportKey, dateStr) {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
 
-      // Filter to requested date only (CT timezone = UTC-5)
-      const [yr, mo, dy] = dateStr.split('-').map(Number);
-      const dayStart = new Date(Date.UTC(yr, mo - 1, dy, 5, 0, 0));
-      const dayEnd   = new Date(Date.UTC(yr, mo - 1, dy + 1, 4, 59, 59));
-
       for (const game of data) {
-        // Skip games not on the requested date
-        const gt = new Date(game.commence_time);
-        if (gt < dayStart || gt > dayEnd) continue;
-
         const away = game.away_team;
         const home = game.home_team;
         const key = `${away}|${home}`;
