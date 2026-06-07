@@ -136,7 +136,7 @@ function buildGames(gamesMap) {
     }
 
     // Get spread and total from best available book
-    const spreadVal = Object.values(event.books).find(b => b.spread != null)?.spread;
+    const spreadVal = Object.values(event.books).find(b => b.homeSpread != null)?.homeSpread;
     const totalVal = Object.values(event.books).find(b => b.total != null)?.total;
 
     return {
