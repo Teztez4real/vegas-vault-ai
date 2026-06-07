@@ -700,6 +700,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
           return null;
         };
         // Use best available price — dk first, then lines-updated awayML, then raw awayML
+        console.log('GAME ODDS DEBUG:', game.away, '@', game.home, '| dkAwayML:', game.dkAwayML, '| awayML:', game.awayML, '| dkHomeML:', game.dkHomeML, '| homeML:', game.homeML, '| dkSpread:', game.dkSpread, '| dkTotal:', game.dkTotal);
         const awayOdds = fmtOdds(game.dkAwayML) || fmtOdds(game.awayML) || '—';
         const homeOdds = fmtOdds(game.dkHomeML) || fmtOdds(game.homeML) || '—';
         const fmtSpread = (v) => (!v || v === 'N/A' || v === 'null' || v === 'undefined') ? null : String(v);
