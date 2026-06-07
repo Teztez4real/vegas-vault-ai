@@ -27,7 +27,7 @@ function fmt(price) {
 
 // ── FETCH ALL BOOKS (to compare sharp vs public) ──────────────────────────────
 
-async function fetchAllBooks(sportKey, dateStr) {
+async function fetchAllBooks(sportKey) {
   const sharpKey = process.env.SHARPAPI_KEY;
   const games = {};
 
@@ -179,7 +179,7 @@ export async function GET(request) {
     await purgeOld(dateParam);
 
     // Fetch all books
-    const gamesMap = await fetchAllBooks(sportKey, dateParam);
+    const gamesMap = await fetchAllBooks(sportKey);
     if (!Object.keys(gamesMap).length) {
       return NextResponse.json({ movements: {}, summary: { sharp: 0, moving: 0, stable: 0, total: 0 }, fetchedAt: new Date().toISOString() });
     }
