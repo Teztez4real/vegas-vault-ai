@@ -2908,6 +2908,7 @@ export default function VegasVaultApp() {
     }
 
     // Initial fetch after games load
+    fetchLines(); // run immediately on load
     const initTimeout = setTimeout(fetchLines, 3000);
     const linesInterval = setInterval(fetchLines, 90 * 1000); // every 90 seconds
     return () => { clearTimeout(initTimeout); clearInterval(linesInterval); };
