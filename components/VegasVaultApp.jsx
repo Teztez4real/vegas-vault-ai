@@ -521,7 +521,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
   const liveKey3 = `${awayLast}|${homeLast}`;
   const live = liveScores?.[game.id] || liveScores?.[liveKey1] || liveScores?.[liveKey2] || liveScores?.[liveKey3];
   const isLive = live?.status === 'Live' || live?.detailedState === 'In Progress';
-  const isFinal = live?.isFinal === true || (live?.status === 'Final' && !live?.isDelayed && !live?.isPostponed);
+  const isFinal = live?.status === 'Final' || live?.detailedState === 'Final';
   // Never show postponed/delayed unless API explicitly confirms AND no score data exists
   const hasScoreData = live?.awayScore != null || live?.homeScore != null;
   const isDelayed = !hasScoreData && (live?.isDelayed || false);
@@ -687,20 +687,13 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
       </div>
       )}
 
-      {/* Sportsbook-style odds row — always show for non-tennis games */}
-      {!isTennis && (() => {
+      {/* Sportsbook-style odds row */}
+      {!isTennis && (game.awayML || game.homeML || game.spread || game.total || game.dkAwayML || game.dkHomeML) && (() => {
         const fmtOdds = (v) => {
-          if (v == null || v === 'N/A' || v === 'null' || v === '' || v === 'undefined') return null;
-          if (typeof v === 'number') return v > 0 ? `+${v}` : `${v}`;
-          if (typeof v === 'string') {
-            const n = parseFloat(v.replace('+',''));
-            if (!isNaN(n)) return v.startsWith('+') || n > 0 ? (v.startsWith('+') ? v : `+${v}`) : v;
-            return null;
-          }
-          return null;
+          if (!v || v === 'N/A' || v === 'null') return null;
+          if (typeof v === 'string') return v;
+          return v > 0 ? '+'+v : String(v);
         };
-        // Use best available price — dk first, then lines-updated awayML, then raw awayML
-        console.log('GAME ODDS DEBUG:', game.away, '@', game.home, '| dkAwayML:', game.dkAwayML, '| awayML:', game.awayML, '| dkHomeML:', game.dkHomeML, '| homeML:', game.homeML, '| dkSpread:', game.dkSpread, '| dkTotal:', game.dkTotal);
         const awayOdds = fmtOdds(game.dkAwayML) || fmtOdds(game.awayML) || '—';
         const homeOdds = fmtOdds(game.dkHomeML) || fmtOdds(game.homeML) || '—';
         const fmtSpread = (v) => (!v || v === 'N/A' || v === 'null' || v === 'undefined') ? null : String(v);
@@ -2936,7 +2929,7 @@ export default function VegasVaultApp() {
     // Lock play once game has started — no changing plays during a game
     const liveEntry = liveScores?.[game.id];
     const gameIsLive = liveEntry?.status === 'Live' || liveEntry?.detailedState === 'In Progress';
-    const gameIsFinal = liveEntry?.isFinal === true;
+    const gameIsFinal = liveEntry?.isFinal || liveEntry?.detailedState === 'Final' || liveEntry?.detailedState === 'Game Over';
     if (gameIsLive || gameIsFinal) return;
     const key=`${game.id}-${slot}`;
     setGenerating(key); setError(null);
