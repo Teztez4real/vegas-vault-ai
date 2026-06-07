@@ -712,6 +712,10 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
         })();
         return (
           <div style={{ marginBottom:10 }}>
+            <div style={{ display:'flex',alignItems:'center',gap:5,marginBottom:5 }}>
+              <div style={{ fontSize:8,fontWeight:700,color:'#1d6fa5',background:'rgba(29,111,165,0.15)',border:'1px solid rgba(29,111,165,0.3)',borderRadius:3,padding:'1px 6px',letterSpacing:'0.06em' }}>DK</div>
+              <span style={{ fontSize:8,color:'#2d3a4a',letterSpacing:'0.06em' }}>DRAFTKINGS ODDS</span>
+            </div>
             <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:5 }}>
               {/* Moneyline */}
               <div style={{ background:'rgba(255,255,255,0.02)',border:'1px solid rgba(59,130,246,0.14)',borderRadius:8,overflow:'hidden' }}>
