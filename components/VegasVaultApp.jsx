@@ -2719,9 +2719,45 @@ export default function VegasVaultApp() {
     if (authUser?.id) syncSave(authUser.id, 'results', results); // scoped to this user only — all dates
   }, [results]);
 
+  // ── CROSS-DEVICE SYNC: poll for results updated from other devices ──────────
+  useEffect(() => {
+    if (!authUser?.id) return;
+    const pollResults = async () => {
+      const remote = await syncLoad(authUser.id, 'results');
+      if (remote) {
+        setResults(prev => {
+          // Merge — remote wins for any key, keeps local-only keys too
+          const merged = { ...prev, ...remote };
+          // Only update if something actually changed to avoid extra renders
+          if (JSON.stringify(merged) !== JSON.stringify(prev)) return merged;
+          return prev;
+        });
+      }
+    };
+    const interval = setInterval(pollResults, 30 * 1000); // every 30 seconds
+    return () => clearInterval(interval);
+  }, [authUser?.id]);
+
   useEffect(() => {
     if (authUser?.id) syncSave(authUser.id, 'finalized', finalized);
   }, [finalized]);
+
+  // ── CROSS-DEVICE SYNC: poll for finalized updates from other devices ────────
+  useEffect(() => {
+    if (!authUser?.id) return;
+    const pollFinalized = async () => {
+      const remote = await syncLoad(authUser.id, 'finalized');
+      if (remote) {
+        setFinalized(prev => {
+          const merged = { ...prev, ...remote };
+          if (JSON.stringify(merged) !== JSON.stringify(prev)) return merged;
+          return prev;
+        });
+      }
+    };
+    const interval = setInterval(pollFinalized, 30 * 1000);
+    return () => clearInterval(interval);
+  }, [authUser?.id]);
 
   // Persist pick history
   useEffect(() => {
