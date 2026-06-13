@@ -3073,49 +3073,36 @@ export default function VegasVaultApp() {
       isAdmin={shellIsAdmin}
       hasNotification={betReadyAlerts?.length > 0}
     >
-    <div style={{ fontFamily:"'Inter','SF Pro Display',-apple-system,sans-serif",minHeight:"100vh",color:"#e2e8f0",display:"flex",flexDirection:"column" }}>
+    <div style={{ fontFamily:"'Inter','SF Pro Display',-apple-system,sans-serif",minHeight:"100vh",color:"#111",display:"flex",flexDirection:"column",background:"transparent" }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
         @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+        @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.35;} }
         *{box-sizing:border-box;margin:0;padding:0;}
-        body{background:#060a18;overflow-x:hidden;font-family:'Inter',-apple-system,sans-serif;}
-        ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-thumb{background:rgba(59,130,246,0.25);border-radius:2px;}
+        body{overflow-x:hidden;font-family:'Inter',-apple-system,sans-serif;}
+        ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-thumb{background:rgba(57,255,20,0.2);border-radius:2px;}
         button{font-family:inherit;}
-        @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.35;}}
-        .vv-sidebar{display:flex;}
-        .vv-right{display:flex;flex-direction:column;}
-        .vv-right-stacked{display:none;}
-        .vv-bottom-nav{display:none;}
+        .vv-sidebar{display:none!important;}
+        .vv-right{display:none!important;}
+        .vv-right-stacked{display:none!important;}
+        .vv-bottom-nav{display:none!important;}
+        .vv-nav-center{display:none!important;}
+        .vv-ticker-lbl{display:none!important;}
         .vv-cards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
         .vv-stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px;}
-        .vv-nav-center{display:flex;}
-        .vv-ticker-lbl{display:block;}
         @media(max-width:1100px){
           .vv-stats{grid-template-columns:repeat(3,1fr)!important;}
-          .vv-right{display:none!important;}
-          .vv-right-stacked{display:block!important;}
         }
         @media(max-width:700px){
-          .vv-sidebar{display:none!important;}
-          .vv-bottom-nav{display:flex!important;position:fixed;bottom:0;left:0;right:0;height:60px;background:rgba(7,9,26,0.98);border-top:1px solid rgba(59,130,246,0.14);z-index:200;align-items:center;justify-content:space-around;backdrop-filter:blur(20px);padding:0 4px;}
           .vv-cards{grid-template-columns:1fr!important;}
           .vv-stats{grid-template-columns:repeat(2,1fr)!important;}
-          .vv-top-play{margin-left:-2px!important;margin-right:-2px!important;}
-          .vv-top-play-grid{grid-template-columns:1fr!important;}
-          .vv-nav-center{display:none!important;}
-          .vv-ticker-lbl{display:none!important;}
-          .vv-nav-logo span.lbl{display:none!important;}
-          .vv-main-inner{padding:10px 10px 78px!important;}
-          .vv-top-nav-actions{gap:4px!important;}
-          .vv-admin-btns{display:flex!important;gap:4px!important;flex-wrap:wrap;}
+          .vv-main-inner{padding:10px!important;}
           .vv-slate-header{flex-wrap:wrap!important;gap:6px!important;}
           .vv-today-title{font-size:14px!important;white-space:nowrap;}
         }
       `}</style>
 
-      {/* ── TOP NAV ── */}
-      <div style={{ height:52,borderBottom:"1px solid rgba(59,130,246,0.1)",display:"flex",alignItems:"center",background:"rgba(7,9,26,0.96)",backdropFilter:"blur(24px)",position:"sticky",top:0,zIndex:100,flexShrink:0 }}>
+      {/* ── TOP NAV (hidden — replaced by NewLookShell topbar) ── */}
+      <div style={{ display:"none" }}>
         <div className="vv-nav-logo" style={{ width:200,padding:"0 18px",display:"flex",alignItems:"center",gap:10,borderRight:"1px solid rgba(59,130,246,0.1)",flexShrink:0 }}>
           <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M16 2L30 8V18C30 24 23 29 16 31C9 29 2 24 2 18V8L16 2Z" fill="#0a1628" stroke="#3b82f6" strokeWidth="1.5"/>
@@ -3176,7 +3163,7 @@ export default function VegasVaultApp() {
       <div style={{ display:"flex",flex:1,minHeight:0 }}>
 
         {/* LEFT SIDEBAR */}
-        <div className="vv-sidebar" style={{ width:200,background:"rgba(7,9,26,0.99)",borderRight:"1px solid rgba(255,255,255,0.05)",flexDirection:"column",flexShrink:0,overflowY:"auto" }}>
+        <div className="vv-sidebar" style={{ width:200,background:"transparent",borderRight:"1px solid rgba(255,255,255,0.05)",flexDirection:"column",flexShrink:0,overflowY:"auto" }}>
           <div style={{ flex:1,padding:"10px 0" }}>
             {NAV_ITEMS.map((item,i)=>(
               <div key={i} onClick={()=>{
@@ -3399,7 +3386,7 @@ export default function VegasVaultApp() {
         </div>
 
         {/* RIGHT PANEL (desktop) */}
-        <div className="vv-right" style={{ width:290,background:"rgba(7,9,26,0.99)",borderLeft:"1px solid rgba(255,255,255,0.05)",overflowY:"auto",flexShrink:0,padding:"16px 16px 24px" }}>
+        <div className="vv-right" style={{ width:290,background:"transparent",borderLeft:"1px solid rgba(255,255,255,0.05)",overflowY:"auto",flexShrink:0,padding:"16px 16px 24px" }}>
           <RightPanelContent marketScanner={marketScanner} insights={insights} aiConfidence={aiConfidence} confHistory={confHistory}/>
         </div>
       </div>
@@ -3442,10 +3429,10 @@ export default function VegasVaultApp() {
       {showOddsMovement&&(
         <div style={{ position:"fixed",inset:0,zIndex:9000,display:"flex" }}>
           <div onClick={()=>setShowOddsMovement(false)} style={{ position:"absolute",inset:0,background:"rgba(0,0,0,0.6)",backdropFilter:"blur(8px)" }}/>
-          <div style={{ position:"relative",marginLeft:"auto",width:"100%",maxWidth:620,height:"100%",background:"#060a18",borderLeft:"1px solid rgba(59,130,246,0.12)",overflowY:"auto",display:"flex",flexDirection:"column" }}>
+          <div style={{ position:"relative",marginLeft:"auto",width:"100%",maxWidth:620,height:"100%",background:"transparent",borderLeft:"1px solid rgba(59,130,246,0.12)",overflowY:"auto",display:"flex",flexDirection:"column" }}>
 
             {/* Header */}
-            <div style={{ padding:"18px 20px",borderBottom:"1px solid rgba(59,130,246,0.1)",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:"#060a18",zIndex:10 }}>
+            <div style={{ padding:"18px 20px",borderBottom:"1px solid rgba(59,130,246,0.1)",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:"transparent",zIndex:10 }}>
               <div>
                 <div style={{ fontSize:14,fontWeight:700,color:"#f1f5f9",letterSpacing:"0.04em" }}>📊 ODDS MOVEMENT</div>
                 <div style={{ fontSize:10,color:"#3a4a5e",marginTop:2 }}>Live FanDuel vs DraftKings vs BetMGM vs Caesars vs Bet365 · {games.length} games today</div>
@@ -3581,10 +3568,10 @@ export default function VegasVaultApp() {
           {/* Backdrop */}
           <div onClick={()=>setShowHistory(false)} style={{ position:"absolute",inset:0,background:"rgba(0,0,0,0.6)",backdropFilter:"blur(8px)" }}/>
           {/* Panel */}
-          <div style={{ position:"relative",marginLeft:"auto",width:"100%",maxWidth:560,height:"100%",background:"#060a18",borderLeft:"1px solid rgba(59,130,246,0.12)",overflowY:"auto",display:"flex",flexDirection:"column" }}>
+          <div style={{ position:"relative",marginLeft:"auto",width:"100%",maxWidth:560,height:"100%",background:"transparent",borderLeft:"1px solid rgba(59,130,246,0.12)",overflowY:"auto",display:"flex",flexDirection:"column" }}>
 
             {/* Header */}
-            <div style={{ padding:"18px 20px",borderBottom:"1px solid rgba(59,130,246,0.1)",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:"#060a18",zIndex:10 }}>
+            <div style={{ padding:"18px 20px",borderBottom:"1px solid rgba(59,130,246,0.1)",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:"transparent",zIndex:10 }}>
               <div>
                 <div style={{ fontSize:14,fontWeight:700,color:"#f1f5f9",letterSpacing:"0.04em" }}>MY PICKS HISTORY</div>
                 <div style={{ fontSize:10,color:"#3a4a5e",marginTop:2 }}>{pickHistory.length} total picks tracked</div>
@@ -3658,7 +3645,7 @@ export default function VegasVaultApp() {
 
             {/* Clear history button */}
             {pickHistory.length > 0 && (
-              <div style={{ padding:"12px 20px",borderTop:"1px solid rgba(255,255,255,0.05)",position:"sticky",bottom:0,background:"#060a18" }}>
+              <div style={{ padding:"12px 20px",borderTop:"1px solid rgba(255,255,255,0.05)",position:"sticky",bottom:0,background:"transparent" }}>
                 {isSubscribed && authUser?.email !== ADMIN_EMAIL && (
                   <button onClick={async () => {
                     const { data: { session } } = await _supabase.auth.getSession();

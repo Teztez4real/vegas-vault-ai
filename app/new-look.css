@@ -34,6 +34,11 @@
 }
 
 /* ── BASE ── */
+body {
+  background: var(--vv-bg) !important;
+  color: var(--vv-text) !important;
+}
+
 .vv-root {
   font-family: 'Inter', sans-serif;
   background: var(--vv-bg);
