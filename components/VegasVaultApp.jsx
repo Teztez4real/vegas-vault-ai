@@ -842,7 +842,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
           </span>
         </div>
       ) : (!isSubscribed) ? (
-        <div onClick={()=>{ if(onShowAuth) onShowAuth('plans'); else window.location.href='/subscribe'; }} style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"10px 0",background:"rgba(7,9,26,0.6)",border:"1px solid rgba(59,130,246,0.2)",borderRadius:8,cursor:"pointer" }}>
+        <div onClick={()=>{ if(onShowAuth) onShowAuth('plans'); else window.location.href='/subscribe'; }} style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"10px 0",background:"rgba(57,255,20,0.06)",border:"1px solid rgba(59,130,246,0.2)",borderRadius:8,cursor:"pointer" }}>
           <span style={{ fontSize:13 }}>🔒</span>
           <span style={{ fontSize:10,fontWeight:700,color:"#3b82f6",letterSpacing:"0.08em" }}>SUBSCRIBE TO UNLOCK</span>
         </div>
@@ -3071,597 +3071,266 @@ export default function VegasVaultApp() {
       onNavigate={shellNavigate}
       userName={shellUserName}
       isAdmin={shellIsAdmin}
-      hasNotification={betReadyAlerts?.length > 0}
+      hasNotification={Object.keys(betReadyAlerts).length > 0}
     >
-    <div style={{ fontFamily:"'Inter','SF Pro Display',-apple-system,sans-serif",minHeight:"100vh",color:"#111",display:"flex",flexDirection:"column",background:"transparent" }}>
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.35;} }
-        *{box-sizing:border-box;margin:0;padding:0;}
-        body{overflow-x:hidden;font-family:'Inter',-apple-system,sans-serif;}
-        ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-thumb{background:rgba(57,255,20,0.2);border-radius:2px;}
-        button{font-family:inherit;}
-        .vv-sidebar{display:none!important;}
-        .vv-right{display:none!important;}
-        .vv-right-stacked{display:none!important;}
-        .vv-bottom-nav{display:none!important;}
-        .vv-nav-center{display:none!important;}
-        .vv-ticker-lbl{display:none!important;}
-        .vv-cards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
-        .vv-stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px;}
-        @media(max-width:1100px){
-          .vv-stats{grid-template-columns:repeat(3,1fr)!important;}
-        }
-        @media(max-width:700px){
-          .vv-cards{grid-template-columns:1fr!important;}
-          .vv-stats{grid-template-columns:repeat(2,1fr)!important;}
-          .vv-main-inner{padding:10px!important;}
-          .vv-slate-header{flex-wrap:wrap!important;gap:6px!important;}
-          .vv-today-title{font-size:14px!important;white-space:nowrap;}
-        }
+        button { font-family: inherit; }
+        ::-webkit-scrollbar{width:4px;}
+        ::-webkit-scrollbar-thumb{background:rgba(57,255,20,0.2);border-radius:2px;}
       `}</style>
 
-      {/* ── TOP NAV (hidden — replaced by NewLookShell topbar) ── */}
-      <div style={{ display:"none" }}>
-        <div className="vv-nav-logo" style={{ width:200,padding:"0 18px",display:"flex",alignItems:"center",gap:10,borderRight:"1px solid rgba(59,130,246,0.1)",flexShrink:0 }}>
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M16 2L30 8V18C30 24 23 29 16 31C9 29 2 24 2 18V8L16 2Z" fill="#0a1628" stroke="#3b82f6" strokeWidth="1.5"/>
-            <path d="M10 12L16 22L22 12" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-            <path d="M13 12L16 17L19 12" stroke="#60a5fa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-          </svg>
-          <div>
-            <div style={{ display:"flex",alignItems:"baseline",gap:3 }}>
-              <span className="lbl" style={{ fontSize:13,fontWeight:800,color:"#f8fafc",letterSpacing:"0.04em" }}>VEGAS</span>
-              <span className="lbl" style={{ fontSize:13,fontWeight:800,color:"#3b82f6",letterSpacing:"0.04em" }}>VAULT</span>
-            </div>
-            <div className="lbl" style={{ fontSize:9,color:"#3a4a5e",letterSpacing:"0.14em",fontWeight:600 }}>AI PLATFORM</div>
-          </div>
-        </div>
-
-        <div className="vv-nav-center" style={{ flex:1,justifyContent:"center" }}>
-          {[
-            {t:"DASHBOARD",icon:null},
-            {t:"ALERTS",icon:"🔔",badge:()=>{
-              const wr = Object.keys(betReadyAlerts).filter(k=>{ const g=games.find(g=>k.startsWith(g.id+'-')); return g&&watchlist.includes(g.id); }).length;
-              const wt = trellAlerts.filter(a=>!a.gameId||watchlist.includes(a.gameId)).length;
-              return wr+wt;
-            }},
-            {t:"WATCHLIST",icon:"☆",badge:()=>watchlist.length||0},
-          ].map((tab,i)=>{
-            const isActive = activeTab===tab.t;
-            const badgeVal = tab.badge ? tab.badge() : 0;
-            return (
-              <div key={i} onClick={()=>setActiveTab(tab.t)} style={{ padding:"0 22px",height:52,display:"flex",alignItems:"center",gap:7,fontSize:11,fontWeight:isActive?700:400,color:isActive?"#3b82f6":"#3a4a5e",borderBottom:isActive?"2px solid #3b82f6":"2px solid transparent",cursor:"pointer",letterSpacing:"0.07em",whiteSpace:"nowrap" }}>
-                {tab.icon&&<span style={{ fontSize:11 }}>{tab.icon}</span>}
-                {tab.t}
-                {badgeVal>0&&<span style={{ background:"rgba(59,130,246,0.15)",border:"1px solid rgba(59,130,246,0.3)",borderRadius:10,padding:"1px 6px",fontSize:9,color:"#3b82f6",fontWeight:700 }}>{badgeVal}</span>}
+      {/* ── AUTH GATE — show login/paywall if not signed in ── */}
+      {!authUser && (
+        <div style={{ position:'fixed',inset:0,zIndex:9999,background:'rgba(246,249,246,0.97)',backdropFilter:'blur(20px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
+          <div style={{ background:'rgba(255,255,255,0.9)',border:'1px solid rgba(57,255,20,0.3)',borderRadius:20,width:'100%',maxWidth:420,padding:'32px 28px',boxShadow:'0 20px 60px rgba(0,0,0,0.1)' }}>
+            <div style={{ textAlign:'center',marginBottom:24 }}>
+              <div style={{ width:60,height:60,margin:'0 auto 12px',background:'linear-gradient(145deg,rgba(255,255,255,0.9),rgba(235,255,230,0.8))',border:'2px solid rgba(57,200,20,0.5)',borderRadius:15,display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 0 20px rgba(57,255,20,0.22)' }}>
+                <span style={{ fontSize:17,fontWeight:800,background:'linear-gradient(135deg,#33aa00,#39FF14)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent' }}>AI</span>
               </div>
-            );
-          })}
-        </div>
-
-        <div style={{ display:"flex",alignItems:"center",gap:10,padding:"0 18px",flexShrink:0 }}>
-          {authUser ? (
-            <div style={{ display:"flex",alignItems:"center",gap:8 }}>
-              {authUser.email===ADMIN_EMAIL&&<span className="vv-admin-btns" style={{ display:"flex",alignItems:"center",gap:5 }}>
-                <span style={{ fontSize:9,fontWeight:700,color:"#3b82f6",background:"rgba(59,130,246,0.12)",border:"1px solid rgba(59,130,246,0.3)",borderRadius:4,padding:"2px 7px",letterSpacing:"0.08em" }}>ADMIN</span>
-              </span>}
-              <div style={{ width:32,height:32,borderRadius:"50%",background:"linear-gradient(135deg,#3b82f6,#1d4ed8)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,color:"#000",cursor:"pointer" }} onClick={()=>window.location.href='/settings'}>
-                {(authUser.email?.[0]||'U').toUpperCase()}
-              </div>
-              <button onClick={doSignOut} style={{ fontSize:10,color:"#475569",background:"transparent",border:"1px solid rgba(59,130,246,0.14)",borderRadius:6,padding:"4px 10px",cursor:"pointer",fontFamily:"inherit" }}>Sign Out</button>
+              <div style={{ fontSize:14,fontWeight:800,color:'#111',letterSpacing:0.5 }}>VEGAS VAULT AI</div>
+              <div style={{ fontSize:10,color:'#aaa',letterSpacing:'1.5px',textTransform:'uppercase',marginTop:2 }}>AI Model OS</div>
             </div>
-          ) : (
-            <button onClick={()=>{setShowAuth(true);setAuthMode(authUser ? 'plans' : 'signup');setAuthError('');}} style={{ display:"flex",alignItems:"center",gap:7,background:"linear-gradient(135deg,#3b82f6,#1d4ed8)",border:"none",borderRadius:8,padding:"7px 16px",fontSize:11,fontWeight:700,color:"#000",cursor:"pointer",letterSpacing:"0.06em",fontFamily:"inherit" }}>
-              🔒 Login / Sign Up
+            <div style={{ fontSize:18,fontWeight:800,color:'#111',textAlign:'center',marginBottom:4 }}>Welcome back</div>
+            <div style={{ fontSize:11,color:'#aaa',textAlign:'center',marginBottom:20 }}>Sign in to access your AI sports intelligence platform</div>
+            <div style={{ marginBottom:12 }}>
+              <div style={{ fontSize:9,textTransform:'uppercase',letterSpacing:'0.6px',color:'#aaa',marginBottom:5,fontWeight:600 }}>Email</div>
+              <div style={{ display:'flex',alignItems:'center',gap:8,border:'1px solid rgba(0,0,0,0.08)',borderRadius:10,padding:'11px 13px',background:'rgba(255,255,255,0.8)' }}>
+                <i className="ti ti-mail" style={{ fontSize:15,color:'#bbb' }} />
+                <input type="email" value={authEmail} onChange={e=>setAuthEmail(e.target.value)} placeholder="you@email.com"
+                  style={{ flex:1,border:'none',background:'transparent',fontSize:12,color:'#333',outline:'none',fontFamily:'inherit' }}
+                  onKeyDown={e=>e.key==='Enter'&&doAuth()} />
+              </div>
+            </div>
+            <div style={{ marginBottom:16 }}>
+              <div style={{ fontSize:9,textTransform:'uppercase',letterSpacing:'0.6px',color:'#aaa',marginBottom:5,fontWeight:600 }}>Password</div>
+              <div style={{ display:'flex',alignItems:'center',gap:8,border:'1px solid rgba(0,0,0,0.08)',borderRadius:10,padding:'11px 13px',background:'rgba(255,255,255,0.8)' }}>
+                <i className="ti ti-lock" style={{ fontSize:15,color:'#bbb' }} />
+                <input type={showPw?'text':'password'} value={authPw} onChange={e=>setAuthPw(e.target.value)} placeholder="••••••••"
+                  style={{ flex:1,border:'none',background:'transparent',fontSize:12,color:'#333',outline:'none',fontFamily:'inherit' }}
+                  onKeyDown={e=>e.key==='Enter'&&doAuth()} />
+                <span onClick={()=>setShowPw(p=>!p)} style={{ cursor:'pointer',fontSize:15,color:'#bbb' }}>
+                  <i className={showPw?'ti ti-eye-off':'ti ti-eye'} />
+                </span>
+              </div>
+            </div>
+            {authError && <div style={{ fontSize:11,color:'#dd4444',background:'rgba(255,80,80,0.08)',border:'1px solid rgba(255,80,80,0.2)',borderRadius:8,padding:'8px 12px',marginBottom:12,textAlign:'center' }}>{authError}</div>}
+            <button onClick={doAuth} disabled={authLoading}
+              style={{ width:'100%',padding:13,borderRadius:11,background:'linear-gradient(135deg,#39FF14,#22cc00)',border:'none',fontFamily:'inherit',fontSize:13,fontWeight:800,color:'#111',cursor:authLoading?'wait':'pointer',boxShadow:'0 4px 16px rgba(57,255,20,0.35)',marginBottom:12 }}>
+              {authLoading ? 'Signing in...' : 'Log In to Vault →'}
             </button>
-          )}
-        </div>
-      </div>
-
-      {/* ── BODY ── */}
-      <div style={{ display:"flex",flex:1,minHeight:0 }}>
-
-        {/* LEFT SIDEBAR */}
-        <div className="vv-sidebar" style={{ width:200,background:"transparent",borderRight:"1px solid rgba(255,255,255,0.05)",flexDirection:"column",flexShrink:0,overflowY:"auto" }}>
-          <div style={{ flex:1,padding:"10px 0" }}>
-            {NAV_ITEMS.map((item,i)=>(
-              <div key={i} onClick={()=>{
-                if(item.label==='HISTORY'){setShowHistory(true);}
-                else if(item.label==='ODDS MOVEMENT'){setShowOddsMovement(true);}
-                else if(item.label==='SETTINGS'){window.location.href='/settings';}
-                else { setActiveNav(item.label); setActiveTab('DASHBOARD'); }
-              }} style={{ display:"flex",alignItems:"center",gap:12,padding:"11px 20px",background:activeNav===item.label?"rgba(201,162,39,0.07)":"transparent",borderLeft:activeNav===item.label?"2px solid #3b82f6":"2px solid transparent",cursor:"pointer" }}>
-                <span style={{ fontSize:13,color:item.active?"#3b82f6":"#2d3a4a",width:18,flexShrink:0 }}>{item.icon}</span>
-                <span style={{ fontSize:10,fontWeight:item.active?700:400,color:item.active?"#3b82f6":"#3a4a5e",letterSpacing:"0.08em",flex:1 }}>{item.label}</span>
-                {item.arrow&&<span style={{ fontSize:9,color:"#2d3a4a" }}>▶</span>}
-              </div>
-            ))}
-          </div>
-          {/* AI Engine Status */}
-          <div style={{ padding:"14px 18px",borderTop:"1px solid rgba(255,255,255,0.05)" }}>
-            <div style={{ fontSize:9,color:"#3a4a5e",letterSpacing:"0.06em",fontWeight:700,marginBottom:10 }}>AI ENGINE STATUS</div>
-            <div style={{ display:"flex",alignItems:"center",gap:7,marginBottom:8 }}>
-              <div style={{ width:6,height:6,borderRadius:"50%",background:"#4ade80",animation:"pulse 2s infinite",flexShrink:0 }}/>
-              <span style={{ fontSize:10,color:"#4ade80",fontWeight:700 }}>ONLINE</span>
-              <span style={{ fontSize:10,color:"#4ade80",marginLeft:"auto" }}>100%</span>
+            <div style={{ textAlign:'center',fontSize:11,color:'#aaa' }}>
+              Don't have an account?{' '}
+              <span onClick={()=>setAuthMode(authMode==='login'?'signup':'login')} style={{ color:'#33aa00',fontWeight:700,cursor:'pointer' }}>
+                {authMode==='login'?'Sign up':'Sign in'}
+              </span>
             </div>
-            <div style={{ height:2,background:"rgba(255,255,255,0.04)",borderRadius:1,marginBottom:14 }}>
-              <div style={{ height:"100%",width:"100%",background:"linear-gradient(90deg,#059669,#4ade80)",borderRadius:1 }}/>
-            </div>
-            <GlobeSVG timeStr={timeStr}/>
           </div>
         </div>
-
-        {/* MAIN */}
-        <div style={{ flex:1,overflowY:"auto",display:"flex",flexDirection:"column",minWidth:0 }}>
-
-          {/* Odds ticker */}
-          <div style={{ borderBottom:"1px solid rgba(255,255,255,0.05)",background:"rgba(9,12,28,0.9)" }}>
-            <div style={{ display:"flex",alignItems:"center" }}>
-              <div className="vv-ticker-lbl" style={{ padding:"8px 16px",fontSize:9,fontWeight:700,letterSpacing:"0.08em",color:"#3b82f6",borderRight:"1px solid rgba(255,255,255,0.05)",whiteSpace:"nowrap",flexShrink:0 }}>LIVE ODDS FEED</div>
-              <div style={{ flex:1,overflow:"hidden",padding:"8px 0" }}><OddsTicker feed={oddsFeed}/></div>
-              <div style={{ padding:"0 14px",flexShrink:0 }}><Sparkline color="#3b82f6" width={56} height={22}/></div>
-            </div>
-          </div>
-
-          <div className="vv-main-inner" style={{ padding:"18px 18px 28px",flex:1 }}>
-
-            {/* ── VIEW ROUTER ── */}
-            {activeTab==='ALERTS' ? (
-              isSubscribed ? <AlertsView betReadyAlerts={betReadyAlerts} trellAlerts={trellAlerts} games={games} results={results} pickHistory={pickHistory} watchlist={watchlist}/> : <SubscribeLock feature="Alerts" onShowAuth={(mode)=>{setShowAuth(true);setAuthMode(mode||'plans');setAuthError('');}}/>
-            ) : activeTab==='WATCHLIST' ? (
-              isSubscribed ? <WatchlistView watchlist={watchlist} toggleWatch={toggleWatch} games={games} results={results} finalized={finalized}/> : <SubscribeLock feature="Watchlist" onShowAuth={(mode)=>{setShowAuth(true);setAuthMode(mode||'plans');setAuthError('');}}/>
-            ) : activeNav==='SHARP MONEY' ? (
-              isSubscribed ? <SharpMoneyView games={games} marketScanner={marketScanner}/> : <SubscribeLock feature="Sharp Money" onShowAuth={(mode)=>{setShowAuth(true);setAuthMode(mode||'plans');setAuthError('');}}/>
-            ) : activeNav==='VAULT LOCKS' ? (
-              isSubscribed ? <VaultLocksView results={results} games={games} finalized={finalized}/> : <SubscribeLock feature="Vault Locks" onShowAuth={(mode)=>{setShowAuth(true);setAuthMode(mode||'plans');setAuthError('');}}/>
-            ) : activeNav==='AI ANALYZER' ? (
-              isSubscribed ? <AIAnalyzerView games={games} results={results} generating={generating} onGenerate={handleGenerate} isSubscribed={isSubscribed}/> : <SubscribeLock feature="AI Analyzer" onShowAuth={(mode)=>{setShowAuth(true);setAuthMode(mode||'plans');setAuthError('');}}/>
-            ) : activeNav==="TODAY'S SLATE" ? (
-              <TodaySlateView games={games} results={results} generating={generating} onGenerate={handleGenerate} liveScores={liveScores} isSubscribed={isSubscribed} finalized={finalized} onShowAuth={(mode)=>{setShowAuth(true);setAuthMode(authUser ? (mode||'plans') : 'signup');setAuthError('');}} preAnalyzeQueue={preAnalyzeQueue} betReadyAlerts={betReadyAlerts}/>
-            ) : activeNav==='PROPS AI' ? (
-              <PropsAIView games={games} isSubscribed={isSubscribed}/>
-            ) : (
-            <>
-            {/* Greeting */}
-            <div style={{ marginBottom:18 }}>
-              <h1 style={{ fontSize:22,fontWeight:700,color:"#f1f5f9",letterSpacing:"-0.02em",marginBottom:4 }}>{greeting}.</h1>
-              <p style={{ fontSize:12,color:"#3a4a5e" }}>Vegas Vault AI is scanning <span style={{ color:"#3b82f6",cursor:"pointer" }}>{bookmakerCount > 0 ? `${bookmakerCount} sportsbooks` : "sportsbooks"}...</span></p>
-            </div>
-
-            {/* Stat cards */}
-            <div className="vv-stats">
-              {/* Today's games */}
-              <div style={{ background:"#080d1c",border:"1px solid rgba(59,130,246,0.1)",borderRadius:12,padding:"14px 16px" }}>
-                <div style={{ fontSize:9,color:"#3a4a5e",letterSpacing:"0.06em",fontWeight:700,marginBottom:10 }}>TODAY'S GAMES</div>
-                <div style={{ fontSize:30,fontWeight:800,color:"#f1f5f9",letterSpacing:"-0.03em",marginBottom:4 }}>{loading?"…":games.length}</div>
-                <div style={{ fontSize:10,color:"#2d3a4a" }}>{timeStr} CT</div>
-              </div>
-              {/* AI Picks */}
-              <div style={{ background:"#080d1c",border:"1px solid rgba(59,130,246,0.1)",borderRadius:12,padding:"14px 16px" }}>
-                <div style={{ fontSize:9,color:"#3a4a5e",letterSpacing:"0.06em",fontWeight:700,marginBottom:10 }}>AI PICKS GENERATED</div>
-                <div style={{ fontSize:30,fontWeight:800,color:"#3b82f6",letterSpacing:"-0.03em",marginBottom:8 }}>{generated} <span style={{ fontSize:18,color:"#5a4a1a" }}>/ {loading?"…":games.length*2}</span></div>
-                <div style={{ height:2,background:"rgba(255,255,255,0.04)",borderRadius:1 }}>
-                  <div style={{ height:"100%",width:games.length?`${Math.min(100,(generated/(games.length*2))*100)}%`:"0%",background:"linear-gradient(90deg,#1d4ed8,#3b82f6)",borderRadius:1,transition:"width 0.4s" }}/>
-                </div>
-              </div>
-              {/* Win rate */}
-              <div style={{ background:"#080d1c",border:"1px solid rgba(59,130,246,0.1)",borderRadius:12,padding:"14px 16px" }}>
-                <div style={{ fontSize:9,color:"#3a4a5e",letterSpacing:"0.06em",fontWeight:700,marginBottom:6 }}>WIN RATE (7D)</div>
-                <div style={{ display:"flex",alignItems:"flex-end",justifyContent:"space-between" }}>
-                  <div style={{ fontSize:30,fontWeight:800,color:"#4ade80",letterSpacing:"-0.03em" }}>{winRate !== null ? `${winRate}%` : "—"}</div>
-                  <Sparkline color="#4ade80" width={70} height={34}/>
-                </div>
-              </div>
-              {/* Top tier */}
-              <div style={{ background:"#080d1c",border:"1px solid rgba(59,130,246,0.1)",borderRadius:12,padding:"14px 16px" }}>
-                <div style={{ fontSize:9,color:"#3a4a5e",letterSpacing:"0.06em",fontWeight:700,marginBottom:10 }}>TOP TIER</div>
-                <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between" }}>
-                  <div style={{ fontSize:26,fontWeight:800,color:"#f1f5f9",letterSpacing:"-0.02em" }}>LOCK</div>
-                  <span style={{ fontSize:24 }}>🔒</span>
-                </div>
-              </div>
-              {/* AI Confidence */}
-              <div style={{ background:"#080d1c",border:"1px solid rgba(59,130,246,0.1)",borderRadius:12,padding:"14px 16px" }}>
-                <div style={{ fontSize:9,color:"#3a4a5e",letterSpacing:"0.06em",fontWeight:700,marginBottom:4 }}>AI CONFIDENCE</div>
-                <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between" }}>
-                  <div><div style={{ fontSize:20,fontWeight:800,color:aiConfidence===null?"#3b82f6":aiConfidence>=75?"#4ade80":aiConfidence>=50?"#fbbf24":"#f87171" }}>{aiConfidence===null?"—":aiConfidence>=75?"HIGH":aiConfidence>=50?"MED":"LOW"}</div><div style={{ fontSize:11,color:"#4a5568" }}>{aiConfidence!==null?`${aiConfidence}%`:"Analyze to score"}</div></div>
-                  <RadarChart size={64}/>
-                </div>
-              </div>
-            </div>
-
-            {/* TOP PLAY OF THE DAY */}
-{/* Top play of the day removed — using per-sport top plays instead */}
-
-            {/* Slate header */}
-            <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
-              <div style={{ display:"flex",alignItems:"center",gap:10 }}>
-                <h2 className="vv-today-title" style={{ fontSize:16,fontWeight:700,color:"#f1f5f9",whiteSpace:"nowrap" }}>Today's Slate</h2>
-                {preAnalyzeQueue.length > 0 && (
-                  <div style={{ display:"flex",alignItems:"center",gap:5,background:"rgba(96,165,250,0.08)",border:"1px solid rgba(96,165,250,0.2)",borderRadius:6,padding:"2px 8px" }}>
-                    <div style={{ width:5,height:5,borderRadius:"50%",background:"#60a5fa" }}/>
-                    <span style={{ fontSize:9,color:"#60a5fa",fontWeight:600,letterSpacing:"0.06em" }}>AI ANALYZING {preAnalyzeQueue.length} PLAYS</span>
-                  </div>
-                )}
-              </div>
-              <div style={{ display:"flex",alignItems:"center",gap:8 }}>
-                <div style={{ display:"flex",alignItems:"center",gap:6 }}>
-                <button onClick={()=>changeDate(-1)} style={{ background:"rgba(255,255,255,0.04)",border:"1px solid rgba(59,130,246,0.14)",borderRadius:6,color:"#64748b",fontSize:13,width:28,height:28,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit" }}>‹</button>
-                <div style={{ fontSize:11,color:"#3b82f6",background:"rgba(59,130,246,0.08)",border:"1px solid rgba(59,130,246,0.2)",borderRadius:6,padding:"4px 12px",minWidth:80,textAlign:"center" }}>{formatDisplayDate(selectedDate)}</div>
-                <button onClick={()=>changeDate(1)} style={{ background:"rgba(255,255,255,0.04)",border:"1px solid rgba(59,130,246,0.14)",borderRadius:6,color:"#64748b",fontSize:13,width:28,height:28,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit" }}>›</button>
-              </div>
-                <span style={{ fontSize:14,color:"#2d3a4a",cursor:"pointer" }}>⊟</span>
-              </div>
-            </div>
-
-            {/* Filter pills */}
-            <div style={{ display:"flex",gap:6,marginBottom:16,flexWrap:"wrap" }}>
-              {FILTERS.map(f=>(
-                <button key={f} onClick={()=>setFilter(f)} style={{ fontSize:11,fontWeight:filter===f?700:400,padding:"5px 14px",borderRadius:6,border:`1px solid ${filter===f?"rgba(59,130,246,0.5)":"rgba(59,130,246,0.12)"}`,background:filter===f?"rgba(59,130,246,0.1)":"transparent",color:filter===f?"#3b82f6":"#3a4a5e",cursor:"pointer",letterSpacing:"0.05em",fontFamily:"inherit" }}>{f}</button>
-              ))}
-            </div>
-
-            {error&&<div style={{ background:"rgba(248,113,113,0.05)",border:"1px solid rgba(248,113,113,0.2)",borderRadius:10,padding:"10px 14px",fontSize:12,color:"#f87171",marginBottom:14 }}>{error}</div>}
-
-            {/* BET NOW ALERT BANNER */}
-            {Object.keys(betReadyAlerts).length > 0 && (
-              <div style={{ marginBottom:12,background:"linear-gradient(135deg,rgba(59,130,246,0.12),rgba(245,158,11,0.08))",border:"1px solid rgba(59,130,246,0.35)",borderRadius:12,padding:"12px 16px",display:"flex",alignItems:"center",gap:12 }}>
-                <span style={{ fontSize:22 }}>🎯</span>
-                <div>
-                  <div style={{ fontSize:12,fontWeight:800,color:"#3b82f6",letterSpacing:"0.06em" }}>BETS READY TO PLACE</div>
-                  <div style={{ fontSize:11,color:"#1d4ed8",marginTop:2 }}>{Object.keys(betReadyAlerts).length} pick{Object.keys(betReadyAlerts).length>1?'s':''} starting within 30 minutes — check your cards below</div>
-                </div>
-              </div>
-            )}
-
-            {/* Game cards */}
-            {loading?(
-              <div style={{ textAlign:"center",padding:"60px 0",fontSize:11,color:"#2d3a4a",letterSpacing:"0.06em" }}>LOADING SLATE…</div>
-            ):(
-              <>
-                {/* Per-sport top play banners */}
-                {['MLB','NBA','NFL'].filter(s => filter==='ALL'||filter===s).map(sport => {
-                  const tp = sportTopPlays[sport];
-                  if (!tp) return null;
-                  return (
-                    <div key={sport} style={{ marginBottom:12 }}>
-                      <TopPlayBanner
-                        topPlay={{ result: tp.result, slot: tp.slot, away: tp.game.away, home: tp.game.home, time: tp.game.time, game_key: `${tp.game.away}|${tp.game.home}`, away_abbr: tp.game.awayAbbr, home_abbr: tp.game.homeAbbr }}
-                        loading={false} results={results} games={games} pickHistory={pickHistory}
-                        isSubscribed={isSubscribed} onShowAuth={(mode)=>{setShowAuth(true);setAuthMode(authUser ? (mode||'plans') : 'signup');setAuthError('');}}
-                        onForceRefresh={null} isAdmin={authUser?.email===ADMIN_EMAIL}
-                        watchlist={watchlist} onToggleWatch={toggleWatch} sport={sport}
-                      />
-                    </div>
-                  );
-                })}
-                {filter === 'WNBA' && sportTopPlays.WNBA && (
-                  <div style={{ marginBottom:12 }}>
-                    <TopPlayBanner
-                      topPlay={{ result: sportTopPlays.WNBA.result, slot: 'WNBA', away: sportTopPlays.WNBA.game.away, home: sportTopPlays.WNBA.game.home, time: sportTopPlays.WNBA.game.time, game_key: `${sportTopPlays.WNBA.game.away}|${sportTopPlays.WNBA.game.home}`, away_abbr: sportTopPlays.WNBA.game.awayAbbr, home_abbr: sportTopPlays.WNBA.game.homeAbbr }}
-                      loading={false} results={results} games={games} pickHistory={pickHistory}
-                      isSubscribed={isSubscribed} onShowAuth={(mode)=>{setShowAuth(true);setAuthMode(authUser ? (mode||'plans') : 'signup');setAuthError('');}}
-                      onForceRefresh={null} isAdmin={authUser?.email===ADMIN_EMAIL}
-                      watchlist={watchlist} onToggleWatch={toggleWatch} sport="WNBA"
-                    />
-                  </div>
-                )}
-                <div className="vv-cards">
-                  {filteredGames.map(game=>(
-                    <GameCard key={game.id} game={game} results={results} generating={generating} onGenerate={handleGenerate} onCardClick={handleCardClick} liveScores={liveScores} isSubscribed={isSubscribed} finalized={finalized} isQueued={preAnalyzeQueue.some(q=>q.game.id===game.id)} betReady={betReadyAlerts[`${game.id}-PUBLIC`]||betReadyAlerts[`${game.id}-VEGAS`]} onShowAuth={(mode)=>{setShowAuth(true);setAuthMode(authUser ? (mode||'plans') : 'signup');setAuthError('');}} watchlist={watchlist} onToggleWatch={toggleWatch} pickHistory={pickHistory}/>
-                  ))}
-                </div>
-              </>
-            )}
-
-
-
-            {/* Trell alerts */}
-            {trellAlerts.length>0&&(
-              <div style={{ marginTop:14,background:"#080d1c",border:"1px solid rgba(59,130,246,0.1)",borderRadius:12,padding:14 }}>
-                <div style={{ fontSize:9,fontWeight:700,letterSpacing:"0.08em",color:"#3b82f6",marginBottom:10 }}>⚡ TRELL RULE ALERTS</div>
-                {trellAlerts.map((alert,i)=>(
-                  <div key={i} style={{ display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:i<trellAlerts.length-1?"1px solid rgba(255,255,255,0.04)":"none" }}>
-                    <div>
-                      <div style={{ fontSize:12,fontWeight:600,color:"#f1f5f9" }}>{alert.player}</div>
-                      <div style={{ fontSize:10,color:"#f87171",marginTop:2 }}>{alert.status} · {alert.direction}</div>
-                    </div>
-                    <span style={{ fontSize:9,fontWeight:700,padding:"3px 8px",borderRadius:4,background:"rgba(248,113,113,0.1)",border:"1px solid rgba(248,113,113,0.25)",color:"#f87171",letterSpacing:"0.08em" }}>ACTIVE</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Stacked right panel (tablet/mobile) */}
-            {(activeTab==='DASHBOARD' && activeNav==='DASHBOARD') && (
-            <div className="vv-right-stacked" style={{ marginTop:16,background:"#080d1c",border:"1px solid rgba(59,130,246,0.1)",borderRadius:12,padding:16 }}>
-              <RightPanelContent marketScanner={marketScanner} insights={insights} aiConfidence={aiConfidence} confHistory={confHistory}/>
-            </div>
-            )}
-            </>
-            )}
-          </div>
-        </div>
-
-        {/* RIGHT PANEL (desktop) */}
-        <div className="vv-right" style={{ width:290,background:"transparent",borderLeft:"1px solid rgba(255,255,255,0.05)",overflowY:"auto",flexShrink:0,padding:"16px 16px 24px" }}>
-          <RightPanelContent marketScanner={marketScanner} insights={insights} aiConfidence={aiConfidence} confHistory={confHistory}/>
-        </div>
-      </div>
-
-      {/* MOBILE BOTTOM NAV */}
-      <div className="vv-bottom-nav">
-        {[
-          { icon:'⊞', label:'HOME', action:()=>{ setActiveTab('DASHBOARD'); setActiveNav('DASHBOARD'); }, active: activeTab==='DASHBOARD' && activeNav==='DASHBOARD' },
-          { icon:'📅', label:'SLATE', action:()=>setActiveNav("TODAY'S SLATE"), active: activeNav==="TODAY'S SLATE" },
-          { icon:'◇',  label:'PROPS', action:()=>setActiveNav('PROPS AI'), active: activeNav==='PROPS AI' },
-          { icon:'📊', label:'ODDS', action:()=>setShowOddsMovement(true), active:false },
-          { icon:'⚙',  label:'SETTINGS', action:()=>window.location.href='/settings', active:false },
-        ].map((item,i) => (
-          <div key={i} onClick={item.action} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:2,padding:"6px 8px",cursor:"pointer",flex:1,position:"relative" }}>
-            <span style={{ fontSize:18,color:item.active?"#3b82f6":"#475569" }}>{item.icon}</span>
-            {item.badge && <div style={{ position:"absolute",top:4,right:'25%',width:7,height:7,borderRadius:"50%",background:"#3b82f6" }}/>}
-            <span style={{ fontSize:8,fontWeight:item.active?700:500,letterSpacing:"0.06em",color:item.active?"#3b82f6":"#475569" }}>{item.label}</span>
-          </div>
-        ))}
-        {/* Login button replaces last item when not logged in */}
-        {!authUser && (
-          <div onClick={()=>{setShowAuth(true);setAuthMode('login');setAuthError('');}} style={{ position:"absolute",right:8,display:"flex",flexDirection:"column",alignItems:"center",gap:2,padding:"6px 8px",cursor:"pointer" }}>
-            <span style={{ fontSize:18,color:"#3b82f6" }}>🔐</span>
-            <span style={{ fontSize:8,fontWeight:600,letterSpacing:"0.06em",color:"#3b82f6" }}>LOGIN</span>
-          </div>
-        )}
-      </div>
-
-      {activeResult&&activeGame&&(
-        <PlayResult
-          result={activeResult}
-          game={activeGame}
-          onClose={()=>{setActiveResult(null);setActiveGame(null);}}
-          isResolved={pickHistory.some(p=>p.key===`${activeGame.id}-${activeGame.slot||'PUBLIC'}`)}
-          resolvedResult={pickHistory.find(p=>p.key===`${activeGame.id}-${activeGame.slot||'PUBLIC'}`)?.result}
-        />
       )}
 
-      {/* ── ODDS MOVEMENT PANEL ─────────────────────────────────────────────── */}
-      {showOddsMovement&&(
-        <div style={{ position:"fixed",inset:0,zIndex:9000,display:"flex" }}>
-          <div onClick={()=>setShowOddsMovement(false)} style={{ position:"absolute",inset:0,background:"rgba(0,0,0,0.6)",backdropFilter:"blur(8px)" }}/>
-          <div style={{ position:"relative",marginLeft:"auto",width:"100%",maxWidth:620,height:"100%",background:"transparent",borderLeft:"1px solid rgba(59,130,246,0.12)",overflowY:"auto",display:"flex",flexDirection:"column" }}>
-
-            {/* Header */}
-            <div style={{ padding:"18px 20px",borderBottom:"1px solid rgba(59,130,246,0.1)",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:"transparent",zIndex:10 }}>
-              <div>
-                <div style={{ fontSize:14,fontWeight:700,color:"#f1f5f9",letterSpacing:"0.04em" }}>📊 ODDS MOVEMENT</div>
-                <div style={{ fontSize:10,color:"#3a4a5e",marginTop:2 }}>Live FanDuel vs DraftKings vs BetMGM vs Caesars vs Bet365 · {games.length} games today</div>
+      {/* ── PAYWALL — signed in but not subscribed ── */}
+      {authUser && !isSubscribed && (
+        <div style={{ position:'fixed',inset:0,zIndex:9998,background:'rgba(246,249,246,0.97)',backdropFilter:'blur(20px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
+          <div style={{ background:'rgba(255,255,255,0.7)',border:'1px solid rgba(57,255,20,0.28)',borderRadius:20,width:'100%',maxWidth:420,overflow:'hidden',boxShadow:'0 20px 60px rgba(57,255,20,0.09)' }}>
+            <div style={{ padding:'24px 28px 8px',textAlign:'center' }}>
+              <div style={{ display:'inline-flex',alignItems:'center',gap:6,fontSize:9,fontWeight:800,letterSpacing:'1.2px',color:'#39FF14',border:'1px solid rgba(57,255,20,0.35)',padding:'4px 14px',borderRadius:14,background:'rgba(57,255,20,0.07)',marginBottom:12 }}>
+                <span style={{ width:5,height:5,borderRadius:'50%',background:'#39FF14',boxShadow:'0 0 5px #39FF14',display:'inline-block' }} />
+                SUBSCRIPTION REQUIRED
               </div>
-              <button onClick={()=>setShowOddsMovement(false)} style={{ background:"rgba(255,255,255,0.05)",border:"1px solid rgba(59,130,246,0.14)",borderRadius:8,width:32,height:32,cursor:"pointer",color:"#64748b",fontSize:14,fontFamily:"inherit" }}>✕</button>
+              <div style={{ fontSize:20,fontWeight:800,color:'#111' }}>Unlock Vegas Vault AI</div>
+              <div style={{ fontSize:11,color:'#aaa',marginTop:4,lineHeight:1.5 }}>Subscribe to access live AI analysis, Tier 1 locks,<br/>and the full Games Slate across all sports.</div>
             </div>
-
-            {/* Summary bar */}
-            {(()=>{
-              const mlbGames = games.filter(g=>g.sport==="MLB");
-              const moving = mlbGames.filter(g=>g.lineMovement && !g.lineMovement.includes("stable") && !g.lineMovement.includes("Stable") && g.lineMovement!=="TBD" && g.lineMovement!=="Odds API not connected").length;
-              const sharp  = mlbGames.filter(g=>(g.lineMovement||"").includes("SHARP SIGNAL") || (g.rlm)).length;
-              const posEV  = mlbGames.filter(g=>g.homeEV > 0 || g.awayEV > 0).length;
-              const stable = mlbGames.filter(g=>(g.lineMovement||"").toLowerCase().includes("stable")).length;
-              return (
-                <div style={{ padding:"14px 20px",borderBottom:"1px solid rgba(59,130,246,0.1)",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10 }}>
-                  {[
-                    { label:"MOVING", value:moving, color:"#3b82f6", sub:"lines" },
-                    { label:"SHARP",  value:sharp,  color:"#f87171", sub:"signals" },
-                    { label:"+EV",    value:posEV,  color:"#4ade80", sub:"spots" },
-                    { label:"STABLE", value:stable, color:"#475569", sub:"lines" },
-                  ].map((s,i)=>(
-                    <div key={i} style={{ background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.05)",borderRadius:10,padding:"10px 8px",textAlign:"center" }}>
-                      <div style={{ fontSize:8,color:"#3a4a5e",letterSpacing:"0.06em",marginBottom:3 }}>{s.label}</div>
-                      <div style={{ fontSize:24,fontWeight:800,color:s.color,lineHeight:1 }}>{s.value}</div>
-                      <div style={{ fontSize:8,color:"#2d3a4a",marginTop:2 }}>{s.sub}</div>
-                    </div>
-                  ))}
+            <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,padding:'16px 28px' }}>
+              {[{name:'Weekly',price:'$14.99',period:'per week',save:''},
+                {name:'Monthly',price:'$29.99',period:'per month',save:'Save 50% vs weekly',best:true}].map(plan=>(
+                <div key={plan.name} onClick={()=>doSubscribe(plan.name.toLowerCase())} style={{ border:plan.best?'2px solid #39FF14':'1px solid rgba(0,0,0,0.07)',borderRadius:14,padding:'16px 14px',textAlign:'center',cursor:'pointer',position:'relative',background:plan.best?'rgba(255,255,255,0.8)':'rgba(255,255,255,0.5)',boxShadow:plan.best?'0 0 24px rgba(57,255,20,0.15)':'none' }}>
+                  {plan.best && <div style={{ position:'absolute',top:-9,left:'50%',transform:'translateX(-50%)',fontSize:8,fontWeight:800,color:'#111',background:'#39FF14',padding:'3px 10px',borderRadius:8,letterSpacing:0.5 }}>BEST VALUE</div>}
+                  <div style={{ fontSize:11,fontWeight:700,color:'#aaa',textTransform:'uppercase',letterSpacing:'0.6px',marginTop:6 }}>{plan.name}</div>
+                  <div style={{ fontSize:24,fontWeight:900,color:'#111',marginTop:6 }}>{plan.price}</div>
+                  <div style={{ fontSize:10,color:'#bbb' }}>{plan.period}</div>
+                  {plan.save && <div style={{ fontSize:9,color:'#33aa00',fontWeight:700,marginTop:4 }}>{plan.save}</div>}
                 </div>
-              );
-            })()}
-
-            {/* Games list */}
-            <div style={{ flex:1,padding:"14px 20px 40px" }}>
-              {games.length===0 ? (
-                <div style={{ textAlign:"center",padding:"60px 20px" }}>
-                  <div style={{ fontSize:32,marginBottom:12 }}>📊</div>
-                  <div style={{ fontSize:14,fontWeight:600,color:"#2d3a4a" }}>No games loaded yet</div>
-                </div>
-              ) : games.map((game,i)=>{
-                const lm = game.lineMovement || "No data";
-                const lmLower = lm.toLowerCase();
-                const isSharp   = lm.includes("SHARP SIGNAL") || !!game.rlm;
-                const isMoving  = lm.includes("moved toward") && !isSharp;
-                const isStable  = lmLower.includes("stable");
-                const hasEV     = game.homeEV > 0 || game.awayEV > 0;
-
-                const borderColor = isSharp?"rgba(248,113,113,0.4)":isMoving?"rgba(59,130,246,0.35)":hasEV?"rgba(74,222,128,0.25)":"rgba(255,255,255,0.05)";
-                const badge = isSharp ? { label:"⚡ SHARP",color:"#f87171",bg:"rgba(248,113,113,0.12)" }
-                            : isMoving? { label:"📈 MOVING",color:"#3b82f6",bg:"rgba(59,130,246,0.1)" }
-                            : hasEV   ? { label:"+EV",color:"#4ade80",bg:"rgba(74,222,128,0.08)" }
-                            : { label:"STABLE",color:"#475569",bg:"rgba(255,255,255,0.04)" };
-
-                // Opening vs current movement arrows
-                const awayOpen = game.openingAwayML;
-                const homeOpen = game.openingHomeML;
-                const awayCur  = game.awayML;
-                const homeCur  = game.homeML;
-                const awayMoved = awayOpen && awayCur && awayOpen!=="N/A" && awayCur!=="N/A" && awayOpen!==awayCur;
-                const homeMoved = homeOpen && homeCur && homeOpen!=="N/A" && homeCur!=="N/A" && homeOpen!==homeCur;
-
-                // EV display
-                const homeEVStr = game.homeEV != null ? (game.homeEV > 0 ? `+${game.homeEV}%` : `${game.homeEV}%`) : null;
-                const awayEVStr = game.awayEV != null ? (game.awayEV > 0 ? `+${game.awayEV}%` : `${game.awayEV}%`) : null;
-                const homeEVColor = game.homeEV > 0 ? "#4ade80" : game.homeEV < 0 ? "#f87171" : "#475569";
-                const awayEVColor = game.awayEV > 0 ? "#4ade80" : game.awayEV < 0 ? "#f87171" : "#475569";
-
-                return (
-                  <div key={game.id||i} style={{ background:"rgba(255,255,255,0.02)",border:`1px solid ${borderColor}`,borderRadius:12,padding:"14px 16px",marginBottom:10 }}>
-
-                    {/* Top row: matchup + badge */}
-                    <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10 }}>
-                      <div style={{ display:"flex",alignItems:"center",gap:8,flexWrap:"wrap" }}>
-                        <span style={{ fontSize:9,fontWeight:700,color:game.slot==="VEGAS"?"#f87171":"#60a5fa",background:game.slot==="VEGAS"?"rgba(248,113,113,0.1)":"rgba(96,165,250,0.1)",borderRadius:4,padding:"1px 6px",letterSpacing:"0.06em" }}>{game.sport||"MLB"} · {game.slot||"PUBLIC"}</span>
-                        <span style={{ fontSize:12,fontWeight:700,color:"#e2e8f0" }}>{game.awayAbbr||game.away?.split(" ").pop()} @ {game.homeAbbr||game.home?.split(" ").pop()}</span>
-                        <span style={{ fontSize:10,color:"#3a4a5e" }}>{game.time}</span>
-                      </div>
-                      <span style={{ fontSize:9,fontWeight:700,color:badge.color,background:badge.bg,borderRadius:4,padding:"2px 8px",letterSpacing:"0.07em",whiteSpace:"nowrap" }}>{badge.label}</span>
-                    </div>
-
-                    {/* ML: Open → Current with movement indicator */}
-                    <div style={{ display:"grid",gridTemplateColumns:"1fr 24px 1fr",gap:6,marginBottom:8 }}>
-                      {/* Away */}
-                      <div style={{ background:"rgba(255,255,255,0.02)",borderRadius:8,padding:"8px 10px" }}>
-                        <div style={{ fontSize:9,color:"#3a4a5e",letterSpacing:"0.07em",marginBottom:3 }}>{game.awayAbbr||game.away?.split(" ").pop()}</div>
-                        <div style={{ display:"flex",alignItems:"baseline",gap:6 }}>
-                          {awayMoved && <span style={{ fontSize:10,color:"#475569",textDecoration:"line-through" }}>{awayOpen}</span>}
-                          <span style={{ fontSize:16,fontWeight:800,color:(awayCur||"").startsWith("-")?"#f87171":"#4ade80" }}>{awayCur||"N/A"}</span>
-                          {awayMoved && <span style={{ fontSize:10 }}>{parseInt(awayCur)>parseInt(awayOpen)?"▲":"▼"}</span>}
-                        </div>
-                        {awayEVStr && <div style={{ fontSize:9,fontWeight:700,color:awayEVColor,marginTop:2 }}>EV {awayEVStr}</div>}
-                      </div>
-                      <div style={{ display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#2d3a4a",fontWeight:700 }}>@</div>
-                      {/* Home */}
-                      <div style={{ background:"rgba(255,255,255,0.02)",borderRadius:8,padding:"8px 10px" }}>
-                        <div style={{ fontSize:9,color:"#3a4a5e",letterSpacing:"0.07em",marginBottom:3 }}>{game.homeAbbr||game.home?.split(" ").pop()}</div>
-                        <div style={{ display:"flex",alignItems:"baseline",gap:6 }}>
-                          {homeMoved && <span style={{ fontSize:10,color:"#475569",textDecoration:"line-through" }}>{homeOpen}</span>}
-                          <span style={{ fontSize:16,fontWeight:800,color:(homeCur||"").startsWith("-")?"#f87171":"#4ade80" }}>{homeCur||"N/A"}</span>
-                          {homeMoved && <span style={{ fontSize:10 }}>{parseInt(homeCur)>parseInt(homeOpen)?"▲":"▼"}</span>}
-                        </div>
-                        {homeEVStr && <div style={{ fontSize:9,fontWeight:700,color:homeEVColor,marginTop:2 }}>EV {homeEVStr}</div>}
-                      </div>
-                    </div>
-
-                    {/* Line movement summary */}
-                    <div style={{ padding:"8px 10px",background:isSharp?"rgba(248,113,113,0.06)":isMoving?"rgba(201,162,39,0.05)":"rgba(255,255,255,0.02)",borderRadius:8,border:`1px solid ${isSharp?"rgba(248,113,113,0.15)":isMoving?"rgba(59,130,246,0.1)":"rgba(255,255,255,0.04)"}`,marginBottom:game.rlm||game.runLine?8:0 }}>
-                      <span style={{ fontSize:10,color:isSharp?"#f87171":isMoving?"#3b82f6":"#64748b" }}>{lm}</span>
-                    </div>
-
-                    {/* RLM alert */}
-                    {game.rlm && (
-                      <div style={{ padding:"6px 10px",background:"rgba(248,113,113,0.08)",borderRadius:6,border:"1px solid rgba(248,113,113,0.2)",marginBottom:4 }}>
-                        <span style={{ fontSize:10,fontWeight:700,color:"#f87171" }}>⚡ SHARP SIDE: {game.rlm}</span>
-                      </div>
-                    )}
-
-                    {/* Run line / spread */}
-                    {game.runLine && game.runLine!=="N/A" && (
-                      <div style={{ fontSize:9,color:"#3a4a5e",marginTop:4 }}>Spread: <span style={{ color:"#475569" }}>{game.runLine}</span></div>
-                    )}
+              ))}
+            </div>
+            <div style={{ padding:'0 28px 20px' }}>
+              {['Full AI analysis on every game — MLB, NBA, NFL, Tennis','Daily Top Play of the Day with AI Lock','Tier 1 / Tier 2 / Pass breakdowns','Scam play alerts, line movement & sharp money','Vault storage for saved plays'].map((f,i)=>(
+                <div key={i} style={{ display:'flex',alignItems:'flex-start',gap:8,padding:'6px 0',fontSize:11,color:'#444',lineHeight:1.5 }}>
+                  <div style={{ width:18,height:18,borderRadius:'50%',background:'rgba(57,255,20,0.1)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,marginTop:1 }}>
+                    <i className="ti ti-check" style={{ fontSize:11,color:'#33aa00' }} />
                   </div>
+                  {f}
+                </div>
+              ))}
+              <div style={{ textAlign:'center',fontSize:10,color:'#ccc',marginTop:12,lineHeight:1.6 }}>
+                Cancel anytime. Manage via Settings → Customer Portal.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MAIN DASHBOARD — game slate ── */}
+      {authUser && isSubscribed && (
+        <div style={{ display:'flex',flexDirection:'column',gap:12 }}>
+
+          {/* Top Play Banner */}
+          <TopPlayBanner
+            topPlay={topPlay}
+            loading={topPlayLoading}
+            results={results}
+            games={games}
+            pickHistory={pickHistory}
+            isSubscribed={isSubscribed}
+            onShowAuth={()=>setShowAuth(true)}
+            onForceRefresh={null}
+            isAdmin={shellIsAdmin}
+            watchlist={watchlist}
+            onToggleWatch={(id)=>setWatchlist(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id])}
+            sport={filter}
+          />
+
+          {/* Date nav + sport filter */}
+          <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:10 }}>
+            <div>
+              <div style={{ fontSize:18,fontWeight:800,color:'#111',letterSpacing:-0.3 }}>Today's Slate</div>
+              <div style={{ fontSize:11,color:'#aaa',marginTop:2 }}>
+                {new Date(selectedDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'})}
+                {' · '}{games.length} games
+              </div>
+            </div>
+            <div style={{ display:'flex',alignItems:'center',gap:8,flexWrap:'wrap' }}>
+              {/* Date navigation */}
+              <div style={{ display:'flex',alignItems:'center',gap:4 }}>
+                <button onClick={()=>{const d=new Date(selectedDate+'T12:00:00');d.setDate(d.getDate()-1);setSelectedDate(d.toISOString().split('T')[0]);}}
+                  style={{ width:30,height:30,borderRadius:9,border:'1px solid rgba(0,0,0,0.07)',background:'rgba(255,255,255,0.7)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'#666' }}>
+                  <i className="ti ti-chevron-left" style={{ fontSize:14 }} />
+                </button>
+                <button onClick={()=>{const d=new Date(selectedDate+'T12:00:00');d.setDate(d.getDate()+1);setSelectedDate(d.toISOString().split('T')[0]);}}
+                  style={{ width:30,height:30,borderRadius:9,border:'1px solid rgba(0,0,0,0.07)',background:'rgba(255,255,255,0.7)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'#666' }}>
+                  <i className="ti ti-chevron-right" style={{ fontSize:14 }} />
+                </button>
+              </div>
+              {/* Sport filter tabs */}
+              {['ALL',...new Set(games.map(g=>g.sport).filter(Boolean))].map(s=>(
+                <button key={s} onClick={()=>setFilter(s)}
+                  style={{ fontSize:11,fontWeight:700,padding:'6px 14px',borderRadius:14,border:filter===s?'1px solid #39FF14':'1px solid rgba(0,0,0,0.07)',background:filter===s?'#39FF14':'rgba(255,255,255,0.7)',color:filter===s?'#111':'#999',cursor:'pointer',boxShadow:filter===s?'0 0 8px rgba(57,255,20,0.3)':'none' }}>
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Admin slot pattern controls */}
+          {shellIsAdmin && (
+            <div style={{ background:'rgba(255,255,255,0.62)',border:'1px solid rgba(57,255,20,0.28)',borderRadius:14,padding:'12px 16px',display:'flex',alignItems:'center',gap:12,flexWrap:'wrap' }}>
+              <span style={{ fontSize:9,fontWeight:800,color:'#fff',background:'linear-gradient(135deg,#111,#333)',padding:'2px 9px',borderRadius:6,letterSpacing:1 }}>ADMIN</span>
+              <span style={{ fontSize:11,fontWeight:600,color:'#555' }}>Slot Pattern Manager</span>
+              <button onClick={()=>window.location.href='/settings'}
+                style={{ fontSize:10,fontWeight:700,padding:'6px 12px',borderRadius:8,background:'linear-gradient(135deg,#39FF14,#22cc00)',border:'none',color:'#111',cursor:'pointer',marginLeft:'auto' }}>
+                <i className="ti ti-settings" style={{ fontSize:12,marginRight:4 }} />Open Settings
+              </button>
+            </div>
+          )}
+
+          {/* Game cards grid */}
+          {loading ? (
+            <div style={{ textAlign:'center',padding:'60px 0',color:'#aaa',fontSize:13 }}>
+              <div style={{ width:32,height:32,border:'3px solid rgba(57,255,20,0.2)',borderTopColor:'#39FF14',borderRadius:'50%',margin:'0 auto 12px',animation:'spin 0.8s linear infinite' }} />
+              Loading today's games...
+            </div>
+          ) : (
+            <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(340px,1fr))',gap:12 }}>
+              {games.filter(g=>filter==='ALL'||g.sport===filter).map(game=>{
+                const key = `${game.id}-${game.slot}`;
+                return (
+                  <GameCard
+                    key={key}
+                    game={game}
+                    onGenerate={handleGenerate}
+                    results={results}
+                    generating={generating}
+                    onCardClick={(g,r)=>{setActiveGame(g);setActiveResult(r);}}
+                    liveScores={liveScores}
+                    isSubscribed={isSubscribed}
+                    finalized={finalized}
+                    isQueued={preAnalyzeQueue.includes(key)}
+                    betReady={!!betReadyAlerts[key]}
+                    onShowAuth={()=>setShowAuth(true)}
+                    watchlist={watchlist}
+                    onToggleWatch={(id)=>setWatchlist(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id])}
+                    pickHistory={pickHistory}
+                  />
                 );
               })}
             </div>
-          </div>
+          )}
         </div>
       )}
 
-      {/* ── HISTORY PANEL ────────────────────────────────────────────────────── */}
-      {showHistory&&(
-        <div style={{ position:"fixed",inset:0,zIndex:9000,display:"flex" }}>
-          {/* Backdrop */}
-          <div onClick={()=>setShowHistory(false)} style={{ position:"absolute",inset:0,background:"rgba(0,0,0,0.6)",backdropFilter:"blur(8px)" }}/>
-          {/* Panel */}
-          <div style={{ position:"relative",marginLeft:"auto",width:"100%",maxWidth:560,height:"100%",background:"transparent",borderLeft:"1px solid rgba(59,130,246,0.12)",overflowY:"auto",display:"flex",flexDirection:"column" }}>
-
-            {/* Header */}
-            <div style={{ padding:"18px 20px",borderBottom:"1px solid rgba(59,130,246,0.1)",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:"transparent",zIndex:10 }}>
+      {/* ── HISTORY MODAL ── */}
+      {showHistory && (
+        <div style={{ position:'fixed',inset:0,zIndex:9000,display:'flex' }}>
+          <div onClick={()=>setShowHistory(false)} style={{ position:'absolute',inset:0,background:'rgba(0,0,0,0.4)',backdropFilter:'blur(8px)' }}/>
+          <div style={{ position:'relative',marginLeft:'auto',width:'100%',maxWidth:560,height:'100%',background:'#fff',borderLeft:'1px solid rgba(57,255,20,0.15)',overflowY:'auto',display:'flex',flexDirection:'column' }}>
+            <div style={{ padding:'18px 20px',borderBottom:'1px solid rgba(0,0,0,0.06)',display:'flex',alignItems:'center',justifyContent:'space-between',position:'sticky',top:0,background:'#fff',zIndex:10 }}>
               <div>
-                <div style={{ fontSize:14,fontWeight:700,color:"#f1f5f9",letterSpacing:"0.04em" }}>MY PICKS HISTORY</div>
-                <div style={{ fontSize:10,color:"#3a4a5e",marginTop:2 }}>{pickHistory.length} total picks tracked</div>
+                <div style={{ fontSize:14,fontWeight:800,color:'#111' }}>My Picks History</div>
+                <div style={{ fontSize:10,color:'#aaa',marginTop:2 }}>{pickHistory.length} total picks tracked</div>
               </div>
-              <button onClick={()=>setShowHistory(false)} style={{ background:"rgba(255,255,255,0.05)",border:"1px solid rgba(59,130,246,0.14)",borderRadius:8,width:32,height:32,cursor:"pointer",color:"#64748b",fontSize:14,fontFamily:"inherit" }}>✕</button>
+              <button onClick={()=>setShowHistory(false)} style={{ width:32,height:32,borderRadius:8,border:'1px solid rgba(0,0,0,0.07)',background:'rgba(255,255,255,0.8)',cursor:'pointer',color:'#666',fontSize:16,display:'flex',alignItems:'center',justifyContent:'center' }}>✕</button>
             </div>
-
-            {/* Stats bar */}
             {pickHistory.length > 0 && (()=>{
-              const wins = pickHistory.filter(p=>p.result==='win').length;
-              const losses = pickHistory.filter(p=>p.result==='loss').length;
-              const total = wins + losses;
-              const rate = total > 0 ? Math.round((wins/total)*100) : 0;
-              const sevenDays = pickHistory.filter(p=>p.resolvedAt && Date.now()-new Date(p.resolvedAt).getTime() < 7*86400000);
-              const w7 = sevenDays.filter(p=>p.result==='win').length;
-              const l7 = sevenDays.filter(p=>p.result==='loss').length;
-              const r7 = (w7+l7) > 0 ? Math.round((w7/(w7+l7))*100) : 0;
+              const wins=pickHistory.filter(p=>p.result==='win').length;
+              const losses=pickHistory.filter(p=>p.result==='loss').length;
+              const total=wins+losses;
+              const rate=total>0?Math.round((wins/total)*100):0;
               return (
-                <div style={{ padding:"16px 20px",borderBottom:"1px solid rgba(59,130,246,0.1)",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12 }}>
-                  {[
-                    { label:"ALL TIME", value:`${rate}%`, sub:`${wins}W-${losses}L`, color: rate>=60?"#4ade80":rate>=50?"#fbbf24":"#f87171" },
-                    { label:"LAST 7D", value:`${r7}%`, sub:`${w7}W-${l7}L`, color: r7>=60?"#4ade80":r7>=50?"#fbbf24":"#f87171" },
-                    { label:"TOTAL PICKS", value:total, sub:"tracked", color:"#94a3b8" },
-                    { label:"BEST STREAK", value:(()=>{ let s=0,m=0; for(const p of [...pickHistory].reverse()){ if(p.result==='win'){s++;m=Math.max(m,s);}else s=0;} return m; })()+"W", sub:"in a row", color:"#3b82f6" },
-                  ].map((stat,i)=>(
-                    <div key={i} style={{ background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.05)",borderRadius:10,padding:"12px 10px",textAlign:"center" }}>
-                      <div style={{ fontSize:9,color:"#3a4a5e",letterSpacing:"0.06em",marginBottom:4 }}>{stat.label}</div>
-                      <div style={{ fontSize:22,fontWeight:800,color:stat.color,lineHeight:1 }}>{stat.value}</div>
-                      <div style={{ fontSize:9,color:"#2d3a4a",marginTop:3 }}>{stat.sub}</div>
+                <div style={{ padding:'16px 20px',borderBottom:'1px solid rgba(0,0,0,0.06)',display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12 }}>
+                  {[{label:'ALL TIME',value:`${rate}%`,sub:`${wins}W-${losses}L`,color:rate>=60?'#33aa00':rate>=50?'#bb8800':'#dd4444'},
+                    {label:'TOTAL PICKS',value:total,sub:'tracked',color:'#555'},
+                  ].map((s,i)=>(
+                    <div key={i} style={{ background:'rgba(246,249,246,0.7)',border:'1px solid rgba(195,240,195,0.5)',borderRadius:10,padding:'12px 10px',textAlign:'center' }}>
+                      <div style={{ fontSize:9,color:'#aaa',letterSpacing:'0.06em',marginBottom:4,textTransform:'uppercase' }}>{s.label}</div>
+                      <div style={{ fontSize:22,fontWeight:800,color:s.color,lineHeight:1 }}>{s.value}</div>
+                      <div style={{ fontSize:9,color:'#bbb',marginTop:3 }}>{s.sub}</div>
                     </div>
                   ))}
                 </div>
               );
             })()}
-
-            {/* Picks list */}
-            <div style={{ flex:1,padding:"12px 20px 100px" }}>
-              {pickHistory.length === 0 ? (
-                <div style={{ textAlign:"center",padding:"60px 20px" }}>
-                  <div style={{ fontSize:32,marginBottom:12 }}>📊</div>
-                  <div style={{ fontSize:14,fontWeight:600,color:"#2d3a4a",marginBottom:6 }}>No picks tracked yet</div>
-                  <div style={{ fontSize:12,color:"#1e2a3a" }}>Generate plays and mark them Win or Loss<br/>to start tracking your performance.</div>
-                </div>
+            <div style={{ flex:1,padding:'12px 20px 100px' }}>
+              {pickHistory.length===0 ? (
+                <div style={{ textAlign:'center',padding:'60px 20px',color:'#aaa' }}>No picks tracked yet</div>
               ) : (
-                [...pickHistory].reverse().map((pick, i) => {
-                  const isWin = pick.result === 'win';
-                  const isLoss = pick.result === 'loss';
-                  const isPending = !pick.result;
+                [...pickHistory].reverse().map((pick,i)=>{
+                  const isWin=pick.result==='win';
+                  const isLoss=pick.result==='loss';
                   return (
-                    <div key={i} style={{ background:"rgba(255,255,255,0.02)",border:`1px solid ${isWin?"rgba(74,222,128,0.2)":isLoss?"rgba(248,113,113,0.2)":"rgba(255,255,255,0.05)"}`,borderRadius:12,padding:"14px 16px",marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center",gap:12 }}>
+                    <div key={i} style={{ background:isWin?'rgba(57,255,20,0.05)':isLoss?'rgba(255,80,80,0.04)':'rgba(255,255,255,0.5)',border:`1px solid ${isWin?'rgba(57,255,20,0.25)':isLoss?'rgba(255,80,80,0.2)':'rgba(0,0,0,0.05)'}`,borderRadius:12,padding:'12px 14px',marginBottom:8,display:'flex',justifyContent:'space-between',alignItems:'center',gap:12 }}>
                       <div style={{ flex:1,minWidth:0 }}>
-                        <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:4,flexWrap:"wrap" }}>
-                          <span style={{ fontSize:10,fontWeight:700,color:pick.slot==="VEGAS"?"#f87171":"#60a5fa",background:pick.slot==="VEGAS"?"rgba(248,113,113,0.1)":"rgba(96,165,250,0.1)",borderRadius:4,padding:"1px 6px",letterSpacing:"0.06em" }}>{pick.slot||"PUBLIC"}</span>
-                          <span style={{ fontSize:11,fontWeight:600,color:"#e2e8f0",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>{pick.pick}</span>
-                          <span style={{ fontSize:10,color:"#475569" }}>{pick.betType}</span>
+                        <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:3,flexWrap:'wrap' }}>
+                          <span style={{ fontSize:9,fontWeight:800,padding:'2px 7px',borderRadius:5,background:pick.slot==='VEGAS'?'rgba(255,80,80,0.08)':'rgba(80,140,255,0.08)',color:pick.slot==='VEGAS'?'#dd4444':'#5588ee' }}>{pick.slot||'PUBLIC'}</span>
+                          <span style={{ fontSize:12,fontWeight:700,color:'#111' }}>{pick.pick}</span>
+                          <span style={{ fontSize:10,color:'#aaa' }}>{pick.betType}</span>
                         </div>
-                        <div style={{ fontSize:11,color:"#3a4a5e",marginBottom:2 }}>{pick.game}</div>
-                        {pick.score && <div style={{ fontSize:10,color:"#2d3a4a" }}>Final: {pick.score}</div>}
-                        <div style={{ fontSize:9,color:"#1e2a3a",marginTop:4 }}>{pick.resolvedAt ? new Date(pick.resolvedAt).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : pick.date}</div>
+                        <div style={{ fontSize:10,color:'#999' }}>{pick.game}</div>
+                        {pick.score && <div style={{ fontSize:9,color:'#bbb' }}>Final: {pick.score}</div>}
+                        <div style={{ fontSize:8,color:'#ccc',marginTop:3 }}>{pick.resolvedAt?new Date(pick.resolvedAt).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):pick.date}</div>
                       </div>
-                      <div style={{ flexShrink:0,textAlign:"center" }}>
-                        {isWin && <div style={{ fontSize:13,fontWeight:800,color:"#4ade80",background:"rgba(74,222,128,0.1)",border:"1px solid rgba(74,222,128,0.3)",borderRadius:8,padding:"6px 14px" }}>✅ WIN</div>}
-                        {isLoss && <div style={{ fontSize:13,fontWeight:800,color:"#f87171",background:"rgba(248,113,113,0.1)",border:"1px solid rgba(248,113,113,0.3)",borderRadius:8,padding:"6px 14px" }}>❌ LOSS</div>}
-                        {isPending && <div style={{ fontSize:11,color:"#3a4a5e",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(59,130,246,0.1)",borderRadius:8,padding:"6px 14px" }}>PENDING</div>}
+                      <div style={{ flexShrink:0,fontSize:12,fontWeight:800,padding:'6px 14px',borderRadius:8,background:isWin?'rgba(57,255,20,0.12)':isLoss?'rgba(255,80,80,0.1)':'rgba(0,0,0,0.03)',border:`1px solid ${isWin?'rgba(57,255,20,0.3)':isLoss?'rgba(255,80,80,0.3)':'rgba(0,0,0,0.06)'}`,color:isWin?'#33aa00':isLoss?'#dd4444':'#999' }}>
+                        {isWin?'✅ WIN':isLoss?'❌ LOSS':'PENDING'}
                       </div>
                     </div>
                   );
                 })
               )}
             </div>
-
-            {/* Clear history button */}
-            {pickHistory.length > 0 && (
-              <div style={{ padding:"12px 20px",borderTop:"1px solid rgba(255,255,255,0.05)",position:"sticky",bottom:0,background:"transparent" }}>
-                {isSubscribed && authUser?.email !== ADMIN_EMAIL && (
-                  <button onClick={async () => {
-                    const { data: { session } } = await _supabase.auth.getSession();
-                    if (!session) return;
-                    const res = await fetch('/api/stripe/portal', {
-                      method: 'POST',
-                      headers: { Authorization: 'Bearer ' + session.access_token }
-                    });
-                    const { url, error } = await res.json();
-                    if (url) window.location.href = url;
-                    else alert(error || 'Could not open billing portal');
-                  }} style={{ width:"100%",padding:"10px 0",background:"rgba(59,130,246,0.06)",border:"1px solid rgba(59,130,246,0.2)",borderRadius:8,fontSize:11,color:"#60a5fa",cursor:"pointer",fontFamily:"inherit",letterSpacing:"0.06em",marginBottom:8 }}>
-                    💳 Manage Subscription
-                  </button>
-                )}
-                <button onClick={()=>{ if(window.confirm('Clear all pick history?')){ setPickHistory([]); if(authUser?.id) syncDelete(authUser.id,'pick_history'); }}} style={{ width:"100%",padding:"10px 0",background:"rgba(248,113,113,0.06)",border:"1px solid rgba(248,113,113,0.15)",borderRadius:8,fontSize:11,color:"#f87171",cursor:"pointer",fontFamily:"inherit",letterSpacing:"0.06em" }}>
+            {pickHistory.length>0 && (
+              <div style={{ padding:'12px 20px',borderTop:'1px solid rgba(0,0,0,0.05)',position:'sticky',bottom:0,background:'#fff' }}>
+                <button onClick={()=>{if(window.confirm('Clear all pick history?')){setPickHistory([]);if(authUser?.id)syncDelete(authUser.id,'pick_history');}}}
+                  style={{ width:'100%',padding:'10px 0',background:'rgba(255,80,80,0.06)',border:'1px solid rgba(255,80,80,0.15)',borderRadius:8,fontSize:11,color:'#dd4444',cursor:'pointer',fontFamily:'inherit' }}>
                   Clear History
                 </button>
               </div>
@@ -3670,63 +3339,34 @@ export default function VegasVaultApp() {
         </div>
       )}
 
-      {showAuth&&(
-        <div onClick={e=>e.target===e.currentTarget&&setShowAuth(false)} style={{ position:"fixed",inset:0,zIndex:9999,background:"rgba(0,0,0,0.85)",backdropFilter:"blur(20px)",display:"flex",alignItems:"center",justifyContent:"center",padding:16 }}>
-          <div style={{ background:"#0a0d1a",border:"1px solid rgba(59,130,246,0.14)",borderRadius:20,width:"100%",maxWidth:500,maxHeight:"95vh",overflowY:"auto",boxShadow:"0 40px 100px rgba(0,0,0,0.9)" }}>
-            <div style={{ padding:"28px 28px 24px" }}>
-              <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20 }}>
-                <div style={{ display:"flex",gap:0,borderBottom:"1px solid rgba(59,130,246,0.12)" }}>
-                  {["login","signup","plans"].filter(m=>authMode==="plans"?m==="plans":m!=="plans").map(m=>(
-                    <button key={m} onClick={()=>{setAuthMode(m);setAuthError('');}} style={{ padding:"6px 18px",background:"none",border:"none",borderBottom:authMode===m?"2px solid #3b82f6":"2px solid transparent",fontSize:11,fontWeight:authMode===m?700:400,color:authMode===m?"#3b82f6":"#475569",cursor:"pointer",letterSpacing:"0.08em",fontFamily:"inherit",marginBottom:-1 }}>
-                      {m==="login"?"SIGN IN":m==="signup"?"SIGN UP":"SUBSCRIBE"}
-                    </button>
-                  ))}
+      {/* ── GAME DETAIL MODAL ── */}
+      {activeGame && activeResult && (
+        <div style={{ position:'fixed',inset:0,zIndex:9000,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(8px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}
+          onClick={e=>e.target===e.currentTarget&&setActiveGame(null)}>
+          <div style={{ background:'#fff',borderRadius:20,width:'100%',maxWidth:700,maxHeight:'90vh',overflowY:'auto',boxShadow:'0 40px 100px rgba(0,0,0,0.15)' }}>
+            <div style={{ padding:'16px 20px',borderBottom:'1px solid rgba(0,0,0,0.06)',display:'flex',alignItems:'center',justifyContent:'space-between' }}>
+              <div style={{ fontWeight:800,color:'#111',fontSize:14 }}>{activeGame.away} @ {activeGame.home}</div>
+              <button onClick={()=>setActiveGame(null)} style={{ width:32,height:32,borderRadius:8,border:'1px solid rgba(0,0,0,0.07)',background:'rgba(255,255,255,0.8)',cursor:'pointer',fontSize:16,display:'flex',alignItems:'center',justifyContent:'center',color:'#666' }}>✕</button>
+            </div>
+            <div style={{ padding:20 }}>
+              <div style={{ fontSize:11,color:'#aaa',marginBottom:16 }}>{activeResult?.analysis?.matchupFoundation}</div>
+              {Object.entries(activeResult?.analysis||{}).filter(([k])=>k!=='matchupFoundation').map(([k,v])=>(
+                v && <div key={k} style={{ marginBottom:12,padding:'10px 14px',background:'rgba(246,249,246,0.7)',border:'1px solid rgba(195,240,195,0.5)',borderRadius:10 }}>
+                  <div style={{ fontSize:9,fontWeight:800,color:'#33aa00',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:4 }}>{k.replace(/([A-Z])/g,' $1').trim()}</div>
+                  <div style={{ fontSize:11,color:'#444',lineHeight:1.6 }}>{typeof v==='object'?JSON.stringify(v):v}</div>
                 </div>
-                <button onClick={()=>setShowAuth(false)} style={{ background:"rgba(255,255,255,0.05)",border:"1px solid rgba(59,130,246,0.14)",borderRadius:8,width:28,height:28,cursor:"pointer",color:"#64748b",fontSize:13,fontFamily:"inherit" }}>✕</button>
-              </div>
-
-              {authMode==="plans" ? (
-                <div>
-                  <div style={{ fontSize:18,fontWeight:800,color:"#f1f5f9",marginBottom:4 }}>Choose Your Plan</div>
-                  <div style={{ fontSize:12,color:"#475569",marginBottom:22 }}>Unlock full AI analysis on every game.</div>
-                  <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14 }}>
-                    {[{id:"weekly",label:"WEEKLY",price:"$19.99",period:"/week",features:["Full AI model","All games","Auto plays","Trell Rule alerts"],hl:false},{id:"monthly",label:"MONTHLY",price:"$49.99",period:"/month",features:["Everything weekly","Priority generation","Model updates","Early access"],hl:true,badge:"Best Value"}].map(p=>(
-                      <div key={p.id} style={{ background:p.hl?"rgba(201,162,39,0.06)":"rgba(255,255,255,0.02)",border:`1px solid ${p.hl?"rgba(59,130,246,0.3)":"rgba(59,130,246,0.12)"}`,borderRadius:12,padding:"16px 14px",position:"relative" }}>
-                        {p.badge&&<div style={{ position:"absolute",top:-9,left:"50%",transform:"translateX(-50%)",background:"#3b82f6",color:"#000",fontSize:8,fontWeight:800,padding:"2px 10px",borderRadius:10,whiteSpace:"nowrap" }}>{p.badge}</div>}
-                        <div style={{ fontSize:10,fontWeight:700,color:p.hl?"#3b82f6":"#94a3b8",letterSpacing:"0.06em",marginBottom:6 }}>{p.label}</div>
-                        <div style={{ display:"flex",alignItems:"baseline",gap:3,marginBottom:10 }}><span style={{ fontSize:20,fontWeight:900,color:"#f1f5f9" }}>{p.price}</span><span style={{ fontSize:10,color:"#475569" }}>{p.period}</span></div>
-                        <ul style={{ listStyle:"none",marginBottom:12 }}>{p.features.map((f,i)=><li key={i} style={{ fontSize:10,color:"#64748b",marginBottom:3,display:"flex",gap:6 }}><span style={{ color:"#3b82f6" }}>✓</span>{f}</li>)}</ul>
-                        <button onClick={()=>doSubscribe(p.id)} style={{ width:"100%",padding:"8px 0",background:p.hl?"linear-gradient(135deg,#3b82f6,#1d4ed8)":"rgba(255,255,255,0.05)",border:p.hl?"none":"1px solid rgba(255,255,255,0.1)",borderRadius:8,fontSize:10,fontWeight:700,color:p.hl?"#000":"#94a3b8",cursor:"pointer",fontFamily:"inherit" }}>Subscribe</button>
-                      </div>
-                    ))}
-                  </div>
-                  <button onClick={()=>setShowAuth(false)} style={{ width:"100%",padding:"8px 0",background:"transparent",border:"1px solid rgba(59,130,246,0.12)",borderRadius:8,fontSize:10,color:"#475569",cursor:"pointer",fontFamily:"inherit" }}>Maybe later — continue to dashboard</button>
-                </div>
-              ) : (
-                <div>
-                  <div style={{ fontSize:20,fontWeight:700,color:"#f1f5f9",marginBottom:4 }}>{authMode==="login"?"Welcome back,":"Create your account,"}</div>
-                  <div style={{ fontSize:12,color:"#475569",marginBottom:20 }}>{authMode==="login"?"Sign in to access your ":"Join "}<span style={{ color:"#3b82f6" }}>Vegas Vault AI</span>{authMode==="login"?" dashboard.":"and start winning."}</div>
-                  <div style={{ marginBottom:12 }}>
-                    <div style={{ fontSize:9,color:"#475569",letterSpacing:"0.08em",fontWeight:700,marginBottom:5 }}>EMAIL ADDRESS</div>
-                    <input type="email" placeholder="you@example.com" value={authEmail} onChange={e=>setAuthEmail(e.target.value)} style={{ width:"100%",padding:"11px 13px",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:9,color:"#e2e8f0",fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box" }}/>
-                  </div>
-                  <div style={{ marginBottom:16,position:"relative" }}>
-                    <div style={{ fontSize:9,color:"#475569",letterSpacing:"0.08em",fontWeight:700,marginBottom:5 }}>PASSWORD</div>
-                    <input type={showPw?"text":"password"} placeholder="Enter your password" value={authPw} onChange={e=>setAuthPw(e.target.value)} onKeyDown={e=>e.key==="Enter"&&doAuth()} style={{ width:"100%",padding:"11px 40px 11px 13px",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:9,color:"#e2e8f0",fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box" }}/>
-                    <button onClick={()=>setShowPw(!showPw)} style={{ position:"absolute",right:11,top:29,background:"none",border:"none",cursor:"pointer",color:"#3a4a5e",fontSize:14 }}>{showPw?"🙈":"👁"}</button>
-                  </div>
-                  {authError&&<div style={{ marginBottom:12,padding:"9px 13px",background:"rgba(248,113,113,0.08)",border:"1px solid rgba(248,113,113,0.2)",borderRadius:8,fontSize:11,color:"#f87171" }}>{authError}</div>}
-                  <button onClick={doAuth} disabled={authLoading} style={{ width:"100%",padding:"13px 0",background:authLoading?"rgba(59,130,246,0.4)":"linear-gradient(135deg,#3b82f6,#1d4ed8)",border:"none",borderRadius:11,fontSize:12,fontWeight:700,color:"#000",cursor:authLoading?"not-allowed":"pointer",letterSpacing:"0.08em",fontFamily:"inherit",marginBottom:12 }}>
-                    {authLoading?"Please wait…":authMode==="login"?"LOG IN TO VAULT →":"CREATE ACCOUNT →"}
-                  </button>
-                  <div style={{ textAlign:"center",fontSize:10,color:"#2d3a4a" }}>🔒 Bank-level encryption. Your data is always protected.</div>
+              ))}
+              {activeResult?.summary?.verdict && (
+                <div style={{ marginTop:16,padding:'12px 14px',background:'rgba(57,255,20,0.07)',border:'1px solid rgba(57,255,20,0.2)',borderRadius:10 }}>
+                  <div style={{ fontSize:9,fontWeight:800,color:'#33aa00',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:4 }}>Bottom Line</div>
+                  <div style={{ fontSize:12,color:'#444',lineHeight:1.6 }}>{activeResult.summary.verdict}</div>
                 </div>
               )}
             </div>
           </div>
         </div>
       )}
-    </div>
+
     </NewLookShell>
   );
 }
