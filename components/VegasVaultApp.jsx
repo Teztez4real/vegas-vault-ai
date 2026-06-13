@@ -1,6 +1,8 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import { supabase as _supabase } from '@/lib/supabaseClient';
+import NewLookShell from '@/components/NewLookShell';
+import '@/app/new-look.css';
 
 // ── SUPABASE CROSS-DEVICE SYNC ────────────────────────────────────────────────
 async function syncLoad(userId, key) {
@@ -3033,8 +3035,45 @@ export default function VegasVaultApp() {
   const hour = new Date().getHours();
   const greeting = hour<12?"Good morning":hour<17?"Good afternoon":"Good evening";
 
+  // Map current nav state to new shell section keys
+  const shellSection = (() => {
+    if (showHistory) return "history";
+    if (showOddsMovement) return "odds";
+    const nav = (activeNav || "").toUpperCase();
+    if (nav === "SHARP MONEY") return "sharp";
+    if (nav === "PROPS AI") return "props";
+    if (nav === "VAULT LOCKS") return "vault";
+    if (nav === "AI ANALYZER") return "analyzer";
+    return "dashboard";
+  })();
+
+  const shellNavigate = (key) => {
+    if (key === "history")  { setShowHistory(true); return; }
+    if (key === "odds")     { setShowOddsMovement(true); return; }
+    if (key === "settings") { window.location.href = "/settings"; return; }
+    const labelMap = {
+      dashboard: "DASHBOARD", slate: "DASHBOARD",
+      analyzer:  "AI ANALYZER", vault: "VAULT LOCKS",
+      sharp:     "SHARP MONEY", props: "PROPS AI",
+    };
+    setActiveNav(labelMap[key] || "DASHBOARD");
+    setActiveTab("DASHBOARD");
+    setShowHistory(false);
+    setShowOddsMovement(false);
+  };
+
+  const shellUserName = authUser?.user_metadata?.full_name || authUser?.email?.split("@")[0] || "Member";
+  const shellIsAdmin  = authUser?.email === ADMIN_EMAIL;
+
   return (
-    <div style={{ fontFamily:"'Inter','SF Pro Display',-apple-system,sans-serif",background:"#060a18",minHeight:"100vh",color:"#e2e8f0",display:"flex",flexDirection:"column" }}>
+    <NewLookShell
+      activeSection={shellSection}
+      onNavigate={shellNavigate}
+      userName={shellUserName}
+      isAdmin={shellIsAdmin}
+      hasNotification={betReadyAlerts?.length > 0}
+    >
+    <div style={{ fontFamily:"'Inter','SF Pro Display',-apple-system,sans-serif",minHeight:"100vh",color:"#e2e8f0",display:"flex",flexDirection:"column" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
         @keyframes spin { to { transform: rotate(360deg); } }
@@ -3701,5 +3740,6 @@ export default function VegasVaultApp() {
         </div>
       )}
     </div>
+    </NewLookShell>
   );
 }

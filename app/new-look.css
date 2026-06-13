@@ -1,0 +1,391 @@
+/* ============================================================
+   VEGAS VAULT AI — NEW LOOK DESIGN SYSTEM
+   Branch: redesign-new-look
+   Do NOT import in main app until redesign is complete
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+/* ── TOKENS ── */
+:root {
+  --vv-bg:          #f6f9f6;
+  --vv-green:       #39FF14;
+  --vv-green-dark:  #22cc00;
+  --vv-green-text:  #33aa00;
+  --vv-green-dim:   rgba(57,255,20,0.12);
+  --vv-green-border:rgba(57,200,20,0.5);
+  --vv-glass-bg:    rgba(255,255,255,0.70);
+  --vv-glass-bg2:   rgba(255,255,255,0.62);
+  --vv-glass-border:rgba(255,255,255,0.93);
+  --vv-glass-green: rgba(57,255,20,0.28);
+  --vv-text:        #111111;
+  --vv-text-2:      #444444;
+  --vv-text-3:      #999999;
+  --vv-text-4:      #cccccc;
+  --vv-blue:        #5588ee;
+  --vv-red:         #dd4444;
+  --vv-gold:        #bb8800;
+  --vv-sidebar-w:   208px;
+  --vv-topbar-h:    54px;
+  --vv-radius:      16px;
+  --vv-radius-sm:   10px;
+  --vv-shadow:      0 8px 30px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.03), inset 0 1px 0 rgba(255,255,255,0.95);
+  --vv-shadow-g:    0 10px 36px rgba(57,255,20,0.09), 0 3px 10px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.95);
+}
+
+/* ── BASE ── */
+.vv-root {
+  font-family: 'Inter', sans-serif;
+  background: var(--vv-bg);
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── NEURAL BACKGROUND ── */
+.vv-neural {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.6;
+}
+
+/* ── GLASS CARDS ── */
+.vv-glass {
+  background: var(--vv-glass-bg);
+  border: 1px solid var(--vv-glass-border);
+  border-radius: var(--vv-radius);
+  backdrop-filter: blur(20px);
+  box-shadow: var(--vv-shadow);
+}
+.vv-glass-g {
+  background: var(--vv-glass-bg2);
+  border: 1px solid var(--vv-glass-green);
+  border-radius: var(--vv-radius);
+  backdrop-filter: blur(20px);
+  box-shadow: var(--vv-shadow-g);
+}
+
+/* ── TOPBAR ── */
+.vv-topbar {
+  width: 100%;
+  height: var(--vv-topbar-h);
+  background: rgba(255,255,255,0.88);
+  border-bottom: 1px solid rgba(57,255,20,0.12);
+  backdrop-filter: blur(20px);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.04);
+  flex-shrink: 0;
+}
+.vv-menu-toggle {
+  display: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.85);
+  border: 1px solid rgba(57,255,20,0.18);
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 18px;
+  color: #333;
+}
+.vv-tb-search {
+  flex: 1;
+  max-width: 500px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.92);
+  border: 1px solid rgba(57,255,20,0.18);
+  border-radius: 12px;
+  padding: 8px 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+}
+.vv-tb-search i { font-size: 15px; color: var(--vv-green); flex-shrink: 0; }
+.vv-tb-search input {
+  flex: 1; border: none; background: transparent;
+  font-family: 'Inter', sans-serif; font-size: 12px; color: #333;
+  outline: none; min-width: 0;
+}
+.vv-tb-search input::placeholder { color: #ccc; }
+.vv-go-btn {
+  width: 26px; height: 26px; border-radius: 7px;
+  background: var(--vv-green); border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 10px rgba(57,255,20,0.45); flex-shrink: 0;
+}
+.vv-tb-spacer { flex: 1; }
+.vv-tb-icons { display: flex; align-items: center; gap: 7px; flex-shrink: 0; }
+.vv-tbi {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: rgba(255,255,255,0.85);
+  border: 1px solid rgba(57,255,20,0.12);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; position: relative;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.04); font-size: 15px; color: #666;
+}
+.vv-tbi.green { background: var(--vv-green); box-shadow: 0 0 12px rgba(57,255,20,0.45); color: #111; }
+.vv-tbi .dot {
+  position: absolute; top: 5px; right: 5px; width: 5px; height: 5px;
+  border-radius: 50%; background: #ff5050; box-shadow: 0 0 4px #ff5050;
+}
+
+/* ── BODY LAYOUT ── */
+.vv-body {
+  display: flex;
+  flex: 1;
+  position: relative;
+  z-index: 5;
+  min-height: 0;
+  gap: 10px;
+  padding: 12px;
+}
+
+/* ── SIDEBAR ── */
+.vv-sidebar {
+  width: var(--vv-sidebar-w);
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.72);
+  border: 1px solid rgba(255,255,255,0.9);
+  border-radius: 18px;
+  backdrop-filter: blur(20px);
+  padding: 16px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.06);
+  position: sticky;
+  top: calc(var(--vv-topbar-h) + 12px);
+  max-height: calc(100vh - var(--vv-topbar-h) - 24px);
+  overflow-y: auto;
+}
+.vv-sb-brand {
+  text-align: center;
+  padding-bottom: 13px;
+  border-bottom: 1px solid rgba(57,255,20,0.12);
+  margin-bottom: 9px;
+}
+.vv-sb-hex {
+  width: 52px; height: 52px; margin: 0 auto 7px;
+  background: linear-gradient(145deg, rgba(255,255,255,0.9), rgba(235,255,230,0.8));
+  border: 2px solid var(--vv-green-border);
+  border-radius: 13px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 18px rgba(57,255,20,0.2), inset 0 1px 0 rgba(255,255,255,0.9);
+  position: relative;
+}
+.vv-sb-hex::after {
+  content: '';
+  position: absolute; inset: 3px; border-radius: 9px;
+  border: 1px solid rgba(57,255,20,0.3);
+}
+.vv-sb-ai {
+  font-size: 14px; font-weight: 800;
+  background: linear-gradient(135deg, #33aa00, #39FF14);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.vv-sb-name { font-size: 11px; font-weight: 800; color: #111; letter-spacing: 0.4px; }
+.vv-sb-sub { font-size: 8px; color: #aaa; letter-spacing: 1.2px; text-transform: uppercase; margin-top: 1px; }
+
+/* Nav items */
+.vv-nb {
+  display: flex; align-items: center; gap: 9px;
+  padding: 8px 10px; border-radius: 10px;
+  font-size: 12px; color: #666; cursor: pointer; font-weight: 500;
+  transition: background 0.12s;
+  border: 1px solid transparent;
+}
+.vv-nb:hover { background: rgba(57,255,20,0.06); }
+.vv-nb.active {
+  background: rgba(57,255,20,0.12); color: #1a1a1a;
+  border-color: rgba(57,255,20,0.3);
+  box-shadow: 0 2px 8px rgba(57,255,20,0.1);
+}
+.vv-nb i { font-size: 16px; color: #bbb; flex-shrink: 0; width: 16px; text-align: center; }
+.vv-nb.active i { color: var(--vv-green); }
+.vv-nb-arr { margin-left: auto; font-size: 11px; color: #ccc; }
+.vv-nb-badge {
+  margin-left: auto; font-size: 8px; font-weight: 800;
+  color: var(--vv-green-text); background: rgba(57,255,20,0.1);
+  border: 1px solid rgba(57,255,20,0.25); padding: 2px 6px; border-radius: 5px;
+}
+
+/* Sidebar status */
+.vv-sb-status {
+  margin-top: 11px;
+  background: rgba(57,255,20,0.06);
+  border: 1px solid rgba(57,255,20,0.18);
+  border-radius: 11px;
+  padding: 9px 11px;
+}
+.vv-ss-label { font-size: 8px; text-transform: uppercase; letter-spacing: 0.7px; color: #aaa; }
+.vv-ss-val { font-size: 12px; font-weight: 800; color: var(--vv-green-text); margin: 1px 0; }
+.vv-ss-sub { font-size: 8px; color: #bbb; }
+
+/* Sidebar user card */
+.vv-sb-user {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 10px; padding: 8px 9px;
+  border-radius: 11px;
+  background: rgba(255,255,255,0.55);
+  border: 1px solid rgba(255,255,255,0.85);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+.vv-sb-av {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: linear-gradient(135deg, #bbb, #999);
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+}
+.vv-sb-av i { color: #fff; font-size: 14px; }
+.vv-sb-uname { font-size: 11px; font-weight: 800; color: #222; }
+.vv-sb-urole { font-size: 8px; font-weight: 700; margin-top: 1px; }
+.vv-sb-urole.admin { color: var(--vv-green-text); }
+.vv-sb-urole.member { color: var(--vv-blue); }
+.vv-sb-chev { margin-left: auto; font-size: 13px; color: #ccc; }
+
+/* ── MAIN CONTENT ── */
+.vv-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── MOBILE SCRIM + DRAWER ── */
+.vv-scrim {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.35);
+  z-index: 90;
+}
+.vv-scrim.open { display: block; }
+.vv-drawer {
+  position: fixed; top: 0; left: 0; bottom: 0;
+  width: 240px; background: #fff; z-index: 95;
+  display: flex; flex-direction: column;
+  padding: 16px 12px;
+  box-shadow: 6px 0 24px rgba(0,0,0,0.12);
+  overflow-y: auto;
+  transform: translateX(-100%);
+  transition: transform 0.2s ease;
+}
+.vv-drawer.open { transform: translateX(0); }
+.vv-drawer-close {
+  position: absolute; top: 14px; right: 12px;
+  font-size: 18px; color: #999; cursor: pointer;
+}
+
+/* ── SPORT TABS ── */
+.vv-sport-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.vv-sport-tab {
+  font-size: 11px; font-weight: 700;
+  padding: 6px 14px; border-radius: 14px;
+  border: 1px solid rgba(0,0,0,0.07);
+  color: #999; cursor: pointer;
+  background: rgba(255,255,255,0.7);
+}
+.vv-sport-tab.active {
+  background: var(--vv-green); border-color: var(--vv-green);
+  color: #111; box-shadow: 0 0 8px rgba(57,255,20,0.3);
+}
+
+/* ── SLOT / TIER TAGS ── */
+.vv-slot-tag { font-size: 9px; font-weight: 800; padding: 3px 9px; border-radius: 6px; letter-spacing: 0.5px; }
+.vv-slot-tag.vegas { background: rgba(57,255,20,0.1); color: #2aa800; border: 1px solid rgba(57,255,20,0.25); }
+.vv-slot-tag.public { background: rgba(80,140,255,0.08); color: var(--vv-blue); border: 1px solid rgba(80,140,255,0.2); }
+.vv-slot-tag.pass { background: rgba(0,0,0,0.04); color: #999; border: 1px solid rgba(0,0,0,0.07); }
+.vv-tier-tag { display: flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: 7px; letter-spacing: 0.5px; }
+.vv-tier-tag.t1 { background: rgba(57,255,20,0.1); color: #2aa800; border: 1px solid rgba(57,255,20,0.25); }
+.vv-tier-tag.t2 { background: rgba(255,200,0,0.08); color: var(--vv-gold); border: 1px solid rgba(255,200,0,0.2); }
+.vv-tier-tag.pass { background: rgba(0,0,0,0.04); color: #999; border: 1px solid rgba(0,0,0,0.08); }
+
+/* ── GAME CARD ── */
+.vv-game-card { padding: 14px 16px; }
+.vv-gc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.vv-gc-body { display: flex; align-items: center; gap: 14px; }
+.vv-team-block { display: flex; flex-direction: column; align-items: center; gap: 4px; flex-shrink: 0; width: 64px; }
+.vv-team-logo { width: 42px; height: 42px; border-radius: 50%; object-fit: contain; background: rgba(255,255,255,0.9); border: 1px solid rgba(0,0,0,0.06); padding: 5px; }
+.vv-team-name { font-size: 10px; font-weight: 800; color: #111; text-align: center; }
+.vv-team-rec { font-size: 8px; color: #bbb; text-align: center; }
+.vv-gc-mid { flex: 1; min-width: 0; text-align: center; }
+.vv-gc-matchup { font-size: 14px; font-weight: 800; color: #111; }
+.vv-gc-time { font-size: 10px; color: #aaa; margin-top: 2px; }
+.vv-gc-venue { font-size: 9px; color: #ccc; margin-top: 1px; }
+.vv-odds-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 10px; }
+.vv-odds-box { background: rgba(255,255,255,0.55); border: 1px solid rgba(0,0,0,0.05); border-radius: 9px; padding: 6px 0; text-align: center; }
+.vv-odds-lbl { font-size: 7px; color: #bbb; text-transform: uppercase; letter-spacing: 0.6px; font-weight: 700; margin-bottom: 3px; }
+.vv-odds-vals { display: flex; justify-content: space-around; }
+.vv-odds-v { font-size: 11px; font-weight: 700; color: #333; }
+.vv-gc-right { text-align: right; flex-shrink: 0; min-width: 100px; }
+.vv-gc-pick { font-size: 14px; font-weight: 800; color: #111; }
+.vv-gc-price { font-size: 10px; color: #aaa; }
+.vv-gc-conf { font-size: 10px; color: #2aa800; font-weight: 700; margin-top: 3px; }
+.vv-gc-pass { font-size: 13px; font-weight: 800; color: #999; }
+.vv-gc-pass-sub { font-size: 9px; color: #bbb; margin-top: 1px; }
+.vv-dk-tag {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 8px; font-weight: 700; color: var(--vv-blue);
+  background: rgba(80,140,255,0.08); border: 1px solid rgba(80,140,255,0.2);
+  padding: 2px 6px; border-radius: 5px; margin-top: 6px;
+}
+
+/* ── BUTTONS ── */
+.vv-btn-primary {
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  padding: 11px 18px; border-radius: 10px;
+  background: linear-gradient(135deg, var(--vv-green), var(--vv-green-dark));
+  border: none; font-family: 'Inter', sans-serif;
+  font-size: 12px; font-weight: 700; color: #111; cursor: pointer;
+  box-shadow: 0 4px 16px rgba(57,255,20,0.35);
+}
+.vv-btn-sec {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 10px 16px; border-radius: 10px;
+  background: rgba(255,255,255,0.7); border: 1px solid rgba(0,0,0,0.07);
+  font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 600;
+  color: #444; cursor: pointer;
+}
+.vv-btn-danger {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 10px 16px; border-radius: 10px;
+  background: rgba(255,80,80,0.07); border: 1px solid rgba(255,80,80,0.2);
+  font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 700;
+  color: var(--vv-red); cursor: pointer;
+}
+
+/* ── PAGE HEADER ── */
+.vv-page-hd {
+  padding: 16px 20px;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 10px;
+}
+.vv-page-t { font-size: 18px; font-weight: 800; color: #111; letter-spacing: 0.3px; }
+.vv-page-s { font-size: 11px; color: #aaa; margin-top: 2px; }
+
+/* ── VV TAG (Vegas Vault AI label) ── */
+.vv-tag {
+  font-size: 7px; color: var(--vv-green); font-weight: 700; letter-spacing: 0.5px;
+  border: 1px solid rgba(57,255,20,0.3); padding: 2px 6px; border-radius: 5px;
+  background: rgba(57,255,20,0.05); text-transform: uppercase;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 900px) {
+  .vv-menu-toggle { display: flex; }
+  .vv-sidebar { display: none; }
+  .vv-body { padding: 10px; }
+}
