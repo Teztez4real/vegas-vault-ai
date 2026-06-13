@@ -503,38 +503,32 @@ function PlayResult({ result, game, onClose, isResolved, resolvedResult }) {
   );
 }
 
-// ── GAME CARD — matches reference image exactly ───────────────────────────────
+// ── GAME CARD — new glass design ─────────────────────────────────────────────
 
 function GameCard({ game, onGenerate, results, generating, onCardClick, liveScores, isSubscribed, finalized, isQueued, betReady, onShowAuth, watchlist, onToggleWatch, pickHistory }) {
-  const resultPublic = results[`${game.id}-PUBLIC`];
-  const resultWNBA   = null;
   const resultVegas  = results[`${game.id}-VEGAS`];
-  const hasAnyResult = resultPublic || resultVegas || resultWNBA;
-  const bestResult   = resultVegas || resultPublic || resultWNBA;
+  const resultPublic = results[`${game.id}-PUBLIC`];
+  const bestResult   = resultVegas || resultPublic;
   const tier = bestResult?.summary ? (TIER_STYLES[bestResult.summary.tier] || TIER_STYLES["3"]) : null;
-  const isTennis = game.sport === "Tennis";
   const isLock = tier?.label === "LOCK";
+  const isTennis = game.sport === "Tennis";
 
-  // ── LIVE SCORE LOOKUP ─────────────────────────────────────────────────────
-  const liveKey1 = `${game.away}|${game.home}`;
-  const liveKey2 = `${game.awayAbbr}|${game.homeAbbr}`;
+  // Live score lookup
   const awayLast = game.away?.split(' ').pop();
   const homeLast = game.home?.split(' ').pop();
-  const liveKey3 = `${awayLast}|${homeLast}`;
-  const live = liveScores?.[game.id] || liveScores?.[liveKey1] || liveScores?.[liveKey2] || liveScores?.[liveKey3];
+  const live = liveScores?.[game.id]
+    || liveScores?.[`${game.away}|${game.home}`]
+    || liveScores?.[`${game.awayAbbr}|${game.homeAbbr}`]
+    || liveScores?.[`${awayLast}|${homeLast}`];
   const isLive = live?.status === 'Live' || live?.detailedState === 'In Progress';
   const isFinal = live?.status === 'Final' || live?.detailedState === 'Final';
-  // Never show postponed/delayed unless API explicitly confirms AND no score data exists
   const hasScoreData = live?.awayScore != null || live?.homeScore != null;
-  const isDelayed = !hasScoreData && (live?.isDelayed || false);
   const isPostponed = !hasScoreData && !isLive && !isFinal && (live?.isPostponed || false);
+  const isDelayed = !hasScoreData && (live?.isDelayed || false);
   const gameStarted = isLive || isFinal;
 
   const awayName = isTennis ? game.player1 : game.away;
   const homeName = isTennis ? game.player2 : game.home;
-  const awayCity = game.awayCity || "";
-  const homeCity = game.homeCity || "";
-  // Full name → abbreviation lookup
   const NAME_TO_ABBR = {
     "Arizona Diamondbacks":"ARI","Atlanta Braves":"ATL","Baltimore Orioles":"BAL",
     "Boston Red Sox":"BOS","Chicago Cubs":"CHC","Chicago White Sox":"CHW",
@@ -546,7 +540,6 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
     "Pittsburgh Pirates":"PIT","San Diego Padres":"SD","Seattle Mariners":"SEA",
     "San Francisco Giants":"SF","St. Louis Cardinals":"STL","Tampa Bay Rays":"TB",
     "Texas Rangers":"TEX","Toronto Blue Jays":"TOR","Washington Nationals":"WSH",
-    // short names
     "Diamondbacks":"ARI","Braves":"ATL","Orioles":"BAL","Red Sox":"BOS",
     "Cubs":"CHC","White Sox":"CHW","Reds":"CIN","Guardians":"CLE","Rockies":"COL",
     "Tigers":"DET","Astros":"HOU","Royals":"KC","Angels":"LAA","Dodgers":"LAD",
@@ -555,355 +548,246 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
     "Mariners":"SEA","Giants":"SF","Cardinals":"STL","Rays":"TB","Rangers":"TEX",
     "Blue Jays":"TOR","Nationals":"WSH",
   };
-  const awayAbbr = game.awayAbbr || NAME_TO_ABBR[awayName] || NAME_TO_ABBR[awayName.split(" ").pop()] || awayName.slice(0,3).toUpperCase();
-  const homeAbbr = game.homeAbbr || NAME_TO_ABBR[homeName] || NAME_TO_ABBR[homeName.split(" ").pop()] || homeName.slice(0,3).toUpperCase();
-  const logoSport = game.sport;
-  const awayRec  = isTennis ? `#${game.player1Ranking}` : game.awayRecord;
-  const homeRec  = isTennis ? `#${game.player2Ranking}` : game.homeRecord;
-  // Use real betting splits if available, otherwise hide
-  const publicPct = game.publicBettingPct ?? null;
-  const sharpPct  = game.sharpMoneyPct ?? (publicPct !== null ? 100 - publicPct : null);
-  const hasRealSplits = publicPct !== null;
-  const sportColor = game.sport==="MLB"?"#60a5fa":game.sport==="NBA"?"#fb923c":game.sport==="NFL"?"#34d399":"#a78bfa";
-  const sportBg    = game.sport==="MLB"?"rgba(96,165,250,0.12)":game.sport==="NBA"?"rgba(251,146,60,0.12)":game.sport==="NFL"?"rgba(52,211,153,0.12)":"rgba(167,139,250,0.12)";
+  const awayAbbr = game.awayAbbr || NAME_TO_ABBR[awayName] || NAME_TO_ABBR[awayName?.split(" ").pop()] || awayName?.slice(0,3).toUpperCase();
+  const homeAbbr = game.homeAbbr || NAME_TO_ABBR[homeName] || NAME_TO_ABBR[homeName?.split(" ").pop()] || homeName?.slice(0,3).toUpperCase();
+  const awayRec = isTennis ? `#${game.player1Ranking}` : game.awayRecord;
+  const homeRec = isTennis ? `#${game.player2Ranking}` : game.homeRecord;
+
+  // Odds formatting
+  const fmtOdds = (v) => {
+    if (!v || v === 'N/A' || v === 'null') return null;
+    if (typeof v === 'number') return v > 0 ? `+${v}` : `${v}`;
+    return v;
+  };
+  const awayOdds = fmtOdds(game.dkAwayML) || fmtOdds(game.awayML) || '—';
+  const homeOdds = fmtOdds(game.dkHomeML) || fmtOdds(game.homeML) || '—';
+  const spreadVal = game.dkSpread || game.spread || '—';
+  const totalVal  = game.dkTotal  || game.total  || '—';
+  const awaySpread = (() => {
+    if (spreadVal === '—') return '—';
+    const n = parseFloat(spreadVal);
+    if (isNaN(n)) return spreadVal;
+    return n > 0 ? `-${n.toFixed(1)}` : `+${Math.abs(n).toFixed(1)}`;
+  })();
+  const hasMovement = game.lineMovement && !['No significant movement','N/A','No significant movement detected'].includes(game.lineMovement);
+
+  // Slot tag styles
+  const slotStyle = game.slot === 'VEGAS'
+    ? { bg:'rgba(57,255,20,0.1)', color:'#2aa800', border:'1px solid rgba(57,255,20,0.25)', label:'VEGAS SLOT' }
+    : { bg:'rgba(80,140,255,0.08)', color:'#5588ee', border:'1px solid rgba(80,140,255,0.2)', label:'PUBLIC SLOT' };
+
+  // Tier badge
+  const tierStyle = tier?.label === 'LOCK'
+    ? { bg:'rgba(57,255,20,0.1)', color:'#2aa800', border:'1px solid rgba(57,255,20,0.25)', stars:'★★★★★' }
+    : tier?.label === '2'
+    ? { bg:'rgba(255,200,0,0.08)', color:'#bb8800', border:'1px solid rgba(255,200,0,0.2)', stars:'★★★★' }
+    : { bg:'rgba(0,0,0,0.04)', color:'#999', border:'1px solid rgba(0,0,0,0.07)', stars:'' };
+
+  const key = `${game.id}-${game.slot}`;
+  const isGen = generating === key;
+  const hasRes = !!results[key];
 
   return (
     <div
-      onClick={()=>hasAnyResult&&onCardClick(game)}
+      onClick={() => hasRes && onCardClick && onCardClick(game, results[key])}
       style={{
-        background: isLock ? "linear-gradient(145deg,#0d1a10,#081210)" : "#0a0f1c",
-        border: `1px solid ${(isLock&&isSubscribed)?"rgba(74,222,128,0.3)":hasAnyResult&&isSubscribed?(tier?.border||"rgba(59,130,246,0.2)"):"rgba(59,130,246,0.12)"}`,
-        borderRadius:12, padding:"14px 16px",
-        cursor:hasAnyResult?"pointer":"default",
-        position:"relative", overflow:"hidden",
-        boxShadow: (isLock && isSubscribed) ? "0 0 30px rgba(74,222,128,0.08)" : "none",
+        background: 'rgba(255,255,255,0.7)',
+        border: isLock && isSubscribed
+          ? '1px solid rgba(57,255,20,0.3)'
+          : '1px solid rgba(255,255,255,0.93)',
+        borderRadius: 16,
+        backdropFilter: 'blur(20px)',
+        boxShadow: isLock && isSubscribed
+          ? '0 8px 30px rgba(57,255,20,0.1), 0 2px 8px rgba(0,0,0,0.03), inset 0 1px 0 rgba(255,255,255,0.95)'
+          : '0 8px 30px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.03), inset 0 1px 0 rgba(255,255,255,0.95)',
+        padding: '14px 16px',
+        cursor: hasRes ? 'pointer' : 'default',
+        position: 'relative',
       }}
     >
-      {/* Gold glow top border for locks */}
-      {isLock && isSubscribed && <div style={{ position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,transparent,#3b82f6 40%,#3b82f6 60%,transparent)" }} />}
-
-      {/* Header row */}
-      <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
-        <div style={{ display:"flex",alignItems:"center",gap:6 }}>
-          <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.06em",color:sportColor,background:sportBg,padding:"2px 8px",borderRadius:4 }}>{game.sport}</span>
-          {isLive && (
-            <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.06em",color:"#fff",background:"#dc2626",padding:"2px 8px",borderRadius:4,display:"flex",alignItems:"center",gap:4 }}>
-              <span style={{ width:5,height:5,borderRadius:"50%",background:"#fff",display:"inline-block",animation:"pulse 1s infinite" }}/>
-              LIVE
+      {/* Header row — slot tag + tier + time + watchlist */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+          {/* Slot tag */}
+          {!isPostponed && !isDelayed && (
+            <span style={{ fontSize:9, fontWeight:800, padding:'3px 9px', borderRadius:6, letterSpacing:'0.5px', background:slotStyle.bg, color:slotStyle.color, border:slotStyle.border }}>
+              {slotStyle.label}
             </span>
           )}
-          {isFinal && !isPostponed && (
-            <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.06em",color:"#64748b",background:"rgba(100,116,139,0.15)",padding:"2px 8px",borderRadius:4 }}>FINAL</span>
-          )}
-          {isDelayed && (
-            <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.06em",color:"#fbbf24",background:"rgba(251,191,36,0.12)",padding:"2px 8px",borderRadius:4 }}>⏸ DELAYED</span>
-          )}
-          {isPostponed && (
-            <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.06em",color:"#f87171",background:"rgba(248,113,113,0.12)",padding:"2px 8px",borderRadius:4 }}>⛔ POSTPONED</span>
-          )}
-          {/* Error badge — shown when analysis failed or couldn't parse */}
-          {hasAnyResult && (bestResult?.error || bestResult?.parseError) && (
-            <span style={{ fontSize:9,fontWeight:700,color:"#f87171",background:"rgba(248,113,113,0.1)",border:"1px solid rgba(248,113,113,0.3)",borderRadius:4,padding:"2px 8px",letterSpacing:"0.06em" }}>⚠ RE-ANALYZE</span>
-          )}
-          {betReady && !gameStarted && isSubscribed && (
-            <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.06em",color:"#000",background:"linear-gradient(135deg,#3b82f6,#f59e0b)",padding:"2px 10px",borderRadius:4,animation:"pulse 1.5s infinite" }}>🎯 BET NOW</span>
-          )}
-          {!betReady && finalized && (finalized[`${game.id}-PUBLIC`] || finalized[`${game.id}-VEGAS`]) && (
-            <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.06em",color:"#3b82f6",background:"rgba(59,130,246,0.12)",padding:"2px 8px",borderRadius:4 }}>🔒 FINAL</span>
-          )}
-          {!betReady && isQueued && !finalized?.[`${game.id}-PUBLIC`] && (
-            <span style={{ fontSize:9,fontWeight:700,letterSpacing:"0.06em",color:"#60a5fa",background:"rgba(96,165,250,0.1)",padding:"2px 8px",borderRadius:4 }}>⟳ QUEUED</span>
-          )}
+          {isLive && <span style={{ fontSize:9, fontWeight:800, color:'#fff', background:'#dc2626', padding:'3px 9px', borderRadius:6, display:'flex', alignItems:'center', gap:4 }}><span style={{ width:5, height:5, borderRadius:'50%', background:'#fff', display:'inline-block', animation:'pulse 1s infinite' }}/> LIVE</span>}
+          {isFinal && !isPostponed && <span style={{ fontSize:9, fontWeight:700, color:'#999', background:'rgba(0,0,0,0.04)', padding:'3px 9px', borderRadius:6, border:'1px solid rgba(0,0,0,0.07)' }}>FINAL</span>}
+          {isDelayed && <span style={{ fontSize:9, fontWeight:700, color:'#bb8800', background:'rgba(255,200,0,0.08)', padding:'3px 9px', borderRadius:6 }}>⏸ DELAYED</span>}
+          {isPostponed && <span style={{ fontSize:9, fontWeight:700, color:'#dd4444', background:'rgba(255,80,80,0.08)', padding:'3px 9px', borderRadius:6 }}>⛔ POSTPONED</span>}
+          {betReady && !gameStarted && isSubscribed && <span style={{ fontSize:9, fontWeight:800, color:'#111', background:'#39FF14', padding:'3px 9px', borderRadius:6 }}>🎯 BET NOW</span>}
         </div>
-        <div style={{ display:"flex",alignItems:"center",gap:10 }}>
-          <span style={{ fontSize:10,color:"#4a5568",fontVariantNumeric:"tabular-nums" }}>{live?.updatedTime || live?.scheduledTime || game.time}</span>
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          {/* Tier badge */}
+          {tier && isSubscribed && (
+            <span style={{ display:'flex', alignItems:'center', gap:4, fontSize:10, fontWeight:800, padding:'3px 10px', borderRadius:7, background:tierStyle.bg, color:tierStyle.color, border:tierStyle.border }}>
+              {tierStyle.stars && <span style={{ fontSize:10 }}>{tierStyle.stars}</span>}
+              {tier.label === 'LOCK' ? 'TIER 1' : tier.label === '2' ? 'TIER 2' : 'PASS'}
+            </span>
+          )}
+          <span style={{ fontSize:10, color:'#aaa', fontVariantNumeric:'tabular-nums' }}>{live?.updatedTime || live?.scheduledTime || game.time}</span>
           <span
-            onClick={(e)=>{ e.stopPropagation(); if(onToggleWatch) onToggleWatch(game.id); }}
-            title={watchlist?.includes(game.id) ? "Remove from watchlist" : "Add to watchlist"}
-            style={{ fontSize:14,color:watchlist?.includes(game.id)?"#3b82f6":"#2a3545",cursor:"pointer",lineHeight:1,transition:"color 0.15s",userSelect:"none" }}
-          >{watchlist?.includes(game.id)?"★":"☆"}</span>
+            onClick={e => { e.stopPropagation(); onToggleWatch?.(game.id); }}
+            style={{ fontSize:16, color:watchlist?.includes(game.id) ? '#39FF14' : '#ccc', cursor:'pointer', lineHeight:1 }}
+          >{watchlist?.includes(game.id) ? '★' : '☆'}</span>
         </div>
       </div>
 
-      {/* Matchup — city + team name + logo layout */}
-      <div style={{ display:"grid",gridTemplateColumns:"1fr 20px 1fr",alignItems:"center",gap:6,marginBottom:14 }}>
+      {/* Teams row */}
+      <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
         {/* Away */}
-        <div style={{ display:"flex",alignItems:"center",gap:10 }}>
-          <TeamLogo abbr={awayAbbr} size={42} sport={logoSport} />
-          <div>
-            <div style={{ fontSize:9,color:"#4a6080",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:3,fontWeight:500 }}>{awayCity}</div>
-            <div style={{ fontSize:16,fontWeight:800,color:"#f1f5f9",letterSpacing:"0.01em",textTransform:"uppercase",lineHeight:1 }}>{({"ARI":"DBACKS","ATL":"BRAVES","BAL":"ORIOLES","BOS":"RED SOX","CHC":"CUBS","CHW":"WHITE SOX","CIN":"REDS","CLE":"GUARDIANS","COL":"ROCKIES","DET":"TIGERS","HOU":"ASTROS","KC":"ROYALS","LAA":"ANGELS","LAD":"DODGERS","MIA":"MARLINS","MIL":"BREWERS","MIN":"TWINS","NYM":"METS","NYY":"YANKEES","OAK":"ATHLETICS","PHI":"PHILLIES","PIT":"PIRATES","SD":"PADRES","SEA":"MARINERS","SF":"GIANTS","STL":"CARDINALS","TB":"RAYS","TEX":"RANGERS","TOR":"BLUE JAYS","WSH":"NATIONALS"})[awayAbbr] || awayName.split(" ").pop().toUpperCase()}</div>
-            <div style={{ fontSize:10,color:"#4a6080",marginTop:4,fontWeight:500 }}>{awayRec}</div>
-          </div>
+        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4, width:64, flexShrink:0 }}>
+          <TeamLogo abbr={awayAbbr} size={42} sport={game.sport} />
+          <div style={{ fontSize:10, fontWeight:800, color:'#111', textAlign:'center' }}>{awayAbbr}</div>
+          <div style={{ fontSize:8, color:'#bbb', textAlign:'center' }}>{awayRec}</div>
         </div>
-        {/* @ */}
-        <div style={{ textAlign:"center",fontSize:11,color:"#2a3545",fontWeight:700 }}>@</div>
+        {/* Middle */}
+        <div style={{ flex:1, textAlign:'center' }}>
+          <div style={{ fontSize:14, fontWeight:800, color:'#111' }}>
+            {isTennis ? `${awayName} vs ${homeName}` : `${awayAbbr} @ ${homeAbbr}`}
+          </div>
+          <div style={{ fontSize:9, color:'#aaa', marginTop:2 }}>{game.venue || ''}</div>
+          {/* Live score */}
+          {gameStarted && live && (
+            <div style={{ marginTop:8, background:'rgba(0,0,0,0.04)', borderRadius:10, padding:'8px 12px', display:'flex', justifyContent:'space-around', alignItems:'center' }}>
+              <div style={{ textAlign:'center' }}>
+                <div style={{ fontSize:9, color:'#aaa', marginBottom:2 }}>{awayAbbr}</div>
+                <div style={{ fontSize:24, fontWeight:900, color:'#111' }}>{live.awayScore ?? '-'}</div>
+              </div>
+              <div style={{ textAlign:'center' }}>
+                {isLive ? (
+                  <div>
+                    <div style={{ fontSize:9, color:'#dc2626', fontWeight:700 }}>{live.inningHalf?.slice(0,3).toUpperCase()||''} {live.inning||''}</div>
+                    <div style={{ fontSize:9, color:'#aaa' }}>{live.outs ?? 0} out{live.outs===1?'':'s'}</div>
+                  </div>
+                ) : <div style={{ fontSize:10, color:'#aaa', fontWeight:600 }}>FINAL</div>}
+              </div>
+              <div style={{ textAlign:'center' }}>
+                <div style={{ fontSize:9, color:'#aaa', marginBottom:2 }}>{homeAbbr}</div>
+                <div style={{ fontSize:24, fontWeight:900, color:'#111' }}>{live.homeScore ?? '-'}</div>
+              </div>
+            </div>
+          )}
+        </div>
         {/* Home */}
-        <div style={{ display:"flex",alignItems:"center",gap:10,justifyContent:"flex-end" }}>
-          <div style={{ textAlign:"right" }}>
-            <div style={{ fontSize:9,color:"#4a6080",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:3,fontWeight:500 }}>{homeCity}</div>
-            <div style={{ fontSize:16,fontWeight:800,color:"#f1f5f9",letterSpacing:"0.01em",textTransform:"uppercase",lineHeight:1 }}>{({"ARI":"DBACKS","ATL":"BRAVES","BAL":"ORIOLES","BOS":"RED SOX","CHC":"CUBS","CHW":"WHITE SOX","CIN":"REDS","CLE":"GUARDIANS","COL":"ROCKIES","DET":"TIGERS","HOU":"ASTROS","KC":"ROYALS","LAA":"ANGELS","LAD":"DODGERS","MIA":"MARLINS","MIL":"BREWERS","MIN":"TWINS","NYM":"METS","NYY":"YANKEES","OAK":"ATHLETICS","PHI":"PHILLIES","PIT":"PIRATES","SD":"PADRES","SEA":"MARINERS","SF":"GIANTS","STL":"CARDINALS","TB":"RAYS","TEX":"RANGERS","TOR":"BLUE JAYS","WSH":"NATIONALS"})[homeAbbr] || homeName.split(" ").pop().toUpperCase()}</div>
-            <div style={{ fontSize:10,color:"#4a6080",marginTop:4,fontWeight:500 }}>{homeRec}</div>
-          </div>
-          <TeamLogo abbr={homeAbbr} size={42} sport={logoSport} />
+        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4, width:64, flexShrink:0 }}>
+          <TeamLogo abbr={homeAbbr} size={42} sport={game.sport} />
+          <div style={{ fontSize:10, fontWeight:800, color:'#111', textAlign:'center' }}>{homeAbbr}</div>
+          <div style={{ fontSize:8, color:'#bbb', textAlign:'center' }}>{homeRec}</div>
         </div>
       </div>
 
-      {/* LIVE SCORE DISPLAY */}
-      {gameStarted && live && (
-        <div style={{ marginBottom:12,background:"rgba(220,38,38,0.06)",border:"1px solid rgba(220,38,38,0.2)",borderRadius:10,padding:"10px 14px" }}>
-          <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center" }}>
-            <div style={{ textAlign:"center",flex:1 }}>
-              <div style={{ fontSize:10,color:"#64748b",marginBottom:3 }}>{awayAbbr}</div>
-              <div style={{ fontSize:28,fontWeight:900,color:"#f1f5f9",lineHeight:1 }}>{live.awayScore ?? '-'}</div>
+      {/* DraftKings odds row */}
+      {!isTennis && (game.awayML || game.homeML || game.dkAwayML || game.dkHomeML) && (
+        <div style={{ marginBottom:10 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:5 }}>
+            <div style={{ fontSize:8, fontWeight:700, color:'#5588ee', background:'rgba(80,140,255,0.08)', border:'1px solid rgba(80,140,255,0.2)', borderRadius:3, padding:'1px 6px', letterSpacing:'0.06em' }}>DK</div>
+            <span style={{ fontSize:8, color:'#aaa', letterSpacing:'0.06em' }}>DRAFTKINGS ODDS</span>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:6 }}>
+            {/* Moneyline */}
+            <div style={{ background:'rgba(255,255,255,0.55)', border:'1px solid rgba(0,0,0,0.05)', borderRadius:9, padding:'6px 0', textAlign:'center' }}>
+              <div style={{ fontSize:7, color:'#bbb', textTransform:'uppercase', letterSpacing:'0.6px', fontWeight:700, marginBottom:4 }}>Moneyline</div>
+              <div style={{ display:'flex', justifyContent:'space-around' }}>
+                <span style={{ fontSize:11, fontWeight:700, color:awayOdds.startsWith('-')?'#dd4444':'#33aa00' }}>{awayOdds}</span>
+                <span style={{ fontSize:11, fontWeight:700, color:homeOdds.startsWith('-')?'#dd4444':'#33aa00' }}>{homeOdds}</span>
+              </div>
             </div>
-            <div style={{ textAlign:"center",padding:"0 12px" }}>
-              {isLive ? (
-                <div>
-                  <div style={{ fontSize:10,color:"#dc2626",fontWeight:700 }}>{live.inningHalf?.slice(0,3).toUpperCase() || ''} {live.inning || ''}</div>
-                  <div style={{ fontSize:9,color:"#4a5568",marginTop:2 }}>{live.outs ?? 0} out{live.outs===1?'':'s'}</div>
-                </div>
-              ) : (
-                <div style={{ fontSize:10,color:"#64748b",fontWeight:600 }}>FINAL</div>
-              )}
+            {/* Run Line / Spread */}
+            <div style={{ background:'rgba(255,255,255,0.55)', border:'1px solid rgba(0,0,0,0.05)', borderRadius:9, padding:'6px 0', textAlign:'center' }}>
+              <div style={{ fontSize:7, color:'#bbb', textTransform:'uppercase', letterSpacing:'0.6px', fontWeight:700, marginBottom:4 }}>{game.sport==='MLB'?'Run Line':'Spread'}</div>
+              <div style={{ display:'flex', justifyContent:'space-around' }}>
+                <span style={{ fontSize:11, fontWeight:700, color:'#555' }}>{awaySpread === '—' ? '—' : awaySpread}</span>
+                <span style={{ fontSize:11, fontWeight:700, color:'#555' }}>{spreadVal}</span>
+              </div>
             </div>
-            <div style={{ textAlign:"center",flex:1 }}>
-              <div style={{ fontSize:10,color:"#64748b",marginBottom:3 }}>{homeAbbr}</div>
-              <div style={{ fontSize:28,fontWeight:900,color:"#f1f5f9",lineHeight:1 }}>{live.homeScore ?? '-'}</div>
+            {/* Total */}
+            <div style={{ background:'rgba(255,255,255,0.55)', border:'1px solid rgba(0,0,0,0.05)', borderRadius:9, padding:'6px 0', textAlign:'center' }}>
+              <div style={{ fontSize:7, color:'#bbb', textTransform:'uppercase', letterSpacing:'0.6px', fontWeight:700, marginBottom:4 }}>Total</div>
+              <div style={{ display:'flex', justifyContent:'space-around' }}>
+                <span style={{ fontSize:11, fontWeight:700, color:'#5588ee' }}>{totalVal !== '—' ? 'o'+totalVal : '—'}</span>
+                <span style={{ fontSize:11, fontWeight:700, color:'#5588ee' }}>{totalVal !== '—' ? 'u'+totalVal : '—'}</span>
+              </div>
             </div>
           </div>
+          {/* Line movement */}
+          {hasMovement && isSubscribed && (
+            <div style={{ marginTop:6, padding:'5px 9px', background:'rgba(246,249,246,0.7)', border:'1px solid rgba(195,240,195,0.5)', borderRadius:7, fontSize:9, color:'#444', fontWeight:600 }}>
+              ⚡ {game.lineMovement}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Public / Sharp money bar — only show real data */}
-      {hasRealSplits && (
-      <div style={{ marginBottom:12 }}>
-        <div style={{ display:"flex",justifyContent:"space-between",marginBottom:5 }}>
-          <span style={{ fontSize:8,color:"#1d4ed8",fontWeight:700,letterSpacing:"0.08em" }}>PUBLIC BETTING {publicPct}%</span>
-          {isSubscribed && <span style={{ fontSize:8,color:"#059669",fontWeight:700,letterSpacing:"0.08em" }}>SHARP MONEY {sharpPct}%</span>}
-        </div>
-        <div style={{ height:3,borderRadius:2,overflow:"hidden",display:"flex",background:"rgba(255,255,255,0.04)" }}>
-          <div style={{ width:`${publicPct}%`,background:"linear-gradient(90deg,#1e40af,#3b82f6)",borderRadius:"2px 0 0 2px" }} />
-          <div style={{ width:`${sharpPct}%`,background:"linear-gradient(90deg,#047857,#10b981)",borderRadius:"0 2px 2px 0" }} />
-        </div>
-      </div>
-      )}
-
-      {/* Sportsbook-style odds row */}
-      {!isTennis && (game.awayML || game.homeML || game.spread || game.total || game.dkAwayML || game.dkHomeML) && (() => {
-        const fmtOdds = (v) => {
-          if (!v || v === 'N/A' || v === 'null') return null;
-          if (typeof v === 'string') return v;
-          return v > 0 ? '+'+v : String(v);
-        };
-        const awayOdds = fmtOdds(game.dkAwayML) || fmtOdds(game.awayML) || '—';
-        const homeOdds = fmtOdds(game.dkHomeML) || fmtOdds(game.homeML) || '—';
-        const fmtSpread = (v) => (!v || v === 'N/A' || v === 'null' || v === 'undefined') ? null : String(v);
-        const fmtTotal = (v) => (!v || v === 'N/A' || v === 'null' || v === 'undefined') ? null : String(v);
-        const spreadVal = fmtSpread(game.dkSpread) || fmtSpread(game.spread) || '—';
-        const totalVal = fmtTotal(game.dkTotal) || fmtTotal(game.total) || '—';
-        const hasMovement = game.lineMovement && !['No significant movement','N/A','No significant movement detected'].includes(game.lineMovement);
-        const awayColor = awayOdds.startsWith('-') ? '#f87171' : '#4ade80';
-        const homeColor = homeOdds.startsWith('-') ? '#f87171' : '#4ade80';
-        // spreadVal is home team spread (e.g. -1.5). Away is the opposite.
-        const awaySpread = (() => {
-          if (spreadVal === '—') return '—';
-          const num = parseFloat(spreadVal);
-          if (isNaN(num)) return spreadVal;
-          return num > 0 ? '-' + num.toFixed(1) : '+' + Math.abs(num).toFixed(1);
-        })();
+      {/* Result / pick strip */}
+      {isSubscribed && hasRes && results[key]?.summary && (() => {
+        const r = results[key];
+        const ts = TIER_STYLES[r.summary.tier] || TIER_STYLES["3"];
+        const isVeg = game.slot === 'VEGAS';
+        const histEntry = pickHistory?.find(p => p.key === key);
+        const pickRes = histEntry?.result;
+        const isWin = pickRes === 'win';
+        const isLoss = pickRes === 'loss';
         return (
-          <div style={{ marginBottom:10 }}>
-            <div style={{ display:'flex',alignItems:'center',gap:5,marginBottom:5 }}>
-              <div style={{ fontSize:8,fontWeight:700,color:'#1d6fa5',background:'rgba(29,111,165,0.15)',border:'1px solid rgba(29,111,165,0.3)',borderRadius:3,padding:'1px 6px',letterSpacing:'0.06em' }}>DK</div>
-              <span style={{ fontSize:8,color:'#2d3a4a',letterSpacing:'0.06em' }}>DRAFTKINGS ODDS</span>
-            </div>
-            <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:5 }}>
-              {/* Moneyline */}
-              <div style={{ background:'rgba(255,255,255,0.02)',border:'1px solid rgba(59,130,246,0.14)',borderRadius:8,overflow:'hidden' }}>
-                <div style={{ padding:'3px 0',textAlign:'center',fontSize:8,color:'#3a4a5e',letterSpacing:'0.08em',fontWeight:600,borderBottom:'1px solid rgba(255,255,255,0.05)',background:'rgba(255,255,255,0.02)' }}>MONEYLINE</div>
-                <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:0 }}>
-                  <div style={{ padding:'7px 6px',textAlign:'center',borderRight:'1px solid rgba(255,255,255,0.05)' }}>
-                    <div style={{ fontSize:9,color:'#475569',marginBottom:3,fontWeight:600 }}>{game.awayAbbr||game.away?.split(' ').pop()}</div>
-                    <div style={{ fontSize:14,fontWeight:700,color:awayColor,letterSpacing:'-0.02em' }}>{awayOdds}</div>
-                  </div>
-                  <div style={{ padding:'7px 6px',textAlign:'center' }}>
-                    <div style={{ fontSize:9,color:'#475569',marginBottom:3,fontWeight:600 }}>{game.homeAbbr||game.home?.split(' ').pop()}</div>
-                    <div style={{ fontSize:14,fontWeight:700,color:homeColor,letterSpacing:'-0.02em' }}>{homeOdds}</div>
-                  </div>
-                </div>
+          <div style={{ background:isVeg?'rgba(57,255,20,0.06)':'rgba(80,140,255,0.05)', border:isVeg?'1px solid rgba(57,255,20,0.2)':'1px solid rgba(80,140,255,0.15)', borderRadius:9, padding:'8px 10px', marginBottom:8 }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+              <div>
+                <div style={{ fontSize:7, fontWeight:800, color:isVeg?'#2aa800':'#5588ee', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:2 }}>{game.slot} PRIMARY</div>
+                <div style={{ fontSize:13, fontWeight:800, color:'#111' }}>{r.summary.pick}</div>
+                <div style={{ fontSize:10, color:'#aaa', marginTop:1 }}>{r.summary.betType}</div>
               </div>
-              {/* Run Line / Spread */}
-              <div style={{ background:'rgba(255,255,255,0.02)',border:'1px solid rgba(59,130,246,0.14)',borderRadius:8,overflow:'hidden' }}>
-                <div style={{ padding:'3px 0',textAlign:'center',fontSize:8,color:'#3a4a5e',letterSpacing:'0.08em',fontWeight:600,borderBottom:'1px solid rgba(255,255,255,0.05)',background:'rgba(255,255,255,0.02)' }}>{game.sport==='MLB'?'RUN LINE':'SPREAD'}</div>
-                <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:0 }}>
-                  <div style={{ padding:'7px 6px',textAlign:'center',borderRight:'1px solid rgba(255,255,255,0.05)' }}>
-                    <div style={{ fontSize:9,color:'#475569',marginBottom:3,fontWeight:600 }}>{game.awayAbbr||game.away?.split(' ').pop()}</div>
-                    <div style={{ fontSize:13,fontWeight:600,color:'#94a3b8' }}>{awaySpread}</div>
-                  </div>
-                  <div style={{ padding:'7px 6px',textAlign:'center' }}>
-                    <div style={{ fontSize:9,color:'#475569',marginBottom:3,fontWeight:600 }}>{game.homeAbbr||game.home?.split(' ').pop()}</div>
-                    <div style={{ fontSize:13,fontWeight:600,color:'#94a3b8' }}>{spreadVal}</div>
-                  </div>
-                </div>
-              </div>
-              {/* Total */}
-              <div style={{ background:'rgba(255,255,255,0.02)',border:'1px solid rgba(59,130,246,0.14)',borderRadius:8,overflow:'hidden' }}>
-                <div style={{ padding:'3px 0',textAlign:'center',fontSize:8,color:'#3a4a5e',letterSpacing:'0.08em',fontWeight:600,borderBottom:'1px solid rgba(255,255,255,0.05)',background:'rgba(255,255,255,0.02)' }}>TOTAL</div>
-                <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:0 }}>
-                  <div style={{ padding:'7px 6px',textAlign:'center',borderRight:'1px solid rgba(255,255,255,0.05)' }}>
-                    <div style={{ fontSize:9,color:'#475569',marginBottom:3,fontWeight:600 }}>OVER</div>
-                    <div style={{ fontSize:13,fontWeight:600,color:'#60a5fa' }}>{totalVal !== '—' ? 'o'+totalVal : '—'}</div>
-                  </div>
-                  <div style={{ padding:'7px 6px',textAlign:'center' }}>
-                    <div style={{ fontSize:9,color:'#475569',marginBottom:3,fontWeight:600 }}>UNDER</div>
-                    <div style={{ fontSize:13,fontWeight:600,color:'#60a5fa' }}>{totalVal !== '—' ? 'u'+totalVal : '—'}</div>
-                  </div>
-                </div>
+              <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:4 }}>
+                <span style={{ fontSize:9, fontWeight:800, padding:'3px 8px', borderRadius:6, background:ts.bg || 'rgba(57,255,20,0.1)', color:ts.text || '#33aa00', border:`1px solid ${ts.border||'rgba(57,255,20,0.25)'}` }}>
+                  {ts.label === 'LOCK' ? '🔒 LOCK' : ts.label === '2' ? 'TIER 2' : 'PASS'}
+                </span>
+                {isWin && <span style={{ fontSize:10, fontWeight:800, color:'#33aa00' }}>✅ WIN</span>}
+                {isLoss && <span style={{ fontSize:10, fontWeight:800, color:'#dd4444' }}>❌ LOSS</span>}
               </div>
             </div>
-            {hasMovement && isSubscribed && (
-              <div style={{ marginTop:5,padding:'4px 8px',background:'rgba(248,113,113,0.06)',border:'1px solid rgba(248,113,113,0.2)',borderRadius:6,fontSize:9,color:'#f87171',fontWeight:600 }}>
-                ⚡ {game.lineMovement}
-              </div>
-            )}
           </div>
         );
       })()}
 
-      {/* Lock badge — only show if subscribed */}
-      {isSubscribed && isLock && (
-        <div style={{ display:"flex",justifyContent:"center",marginBottom:10 }}>
-          <div style={{ display:"flex",alignItems:"center",gap:6,background:"rgba(59,130,246,0.1)",border:"1px solid rgba(59,130,246,0.3)",borderRadius:8,padding:"5px 18px",fontSize:12,fontWeight:800,color:"#3b82f6",letterSpacing:"0.08em" }}>
-            🔒 LOCK
+      {/* Action button */}
+      {!gameStarted && !isPostponed && isSubscribed && (() => {
+        if (isGen) return (
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'10px 0', background:'rgba(57,255,20,0.06)', border:'1px solid rgba(57,255,20,0.2)', borderRadius:10 }}>
+            <div style={{ width:12, height:12, borderRadius:'50%', border:'2px solid rgba(57,255,20,0.3)', borderTop:'2px solid #39FF14', animation:'spin 0.8s linear infinite' }}/>
+            <span style={{ fontSize:10, fontWeight:700, color:'#33aa00', letterSpacing:'0.06em' }}>ANALYZING {game.slot}…</span>
           </div>
+        );
+        if (hasRes) return (
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'9px 12px', background:'rgba(248,255,248,0.7)', border:'1px solid rgba(195,240,195,0.5)', borderRadius:10 }}>
+            <span style={{ fontSize:10, fontWeight:700, color:'#33aa00' }}>✓ {game.slot} — ANALYZED</span>
+            <button onClick={e => { e.stopPropagation(); onGenerate(game, game.slot); }}
+              style={{ fontSize:10, fontWeight:700, color:'#555', background:'rgba(255,255,255,0.7)', border:'1px solid rgba(0,0,0,0.07)', borderRadius:7, padding:'4px 10px', cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', gap:4 }}>
+              <i className="ti ti-refresh" style={{ fontSize:12 }}/> Re-analyze
+            </button>
+          </div>
+        );
+        return (
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, padding:'10px 0', background:'rgba(248,255,248,0.7)', border:'1px solid rgba(195,240,195,0.5)', borderRadius:10, cursor:'pointer' }}
+            onClick={() => onGenerate(game, game.slot)}>
+            <i className="ti ti-sparkles" style={{ fontSize:13, color:'#33aa00' }}/>
+            <span style={{ fontSize:10, fontWeight:700, color:'#33aa00', letterSpacing:'0.06em' }}>ANALYZE</span>
+          </div>
+        );
+      })()}
+      {!isSubscribed && !gameStarted && (
+        <div onClick={() => onShowAuth?.('plans')} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'10px 0', background:'rgba(57,255,20,0.06)', border:'1px solid rgba(57,255,20,0.2)', borderRadius:10, cursor:'pointer' }}>
+          <span style={{ fontSize:13 }}>🔒</span>
+          <span style={{ fontSize:10, fontWeight:700, color:'#33aa00', letterSpacing:'0.08em' }}>SUBSCRIBE TO UNLOCK</span>
         </div>
       )}
-
-      {/* Result strip — only show if subscribed */}
-      {isSubscribed && hasAnyResult && !isLock && (
-        <div style={{ display:"flex",gap:6,marginBottom:10 }}>
-          {([["PUBLIC",resultPublic],["VEGAS",resultVegas],["WNBA",resultWNBA]]).map(([slot,result])=>{
-            if(!result)return null;
-            if(game.slot && slot !== game.slot) return null;
-            if (!result?.summary) return null;
-            const ts=TIER_STYLES[result.summary.tier]||TIER_STYLES["3"];
-            const iv=slot==="VEGAS"; const iw=slot==="WNBA";
-            return(
-              <div key={slot} style={{ flex:1,background:iw?"rgba(192,132,252,0.05)":iv?"rgba(248,113,113,0.05)":"rgba(96,165,250,0.05)",border:iw?"1px solid rgba(192,132,252,0.2)":iv?"1px solid rgba(248,113,113,0.15)":"1px solid rgba(96,165,250,0.15)",borderRadius:7,padding:"6px 8px" }}>
-                <div style={{ fontSize:8,fontWeight:700,letterSpacing:"0.06em",color:iw?"#c084fc":iv?"#f87171":"#60a5fa",marginBottom:3 }}>{slot}</div>
-
-                {/* PRIMARY PLAY */}
-                <div style={{ marginBottom:5 }}>
-                  <div style={{ fontSize:7,fontWeight:700,letterSpacing:'0.07em',color:'#3b82f6',marginBottom:2 }}>PRIMARY</div>
-                  <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center" }}>
-                    <span style={{ fontSize:11,fontWeight:700,color:"#f8fafc" }}>{result.summary.pick.split(" ").pop()}</span>
-                    <span style={{ fontSize:8,fontWeight:700,padding:"2px 5px",borderRadius:4,background:ts.bg,color:ts.text,border:`1px solid ${ts.border}` }}>{ts.label}</span>
-                  </div>
-                  <div style={{ fontSize:9,color:"#64748b",marginTop:1 }}>{(() => {
-                    const bt = result.summary.betType || '';
-                    const pick = (result.summary.pick || '').toLowerCase();
-                    const away = (game.away || '').toLowerCase();
-                    const home = (game.home || '').toLowerCase();
-                    const awayAbbr = (game.awayAbbr || '').toLowerCase();
-                    const homeAbbr = (game.homeAbbr || '').toLowerCase();
-                    const isAway = pick === away || pick === awayAbbr || away.includes(pick) || pick.includes(away) || pick === awayAbbr;
-                    const base = bt.replace(/\s*[+-]\d{2,4}$/, '').trim();
-                    if (base === 'ML' || base === 'Moneyline') {
-                      const raw = isAway ? (game.dkAwayML ?? game.awayML) : (game.dkHomeML ?? game.homeML);
-                      const p = raw != null ? (typeof raw === 'string' ? raw : (raw > 0 ? '+'+raw : String(raw))) : null;
-                      return p && p !== 'N/A' ? `ML ${p}` : bt;
-                    }
-                    return bt;
-                  })()}</div>
-                </div>
-
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Action buttons */}
-      {isPostponed ? (
-        <div style={{ display:"flex",alignItems:"center",justifyContent:"center",padding:"10px 0",background:"rgba(248,113,113,0.05)",border:"1px solid rgba(248,113,113,0.15)",borderRadius:8 }}>
-          <span style={{ fontSize:10,fontWeight:700,color:"#f87171",letterSpacing:"0.08em" }}>⛔ POSTPONED — Analysis unavailable</span>
-        </div>
-      ) : isDelayed ? (
-        <div style={{ display:"flex",gap:8 }}>
-          <div style={{ flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:"8px 0",background:"rgba(251,191,36,0.05)",border:"1px solid rgba(251,191,36,0.2)",borderRadius:8 }}>
-            <span style={{ fontSize:10,fontWeight:700,color:"#fbbf24",letterSpacing:"0.06em" }}>⏸ DELAYED</span>
-          </div>
-        </div>
-      ) : gameStarted ? (
-        <div style={{ display:"flex",alignItems:"center",justifyContent:"center",padding:"10px 0",background:"rgba(220,38,38,0.05)",border:"1px solid rgba(220,38,38,0.15)",borderRadius:8 }}>
-          <span style={{ fontSize:10,fontWeight:700,color:"#dc2626",letterSpacing:"0.08em" }}>
-            {isLive ? "🔴 GAME IN PROGRESS — LOCKED" : "⬛ FINAL — ANALYSIS LOCKED"}
+      {gameStarted && (
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'center', padding:'10px 0', background:'rgba(0,0,0,0.03)', border:'1px solid rgba(0,0,0,0.06)', borderRadius:10 }}>
+          <span style={{ fontSize:10, fontWeight:700, color:'#aaa', letterSpacing:'0.08em' }}>
+            {isLive ? '🔴 GAME IN PROGRESS — LOCKED' : '⬛ FINAL — ANALYSIS LOCKED'}
           </span>
         </div>
-      ) : (!isSubscribed) ? (
-        <div onClick={()=>{ if(onShowAuth) onShowAuth('plans'); else window.location.href='/subscribe'; }} style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"10px 0",background:"rgba(57,255,20,0.06)",border:"1px solid rgba(59,130,246,0.2)",borderRadius:8,cursor:"pointer" }}>
-          <span style={{ fontSize:13 }}>🔒</span>
-          <span style={{ fontSize:10,fontWeight:700,color:"#3b82f6",letterSpacing:"0.08em" }}>SUBSCRIBE TO UNLOCK</span>
-        </div>
-      ) : (
-        (() => {
-          const key = `${game.id}-${game.slot}`;
-          const isGen = generating === key;
-          const hasRes = !!results[key];
-          const isVeg = game.slot === 'VEGAS';
-          const isWNBAGame = game.sport === 'WNBA';
-          const slotColor = isWNBAGame ? '#c084fc' : isVeg ? '#f87171' : '#60a5fa';
-          const slotBg = isWNBAGame ? 'rgba(192,132,252,0.08)' : isVeg ? 'rgba(248,113,113,0.08)' : 'rgba(96,165,250,0.08)';
-          const slotBorder = isWNBAGame ? 'rgba(192,132,252,0.25)' : isVeg ? 'rgba(248,113,113,0.25)' : 'rgba(96,165,250,0.25)';
-          if (isGen) return (
-            <div style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"10px 0",background:slotBg,border:`1px solid ${slotBorder}`,borderRadius:8 }}>
-              <div style={{ width:12,height:12,borderRadius:"50%",border:`2px solid ${slotBorder}`,borderTop:`2px solid ${slotColor}`,animation:"spin 0.8s linear infinite" }}/>
-              <span style={{ fontSize:10,fontWeight:600,color:slotColor,letterSpacing:"0.06em" }}>ANALYZING {game.slot}…</span>
-            </div>
-          );
-          if (hasRes) {
-            // Look up win/loss from pick history
-            const historyEntry = pickHistory?.find(p => p.key === key);
-            const pickResult = historyEntry?.result || null;
-            const isWin = pickResult === 'win';
-            const isLoss = pickResult === 'loss';
-            const resultColor = isWin ? '#22c55e' : isLoss ? '#f87171' : slotColor;
-            const resultBg = isWin ? 'rgba(34,197,94,0.08)' : isLoss ? 'rgba(248,113,113,0.08)' : slotBg;
-            const resultBorder = isWin ? 'rgba(34,197,94,0.4)' : isLoss ? 'rgba(248,113,113,0.4)' : slotBorder;
-            return (
-              <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,padding:"9px 12px",background:resultBg,border:`1px solid ${resultBorder}`,borderRadius:8 }}>
-                <div style={{ display:'flex',alignItems:'center',gap:6 }}>
-                  {isWin && <span style={{ fontSize:14 }}>✅</span>}
-                  {isLoss && <span style={{ fontSize:14 }}>❌</span>}
-                  <span style={{ fontSize:9,fontWeight:700,color:resultColor,letterSpacing:"0.08em" }}>
-                    {isWin ? `WIN — ${game.slot}` : isLoss ? `LOSS — ${game.slot}` : finalized?.[key] ? `🔒 ${game.slot} — FINAL` : `✓ ${game.slot} — ANALYZED`}
-                  </span>
-                </div>
-                {!finalized?.[key] && !pickResult && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onGenerate(game, game.slot); }}
-                    style={{ fontSize:8,fontWeight:700,color:'#64748b',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:4,padding:'2px 8px',cursor:'pointer',letterSpacing:'0.06em',fontFamily:'inherit' }}
-                  >
-                    ↺ RE-ANALYZE
-                  </button>
-                )}
-              </div>
-            );
-          }
-          return (
-            isWNBAGame ? (
-              <div onClick={()=>onGenerate(game, 'WNBA')} style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"9px 0",background:"rgba(192,132,252,0.08)",border:"1px solid rgba(192,132,252,0.25)",borderRadius:8,cursor:"pointer" }}>
-                <span style={{ fontSize:9,fontWeight:700,color:"#c084fc",letterSpacing:"0.08em" }}>▶ ANALYZE WNBA</span>
-              </div>
-            ) : (
-            <div style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"9px 0",background:"rgba(255,255,255,0.02)",border:"1px solid rgba(59,130,246,0.1)",borderRadius:8 }}>
-              <div style={{ width:8,height:8,borderRadius:"50%",background:"#3b82f6",animation:"pulse 1.5s ease-in-out infinite" }}/>
-              <span style={{ fontSize:9,fontWeight:600,color:"#3a4a5e",letterSpacing:"0.08em" }}>QUEUED FOR ANALYSIS</span>
-            </div>
-            )
-          );
-        })()
       )}
     </div>
   );
@@ -1055,197 +939,66 @@ function RightPanelContent({ marketScanner, insights, aiConfidence, confHistory 
 
 // ── TOP PLAY BANNER ──────────────────────────────────────────────────────────
 function TopPlayBanner({ topPlay, loading, results, games, pickHistory, isSubscribed, onShowAuth, onForceRefresh, isAdmin, watchlist, onToggleWatch, sport }) {
-  const [expanded, setExpanded] = useState(false);
+  const result = topPlay ? (results[`${topPlay.id}-${topPlay.slot}`] || results[`${topPlay.id}-PUBLIC`] || results[`${topPlay.id}-VEGAS`]) : null;
+  const summary = result?.summary;
+  const tier = summary ? (TIER_STYLES[summary.tier] || TIER_STYLES["3"]) : null;
+  const histEntry = topPlay && pickHistory?.find(p => p.key === `${topPlay.id}-${topPlay.slot}`);
+  const pickResult = histEntry?.result;
 
-  if (loading && !topPlay) {
-    return (
-      <div style={{ background:'linear-gradient(135deg,rgba(59,130,246,0.08),rgba(201,162,39,0.03))',border:'1px solid rgba(59,130,246,0.3)',borderRadius:14,padding:'16px 20px',marginBottom:20,display:'flex',alignItems:'center',gap:12 }}>
-        <div style={{ width:28,height:28,borderRadius:'50%',border:'2px solid rgba(59,130,246,0.3)',borderTop:'2px solid #3b82f6',animation:'spin 0.8s linear infinite',flexShrink:0 }}/>
-        <div>
-          <div style={{ fontSize:11,fontWeight:700,color:'#3b82f6',letterSpacing:'0.08em' }}>⭐ TOP PLAY OF THE DAY</div>
-          <div style={{ fontSize:11,color:'#3a4a5e',marginTop:2 }}>AI is analyzing the best game for today...</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!topPlay?.result) return null;
-
-  const summary = topPlay.result?.summary;
-  if (!summary) return null;
-
-  const isVegas = topPlay.slot === 'VEGAS';
-  const slotColor = isVegas ? '#f87171' : '#60a5fa';
-  const slotBg    = isVegas ? 'rgba(248,113,113,0.1)' : 'rgba(96,165,250,0.1)';
-
-  // Look up win/loss result from pickHistory
-  const [tpAway, tpHome] = (topPlay.game_key||'').split('|');
-  const matchingGame = games?.find(g => g.away === tpAway && g.home === tpHome);
-  const tpHistoryEntry = pickHistory?.find(p =>
-    matchingGame && p.key === `${matchingGame.id}-${topPlay.slot}` && p.result
+  if (loading) return (
+    <div style={{ background:'rgba(255,255,255,0.7)', border:'1px solid rgba(255,255,255,0.93)', borderRadius:16, backdropFilter:'blur(20px)', boxShadow:'0 8px 30px rgba(0,0,0,0.06)', padding:'16px 20px', display:'flex', alignItems:'center', gap:10 }}>
+      <div style={{ width:14, height:14, borderRadius:'50%', border:'2px solid rgba(57,255,20,0.3)', borderTop:'2px solid #39FF14', animation:'spin 0.8s linear infinite', flexShrink:0 }}/>
+      <span style={{ fontSize:11, color:'#aaa' }}>Loading today's top play...</span>
+    </div>
   );
-  const tpResult = tpHistoryEntry?.result || null; // 'win' | 'loss' | null
-  const tierColors = { '1':'#3b82f6', '2':'#60a5fa', '3':'#475569', 'PASS':'#f87171' };
-  const tierColor  = tierColors[summary.tier] || '#3b82f6';
-  const isPass     = summary.tier === 'PASS' || summary.tier === '3';
 
-  // Extract final verdict — look in multiple places
-  const verdict = topPlay.result?.finalVerdict || topPlay.result?.analysis?.finalVerdict || summary.verdict || '';
-  const scamPlay = topPlay.result?.scamPlay || topPlay.result?.analysis?.scamPlay;
+  if (!topPlay || !summary) return null;
 
   return (
-    <div className="vv-top-play" style={{ background:`linear-gradient(135deg,rgba(59,130,246,0.1),rgba(201,162,39,0.04))`,border:'1px solid rgba(59,130,246,0.4)',borderRadius:14,marginBottom:20,overflow:'hidden' }}>
-
-      {/* Header */}
-      <div style={{ padding:'14px 18px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap' }}>
-        <div style={{ display:'flex',alignItems:'center',gap:10 }}>
-          <div style={{ background:'rgba(59,130,246,0.15)',border:'1px solid rgba(59,130,246,0.4)',borderRadius:8,padding:'4px 10px',display:'flex',alignItems:'center',gap:5 }}>
-            <span style={{ fontSize:12 }}>⭐</span>
-            <span style={{ fontSize:9,fontWeight:800,color:'#3b82f6',letterSpacing:'0.08em' }}>TOP PLAY</span>
-          </div>
-          <span style={{ fontSize:9,fontWeight:700,color:slotColor,background:slotBg,borderRadius:4,padding:'2px 8px',letterSpacing:'0.08em' }}>{topPlay.slot}</span>
-          {!isPass && <span style={{ fontSize:9,fontWeight:700,color:tierColor,background:'rgba(59,130,246,0.08)',borderRadius:4,padding:'2px 8px' }}>
-            {summary.tier === '1' ? '🔒 LOCK' : `Tier ${summary.tier}`}
-          </span>}
-          {isPass && <span style={{ fontSize:9,fontWeight:700,color:'#f87171',background:'rgba(248,113,113,0.1)',borderRadius:4,padding:'2px 8px' }}>🚫 NO PLAY</span>}
-          {tpResult === 'win' && (
-            <span style={{ fontSize:11,fontWeight:800,color:'#4ade80',background:'rgba(74,222,128,0.12)',border:'1px solid rgba(74,222,128,0.4)',borderRadius:6,padding:'3px 10px' }}>✅ WIN</span>
-          )}
-          {tpResult === 'loss' && (
-            <span style={{ fontSize:11,fontWeight:800,color:'#f87171',background:'rgba(248,113,113,0.12)',border:'1px solid rgba(248,113,113,0.4)',borderRadius:6,padding:'3px 10px' }}>❌ LOSS</span>
-          )}
+    <div style={{ background:'rgba(255,255,255,0.62)', border:'1px solid rgba(57,255,20,0.28)', borderRadius:16, backdropFilter:'blur(20px)', boxShadow:'0 10px 36px rgba(57,255,20,0.09)', padding:'14px 20px' }}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          <span style={{ fontSize:9, fontWeight:800, color:'#111', background:'#39FF14', padding:'3px 10px', borderRadius:6, letterSpacing:'0.5px' }}>⭐ TOP PLAY</span>
+          <span style={{ fontSize:9, fontWeight:800, padding:'3px 9px', borderRadius:6, background:topPlay.slot==='VEGAS'?'rgba(57,255,20,0.1)':'rgba(80,140,255,0.08)', color:topPlay.slot==='VEGAS'?'#2aa800':'#5588ee', border:topPlay.slot==='VEGAS'?'1px solid rgba(57,255,20,0.25)':'1px solid rgba(80,140,255,0.2)' }}>
+            {topPlay.slot}
+          </span>
+          {tier && <span style={{ fontSize:9, fontWeight:800, padding:'3px 9px', borderRadius:6, background:'rgba(57,255,20,0.1)', color:'#2aa800', border:'1px solid rgba(57,255,20,0.25)' }}>Tier {summary.tier}</span>}
         </div>
-        <div style={{ display:'flex',alignItems:'center',gap:8 }}>
-          {/* Watchlist star for top play */}
-          {watchlist && onToggleWatch && matchingGame && (
-            <span
-              onClick={(e)=>{e.stopPropagation();onToggleWatch(matchingGame.id);}}
-              title={watchlist.includes(matchingGame.id)?'Remove from watchlist':'Add to watchlist'}
-              style={{ fontSize:18,color:watchlist.includes(matchingGame.id)?'#3b82f6':'#2a3545',cursor:'pointer',lineHeight:1 }}
-            >
-              {watchlist.includes(matchingGame.id)?'★':'☆'}
-            </span>
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <span style={{ fontSize:10, color:'#aaa' }}>{topPlay.time}</span>
+          <span onClick={e => { e.stopPropagation(); onToggleWatch?.(topPlay.id); }} style={{ fontSize:16, color:watchlist?.includes(topPlay.id)?'#39FF14':'#ccc', cursor:'pointer' }}>
+            {watchlist?.includes(topPlay.id)?'★':'☆'}
+          </span>
+          {isAdmin && onForceRefresh && (
+            <button onClick={onForceRefresh} style={{ fontSize:10, fontWeight:700, color:'#555', background:'rgba(255,255,255,0.7)', border:'1px solid rgba(0,0,0,0.07)', borderRadius:7, padding:'4px 10px', cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', gap:4 }}>
+              <i className="ti ti-refresh" style={{ fontSize:12 }}/> Re-analyze
+            </button>
           )}
-          {isAdmin && (
-            <button onClick={(e)=>{e.stopPropagation();onForceRefresh&&onForceRefresh();}} style={{ background:'transparent',border:'1px solid rgba(255,255,255,0.1)',borderRadius:6,padding:'4px 10px',fontSize:9,color:'#3a4a5e',cursor:'pointer',fontFamily:'inherit' }}>↺ Re-analyze</button>
-          )}
-          <button onClick={()=>setExpanded(e=>!e)} style={{ background:'transparent',border:'none',color:'#3b82f6',fontSize:16,cursor:'pointer',padding:'0 4px' }}>
-            {expanded ? '▲' : '▼'}
-          </button>
         </div>
       </div>
-
-      {/* Game info — always visible */}
-      <div style={{ padding:'0 14px 14px',borderBottom:'1px solid rgba(59,130,246,0.15)' }}>
-        <div style={{ fontSize:16,fontWeight:800,color:'#f1f5f9',letterSpacing:'-0.01em' }}>
-          {topPlay.away_abbr||topPlay.away?.split(' ').pop()} @ {topPlay.home_abbr||topPlay.home?.split(' ').pop()}
+      <div style={{ marginTop:10 }}>
+        <div style={{ fontSize:12, color:'#aaa', marginBottom:4 }}>{topPlay.away} @ {topPlay.home}</div>
+        <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
+          <div style={{ background:'rgba(255,255,255,0.7)', border:'1px solid rgba(57,255,20,0.2)', borderRadius:10, padding:'10px 14px' }}>
+            <div style={{ fontSize:9, color:'#33aa00', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:3 }}>THE PLAY</div>
+            <div style={{ fontSize:16, fontWeight:900, color:'#111' }}>{summary.pick}</div>
+            <div style={{ fontSize:10, color:'#aaa', marginTop:2 }}>{summary.betType}</div>
+          </div>
+          {pickResult && (
+            <div style={{ fontSize:14, fontWeight:800, color:pickResult==='win'?'#33aa00':'#dd4444' }}>
+              {pickResult==='win'?'✅ WIN':'❌ LOSS'}
+            </div>
+          )}
         </div>
-        <div style={{ fontSize:10,color:'#3a4a5e',marginTop:2 }}>{topPlay.time}</div>
+        {summary.verdict && (
+          <div style={{ marginTop:10, fontSize:11, color:'#666', lineHeight:1.6 }}>{summary.verdict.length > 120 ? summary.verdict.slice(0,117)+'...' : summary.verdict}</div>
+        )}
       </div>
-
-      {/* SUBSCRIBED — full content */}
-      {isSubscribed ? (
-        <>
-          {!isPass && (
-            <div style={{ padding:'12px 14px',borderBottom:'1px solid rgba(59,130,246,0.1)',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap' }}>
-              <div style={{ background:'rgba(59,130,246,0.1)',border:'1px solid rgba(59,130,246,0.3)',borderRadius:10,padding:'10px 16px',textAlign:'center',minWidth:120 }}>
-                <div style={{ fontSize:9,color:'#3a4a5e',letterSpacing:'0.1em',marginBottom:3 }}>THE PLAY</div>
-                <div style={{ fontSize:14,fontWeight:800,color:'#3b82f6' }}>{summary.pick}</div>
-                <div style={{ fontSize:10,color:'#94a3b8',marginTop:1 }}>{summary.betType}</div>
-              </div>
-              {tpResult && (
-                <div style={{ fontSize:20,fontWeight:900,color:tpResult==='win'?'#4ade80':'#f87171' }}>
-                  {tpResult==='win' ? '✅ WIN' : '❌ LOSS'}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Verdict */}
-          {verdict && !isPass && (
-            <div style={{ padding:'12px 14px',borderBottom:expanded?'1px solid rgba(59,130,246,0.1)':'none' }}>
-              <div style={{ fontSize:11,color:'#94a3b8',lineHeight:1.6 }}>
-                {expanded ? verdict : verdict.slice(0,200)+(verdict.length>200?'...':'')}
-              </div>
-            </div>
-          )}
-          {isPass && (
-            <div style={{ padding:'12px 14px' }}>
-              <div style={{ fontSize:11,color:'#f87171',lineHeight:1.6 }}>{verdict||'No clear edge today. Best play is to sit out.'}</div>
-            </div>
-          )}
-
-          {/* Expanded full analysis */}
-          {expanded && !isPass && (
-            <div style={{ padding:'14px',background:'rgba(0,0,0,0.2)' }}>
-              {scamPlay && (
-                <div style={{ marginBottom:14 }}>
-                  <div style={{ fontSize:9,fontWeight:700,color:isVegas?'#f87171':'#60a5fa',letterSpacing:'0.1em',marginBottom:6 }}>
-                    {isVegas?'🎰 SCAM PLAY BREAKDOWN':'📋 ANALYSIS'}
-                  </div>
-                  {scamPlay.whyItLooksWrong && (
-                    <div style={{ marginBottom:8 }}>
-                      <div style={{ fontSize:9,color:'#f87171',fontWeight:700,marginBottom:3 }}>❌ WHY IT LOOKS WRONG:</div>
-                      <div style={{ fontSize:11,color:'#94a3b8',lineHeight:1.5 }}>{scamPlay.whyItLooksWrong}</div>
-                    </div>
-                  )}
-                  {scamPlay.whyItsActuallyCorrect && (
-                    <div>
-                      <div style={{ fontSize:9,color:'#4ade80',fontWeight:700,marginBottom:3 }}>✅ WHY IT'S ACTUALLY CORRECT:</div>
-                      <div style={{ fontSize:11,color:'#94a3b8',lineHeight:1.5 }}>{scamPlay.whyItsActuallyCorrect}</div>
-                    </div>
-                  )}
-                </div>
-              )}
-              {summary.gameScript && (
-                <div style={{ marginBottom:10,padding:'8px 12px',background:'rgba(255,255,255,0.02)',borderRadius:8,border:'1px solid rgba(255,255,255,0.05)' }}>
-                  <div style={{ fontSize:9,color:'#3a4a5e',letterSpacing:'0.08em',marginBottom:3 }}>GAME SCRIPT</div>
-                  <div style={{ fontSize:11,color:'#94a3b8' }}>{summary.gameScript}</div>
-                </div>
-              )}
-              <div style={{ display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8 }}>
-                {summary.confidence && (
-                  <div style={{ background:'rgba(255,255,255,0.02)',borderRadius:8,padding:'8px',textAlign:'center' }}>
-                    <div style={{ fontSize:8,color:'#3a4a5e',marginBottom:2 }}>CONFIDENCE</div>
-                    <div style={{ fontSize:11,fontWeight:700,color:summary.confidence==='HIGH'?'#4ade80':summary.confidence==='MEDIUM'?'#3b82f6':'#f87171' }}>{summary.confidence}</div>
-                  </div>
-                )}
-                {summary.betType && (
-                  <div style={{ background:'rgba(255,255,255,0.02)',borderRadius:8,padding:'8px',textAlign:'center' }}>
-                    <div style={{ fontSize:8,color:'#3a4a5e',marginBottom:2 }}>BET TYPE</div>
-                    <div style={{ fontSize:11,fontWeight:700,color:'#e2e8f0' }}>{summary.betType}</div>
-                  </div>
-                )}
-                {topPlay.slot && (
-                  <div style={{ background:'rgba(255,255,255,0.02)',borderRadius:8,padding:'8px',textAlign:'center' }}>
-                    <div style={{ fontSize:8,color:'#3a4a5e',marginBottom:2 }}>SLOT</div>
-                    <div style={{ fontSize:11,fontWeight:700,color:slotColor }}>{topPlay.slot}</div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </>
-      ) : (
-        /* NON-SUBSCRIBER — locked */
-        <div onClick={onShowAuth} style={{ padding:'20px 14px',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:10,cursor:'pointer',background:'rgba(0,0,0,0.25)' }}>
-          <div style={{ display:'flex',alignItems:'center',gap:8 }}>
-            <span style={{ fontSize:22 }}>🔒</span>
-            <div>
-              <div style={{ fontSize:13,fontWeight:800,color:'#3b82f6',letterSpacing:'0.04em' }}>Subscribe to Unlock</div>
-              <div style={{ fontSize:11,color:'#3a4a5e',marginTop:2 }}>Get the Top Play + all game analysis</div>
-            </div>
-          </div>
-          <div style={{ background:'linear-gradient(135deg,#3b82f6,#1d4ed8)',borderRadius:8,padding:'8px 24px',fontSize:11,fontWeight:700,color:'#000',letterSpacing:'0.06em' }}>
-            SUBSCRIBE NOW
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
-// ── ALERTS VIEW ───────────────────────────────────────────────────────────────
+
 function AlertsView({ betReadyAlerts, trellAlerts, games, results, pickHistory, watchlist }) {
   const allAlerts = [
     ...Object.entries(betReadyAlerts)
