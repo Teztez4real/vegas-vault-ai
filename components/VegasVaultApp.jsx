@@ -552,7 +552,7 @@ function ConfidenceChart({ history }) {
 }
 
 // ── GAME CARD (new glass design) ──────────────────────────────────────────────
-function GameCard({ game, onGenerate, results, generating, onCardClick, liveScores, isSubscribed, finalized, isQueued, betReady, onShowAuth, watchlist, onToggleWatch, pickHistory }) {
+function GameCard({ game, onGenerate, results, generating, onCardClick, liveScores, isSubscribed, finalized, isQueued, betReady, onShowAuth, watchlist, onToggleWatch, pickHistory, hasSlotPattern }) {
   const resultVegas  = results[`${game.id}-VEGAS`];
   const resultPublic = results[`${game.id}-PUBLIC`];
   const slotResult   = results[`${game.id}-${game.slot}`];
@@ -604,9 +604,11 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
       {/* Row 1: slot tag + status + time + watchlist */}
       <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10 }}>
         <div style={{ display:'flex',alignItems:'center',gap:6,flexWrap:'wrap' }}>
-          <span style={{ fontSize:9,fontWeight:800,padding:'3px 9px',borderRadius:6,letterSpacing:'0.5px',background:isVegas?'rgba(57,255,20,0.1)':'rgba(80,140,255,0.08)',color:isVegas?'#2aa800':'#5588ee',border:isVegas?'1px solid rgba(57,255,20,0.25)':'1px solid rgba(80,140,255,0.2)' }}>
-            {isVegas?'VEGAS SLOT':'PUBLIC SLOT'}
-          </span>
+          {hasSlotPattern && (
+            <span style={{ fontSize:9,fontWeight:800,padding:'3px 9px',borderRadius:6,letterSpacing:'0.5px',background:isVegas?'rgba(57,255,20,0.1)':'rgba(80,140,255,0.08)',color:isVegas?'#2aa800':'#5588ee',border:isVegas?'1px solid rgba(57,255,20,0.25)':'1px solid rgba(80,140,255,0.2)' }}>
+              {isVegas?'VEGAS SLOT':'PUBLIC SLOT'}
+            </span>
+          )}
           {isLive&&<span style={{ fontSize:9,fontWeight:800,color:'#fff',background:'#dc2626',padding:'3px 9px',borderRadius:6,display:'flex',alignItems:'center',gap:4 }}><span style={{ width:5,height:5,borderRadius:'50%',background:'#fff',display:'inline-block',animation:'pulse 1s infinite' }}/> LIVE</span>}
           {isFinal&&!isPostponed&&<span style={{ fontSize:9,fontWeight:700,color:'#999',background:'rgba(0,0,0,0.04)',padding:'3px 9px',borderRadius:6,border:'1px solid rgba(0,0,0,0.07)' }}>FINAL</span>}
           {isDelayed&&<span style={{ fontSize:9,fontWeight:700,color:'#bb8800',background:'rgba(255,200,0,0.08)',padding:'3px 9px',borderRadius:6 }}>⏸ DELAYED</span>}
@@ -1748,19 +1750,21 @@ export default function VegasVaultApp() {
   const greeting = hour<12?"Good morning":hour<17?"Good afternoon":"Good evening";
 
   // Map current nav state to new shell section keys
-  // Dashboard is the single main page. "Games Slate" nav item highlights
-  // alongside Dashboard (matches mockup: both show "on" state). AI Chat,
-  // Models, Memory, Agents, Vault, Analytics are visual placeholders that
-  // stay on the dashboard. Only History (via slide-out panel) and Settings
-  // (separate route) navigate away.
-  const [shellActiveExtra, setShellActiveExtra] = useState("slate");
-  const shellSection = showHistory ? "history" : (shellActiveExtra || "dashboard");
+  // "dashboard" = command-center view, "slate" = full games grid page.
+  // AI Chat / Models / Memory / Agents / Vault / Analytics are visual
+  // placeholders that stay on whichever main view is active.
+  const [shellView, setShellView] = useState("dashboard");
+  const shellSection = showHistory ? "history" : shellView;
 
   const shellNavigate = (key) => {
     if (key === "history")  { setShowHistory(true); return; }
     if (key === "settings") { window.location.href = "/settings"; return; }
     setShowHistory(false);
-    setShellActiveExtra(key);
+    if (key === "dashboard" || key === "slate") {
+      setShellView(key);
+    }
+    // AI Chat / Models / Memory / Agents / Vault / Analytics: placeholders,
+    // no view change for now.
   };
 
   const shellUserName = authUser?.user_metadata?.full_name || authUser?.email?.split("@")[0] || "Member";
@@ -2009,7 +2013,7 @@ export default function VegasVaultApp() {
       )}
 
       {/* ── DASHBOARD — 3-column command center + games slate ── */}
-      {authUser && isSubscribed && (
+      {authUser && isSubscribed && shellView === 'dashboard' && (
         <div className="vv-dashboard-row" style={{ display:'flex', gap:10, alignItems:'stretch', minWidth:0, flex:1, minHeight:0, height:0 }}>
 
           <div className="vv-center">
@@ -2235,6 +2239,96 @@ export default function VegasVaultApp() {
             <div className="vv-gc-va" onClick={()=>setShowHistory(true)}>View pick history <i className="ti ti-arrow-right" style={{ fontSize:10 }} /></div>
           </div>
 
+        </div>
+      )}
+
+      {/* ── GAMES SLATE — full grid page ── */}
+      {authUser && isSubscribed && shellView === 'slate' && (
+        <div style={{ display:'flex', flexDirection:'column', gap:12, flex:1, minHeight:0, overflowY:'auto' }}>
+
+          <TopPlayBanner
+            topPlay={topPlay}
+            loading={topPlayLoading}
+            results={results}
+            pickHistory={pickHistory}
+            isSubscribed={isSubscribed}
+            isAdmin={shellIsAdmin}
+            watchlist={watchlist}
+            onToggleWatch={(id)=>setWatchlist(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id])}
+            onForceRefresh={null}
+          />
+
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10 }}>
+            <div>
+              <div style={{ fontSize:18, fontWeight:800, color:'#111', letterSpacing:-0.3 }}>Games Slate</div>
+              <div style={{ fontSize:11, color:'#aaa', marginTop:2 }}>
+                {new Date(selectedDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'})}
+                {' · '}{games.length} games
+              </div>
+            </div>
+            <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+                <button onClick={()=>{const d=new Date(selectedDate+'T12:00:00');d.setDate(d.getDate()-1);setSelectedDate(d.toISOString().split('T')[0]);}}
+                  style={{ width:30, height:30, borderRadius:9, border:'1px solid rgba(0,0,0,0.07)', background:'rgba(255,255,255,0.7)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#666' }}>
+                  <i className="ti ti-chevron-left" style={{ fontSize:14 }} />
+                </button>
+                <button onClick={()=>{const d=new Date(selectedDate+'T12:00:00');d.setDate(d.getDate()+1);setSelectedDate(d.toISOString().split('T')[0]);}}
+                  style={{ width:30, height:30, borderRadius:9, border:'1px solid rgba(0,0,0,0.07)', background:'rgba(255,255,255,0.7)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#666' }}>
+                  <i className="ti ti-chevron-right" style={{ fontSize:14 }} />
+                </button>
+              </div>
+              {['ALL',...new Set(games.map(g=>g.sport).filter(Boolean))].map(s=>(
+                <button key={s} onClick={()=>setFilter(s)}
+                  style={{ fontSize:11, fontWeight:700, padding:'6px 14px', borderRadius:14, border:filter===s?'1px solid #39FF14':'1px solid rgba(0,0,0,0.07)', background:filter===s?'#39FF14':'rgba(255,255,255,0.7)', color:filter===s?'#111':'#999', cursor:'pointer', boxShadow:filter===s?'0 0 8px rgba(57,255,20,0.3)':'none' }}>
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {shellIsAdmin && (
+            <div style={{ background:'rgba(255,255,255,0.62)', border:'1px solid rgba(57,255,20,0.28)', borderRadius:14, padding:'12px 16px', display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
+              <span style={{ fontSize:9, fontWeight:800, color:'#fff', background:'linear-gradient(135deg,#111,#333)', padding:'2px 9px', borderRadius:6, letterSpacing:1 }}>ADMIN</span>
+              <span style={{ fontSize:11, fontWeight:600, color:'#555' }}>Slot Pattern Manager</span>
+              <button onClick={()=>window.location.href='/settings'}
+                style={{ fontSize:10, fontWeight:700, padding:'6px 12px', borderRadius:8, background:'linear-gradient(135deg,#39FF14,#22cc00)', border:'none', color:'#111', cursor:'pointer', marginLeft:'auto' }}>
+                <i className="ti ti-settings" style={{ fontSize:12, marginRight:4 }} />Open Settings
+              </button>
+            </div>
+          )}
+
+          {loading ? (
+            <div style={{ textAlign:'center', padding:'60px 0', color:'#aaa', fontSize:13 }}>
+              <div style={{ width:32, height:32, border:'3px solid rgba(57,255,20,0.2)', borderTopColor:'#39FF14', borderRadius:'50%', margin:'0 auto 12px', animation:'spin 0.8s linear infinite' }} />
+              Loading today's games...
+            </div>
+          ) : (
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(340px,1fr))', gap:12 }}>
+              {games.filter(g=>filter==='ALL'||g.sport===filter).map(game=>{
+                const key = `${game.id}-${game.slot}`;
+                return (
+                  <GameCard
+                    key={key}
+                    game={game}
+                    onGenerate={handleGenerate}
+                    results={results}
+                    generating={generating}
+                    onCardClick={(g,r)=>{setActiveGame(g);setActiveResult(r);}}
+                    liveScores={liveScores}
+                    isSubscribed={isSubscribed}
+                    finalized={finalized}
+                    isQueued={preAnalyzeQueue.includes(key)}
+                    betReady={!!betReadyAlerts[key]}
+                    onShowAuth={()=>setShowAuth(true)}
+                    watchlist={watchlist}
+                    onToggleWatch={(id)=>setWatchlist(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id])}
+                    pickHistory={pickHistory}
+                    hasSlotPattern={hasSlotPattern}
+                  />
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 

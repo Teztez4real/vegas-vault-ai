@@ -55,16 +55,10 @@ function SidebarUser({ userName, isAdmin }) {
 
 // ── SIDEBAR NAV ───────────────────────────────────────────────────────────────
 function SidebarNav({ activeSection, onNavigate }) {
-  // Dashboard stays highlighted whenever we're not in a separate view (history/settings),
-  // alongside whichever placeholder section (Games Slate by default) is also active —
-  // matches the mockup where both "Dashboard" and "Games Slate" show the active state.
-  const isOnDashboardView = activeSection !== "history" && activeSection !== "settings";
   return (
     <>
       {NAV_SECTIONS.map(s => {
-        const isActive = s.key === "dashboard"
-          ? isOnDashboardView
-          : activeSection === s.key;
+        const isActive = activeSection === s.key;
         return (
           <div
             key={s.key}
