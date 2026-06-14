@@ -156,6 +156,7 @@ export default function NewLookShell({
   userName,
   isAdmin,
   hasNotification = false,
+  authed = true,
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -166,6 +167,17 @@ export default function NewLookShell({
     onNavigate?.(key);
     closeDrawer();
   };
+
+  if (!authed) {
+    return (
+      <div className="vv-root">
+        <NeuralBg />
+        <div className="vv-main vv-main-unauth">
+          {children}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="vv-root">

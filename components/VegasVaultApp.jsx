@@ -1824,6 +1824,7 @@ export default function VegasVaultApp() {
       userName={shellUserName}
       isAdmin={shellIsAdmin}
       hasNotification={Object.keys(betReadyAlerts).length > 0}
+      authed={!!authUser}
     >
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
