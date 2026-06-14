@@ -1781,7 +1781,7 @@ export default function VegasVaultApp() {
         button { font-family: inherit; }
         ::-webkit-scrollbar{width:4px;}
         ::-webkit-scrollbar-thumb{background:rgba(57,255,20,0.2);border-radius:2px;}
-        .vv-center{flex:1;min-width:0;display:grid;grid-template-columns:1fr 1.15fr 1fr;gap:10px;align-items:start}
+        .vv-center{flex:1;min-width:0;display:grid;grid-template-columns:1fr 1.15fr 1fr;gap:10px;align-items:start;height:100%;overflow-y:auto;align-content:start}
         .vv-col{display:flex;flex-direction:column;gap:10px;min-width:0}
         .vv-glass{background:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.93);border-radius:16px;backdrop-filter:blur(20px);box-shadow:0 8px 30px rgba(0,0,0,0.06),0 2px 8px rgba(0,0,0,0.03),inset 0 1px 0 rgba(255,255,255,0.95)}
         .vv-glass-g{background:rgba(255,255,255,0.62);border:1px solid rgba(57,255,20,0.28);border-radius:16px;backdrop-filter:blur(20px);box-shadow:0 10px 36px rgba(57,255,20,0.09),0 3px 10px rgba(0,0,0,0.04),inset 0 1px 0 rgba(255,255,255,0.95)}
@@ -1883,7 +1883,7 @@ export default function VegasVaultApp() {
         .vv-vf-tm{font-size:8px;color:#ddd;min-width:24px;text-align:right}
         .vv-vf-va{font-size:10px;color:#39FF14;font-weight:600;text-align:center;padding-top:7px;cursor:pointer}
 
-        .vv-slate{width:230px;flex-shrink:0;padding:14px 13px;display:flex;flex-direction:column;max-height:calc(100vh - var(--vv-topbar-h) - 24px);overflow-y:auto;position:sticky;top:calc(var(--vv-topbar-h) + 12px)}
+        .vv-slate{width:230px;flex-shrink:0;padding:14px 13px;display:flex;flex-direction:column;height:100%;min-height:0;overflow-y:auto}
         .vv-gc-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:1px}
         .vv-gc-t{font-size:11px;font-weight:800;color:#111;text-transform:uppercase;letter-spacing:0.4px}
         .vv-gc-sub{font-size:9px;color:#bbb;margin-bottom:8px}
@@ -2010,7 +2010,7 @@ export default function VegasVaultApp() {
 
       {/* ── DASHBOARD — 3-column command center + games slate ── */}
       {authUser && isSubscribed && (
-        <div className="vv-dashboard-row" style={{ display:'flex', gap:10, alignItems:'flex-start', minWidth:0 }}>
+        <div className="vv-dashboard-row" style={{ display:'flex', gap:10, alignItems:'stretch', minWidth:0, height:'100%', minHeight:0 }}>
 
           <div className="vv-center">
 
