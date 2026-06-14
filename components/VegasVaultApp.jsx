@@ -952,7 +952,7 @@ export default function VegasVaultApp() {
   }
 
   async function doSignOut() {
-    try { const sb = getSB(); if (sb) await sb.auth.signOut(); } catch(e) {}
+    try { const sb = getSB(); if (sb) await sb.auth.signOut({ scope: 'global' }); } catch(e) {}
     setAuthUser(null); localStorage.removeItem('vv_admin'); localStorage.removeItem('vv_subscribed'); localStorage.removeItem('vv_results'); localStorage.removeItem('vv_finalized'); localStorage.removeItem('vv_watchlist'); setIsSubscribed(false); setResults({}); setFinalized({}); setWatchlist([]); setPickHistory([]);
   }
 

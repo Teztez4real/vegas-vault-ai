@@ -385,7 +385,7 @@ export default function SettingsPage() {
             )}
           </div>
           <div style={{ padding:'14px 20px', borderBottom:'none' }}>
-            <button onClick={async () => { await supabase.auth.signOut(); window.location.href = '/dashboard'; }} style={btnDanger}>
+            <button onClick={async () => { await supabase.auth.signOut({ scope: 'global' }); window.location.href = '/dashboard'; }} style={btnDanger}>
               <i className="ti ti-logout" style={{ fontSize:12, marginRight:5 }} />Sign Out
             </button>
           </div>

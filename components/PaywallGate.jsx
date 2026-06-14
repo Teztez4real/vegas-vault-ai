@@ -165,7 +165,7 @@ export default function PaywallGate() {
         {session && (
           <div style={s.loggedIn}>
             Signed in as <strong>{session.user.email}</strong> ·{' '}
-            <span style={s.authToggle} onClick={() => supabase.auth.signOut()}>Sign out</span>
+            <span style={s.authToggle} onClick={() => supabase.auth.signOut({ scope: 'global' })}>Sign out</span>
           </div>
         )}
       </div>
