@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { useIdleSignOut } from '@/lib/useIdleSignOut';
 import NewLookShell from '@/components/NewLookShell';
 import '@/app/new-look.css';
 
@@ -29,6 +30,10 @@ export default function SettingsPage() {
       setLoading(false);
     });
   }, []);
+
+  // Auto sign-out after inactivity — all settings/data are saved as they're
+  // changed, so this never loses anything.
+  useIdleSignOut(supabase, !!session?.user, () => { window.location.href = '/dashboard'; }, 30);
 
   useEffect(() => {
     fetch(`/api/slot-pattern?date=${slotDate}&sport=${slotSport}`)

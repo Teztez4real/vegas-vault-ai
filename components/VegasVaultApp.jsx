@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import { supabase as _supabase } from '@/lib/supabaseClient';
+import { useIdleSignOut } from '@/lib/useIdleSignOut';
 import NewLookShell from '@/components/NewLookShell';
 import '@/app/new-look.css';
 
@@ -909,6 +910,12 @@ export default function VegasVaultApp() {
       return () => subscription.unsubscribe();
     } catch(e) {}
   }, []);
+
+  // ── AUTO SIGN-OUT AFTER INACTIVITY ──────────────────────────────────────
+  // All user data (watchlist, results, chat history, pick history, etc.) is
+  // continuously synced to Supabase as it changes, so signing out here never
+  // loses anything — it's all already saved server-side.
+  useIdleSignOut(getSB(), !!authUser, doSignOut, 30);
 
   async function doAuth() {
     setAuthLoading(true); setAuthError('');
