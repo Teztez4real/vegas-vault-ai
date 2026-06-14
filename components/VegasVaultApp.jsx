@@ -190,12 +190,16 @@ async function generatePlay(game) {
 // ── CONSTANTS ─────────────────────────────────────────────────────────────────
 
 const TIER_STYLES = {
-  "1":    { bg:"rgba(74,222,128,0.12)",  border:"rgba(74,222,128,0.5)",  text:"#4ade80", label:"LOCK"   },
-  "2":    { bg:"rgba(251,191,36,0.12)",  border:"rgba(251,191,36,0.5)",  text:"#fbbf24", label:"TIER 2" },
-  "3":    { bg:"rgba(148,163,184,0.08)", border:"rgba(148,163,184,0.3)", text:"#94a3b8", label:"TIER 3" },
-  "PASS": { bg:"rgba(248,113,113,0.12)", border:"rgba(248,113,113,0.5)", text:"#f87171", label:"PASS"   },
+  "1":    { bg:"rgba(57,255,20,0.1)",   border:"rgba(57,255,20,0.25)",   text:"#2aa800", label:"LOCK"   },
+  "2":    { bg:"rgba(255,200,0,0.08)",  border:"rgba(255,200,0,0.2)",    text:"#bb8800", label:"TIER 2" },
+  "3":    { bg:"rgba(0,0,0,0.04)",      border:"rgba(0,0,0,0.07)",       text:"#999",    label:"TIER 3" },
+  "PASS": { bg:"rgba(255,80,80,0.08)",  border:"rgba(255,80,80,0.2)",    text:"#dd4444", label:"PASS"   },
 };
-const CONF_STYLES = { HIGH:{color:"#4ade80"}, MEDIUM:{color:"#fbbf24"}, LOW:{color:"#f87171"} };
+const CONF_STYLES = {
+  HIGH:   { color:"#39FF14", label:"HIGH CONFIDENCE",   ring:0.82, text:"VERY HIGH CONFIDENCE" },
+  MEDIUM: { color:"#ffb800", label:"MEDIUM CONFIDENCE", ring:0.58, text:"MEDIUM CONFIDENCE" },
+  LOW:    { color:"#ff6b6b", label:"LOW CONFIDENCE",    ring:0.32, text:"LOW CONFIDENCE" },
+};
 
 const NAV_ITEMS = [
   { icon:"⊞", label:"DASHBOARD",     active:true  },
@@ -965,6 +969,7 @@ export default function VegasVaultApp() {
   const [generating, setGenerating]   = useState(null);
   const [activeResult, setActiveResult] = useState(null);
   const [activeGame, setActiveGame]   = useState(null);
+  const [activeDetailTab, setActiveDetailTab] = useState('AI Reasoning');
   const [filter, setFilter]           = useState("ALL");
   const [error, setError]             = useState(null);
   const [loading, setLoading]         = useState(true);
@@ -2313,7 +2318,7 @@ export default function VegasVaultApp() {
                     onGenerate={handleGenerate}
                     results={results}
                     generating={generating}
-                    onCardClick={(g,r)=>{setActiveGame(g);setActiveResult(r);}}
+                    onCardClick={(g,r)=>{setActiveGame(g);setActiveResult(r);setActiveDetailTab('AI Reasoning');}}
                     liveScores={liveScores}
                     isSubscribed={isSubscribed}
                     finalized={finalized}
@@ -2403,32 +2408,258 @@ export default function VegasVaultApp() {
       )}
 
       {/* ── GAME DETAIL MODAL ── */}
-      {activeGame && activeResult && (
-        <div style={{ position:'fixed',inset:0,zIndex:9000,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(8px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}
-          onClick={e=>e.target===e.currentTarget&&setActiveGame(null)}>
-          <div style={{ background:'#fff',borderRadius:20,width:'100%',maxWidth:700,maxHeight:'90vh',overflowY:'auto',boxShadow:'0 40px 100px rgba(0,0,0,0.15)' }}>
-            <div style={{ padding:'16px 20px',borderBottom:'1px solid rgba(0,0,0,0.06)',display:'flex',alignItems:'center',justifyContent:'space-between' }}>
-              <div style={{ fontWeight:800,color:'#111',fontSize:14 }}>{activeGame.away} @ {activeGame.home}</div>
-              <button onClick={()=>setActiveGame(null)} style={{ width:32,height:32,borderRadius:8,border:'1px solid rgba(0,0,0,0.07)',background:'rgba(255,255,255,0.8)',cursor:'pointer',fontSize:16,display:'flex',alignItems:'center',justifyContent:'center',color:'#666' }}>✕</button>
-            </div>
-            <div style={{ padding:20 }}>
-              <div style={{ fontSize:11,color:'#aaa',marginBottom:16 }}>{activeResult?.analysis?.matchupFoundation}</div>
-              {Object.entries(activeResult?.analysis||{}).filter(([k])=>k!=='matchupFoundation').map(([k,v])=>(
-                v && <div key={k} style={{ marginBottom:12,padding:'10px 14px',background:'rgba(246,249,246,0.7)',border:'1px solid rgba(195,240,195,0.5)',borderRadius:10 }}>
-                  <div style={{ fontSize:9,fontWeight:800,color:'#33aa00',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:4 }}>{k.replace(/([A-Z])/g,' $1').trim()}</div>
-                  <div style={{ fontSize:11,color:'#444',lineHeight:1.6 }}>{typeof v==='object'?JSON.stringify(v):v}</div>
+      {activeGame && activeResult && (() => {
+        const game = activeGame;
+        const result = activeResult;
+        const summary = result?.summary || {};
+        const analysis = result?.analysis || {};
+        const isVegas = game.slot === 'VEGAS';
+        const isTennis = game.sport === 'Tennis';
+        const conf = CONF_STYLES[summary.confidence] || CONF_STYLES.MEDIUM;
+        const tierStyle = TIER_STYLES[summary.tier] || TIER_STYLES["3"];
+        const ringCirc = 2 * Math.PI * 26;
+        const ringOffset = ringCirc * (1 - conf.ring);
+
+        // Reasoning bullets pulled from real analysis fields (no invented stats)
+        const reasoningOrder = ['matchupFoundation','pitching','hitterLineup','recentForm','headToHead','situational','sharpMoney','propaganda','gameScript'];
+        const reasoningBullets = reasoningOrder
+          .map(k => analysis[k])
+          .filter(v => v && typeof v === 'string' && v.length > 0 && v !== 'N/A')
+          .slice(0, 6);
+
+        const fmtOdds = v => { if(!v||v==='N/A'||v==='null') return null; if(typeof v==='number') return v>0?`+${v}`:`${v}`; return v; };
+        const pickOdds = fmtOdds(game.dkAwayML) || fmtOdds(game.awayML) || fmtOdds(game.dkHomeML) || fmtOdds(game.homeML);
+
+        const TABS = ['AI Reasoning','Scam Play','Line Movement','Series Context'];
+        const activeTab = activeDetailTab || 'AI Reasoning';
+
+        return (
+          <div style={{ position:'fixed',inset:0,zIndex:9000,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(8px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}
+            onClick={e=>e.target===e.currentTarget&&setActiveGame(null)}>
+            <div style={{ background:'#fff',borderRadius:20,width:'100%',maxWidth:780,maxHeight:'92vh',overflowY:'auto',boxShadow:'0 40px 100px rgba(0,0,0,0.15)' }}>
+
+              {/* Header */}
+              <div style={{ padding:'16px 20px',borderBottom:'1px solid rgba(0,0,0,0.06)' }}>
+                <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10 }}>
+                  <div onClick={()=>setActiveGame(null)} style={{ display:'flex',alignItems:'center',gap:6,fontSize:11,color:'#999',cursor:'pointer',fontWeight:600 }}>
+                    <i className="ti ti-arrow-left" style={{ fontSize:13 }} /> Back to Games Slate
+                  </div>
+                  <div style={{ display:'flex',alignItems:'center',gap:8 }}>
+                    <div style={{ fontSize:10,fontWeight:700,color:'#666',background:'rgba(0,0,0,0.04)',border:'1px solid rgba(0,0,0,0.07)',borderRadius:8,padding:'6px 12px',display:'flex',alignItems:'center',gap:5,cursor:'pointer' }}>
+                      <i className="ti ti-folder-plus" style={{ fontSize:12 }} /> Add to Vault
+                    </div>
+                    <button onClick={()=>setActiveGame(null)} style={{ width:32,height:32,borderRadius:8,border:'1px solid rgba(0,0,0,0.07)',background:'rgba(255,255,255,0.8)',cursor:'pointer',fontSize:16,display:'flex',alignItems:'center',justifyContent:'center',color:'#666' }}>✕</button>
+                  </div>
                 </div>
-              ))}
-              {activeResult?.summary?.verdict && (
-                <div style={{ marginTop:16,padding:'12px 14px',background:'rgba(57,255,20,0.07)',border:'1px solid rgba(57,255,20,0.2)',borderRadius:10 }}>
-                  <div style={{ fontSize:9,fontWeight:800,color:'#33aa00',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:4 }}>Bottom Line</div>
-                  <div style={{ fontSize:12,color:'#444',lineHeight:1.6 }}>{activeResult.summary.verdict}</div>
+                <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12 }}>
+                  {!isTennis ? (
+                    <>
+                      <div style={{ textAlign:'left' }}>
+                        <div style={{ fontSize:15,fontWeight:800,color:'#111' }}>{game.away}</div>
+                        <div style={{ fontSize:9,color:'#bbb' }}>{game.awayRecord}</div>
+                      </div>
+                      <div style={{ textAlign:'center',flex:1 }}>
+                        <div style={{ fontSize:13,fontWeight:800,color:'#111' }}>{game.away} @ {game.home}</div>
+                        <div style={{ fontSize:10,color:'#aaa',marginTop:2 }}>{game.time}{game.venue?` · ${game.venue}`:''}</div>
+                      </div>
+                      <div style={{ textAlign:'right' }}>
+                        <div style={{ fontSize:15,fontWeight:800,color:'#111' }}>{game.home}</div>
+                        <div style={{ fontSize:9,color:'#bbb' }}>{game.homeRecord}</div>
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ textAlign:'center',flex:1 }}>
+                      <div style={{ fontSize:13,fontWeight:800,color:'#111' }}>{game.player1} vs {game.player2}</div>
+                      <div style={{ fontSize:10,color:'#aaa',marginTop:2 }}>{game.time}{game.tournament?` · ${game.tournament}`:''}</div>
+                    </div>
+                  )}
                 </div>
-              )}
+                <div style={{ display:'flex',gap:8,marginTop:10 }}>
+                  <span style={{ fontSize:9,fontWeight:800,padding:'4px 10px',borderRadius:6,background:tierStyle.bg||'rgba(57,255,20,0.1)',color:tierStyle.text||'#33aa00',border:`1px solid ${tierStyle.border||'rgba(57,255,20,0.25)'}` }}>
+                    {summary.tier==='1'?'🔒 LOCK':summary.tier==='2'?'★★★★ TIER 2':'PASS'}
+                  </span>
+                  {hasSlotPattern && (
+                    <span style={{ fontSize:9,fontWeight:800,padding:'4px 10px',borderRadius:6,background:isVegas?'rgba(57,255,20,0.1)':'rgba(80,140,255,0.08)',color:isVegas?'#2aa800':'#5588ee',border:isVegas?'1px solid rgba(57,255,20,0.25)':'1px solid rgba(80,140,255,0.2)' }}>
+                      {isVegas?'VEGAS SLOT':'PUBLIC SLOT'}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Tabs */}
+              <div style={{ display:'flex',gap:4,padding:'8px 16px',borderBottom:'1px solid rgba(0,0,0,0.05)',flexWrap:'wrap' }}>
+                {TABS.map(t=>(
+                  <div key={t} onClick={()=>setActiveDetailTab(t)}
+                    style={{ fontSize:11,fontWeight:700,padding:'6px 14px',borderRadius:9,cursor:'pointer',color:activeTab===t?'#111':'#aaa',background:activeTab===t?'#39FF14':'transparent',boxShadow:activeTab===t?'0 0 8px rgba(57,255,20,0.3)':'none' }}>
+                    {t}
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ padding:'16px 20px' }}>
+
+                {/* AI Reasoning tab */}
+                {activeTab === 'AI Reasoning' && (
+                  <>
+                    <div style={{ background:'rgba(255,255,255,0.7)',border:'1px solid rgba(255,255,255,0.93)',borderRadius:14,padding:'14px 16px',marginBottom:12 }}>
+                      <div style={{ fontSize:11,fontWeight:800,color:'#111',marginBottom:10,display:'flex',alignItems:'center',gap:8 }}>
+                        AI Reasoning
+                        <span style={{ fontSize:7,fontWeight:700,color:'#39FF14',border:'1px solid rgba(57,255,20,0.3)',padding:'2px 6px',borderRadius:5,background:'rgba(57,255,20,0.05)' }}>VEGAS VAULT AI</span>
+                      </div>
+                      {reasoningBullets.length === 0 ? (
+                        <div style={{ fontSize:11,color:'#bbb' }}>No reasoning available.</div>
+                      ) : reasoningBullets.map((txt,i)=>(
+                        <div key={i} style={{ display:'flex',alignItems:'flex-start',gap:8,marginBottom:8 }}>
+                          <div style={{ width:18,height:18,borderRadius:5,background:'rgba(57,255,20,0.1)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,marginTop:1 }}>
+                            <i className="ti ti-check" style={{ fontSize:11,color:'#33aa00' }} />
+                          </div>
+                          <div style={{ fontSize:11,color:'#444',lineHeight:1.6 }}>{txt}</div>
+                        </div>
+                      ))}
+                      {summary.verdict && (
+                        <div style={{ marginTop:10,paddingTop:10,borderTop:'1px solid rgba(0,0,0,0.05)' }}>
+                          <div style={{ fontSize:9,fontWeight:800,color:'#33aa00',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:4 }}>Bottom Line</div>
+                          <div style={{ fontSize:12,color:'#444',lineHeight:1.6 }}>{summary.verdict}</div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Recommendation card */}
+                    <div style={{ background:'rgba(255,255,255,0.62)',border:'1px solid rgba(57,255,20,0.28)',borderRadius:14,padding:'14px 16px' }}>
+                      <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10 }}>
+                        <div style={{ fontSize:11,fontWeight:800,color:'#111' }}>AI Play Recommendation</div>
+                        <span style={{ fontSize:7,fontWeight:700,color:'#39FF14',border:'1px solid rgba(57,255,20,0.3)',padding:'2px 6px',borderRadius:5,background:'rgba(57,255,20,0.05)' }}>VEGAS VAULT AI</span>
+                      </div>
+                      <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12 }}>
+                        <div>
+                          <div style={{ fontSize:18,fontWeight:900,color:'#111',display:'flex',alignItems:'center',gap:8 }}>
+                            {summary.pick}
+                            {summary.tier==='1' && <span style={{ fontSize:8,fontWeight:800,color:'#111',background:'#39FF14',padding:'2px 8px',borderRadius:6 }}>AI LOCK</span>}
+                          </div>
+                          <div style={{ fontSize:13,color:'#aaa',marginTop:2 }}>{summary.betType}{pickOdds?` · ${pickOdds}`:''}</div>
+                        </div>
+                        <div style={{ textAlign:'center' }}>
+                          <div style={{ fontSize:9,color:'#aaa',marginBottom:4 }}>Confidence</div>
+                          <div style={{ position:'relative',width:64,height:64 }}>
+                            <svg width="64" height="64" viewBox="0 0 64 64">
+                              <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(57,255,20,0.13)" strokeWidth="6"/>
+                              <circle cx="32" cy="32" r="26" fill="none" stroke={conf.color} strokeWidth="6" strokeDasharray={ringCirc} strokeDashoffset={ringOffset} strokeLinecap="round" transform="rotate(-90 32 32)"/>
+                            </svg>
+                            <div style={{ position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:800,color:'#111' }}>{summary.confidence||'—'}</div>
+                          </div>
+                          <div style={{ fontSize:8,fontWeight:800,color:conf.color,marginTop:4,letterSpacing:'0.5px' }}>{conf.text}</div>
+                        </div>
+                      </div>
+                      {summary.signalCount && (
+                        <div style={{ marginTop:10,fontSize:10,color:'#666',background:'rgba(255,255,255,0.6)',border:'1px solid rgba(0,0,0,0.05)',borderRadius:8,padding:'8px 12px' }}>
+                          <i className="ti ti-bolt" style={{ fontSize:12,color:'#39FF14',marginRight:5 }} />{summary.signalCount} signals point to this pick
+                        </div>
+                      )}
+                      <div style={{ display:'flex',gap:8,marginTop:12 }}>
+                        <button onClick={()=>{handleGenerate(game,game.slot);setActiveGame(null);}} style={{ flex:1,padding:'10px',borderRadius:9,border:'1px solid rgba(57,255,20,0.25)',background:'rgba(57,255,20,0.07)',color:'#33aa00',fontSize:11,fontWeight:700,cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',justifyContent:'center',gap:6 }}>
+                          <i className="ti ti-refresh" style={{ fontSize:13 }} /> Re-analyze
+                        </button>
+                        <button style={{ flex:1,padding:'10px',borderRadius:9,border:'1px solid rgba(0,0,0,0.07)',background:'rgba(255,255,255,0.7)',color:'#555',fontSize:11,fontWeight:700,cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',justifyContent:'center',gap:6 }}>
+                          <i className="ti ti-folder-plus" style={{ fontSize:13 }} /> Add to Vault
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Scam Play tab */}
+                {activeTab === 'Scam Play' && (
+                  <div style={{ background:'rgba(255,250,235,0.5)',border:'1px solid rgba(255,150,0,0.35)',borderRadius:14,padding:'14px 16px' }}>
+                    <div style={{ fontSize:11,fontWeight:800,color:'#bb6600',marginBottom:10,display:'flex',alignItems:'center',gap:6 }}>
+                      <i className="ti ti-alert-triangle" style={{ fontSize:14 }} /> Scam Play Alert
+                      {hasSlotPattern && (
+                        <span style={{ fontSize:8,fontWeight:700,color:'#cc7700',border:'1px solid rgba(255,150,0,0.3)',padding:'2px 7px',borderRadius:5,background:'rgba(255,150,0,0.05)',marginLeft:'auto' }}>
+                          {isVegas ? 'Vegas Slot' : 'Public Slot'}
+                        </span>
+                      )}
+                    </div>
+                    {isVegas ? (
+                      analysis.scamPlay && analysis.scamPlay !== 'N/A' ? (
+                        <div style={{ fontSize:12,color:'#664400',lineHeight:1.7 }}>{analysis.scamPlay}</div>
+                      ) : (
+                        <div style={{ fontSize:11,color:'#bbb' }}>No scam play identified for this game.</div>
+                      )
+                    ) : (
+                      <div style={{ fontSize:11,color:'#888',lineHeight:1.6 }}>
+                        This is a Public Slot — scams are still possible but the expected outcome is more likely here. {analysis.scamPlay && analysis.scamPlay !== 'N/A' ? analysis.scamPlay : ''}
+                      </div>
+                    )}
+                    {analysis.propaganda && (
+                      <div style={{ marginTop:12,paddingTop:12,borderTop:'1px solid rgba(255,150,0,0.2)' }}>
+                        <div style={{ fontSize:9,fontWeight:800,color:'#bb6600',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:4 }}>Propaganda Check</div>
+                        <div style={{ fontSize:11,color:'#664400',lineHeight:1.6 }}>{analysis.propaganda}</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Line Movement tab */}
+                {activeTab === 'Line Movement' && (
+                  <div style={{ background:'rgba(255,255,255,0.7)',border:'1px solid rgba(255,255,255,0.93)',borderRadius:14,padding:'14px 16px' }}>
+                    <div style={{ fontSize:11,fontWeight:800,color:'#111',marginBottom:10 }}>Line Movement</div>
+                    {game.lineMovement && !['No significant movement','N/A','No significant movement detected'].includes(game.lineMovement) ? (
+                      <div style={{ fontSize:12,color:'#444',lineHeight:1.7,background:'rgba(246,249,246,0.7)',border:'1px solid rgba(195,240,195,0.5)',borderRadius:10,padding:'12px 14px' }}>
+                        <i className="ti ti-bolt" style={{ fontSize:13,color:'#39FF14',marginRight:6 }} />{game.lineMovement}
+                      </div>
+                    ) : (
+                      <div style={{ fontSize:11,color:'#bbb' }}>No significant line movement detected.</div>
+                    )}
+                    {analysis.priceVsDataAudit && (
+                      <div style={{ marginTop:12 }}>
+                        <div style={{ fontSize:9,fontWeight:800,color:'#33aa00',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:4 }}>Price vs Data</div>
+                        <div style={{ fontSize:11,color:'#444',lineHeight:1.6 }}>{analysis.priceVsDataAudit}</div>
+                      </div>
+                    )}
+                    {analysis.marketLogic && (
+                      <div style={{ marginTop:12 }}>
+                        <div style={{ fontSize:9,fontWeight:800,color:'#33aa00',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:4 }}>Market Logic</div>
+                        <div style={{ fontSize:11,color:'#444',lineHeight:1.6 }}>{analysis.marketLogic}</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Series Context tab */}
+                {activeTab === 'Series Context' && (
+                  <div style={{ background:'rgba(255,255,255,0.7)',border:'1px solid rgba(255,255,255,0.93)',borderRadius:14,padding:'14px 16px' }}>
+                    <div style={{ fontSize:11,fontWeight:800,color:'#111',marginBottom:10 }}>Series Context</div>
+                    {analysis.seriesContext ? (
+                      <div style={{ fontSize:12,color:'#444',lineHeight:1.7 }}>{analysis.seriesContext}</div>
+                    ) : (
+                      <div style={{ fontSize:11,color:'#bbb' }}>No series context available.</div>
+                    )}
+                    {analysis.trellRule && (
+                      <div style={{ marginTop:12,paddingTop:12,borderTop:'1px solid rgba(0,0,0,0.05)' }}>
+                        <div style={{ fontSize:9,fontWeight:800,color:'#33aa00',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:4 }}>Trell Rule</div>
+                        <div style={{ fontSize:11,color:'#444',lineHeight:1.6 }}>{analysis.trellRule}</div>
+                      </div>
+                    )}
+                    {analysis.situational && (
+                      <div style={{ marginTop:12,paddingTop:12,borderTop:'1px solid rgba(0,0,0,0.05)' }}>
+                        <div style={{ fontSize:9,fontWeight:800,color:'#33aa00',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:4 }}>Situational</div>
+                        <div style={{ fontSize:11,color:'#444',lineHeight:1.6 }}>{analysis.situational}</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Key Factors strip */}
+                {analysis.edgeStrength && (
+                  <div style={{ marginTop:12,background:'rgba(255,255,255,0.7)',border:'1px solid rgba(255,255,255,0.93)',borderRadius:14,padding:'12px 16px' }}>
+                    <div style={{ fontSize:9,fontWeight:800,color:'#33aa00',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:6 }}>Edge Strength</div>
+                    <div style={{ fontSize:11,color:'#444',lineHeight:1.6 }}>{analysis.edgeStrength}</div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
     </NewLookShell>
   );
