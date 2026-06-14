@@ -201,6 +201,16 @@ const CONF_STYLES = {
   LOW:    { color:"#ff6b6b", label:"LOW CONFIDENCE",    ring:0.32, text:"LOW CONFIDENCE" },
 };
 
+// Derive a 1-5 star rating from tier + confidence. Tier 3/PASS plays are not
+// star-rated (the model itself says there's no edge), so they return 0.
+function starRating(summary) {
+  const tier = summary?.tier;
+  const conf = summary?.confidence;
+  if (tier === '1') return conf === 'HIGH' ? 5 : conf === 'MEDIUM' ? 4 : 3;
+  if (tier === '2') return conf === 'HIGH' ? 4 : conf === 'MEDIUM' ? 3 : 2;
+  return 0; // Tier 3 / PASS
+}
+
 const NAV_ITEMS = [
   { icon:"⊞", label:"DASHBOARD",     active:true  },
   { icon:"📅", label:"TODAY'S SLATE", active:false },
@@ -619,7 +629,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
               background:isLock?'rgba(57,255,20,0.1)':summary?.tier==='2'?'rgba(255,200,0,0.08)':'rgba(0,0,0,0.04)',
               color:isLock?'#2aa800':summary?.tier==='2'?'#bb8800':'#999',
               border:isLock?'1px solid rgba(57,255,20,0.25)':summary?.tier==='2'?'1px solid rgba(255,200,0,0.2)':'1px solid rgba(0,0,0,0.07)' }}>
-              {isLock?'★★★★★ ':summary?.tier==='2'?'★★★★ ':''}
+              {starRating(summary) > 0 ? '★'.repeat(starRating(summary)) + ' ' : ''}
               {isLock?'TIER 1':summary?.tier==='2'?'TIER 2':'PASS'}
             </span>
           )}
@@ -746,7 +756,7 @@ function TopPlayBanner({ topPlay, loading, results, pickHistory, isSubscribed, i
         <div style={{ display:'flex',alignItems:'center',gap:6 }}>
           <span style={{ fontSize:9,fontWeight:800,color:'#111',background:'#39FF14',padding:'3px 10px',borderRadius:6,letterSpacing:'0.5px',boxShadow:'0 0 8px rgba(57,255,20,0.4)' }}>⭐ TOP PLAY</span>
           <span style={{ fontSize:9,fontWeight:800,padding:'3px 9px',borderRadius:6,background:isVegas?'rgba(57,255,20,0.1)':'rgba(80,140,255,0.08)',color:isVegas?'#2aa800':'#5588ee',border:isVegas?'1px solid rgba(57,255,20,0.25)':'1px solid rgba(80,140,255,0.2)' }}>{topPlay.slot}</span>
-          {isLock&&<span style={{ fontSize:9,fontWeight:800,color:'#2aa800',background:'rgba(57,255,20,0.1)',border:'1px solid rgba(57,255,20,0.25)',padding:'3px 9px',borderRadius:6 }}>★★★★★ TIER 1</span>}
+          {isLock&&<span style={{ fontSize:9,fontWeight:800,color:'#2aa800',background:'rgba(57,255,20,0.1)',border:'1px solid rgba(57,255,20,0.25)',padding:'3px 9px',borderRadius:6 }}>{'★'.repeat(starRating(summary))} TIER 1</span>}
         </div>
         <div style={{ display:'flex',alignItems:'center',gap:8 }}>
           <span style={{ fontSize:10,color:'#aaa' }}>{topPlay.time}</span>
@@ -2398,7 +2408,7 @@ export default function VegasVaultApp() {
                       {game.awayAbbr} @ {game.homeAbbr}
                     </span>
                     <span className="vv-gr-time">{game.time}</span>
-                    {tier && <span className="vv-gr-stars">{tier.label==='LOCK'?'★ 5':tier.label==='2'?'★ 4':'—'}</span>}
+                    {tier && <span className="vv-gr-stars">{starRating(summary) > 0 ? '★ ' + starRating(summary) : '—'}</span>}
                   </div>
                   <div className="vv-gr-b">
                     {summary ? (
@@ -3063,7 +3073,7 @@ export default function VegasVaultApp() {
                 </div>
                 <div style={{ display:'flex',gap:8,marginTop:10 }}>
                   <span style={{ fontSize:9,fontWeight:800,padding:'4px 10px',borderRadius:6,background:tierStyle.bg||'rgba(57,255,20,0.1)',color:tierStyle.text||'#33aa00',border:`1px solid ${tierStyle.border||'rgba(57,255,20,0.25)'}` }}>
-                    {summary.tier==='1'?'🔒 LOCK':summary.tier==='2'?'★★★★ TIER 2':'PASS'}
+                    {summary.tier==='1'?`🔒 LOCK · ${'★'.repeat(starRating(summary))}`:summary.tier==='2'?`${'★'.repeat(starRating(summary))} TIER 2`:'PASS'}
                   </span>
                   {hasSlotPattern && (
                     <span style={{ fontSize:9,fontWeight:800,padding:'4px 10px',borderRadius:6,background:isVegas?'rgba(57,255,20,0.1)':'rgba(80,140,255,0.08)',color:isVegas?'#2aa800':'#5588ee',border:isVegas?'1px solid rgba(57,255,20,0.25)':'1px solid rgba(80,140,255,0.2)' }}>
