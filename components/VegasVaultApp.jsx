@@ -882,8 +882,7 @@ export default function VegasVaultApp() {
       const { data: { subscription } } = sb.auth.onAuthStateChange(async (_e, session) => {
         if (session?.user) {
           setAuthUser(session.user);
-          // If modal is open after signup/login, advance to plans
-          setAuthMode(prev => (prev === 'login' || prev === 'signup') ? 'plans' : prev);
+          setAuthMode(prev => prev === 'confirm' ? 'login' : prev);
           if (session.user.email === ADMIN_EMAIL) { localStorage.setItem('vv_admin','1'); setIsSubscribed(true); }
           else {
             // Always check Supabase for live subscription status
@@ -917,12 +916,21 @@ export default function VegasVaultApp() {
       const sb = getSB();
       if (!sb) { setAuthError('Auth unavailable'); setAuthLoading(false); return; }
       if (authMode === 'signup') {
-        const { error } = await sb.auth.signUp({
+        const { data, error } = await sb.auth.signUp({
           email: authEmail,
           password: authPw,
           options: { data: { full_name: authFullName.trim() } },
         });
-        if (error) { setAuthError(error.message); } else { setAuthMode('plans'); }
+        if (error) { setAuthError(error.message); }
+        else if (data.session && data.user) {
+          // Email confirmation disabled — user is signed in immediately
+          setAuthUser(data.user);
+          if (data.user.email === ADMIN_EMAIL) { localStorage.setItem('vv_admin','1'); setIsSubscribed(true); }
+          setAuthEmail(''); setAuthPw(''); setAuthFullName('');
+        } else {
+          // Email confirmation required — no session yet
+          setAuthMode('confirm');
+        }
       } else {
         const { data, error } = await sb.auth.signInWithPassword({ email: authEmail, password: authPw });
         if (error) { setAuthError(error.message); }
@@ -2141,6 +2149,19 @@ export default function VegasVaultApp() {
               <div style={{ fontSize:14,fontWeight:800,color:'#111',letterSpacing:0.5 }}>VEGAS VAULT AI</div>
               <div style={{ fontSize:10,color:'#aaa',letterSpacing:'1.5px',textTransform:'uppercase',marginTop:2 }}>AI Model OS</div>
             </div>
+            {authMode === 'confirm' ? (
+              <>
+                <div style={{ fontSize:18,fontWeight:800,color:'#111',textAlign:'center',marginBottom:4 }}>Check your email</div>
+                <div style={{ fontSize:11,color:'#aaa',textAlign:'center',marginBottom:20,lineHeight:1.6 }}>
+                  We sent a confirmation link to <b style={{ color:'#444' }}>{authEmail}</b>. Click the link to verify your account, then log in below to choose your plan.
+                </div>
+                <button onClick={()=>{ setAuthMode('login'); setAuthPw(''); }}
+                  style={{ width:'100%',padding:13,borderRadius:11,background:'linear-gradient(135deg,#39FF14,#22cc00)',border:'none',fontFamily:'inherit',fontSize:13,fontWeight:800,color:'#111',cursor:'pointer',boxShadow:'0 4px 16px rgba(57,255,20,0.35)' }}>
+                  Go to Login →
+                </button>
+              </>
+            ) : (
+            <>
             <div style={{ fontSize:18,fontWeight:800,color:'#111',textAlign:'center',marginBottom:4 }}>{authMode==='signup' ? 'Create your account' : 'Welcome back'}</div>
             <div style={{ fontSize:11,color:'#aaa',textAlign:'center',marginBottom:20 }}>{authMode==='signup' ? 'Sign up to access your AI sports intelligence platform' : 'Sign in to access your AI sports intelligence platform'}</div>
             {authMode==='signup' && (
@@ -2186,6 +2207,8 @@ export default function VegasVaultApp() {
                 {authMode==='login'?'Sign up':'Sign in'}
               </span>
             </div>
+            </>
+            )}
           </div>
         </div>
       )}
