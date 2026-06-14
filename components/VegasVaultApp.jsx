@@ -538,6 +538,19 @@ function getAbbr(name) {
   return NAME_TO_ABBR[name] || NAME_TO_ABBR[name.split(' ').pop()] || name.slice(0,3).toUpperCase();
 }
 
+function ConfidenceChart({ history }) {
+  const base = [20,35,28,45,38,52,42,60,55,58,65,70,62,75,70];
+  const data = history && history.length > 1 ? history : base;
+  const pts = data.map((v,i)=>`${i*(200/(data.length-1))},${70-(v/100)*60}`).join(" ");
+  return(
+    <svg width="100%" height="50" viewBox="0 0 200 70" preserveAspectRatio="none">
+      <defs><linearGradient id="vv-cg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#39FF14" stopOpacity="0.2"/><stop offset="100%" stopColor="#39FF14" stopOpacity="0"/></linearGradient></defs>
+      <polygon points={`0,70 ${pts} 200,70`} fill="url(#vv-cg)"/>
+      <polyline points={pts} fill="none" stroke="#39FF14" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
 // ── GAME CARD (new glass design) ──────────────────────────────────────────────
 function GameCard({ game, onGenerate, results, generating, onCardClick, liveScores, isSubscribed, finalized, isQueued, betReady, onShowAuth, watchlist, onToggleWatch, pickHistory }) {
   const resultVegas  = results[`${game.id}-VEGAS`];
@@ -1779,9 +1792,144 @@ export default function VegasVaultApp() {
         button { font-family: inherit; }
         ::-webkit-scrollbar{width:4px;}
         ::-webkit-scrollbar-thumb{background:rgba(57,255,20,0.2);border-radius:2px;}
+        .vv-center{flex:1;min-width:0;display:grid;grid-template-columns:1fr 1.15fr 1fr;gap:10px;align-items:start}
+        .vv-col{display:flex;flex-direction:column;gap:10px;min-width:0}
+        .vv-glass{background:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.93);border-radius:16px;backdrop-filter:blur(20px);box-shadow:0 8px 30px rgba(0,0,0,0.06),0 2px 8px rgba(0,0,0,0.03),inset 0 1px 0 rgba(255,255,255,0.95)}
+        .vv-glass-g{background:rgba(255,255,255,0.62);border:1px solid rgba(57,255,20,0.28);border-radius:16px;backdrop-filter:blur(20px);box-shadow:0 10px 36px rgba(57,255,20,0.09),0 3px 10px rgba(0,0,0,0.04),inset 0 1px 0 rgba(255,255,255,0.95)}
+        .vv-pad{padding:13px 15px}
+        .vv-card-ey{font-size:9px;text-transform:uppercase;letter-spacing:0.7px;color:#bbb;margin-bottom:1px;font-weight:500}
+        .vv-card-t{font-size:11px;font-weight:800;color:#111;letter-spacing:0.3px}
+
+        .vv-orb-card{padding:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden}
+        .vv-orb-card::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,rgba(57,255,20,0.06) 0%,transparent 60%);pointer-events:none}
+        .vv-oc-ey{font-size:9px;text-transform:uppercase;letter-spacing:1.4px;color:#aaa;text-align:center;font-weight:600}
+        .vv-oc-title{font-size:12px;font-weight:800;color:#111;text-align:center;letter-spacing:0.4px;margin:2px 0}
+        .vv-oc-badge{display:inline-flex;align-items:center;gap:5px;font-size:8px;font-weight:700;letter-spacing:1px;color:#39FF14;border:1px solid rgba(57,255,20,0.35);padding:2px 10px;border-radius:9px;background:rgba(57,255,20,0.07);margin-bottom:8px}
+        .vv-oc-dot{width:5px;height:5px;border-radius:50%;background:#39FF14;box-shadow:0 0 5px #39FF14}
+        .vv-orb-stage{position:relative;width:210px;height:210px;display:flex;align-items:center;justify-content:center}
+        .vv-orb-out{position:absolute;inset:0;border-radius:50%;border:1px solid rgba(57,255,20,0.08)}
+        .vv-orb-mid{position:absolute;inset:22px;border-radius:50%;border:1px solid rgba(57,255,20,0.13)}
+        .vv-orb-glow-base{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);width:165px;height:28px;background:radial-gradient(ellipse,rgba(57,255,20,0.28) 0%,transparent 70%);filter:blur(8px)}
+        .vv-orb-sphere{width:158px;height:158px;border-radius:50%;background:radial-gradient(circle at 28% 25%,rgba(255,255,255,0.99) 0%,rgba(225,255,210,0.9) 20%,rgba(170,255,120,0.68) 46%,rgba(60,190,20,0.55) 74%,rgba(30,150,5,0.65) 100%);border:1.5px solid rgba(190,255,170,0.7);display:flex;align-items:center;justify-content:center;position:relative;z-index:3;box-shadow:0 0 0 8px rgba(57,255,20,0.04),0 0 40px rgba(57,255,20,0.4),0 0 80px rgba(57,255,20,0.18),0 0 140px rgba(57,255,20,0.08),inset -16px -16px 30px rgba(255,255,255,0.55),inset 6px 6px 16px rgba(255,255,255,0.8)}
+        .vv-orb-sphere::before{content:'';position:absolute;inset:-15px;border-radius:50%;border:1px solid rgba(57,255,20,0.14);z-index:-1}
+        .vv-orb-sphere::after{content:'';position:absolute;inset:-30px;border-radius:50%;border:1px solid rgba(57,255,20,0.07);z-index:-1}
+        .vv-orb-net{position:absolute;inset:0;width:100%;height:100%;opacity:0.45}
+        .vv-orb-core{width:104px;height:104px;border-radius:50%;background:radial-gradient(circle at 34% 30%,rgba(200,255,140,0.9),rgba(57,200,10,0.95));border:2px solid rgba(57,255,20,0.75);display:flex;align-items:center;justify-content:center;box-shadow:0 0 24px rgba(57,255,20,0.6),0 0 48px rgba(57,255,20,0.28),inset 0 0 20px rgba(255,255,255,0.28)}
+        .vv-orb-ai{font-size:33px;font-weight:900;color:#fff;text-shadow:0 0 24px rgba(40,180,0,0.8),0 2px 4px rgba(0,0,0,0.18)}
+        .vv-orb-p1{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:155px;height:16px;border-radius:50%;background:rgba(255,255,255,0.42);border:1px solid rgba(170,240,150,0.55);box-shadow:0 2px 18px rgba(57,255,20,0.18)}
+        .vv-orb-p2{position:absolute;bottom:-1px;left:50%;transform:translateX(-50%);width:110px;height:11px;border-radius:50%;background:rgba(255,255,255,0.28);border:1px solid rgba(170,240,150,0.38)}
+        .vv-orb-p3{position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);width:72px;height:7px;border-radius:50%;background:rgba(255,255,255,0.16)}
+
+        .vv-icon-dock{display:flex;justify-content:center;gap:8px;padding:8px;align-self:center;margin:-4px 0}
+        .vv-dock-i{width:32px;height:32px;border-radius:9px;background:rgba(255,255,255,0.7);border:1px solid rgba(200,240,200,0.6);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.04)}
+        .vv-dock-i.on{background:#39FF14;border-color:#39FF14;box-shadow:0 0 12px rgba(57,255,20,0.45)}
+        .vv-dock-i i{font-size:15px;color:#bbb}.vv-dock-i.on i{color:#111}
+
+        .vv-mc-box{text-align:center}
+        .vv-mc-hd{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+        .vv-mc-licon{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,rgba(57,255,20,0.2),rgba(40,180,0,0.32));border:1px solid rgba(57,255,20,0.35);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+        .vv-mc-licon i{font-size:15px;color:#2aa800}
+        .vv-mc-ey2{font-size:8px;text-transform:uppercase;letter-spacing:0.6px;color:#bbb;text-align:left}
+        .vv-mc-nm{font-size:12px;font-weight:700;color:#111;display:flex;align-items:center;gap:5px}
+        .vv-mc-pr{font-size:7px;font-weight:800;padding:1px 5px;border-radius:4px;background:linear-gradient(135deg,#39FF14,#22cc00);color:#111}
+        .vv-mc-body{display:flex;gap:12px;align-items:center}
+        .vv-mc-3d{width:54px;height:54px;background:linear-gradient(135deg,rgba(57,255,20,0.15),rgba(40,180,0,0.28));border-radius:11px;border:1px solid rgba(57,255,20,0.3);display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(57,255,20,0.18);flex-shrink:0}
+        .vv-mc-3d i{font-size:26px;color:#2aa800}
+        .vv-mc-rows{flex:1}
+        .vv-mc-r{display:flex;justify-content:space-between;font-size:9px;padding:2px 0}
+        .vv-mk{color:#bbb}.vv-mv{color:#333;font-weight:600}.vv-mv.g{color:#39FF14;font-weight:700}
+        .vv-mc-link{font-size:10px;color:#39FF14;font-weight:600;margin-top:8px;padding-top:8px;border-top:0.5px solid rgba(0,0,0,0.05);cursor:pointer;display:flex;align-items:center;justify-content:space-between}
+
+        .vv-pf-row{display:flex;align-items:center;gap:10px;margin-top:8px}
+        .vv-dnut{position:relative;width:64px;height:64px;flex-shrink:0}
+        .vv-dnut svg{transform:rotate(-90deg)}
+        .vv-dc{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center}
+        .vv-dc-v{font-size:11px;font-weight:800;color:#111;display:block;line-height:1.1}
+        .vv-dc-l{font-size:6.5px;color:#aaa;text-transform:uppercase;letter-spacing:0.4px}
+        .vv-pr{flex:1;display:flex;flex-direction:column;gap:3px}
+        .vv-pr-r{display:flex;justify-content:space-between;font-size:10px}
+        .vv-pk{color:#bbb}.vv-pv{color:#333;font-weight:600}
+
+        .vv-sys-top{display:flex;justify-content:space-between;align-items:flex-start}
+        .vv-sys-pct{font-size:12px;font-weight:800;color:#39FF14}
+        .vv-sys-mets{display:flex;gap:6px;margin-top:8px}
+        .vv-sys-m{flex:1;background:rgba(255,255,255,0.6);border:1px solid rgba(57,255,20,0.12);border-radius:9px;padding:7px 4px;text-align:center}
+        .vv-sys-mv{font-size:13px;font-weight:700;color:#111}
+        .vv-sys-mk{font-size:7px;color:#aaa;text-transform:uppercase;letter-spacing:0.3px;margin-top:1px}
+
+        .vv-ai-card{padding:13px 14px}
+        .vv-ai-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+        .vv-ai-trow{display:flex;align-items:center;gap:7px}
+        .vv-ai-ic{width:26px;height:26px;border-radius:7px;background:rgba(57,255,20,0.1);border:1px solid rgba(57,255,20,0.25);display:flex;align-items:center;justify-content:center}
+        .vv-ai-ic i{font-size:13px;color:#39FF14}
+        .vv-ai-nm{font-size:10px;font-weight:700;color:#111}
+        .vv-ai-st{font-size:8px;color:#39FF14;font-weight:500;display:flex;align-items:center;gap:3px}
+        .vv-ai-std{width:4px;height:4px;border-radius:50%;background:#39FF14;box-shadow:0 0 4px #39FF14}
+        .vv-ai-bubble{background:rgba(246,255,246,0.85);border:1px solid rgba(195,240,195,0.65);border-radius:10px;padding:9px 11px}
+        .vv-ai-bubble p{font-size:10px;color:#555;margin-bottom:6px;line-height:1.6}
+        .vv-ai-pt{display:flex;align-items:flex-start;gap:5px;margin-bottom:5px}
+        .vv-ai-ptd{width:4px;height:4px;border-radius:50%;background:#39FF14;flex-shrink:0;margin-top:4px;box-shadow:0 0 3px rgba(57,255,20,0.6)}
+        .vv-ai-pt span{font-size:10px;color:#444;line-height:1.5}
+        .vv-ai-inp{display:flex;align-items:center;gap:5px;background:rgba(246,255,246,0.75);border:1px solid rgba(195,240,195,0.75);border-radius:9px;padding:6px 9px;margin-top:7px}
+        .vv-ai-inp input{flex:1;border:none;background:transparent;font-family:'Inter',sans-serif;font-size:10px;color:#333;outline:none}
+        .vv-ai-inp input::placeholder{color:#ccc}
+        .vv-ai-snd{width:21px;height:21px;border-radius:6px;background:#39FF14;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 0 7px rgba(57,255,20,0.4);flex-shrink:0}
+
+        .vv-an-hd{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px}
+        .vv-an-sel{font-size:9px;color:#aaa;border:1px solid #e8e8e8;border-radius:5px;padding:2px 6px;background:#fff;font-family:'Inter',sans-serif}
+        .vv-an-chart{width:100%;height:50px;margin-bottom:8px}
+        .vv-an-mets{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+        .vv-anm{text-align:center}
+        .vv-anm-l{font-size:6.5px;color:#bbb;text-transform:uppercase;letter-spacing:0.3px}
+        .vv-anm-v{font-size:13px;font-weight:700;color:#111}
+        .vv-anm-c{font-size:8px;font-weight:600}
+        .vv-up{color:#39FF14}.vv-dn{color:#ff6b6b}
+
+        .vv-vf-r{display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:0.5px solid rgba(0,0,0,0.04)}
+        .vv-vf-r:last-child{border-bottom:none}
+        .vv-vf-ic{width:20px;height:20px;border-radius:5px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+        .vv-vf-ic.r{background:rgba(255,80,80,0.09)}.vv-vf-ic.g{background:rgba(57,255,20,0.09)}.vv-vf-ic.y{background:rgba(220,180,0,0.09)}.vv-vf-ic.o{background:rgba(255,130,0,0.09)}
+        .vv-vf-nm{font-size:9px;color:#333;font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .vv-vf-sz{font-size:8px;color:#bbb;margin-right:3px}
+        .vv-vf-tm{font-size:8px;color:#ddd;min-width:24px;text-align:right}
+        .vv-vf-va{font-size:10px;color:#39FF14;font-weight:600;text-align:center;padding-top:7px;cursor:pointer}
+
+        .vv-slate{width:230px;flex-shrink:0;padding:14px 13px;display:flex;flex-direction:column}
+        .vv-gc-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:1px}
+        .vv-gc-t{font-size:11px;font-weight:800;color:#111;text-transform:uppercase;letter-spacing:0.4px}
+        .vv-gc-sub{font-size:9px;color:#bbb;margin-bottom:8px}
+        .vv-sp-tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px}
+        .vv-sp{font-size:9px;padding:2px 7px;border-radius:6px;border:1px solid rgba(200,200,200,0.35);color:#bbb;cursor:pointer;font-weight:600;background:rgba(255,255,255,0.6)}
+        .vv-sp.on{background:#39FF14;border-color:#39FF14;color:#111;box-shadow:0 0 8px rgba(57,255,20,0.3)}
+        .vv-gr{padding:6px 0;border-bottom:0.5px solid rgba(0,0,0,0.05);cursor:pointer}
+        .vv-gr:last-of-type{border-bottom:none}
+        .vv-gr-a{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px}
+        .vv-gr-t{font-size:10px;color:#999;display:flex;align-items:center;gap:4px}
+        .vv-gr-lg{width:13px;height:13px;border-radius:3px;flex-shrink:0;object-fit:contain}
+        .vv-gr-time{font-size:9px;color:#ddd}
+        .vv-gr-stars{font-size:9px;color:#39FF14;font-weight:700}
+        .vv-gr-b{display:flex;align-items:center;justify-content:space-between}
+        .vv-gr-pick{font-size:11px;font-weight:700;color:#111}
+        .vv-gr-odds{font-size:10px;color:#999}
+        .vv-sl{font-size:8px;padding:2px 5px;border-radius:4px;font-weight:700}
+        .vv-sl.v{background:rgba(57,255,20,0.08);color:#2aa800;border:1px solid rgba(57,255,20,0.18)}
+        .vv-sl.p{background:rgba(180,200,255,0.12);color:#7799cc;border:1px solid rgba(160,190,240,0.22)}
+        .vv-sl.pass{background:rgba(255,180,180,0.12);color:#cc8888;border:1px solid rgba(240,160,160,0.22)}
+        .vv-gc-va{font-size:10px;color:#39FF14;font-weight:700;padding-top:8px;margin-top:auto;display:flex;align-items:center;justify-content:space-between;cursor:pointer}
+
+        @media (max-width:1300px){
+          .vv-center{grid-template-columns:1fr 1fr}
+          .vv-center > .vv-col:nth-child(3){grid-column:span 2}
+        }
+        @media (max-width:900px){
+          .vv-dashboard-row{flex-direction:column}
+          .vv-center{grid-template-columns:1fr}
+          .vv-center > .vv-col:nth-child(3){grid-column:span 1}
+          .vv-slate{width:100%}
+        }
       `}</style>
 
-      {/* ── NOT SIGNED IN → auth screen ── */}
+      {/* ── AUTH GATE ── */}
       {!authUser && (
         <div style={{ position:'fixed',inset:0,zIndex:9999,background:'rgba(246,249,246,0.97)',backdropFilter:'blur(20px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
           <div style={{ background:'rgba(255,255,255,0.9)',border:'1px solid rgba(57,255,20,0.3)',borderRadius:20,width:'100%',maxWidth:420,padding:'32px 28px',boxShadow:'0 20px 60px rgba(0,0,0,0.1)' }}>
@@ -1794,204 +1942,368 @@ export default function VegasVaultApp() {
             </div>
             <div style={{ fontSize:18,fontWeight:800,color:'#111',textAlign:'center',marginBottom:4 }}>Welcome back</div>
             <div style={{ fontSize:11,color:'#aaa',textAlign:'center',marginBottom:20 }}>Sign in to access your AI sports intelligence platform</div>
-            {['email','password'].map(f=>(
-              <div key={f} style={{ marginBottom:12 }}>
-                <div style={{ fontSize:9,textTransform:'uppercase',letterSpacing:'0.6px',color:'#aaa',marginBottom:5,fontWeight:600 }}>{f}</div>
-                <div style={{ display:'flex',alignItems:'center',gap:8,border:'1px solid rgba(0,0,0,0.08)',borderRadius:10,padding:'11px 13px',background:'rgba(255,255,255,0.8)' }}>
-                  <i className={f==='email'?'ti ti-mail':'ti ti-lock'} style={{ fontSize:15,color:'#bbb' }}/>
-                  <input type={f==='password'&&!showPw?'password':f==='email'?'email':'text'}
-                    value={f==='email'?authEmail:authPw}
-                    onChange={e=>f==='email'?setAuthEmail(e.target.value):setAuthPw(e.target.value)}
-                    placeholder={f==='email'?'you@email.com':'••••••••'}
-                    onKeyDown={e=>e.key==='Enter'&&doAuth()}
-                    style={{ flex:1,border:'none',background:'transparent',fontSize:12,color:'#333',outline:'none',fontFamily:'inherit' }}/>
-                  {f==='password'&&<span onClick={()=>setShowPw(p=>!p)} style={{ cursor:'pointer',fontSize:15,color:'#bbb' }}><i className={showPw?'ti ti-eye-off':'ti ti-eye'}/></span>}
-                </div>
+            <div style={{ marginBottom:12 }}>
+              <div style={{ fontSize:9,textTransform:'uppercase',letterSpacing:'0.6px',color:'#aaa',marginBottom:5,fontWeight:600 }}>Email</div>
+              <div style={{ display:'flex',alignItems:'center',gap:8,border:'1px solid rgba(0,0,0,0.08)',borderRadius:10,padding:'11px 13px',background:'rgba(255,255,255,0.8)' }}>
+                <i className="ti ti-mail" style={{ fontSize:15,color:'#bbb' }} />
+                <input type="email" value={authEmail} onChange={e=>setAuthEmail(e.target.value)} placeholder="you@email.com"
+                  style={{ flex:1,border:'none',background:'transparent',fontSize:12,color:'#333',outline:'none',fontFamily:'inherit' }}
+                  onKeyDown={e=>e.key==='Enter'&&doAuth()} />
               </div>
-            ))}
-            {authError&&<div style={{ fontSize:11,color:'#dd4444',background:'rgba(255,80,80,0.08)',border:'1px solid rgba(255,80,80,0.2)',borderRadius:8,padding:'8px 12px',marginBottom:12,textAlign:'center' }}>{authError}</div>}
+            </div>
+            <div style={{ marginBottom:16 }}>
+              <div style={{ fontSize:9,textTransform:'uppercase',letterSpacing:'0.6px',color:'#aaa',marginBottom:5,fontWeight:600 }}>Password</div>
+              <div style={{ display:'flex',alignItems:'center',gap:8,border:'1px solid rgba(0,0,0,0.08)',borderRadius:10,padding:'11px 13px',background:'rgba(255,255,255,0.8)' }}>
+                <i className="ti ti-lock" style={{ fontSize:15,color:'#bbb' }} />
+                <input type={showPw?'text':'password'} value={authPw} onChange={e=>setAuthPw(e.target.value)} placeholder="••••••••"
+                  style={{ flex:1,border:'none',background:'transparent',fontSize:12,color:'#333',outline:'none',fontFamily:'inherit' }}
+                  onKeyDown={e=>e.key==='Enter'&&doAuth()} />
+                <span onClick={()=>setShowPw(p=>!p)} style={{ cursor:'pointer',fontSize:15,color:'#bbb' }}>
+                  <i className={showPw?'ti ti-eye-off':'ti ti-eye'} />
+                </span>
+              </div>
+            </div>
+            {authError && <div style={{ fontSize:11,color:'#dd4444',background:'rgba(255,80,80,0.08)',border:'1px solid rgba(255,80,80,0.2)',borderRadius:8,padding:'8px 12px',marginBottom:12,textAlign:'center' }}>{authError}</div>}
             <button onClick={doAuth} disabled={authLoading}
               style={{ width:'100%',padding:13,borderRadius:11,background:'linear-gradient(135deg,#39FF14,#22cc00)',border:'none',fontFamily:'inherit',fontSize:13,fontWeight:800,color:'#111',cursor:authLoading?'wait':'pointer',boxShadow:'0 4px 16px rgba(57,255,20,0.35)',marginBottom:12 }}>
-              {authLoading?'Signing in...':'Log In to Vault →'}
+              {authLoading ? 'Signing in...' : 'Log In to Vault →'}
             </button>
             <div style={{ textAlign:'center',fontSize:11,color:'#aaa' }}>
               Don't have an account?{' '}
-              <span onClick={()=>setAuthMode(m=>m==='login'?'signup':'login')} style={{ color:'#33aa00',fontWeight:700,cursor:'pointer' }}>{authMode==='login'?'Sign up':'Sign in'}</span>
+              <span onClick={()=>setAuthMode(authMode==='login'?'signup':'login')} style={{ color:'#33aa00',fontWeight:700,cursor:'pointer' }}>
+                {authMode==='login'?'Sign up':'Sign in'}
+              </span>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── SIGNED IN BUT NOT SUBSCRIBED → paywall ── */}
-      {authUser&&!isSubscribed&&(
+      {/* ── PAYWALL ── */}
+      {authUser && !isSubscribed && (
         <div style={{ position:'fixed',inset:0,zIndex:9998,background:'rgba(246,249,246,0.97)',backdropFilter:'blur(20px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
           <div style={{ background:'rgba(255,255,255,0.7)',border:'1px solid rgba(57,255,20,0.28)',borderRadius:20,width:'100%',maxWidth:420,overflow:'hidden',boxShadow:'0 20px 60px rgba(57,255,20,0.09)' }}>
             <div style={{ padding:'24px 28px 8px',textAlign:'center' }}>
               <div style={{ display:'inline-flex',alignItems:'center',gap:6,fontSize:9,fontWeight:800,letterSpacing:'1.2px',color:'#39FF14',border:'1px solid rgba(57,255,20,0.35)',padding:'4px 14px',borderRadius:14,background:'rgba(57,255,20,0.07)',marginBottom:12 }}>
-                <span style={{ width:5,height:5,borderRadius:'50%',background:'#39FF14',boxShadow:'0 0 5px #39FF14',display:'inline-block' }}/>SUBSCRIPTION REQUIRED
+                <span style={{ width:5,height:5,borderRadius:'50%',background:'#39FF14',boxShadow:'0 0 5px #39FF14',display:'inline-block' }} />
+                SUBSCRIPTION REQUIRED
               </div>
               <div style={{ fontSize:20,fontWeight:800,color:'#111' }}>Unlock Vegas Vault AI</div>
               <div style={{ fontSize:11,color:'#aaa',marginTop:4,lineHeight:1.5 }}>Subscribe to access live AI analysis, Tier 1 locks,<br/>and the full Games Slate across all sports.</div>
             </div>
             <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,padding:'16px 28px' }}>
-              {[{name:'Weekly',price:'$14.99',period:'per week',plan:'weekly'},
-                {name:'Monthly',price:'$29.99',period:'per month',save:'Save 50% vs weekly',best:true,plan:'monthly'}].map(p=>(
-                <div key={p.name} onClick={()=>doSubscribe(p.plan)}
-                  style={{ border:p.best?'2px solid #39FF14':'1px solid rgba(0,0,0,0.07)',borderRadius:14,padding:'16px 14px',textAlign:'center',cursor:'pointer',position:'relative',background:p.best?'rgba(255,255,255,0.8)':'rgba(255,255,255,0.5)',boxShadow:p.best?'0 0 24px rgba(57,255,20,0.15)':'none' }}>
-                  {p.best&&<div style={{ position:'absolute',top:-9,left:'50%',transform:'translateX(-50%)',fontSize:8,fontWeight:800,color:'#111',background:'#39FF14',padding:'3px 10px',borderRadius:8 }}>BEST VALUE</div>}
-                  <div style={{ fontSize:11,fontWeight:700,color:'#aaa',textTransform:'uppercase',letterSpacing:'0.6px',marginTop:6 }}>{p.name}</div>
-                  <div style={{ fontSize:24,fontWeight:900,color:'#111',marginTop:6 }}>{p.price}</div>
-                  <div style={{ fontSize:10,color:'#bbb' }}>{p.period}</div>
-                  {p.save&&<div style={{ fontSize:9,color:'#33aa00',fontWeight:700,marginTop:4 }}>{p.save}</div>}
+              {[{name:'Weekly',price:'$14.99',period:'per week',save:''},
+                {name:'Monthly',price:'$29.99',period:'per month',save:'Save 50% vs weekly',best:true}].map(plan=>(
+                <div key={plan.name} onClick={()=>doSubscribe(plan.name.toLowerCase())} style={{ border:plan.best?'2px solid #39FF14':'1px solid rgba(0,0,0,0.07)',borderRadius:14,padding:'16px 14px',textAlign:'center',cursor:'pointer',position:'relative',background:plan.best?'rgba(255,255,255,0.8)':'rgba(255,255,255,0.5)',boxShadow:plan.best?'0 0 24px rgba(57,255,20,0.15)':'none' }}>
+                  {plan.best && <div style={{ position:'absolute',top:-9,left:'50%',transform:'translateX(-50%)',fontSize:8,fontWeight:800,color:'#111',background:'#39FF14',padding:'3px 10px',borderRadius:8,letterSpacing:0.5 }}>BEST VALUE</div>}
+                  <div style={{ fontSize:11,fontWeight:700,color:'#aaa',textTransform:'uppercase',letterSpacing:'0.6px',marginTop:6 }}>{plan.name}</div>
+                  <div style={{ fontSize:24,fontWeight:900,color:'#111',marginTop:6 }}>{plan.price}</div>
+                  <div style={{ fontSize:10,color:'#bbb' }}>{plan.period}</div>
+                  {plan.save && <div style={{ fontSize:9,color:'#33aa00',fontWeight:700,marginTop:4 }}>{plan.save}</div>}
                 </div>
               ))}
             </div>
             <div style={{ padding:'0 28px 20px' }}>
-              {['Full AI analysis on every game — MLB, NBA, NFL, Tennis','Daily Top Play of the Day with AI Lock','Tier 1 / Tier 2 / Pass breakdowns with confidence levels','Scam play alerts, line movement & sharp money tracking','Vault Locks archive with W/L record tracking'].map((f,i)=>(
+              {['Full AI analysis on every game — MLB, NBA, NFL, Tennis','Daily Top Play of the Day with AI Lock','Tier 1 / Tier 2 / Pass breakdowns','Scam play alerts, line movement & sharp money','Vault storage for saved plays'].map((f,i)=>(
                 <div key={i} style={{ display:'flex',alignItems:'flex-start',gap:8,padding:'6px 0',fontSize:11,color:'#444',lineHeight:1.5 }}>
                   <div style={{ width:18,height:18,borderRadius:'50%',background:'rgba(57,255,20,0.1)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,marginTop:1 }}>
-                    <i className="ti ti-check" style={{ fontSize:11,color:'#33aa00' }}/>
-                  </div>{f}
+                    <i className="ti ti-check" style={{ fontSize:11,color:'#33aa00' }} />
+                  </div>
+                  {f}
                 </div>
               ))}
-              <div style={{ textAlign:'center',fontSize:10,color:'#ccc',marginTop:12 }}>Cancel anytime. Manage via Settings → Customer Portal.</div>
+              <div style={{ textAlign:'center',fontSize:10,color:'#ccc',marginTop:12,lineHeight:1.6 }}>
+                Cancel anytime. Manage via Settings → Customer Portal.
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── SIGNED IN + SUBSCRIBED → main app ── */}
-      {authUser&&isSubscribed&&(
-        <div style={{ display:'flex',flexDirection:'column',gap:12 }}>
+      {/* ── DASHBOARD — 3-column command center + games slate ── */}
+      {authUser && isSubscribed && (
+        <div className="vv-dashboard-row" style={{ display:'flex', gap:10, alignItems:'flex-start' }}>
 
-          {/* Top Play Banner */}
-          <TopPlayBanner topPlay={topPlay} loading={topPlayLoading} results={results} pickHistory={pickHistory}
-            isSubscribed={isSubscribed} isAdmin={shellIsAdmin} watchlist={watchlist}
-            onToggleWatch={id=>setWatchlist(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id])}
-            onForceRefresh={null} />
+          <div className="vv-center">
 
-          {/* Page header: title + date nav + sport filter */}
-          <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:10 }}>
-            <div>
-              <div style={{ fontSize:18,fontWeight:800,color:'#111',letterSpacing:-0.3 }}>Today's Slate</div>
-              <div style={{ fontSize:11,color:'#aaa',marginTop:2 }}>
-                {new Date(selectedDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'})}
-                {' · '}{games.filter(g=>filter==='ALL'||g.sport===filter).length} games
+            {/* COLUMN 1: AI Performance, System Overview, Vault Files */}
+            <div className="vv-col">
+              <div className="vv-glass vv-pad">
+                <div style={{ display:'flex',justifyContent:'space-between',alignItems:'flex-start' }}>
+                  <div><div className="vv-card-ey">AI Performance</div><div className="vv-card-t">Real-time Model Efficiency</div></div>
+                  <i className="ti ti-dots" style={{ color:'#ccc',fontSize:14 }} />
+                </div>
+                <div className="vv-pf-row">
+                  <div className="vv-dnut">
+                    <svg width="64" height="64" viewBox="0 0 64 64">
+                      <circle cx="32" cy="32" r="24" fill="none" stroke="rgba(57,255,20,0.13)" strokeWidth="8"/>
+                      <circle cx="32" cy="32" r="24" fill="none" stroke="#39FF14" strokeWidth="8" strokeDasharray="150.8" strokeDashoffset="10" strokeLinecap="round"/>
+                    </svg>
+                    <div className="vv-dc"><span className="vv-dc-v">{winRate!=null?`${winRate}%`:'—'}</span><span className="vv-dc-l">{winRate!=null&&winRate>=60?'OPTIMAL':'TRACKING'}</span></div>
+                  </div>
+                  <div className="vv-pr">
+                    <div className="vv-pr-r"><span className="vv-pk">Picks Tracked</span><span className="vv-pv">{pickHistory.length}</span></div>
+                    <div className="vv-pr-r"><span className="vv-pk">Bookmakers</span><span className="vv-pv">{bookmakerCount}</span></div>
+                    <div className="vv-pr-r"><span className="vv-pk">Accuracy</span><span className="vv-pv" style={{ color:'#39FF14' }}>{winRate!=null?`${winRate}%`:'—'}</span></div>
+                    <div className="vv-pr-r"><span className="vv-pk">AI Confidence</span><span className="vv-pv">{aiConfidence!=null?`${aiConfidence}%`:'—'}</span></div>
+                  </div>
+                </div>
               </div>
-            </div>
-            <div style={{ display:'flex',alignItems:'center',gap:8,flexWrap:'wrap' }}>
-              <div style={{ display:'flex',alignItems:'center',gap:4 }}>
-                {[{dir:-1,icon:'ti-chevron-left'},{dir:1,icon:'ti-chevron-right'}].map(({dir,icon})=>(
-                  <button key={dir} onClick={()=>{const d=new Date(selectedDate+'T12:00:00');d.setDate(d.getDate()+dir);setSelectedDate(d.toISOString().split('T')[0]);}}
-                    style={{ width:30,height:30,borderRadius:9,border:'1px solid rgba(0,0,0,0.07)',background:'rgba(255,255,255,0.7)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'#666' }}>
-                    <i className={`ti ${icon}`} style={{ fontSize:14 }}/>
-                  </button>
+
+              <div className="vv-glass vv-pad">
+                <div className="vv-sys-top">
+                  <div><div className="vv-card-ey">System Overview</div><div className="vv-card-t">All Core Systems</div></div>
+                  <div className="vv-sys-pct">{games.length} games</div>
+                </div>
+                <ConfidenceChart history={confHistory} />
+                <div className="vv-sys-mets">
+                  <div className="vv-sys-m"><div className="vv-sys-mv">{games.filter(g=>g.sport==='MLB').length}</div><div className="vv-sys-mk">MLB</div></div>
+                  <div className="vv-sys-m"><div className="vv-sys-mv">{games.filter(g=>g.sport==='NBA').length}</div><div className="vv-sys-mk">NBA</div></div>
+                  <div className="vv-sys-m"><div className="vv-sys-mv">{games.filter(g=>g.sport==='NFL').length}</div><div className="vv-sys-mk">NFL</div></div>
+                </div>
+              </div>
+
+              <div className="vv-glass vv-pad">
+                <div style={{ display:'flex',alignItems:'center',gap:6,marginBottom:2 }}><i className="ti ti-lock" style={{ fontSize:13,color:'#39FF14' }} /><span style={{ fontSize:11,fontWeight:800,color:'#111' }}>Vault Locks</span></div>
+                <div style={{ fontSize:8,color:'#bbb',marginBottom:7,display:'flex',justifyContent:'space-between' }}><span>Tier 1 AI Lock Picks</span><span style={{ fontWeight:600,color:'#555' }}>{pickHistory.filter(p=>p.tier==='1').length} tracked</span></div>
+                {pickHistory.filter(p=>p.tier==='1').slice(-4).reverse().map((p,i)=>(
+                  <div key={i} className="vv-vf-r">
+                    <div className={`vv-vf-ic ${p.result==='win'?'g':p.result==='loss'?'r':'y'}`}>
+                      <i className={`ti ${p.result==='win'?'ti-check':p.result==='loss'?'ti-x':'ti-clock'}`} style={{ color:p.result==='win'?'#2aa800':p.result==='loss'?'#e55':'#aa8800',fontSize:11 }} />
+                    </div>
+                    <div className="vv-vf-nm">{p.pick}</div>
+                    <div className="vv-vf-tm">{p.result==='win'?'WIN':p.result==='loss'?'LOSS':'—'}</div>
+                  </div>
                 ))}
+                {pickHistory.filter(p=>p.tier==='1').length===0 && <div style={{ fontSize:10,color:'#ccc',textAlign:'center',padding:'8px 0' }}>No locks tracked yet</div>}
+                <div className="vv-vf-va" onClick={()=>setShowHistory(true)}>View all locks →</div>
               </div>
-              {['ALL',...new Set(games.map(g=>g.sport).filter(Boolean))].map(s=>(
-                <button key={s} onClick={()=>setFilter(s)}
-                  style={{ fontSize:11,fontWeight:700,padding:'6px 14px',borderRadius:14,border:filter===s?'1px solid #39FF14':'1px solid rgba(0,0,0,0.07)',background:filter===s?'#39FF14':'rgba(255,255,255,0.7)',color:filter===s?'#111':'#999',cursor:'pointer',boxShadow:filter===s?'0 0 8px rgba(57,255,20,0.3)':'none' }}>
-                  {s}
-                </button>
-              ))}
             </div>
+
+            {/* COLUMN 2: AI Core Orb, Icon Dock, Model Card */}
+            <div className="vv-col">
+              <div className="vv-glass-g vv-orb-card">
+                <div className="vv-oc-ey">Vegas Vault AI Core</div>
+                <div className="vv-oc-title">4-Stage Analysis Engine</div>
+                <div className="vv-oc-badge"><div className="vv-oc-dot"></div>ACTIVE</div>
+                <div className="vv-orb-stage">
+                  <div className="vv-orb-out"></div>
+                  <div className="vv-orb-mid"></div>
+                  <div className="vv-orb-glow-base"></div>
+                  <div className="vv-orb-sphere">
+                    <svg className="vv-orb-net" viewBox="0 0 158 158">
+                      <circle cx="79" cy="79" r="68" fill="none" stroke="rgba(57,255,20,0.5)" strokeWidth="0.6"/>
+                      <circle cx="79" cy="79" r="48" fill="none" stroke="rgba(57,255,20,0.4)" strokeWidth="0.5"/>
+                      <line x1="79" y1="11" x2="79" y2="147" stroke="rgba(57,255,20,0.4)" strokeWidth="0.5"/>
+                      <line x1="11" y1="79" x2="147" y2="79" stroke="rgba(57,255,20,0.4)" strokeWidth="0.5"/>
+                      <line x1="26" y1="26" x2="132" y2="132" stroke="rgba(57,255,20,0.3)" strokeWidth="0.5"/>
+                      <line x1="132" y1="26" x2="26" y2="132" stroke="rgba(57,255,20,0.3)" strokeWidth="0.5"/>
+                      <circle cx="79" cy="11" r="3" fill="rgba(57,255,20,0.9)"/>
+                      <circle cx="147" cy="79" r="3" fill="rgba(57,255,20,0.9)"/>
+                      <circle cx="79" cy="147" r="3" fill="rgba(57,255,20,0.9)"/>
+                      <circle cx="11" cy="79" r="3" fill="rgba(57,255,20,0.9)"/>
+                      <circle cx="26" cy="26" r="2.5" fill="rgba(57,255,20,0.7)"/>
+                      <circle cx="132" cy="26" r="2.5" fill="rgba(57,255,20,0.7)"/>
+                      <circle cx="132" cy="132" r="2.5" fill="rgba(57,255,20,0.7)"/>
+                      <circle cx="26" cy="132" r="2.5" fill="rgba(57,255,20,0.7)"/>
+                    </svg>
+                    <div className="vv-orb-core"><span className="vv-orb-ai">AI</span></div>
+                  </div>
+                  <div className="vv-orb-p1"></div>
+                  <div className="vv-orb-p2"></div>
+                  <div className="vv-orb-p3"></div>
+                </div>
+              </div>
+
+              <div className="vv-glass vv-icon-dock">
+                <div className="vv-dock-i" onClick={()=>shellNavigate('analyzer')}><i className="ti ti-target" /></div>
+                <div className="vv-dock-i" onClick={()=>shellNavigate('vault')}><i className="ti ti-lock" /></div>
+                <div className="vv-dock-i on"><i className="ti ti-hexagon" /></div>
+                <div className="vv-dock-i" onClick={()=>shellNavigate('sharp')}><i className="ti ti-currency-dollar" /></div>
+                <div className="vv-dock-i" onClick={()=>shellNavigate('props')}><i className="ti ti-diamond" /></div>
+              </div>
+
+              <div className="vv-glass vv-pad">
+                <div className="vv-mc-box">
+                  <div className="vv-mc-hd">
+                    <div className="vv-mc-licon"><i className="ti ti-hexagon" /></div>
+                    <div style={{ textAlign:'left' }}>
+                      <div className="vv-mc-ey2">Active Model</div>
+                      <div className="vv-mc-nm">Vegas Vault Analysis Engine <span className="vv-mc-pr">PREMIUM</span></div>
+                    </div>
+                  </div>
+                  <div className="vv-mc-body">
+                    <div className="vv-mc-3d"><i className="ti ti-cube-3d-sphere" /></div>
+                    <div className="vv-mc-rows">
+                      <div className="vv-mc-r"><span className="vv-mk">Sports:</span><span className="vv-mv">MLB · NBA · NFL · Tennis</span></div>
+                      <div className="vv-mc-r"><span className="vv-mk">Status:</span><span className="vv-mv g">● Active</span></div>
+                      <div className="vv-mc-r"><span className="vv-mk">Slot System:</span><span className="vv-mv">Public / Vegas</span></div>
+                      <div className="vv-mc-r"><span className="vv-mk">Today's Date:</span><span className="vv-mv">{new Date(selectedDate+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span></div>
+                    </div>
+                  </div>
+                  <div className="vv-mc-link" onClick={()=>shellNavigate('settings')}>Model Settings <i className="ti ti-arrow-right" style={{ fontSize:11 }} /></div>
+                </div>
+              </div>
+            </div>
+
+            {/* COLUMN 3: AI Assistant + Analytics */}
+            <div className="vv-col">
+              <div className="vv-glass vv-ai-card">
+                <div className="vv-ai-hd">
+                  <div className="vv-ai-trow">
+                    <div className="vv-ai-ic"><i className="ti ti-brain" /></div>
+                    <div><div className="vv-ai-nm">Vegas Vault AI Assistant</div><div className="vv-ai-st"><div className="vv-ai-std"></div>Ready</div></div>
+                  </div>
+                  <i className="ti ti-dots" style={{ color:'#ccc',fontSize:13 }} />
+                </div>
+                <div className="vv-ai-bubble">
+                  {topPlay && topPlay.summary ? (
+                    <>
+                      <p>Here's today's top play based on the full slate analysis:</p>
+                      <div className="vv-ai-pt"><div className="vv-ai-ptd"></div><span><b>{topPlay.away} @ {topPlay.home}</b> — {topPlay.summary?.pick}</span></div>
+                      <div className="vv-ai-pt"><div className="vv-ai-ptd"></div><span>Slot: {topPlay.slot} · Tier {topPlay.summary?.tier}</span></div>
+                      <p style={{ marginTop:5 }}>{topPlay.summary?.verdict ? (topPlay.summary.verdict.length>110?topPlay.summary.verdict.slice(0,107)+'...':topPlay.summary.verdict) : ''}</p>
+                    </>
+                  ) : (
+                    <p>Analyzing today's slate of {games.length} games across {new Set(games.map(g=>g.sport)).size} sports. Click ANALYZE on any game card to get the full breakdown.</p>
+                  )}
+                </div>
+                <div className="vv-ai-inp">
+                  <input type="text" placeholder="Ask follow-up..." />
+                  <div className="vv-ai-snd"><i className="ti ti-arrow-right" style={{ color:'#111',fontSize:11 }} /></div>
+                </div>
+              </div>
+
+              <div className="vv-glass vv-pad">
+                <div className="vv-an-hd">
+                  <div><div className="vv-card-ey">Vault Analytics</div><div className="vv-card-t">Pick Performance</div></div>
+                  <select className="vv-an-sel"><option>All Time</option></select>
+                </div>
+                <ConfidenceChart history={confHistory} />
+                <div className="vv-an-mets">
+                  <div className="vv-anm"><div className="vv-anm-l">Total Picks</div><div className="vv-anm-v">{pickHistory.length}</div></div>
+                  <div className="vv-anm"><div className="vv-anm-l">Win Rate</div><div className="vv-anm-v">{winRate!=null?`${winRate}%`:'—'}</div></div>
+                  <div className="vv-anm"><div className="vv-anm-l">Wins</div><div className="vv-anm-v">{pickHistory.filter(p=>p.result==='win').length}</div></div>
+                  <div className="vv-anm"><div className="vv-anm-l">Losses</div><div className="vv-anm-v">{pickHistory.filter(p=>p.result==='loss').length}</div></div>
+                </div>
+              </div>
+            </div>
+
           </div>
 
-          {/* Admin slot pattern banner */}
-          {shellIsAdmin&&(
-            <div style={{ background:'rgba(255,255,255,0.62)',border:'1px solid rgba(57,255,20,0.28)',borderRadius:14,padding:'10px 16px',display:'flex',alignItems:'center',gap:10,flexWrap:'wrap' }}>
-              <span style={{ fontSize:9,fontWeight:800,color:'#fff',background:'linear-gradient(135deg,#111,#333)',padding:'2px 9px',borderRadius:6,letterSpacing:1 }}>ADMIN</span>
-              <span style={{ fontSize:11,fontWeight:600,color:'#555' }}>Slot Pattern Manager</span>
-              <button onClick={()=>window.location.href='/settings'}
-                style={{ fontSize:10,fontWeight:700,padding:'6px 12px',borderRadius:8,background:'linear-gradient(135deg,#39FF14,#22cc00)',border:'none',color:'#111',cursor:'pointer',marginLeft:'auto',display:'flex',alignItems:'center',gap:4 }}>
-                <i className="ti ti-settings" style={{ fontSize:12 }}/>Open Settings
-              </button>
-            </div>
-          )}
-
-          {/* Games grid */}
-          {loading?(
-            <div style={{ textAlign:'center',padding:'60px 0',color:'#aaa',fontSize:13 }}>
-              <div style={{ width:32,height:32,border:'3px solid rgba(57,255,20,0.2)',borderTopColor:'#39FF14',borderRadius:'50%',margin:'0 auto 12px',animation:'spin 0.8s linear infinite' }}/>
-              Loading today's games...
-            </div>
-          ):(
-            <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(340px,1fr))',gap:12 }}>
-              {games.filter(g=>filter==='ALL'||g.sport===filter).map(game=>(
-                <GameCard key={`${game.id}-${game.slot}`} game={game}
-                  onGenerate={handleGenerate} results={results} generating={generating}
-                  onCardClick={(g,r)=>{setActiveGame(g);setActiveResult(r);}}
-                  liveScores={liveScores} isSubscribed={isSubscribed} finalized={finalized}
-                  isQueued={preAnalyzeQueue.includes(`${game.id}-${game.slot}`)}
-                  betReady={!!betReadyAlerts[`${game.id}-${game.slot}`]}
-                  onShowAuth={()=>setShowAuth(true)} watchlist={watchlist}
-                  onToggleWatch={id=>setWatchlist(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id])}
-                  pickHistory={pickHistory}
-                />
+          {/* FAR RIGHT: Games Slate */}
+          <div className="vv-glass vv-slate">
+            <div className="vv-gc-hd"><div className="vv-gc-t">Games Slate</div><i className="ti ti-dots" style={{ color:'#ccc',fontSize:13 }} /></div>
+            <div className="vv-gc-sub">{new Date(selectedDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>
+            <div className="vv-sp-tabs">
+              {['ALL',...new Set(games.map(g=>g.sport).filter(Boolean))].map(s=>(
+                <div key={s} className={`vv-sp${filter===s?' on':''}`} onClick={()=>setFilter(s)}>{s}</div>
               ))}
             </div>
-          )}
+            {loading ? (
+              <div style={{ textAlign:'center',padding:'30px 0',color:'#ccc',fontSize:11 }}>
+                <div style={{ width:20,height:20,border:'2px solid rgba(57,255,20,0.2)',borderTopColor:'#39FF14',borderRadius:'50%',margin:'0 auto 8px',animation:'spin 0.8s linear infinite' }} />
+                Loading...
+              </div>
+            ) : games.filter(g=>filter==='ALL'||g.sport===filter).length===0 ? (
+              <div style={{ textAlign:'center',padding:'30px 0',color:'#ccc',fontSize:11 }}>No games</div>
+            ) : games.filter(g=>filter==='ALL'||g.sport===filter).map(game=>{
+              const key = `${game.id}-${game.slot}`;
+              const result = results[key];
+              const summary = result?.summary;
+              const tier = summary ? (TIER_STYLES[summary.tier]||TIER_STYLES["3"]) : null;
+              const isPass = tier?.label === 'PASS' || tier?.label === 'TIER 3';
+              const slotClass = game.slot==='VEGAS' ? 'v' : 'p';
+              const fmtOdds = v => { if(!v||v==='N/A'||v==='null') return null; if(typeof v==='number') return v>0?`+${v}`:`${v}`; return v; };
+              const pickOdds = summary ? (fmtOdds(game.dkAwayML)||fmtOdds(game.awayML)||'—') : null;
+              return (
+                <div key={key} className="vv-gr" onClick={()=>{ if(result) { setActiveGame(game); setActiveResult(result); } else { handleGenerate(game, game.slot); } }}>
+                  <div className="vv-gr-a">
+                    <span className="vv-gr-t">
+                      <img className="vv-gr-lg" src={`https://a.espncdn.com/i/teamlogos/${game.sport==='NBA'?'nba':game.sport==='NFL'?'nfl':'mlb'}/500/${(game.awayAbbr||'').toLowerCase()}.png`} alt="" onError={e=>e.target.style.display='none'} />
+                      {game.awayAbbr} @ {game.homeAbbr}
+                    </span>
+                    <span className="vv-gr-time">{game.time}</span>
+                    {tier && <span className="vv-gr-stars">{tier.label==='LOCK'?'★ 5':tier.label==='2'?'★ 4':'—'}</span>}
+                  </div>
+                  <div className="vv-gr-b">
+                    {summary ? (
+                      <>
+                        <span className="vv-gr-pick" style={{ color: isPass ? '#ccc' : '#111' }}>{summary.pick}</span>
+                        <span className="vv-gr-odds">{pickOdds}</span>
+                      </>
+                    ) : (
+                      <span className="vv-gr-pick" style={{ color:'#bbb', fontSize:10 }}>Click to analyze</span>
+                    )}
+                    <span className={`vv-sl ${isPass?'pass':slotClass}`}>{isPass?'PASS':game.slot==='VEGAS'?'Vegas Slot':'Public Slot'}</span>
+                  </div>
+                </div>
+              );
+            })}
+            <div className="vv-gc-va" onClick={()=>setShowHistory(true)}>View pick history <i className="ti ti-arrow-right" style={{ fontSize:10 }} /></div>
+          </div>
+
         </div>
       )}
 
       {/* ── HISTORY MODAL ── */}
-      {showHistory&&(
+      {showHistory && (
         <div style={{ position:'fixed',inset:0,zIndex:9000,display:'flex' }}>
           <div onClick={()=>setShowHistory(false)} style={{ position:'absolute',inset:0,background:'rgba(0,0,0,0.4)',backdropFilter:'blur(8px)' }}/>
-          <div style={{ position:'relative',marginLeft:'auto',width:'100%',maxWidth:520,height:'100%',background:'#fff',borderLeft:'1px solid rgba(57,255,20,0.15)',overflowY:'auto',display:'flex',flexDirection:'column' }}>
+          <div style={{ position:'relative',marginLeft:'auto',width:'100%',maxWidth:560,height:'100%',background:'#fff',borderLeft:'1px solid rgba(57,255,20,0.15)',overflowY:'auto',display:'flex',flexDirection:'column' }}>
             <div style={{ padding:'18px 20px',borderBottom:'1px solid rgba(0,0,0,0.06)',display:'flex',alignItems:'center',justifyContent:'space-between',position:'sticky',top:0,background:'#fff',zIndex:10 }}>
               <div>
                 <div style={{ fontSize:14,fontWeight:800,color:'#111' }}>My Picks History</div>
                 <div style={{ fontSize:10,color:'#aaa',marginTop:2 }}>{pickHistory.length} total picks tracked</div>
               </div>
-              <button onClick={()=>setShowHistory(false)} style={{ width:32,height:32,borderRadius:8,border:'1px solid rgba(0,0,0,0.07)',background:'rgba(255,255,255,0.8)',cursor:'pointer',fontSize:16,display:'flex',alignItems:'center',justifyContent:'center',color:'#666' }}>✕</button>
+              <button onClick={()=>setShowHistory(false)} style={{ width:32,height:32,borderRadius:8,border:'1px solid rgba(0,0,0,0.07)',background:'rgba(255,255,255,0.8)',cursor:'pointer',color:'#666',fontSize:16,display:'flex',alignItems:'center',justifyContent:'center' }}>✕</button>
             </div>
-            {pickHistory.length>0&&(()=>{
+            {pickHistory.length > 0 && (()=>{
               const wins=pickHistory.filter(p=>p.result==='win').length;
               const losses=pickHistory.filter(p=>p.result==='loss').length;
               const total=wins+losses;
               const rate=total>0?Math.round((wins/total)*100):0;
               return (
-                <div style={{ padding:'14px 20px',borderBottom:'1px solid rgba(0,0,0,0.06)',display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10 }}>
-                  {[{label:'All Time',value:`${rate}%`,sub:`${wins}W-${losses}L`,c:rate>=60?'#33aa00':rate>=50?'#bb8800':'#dd4444'},
-                    {label:'Last 7D',value:((w,l)=>l+w>0?Math.round(w/(w+l)*100)+'%':'—')(...(()=>{const s=pickHistory.filter(p=>p.resolvedAt&&Date.now()-new Date(p.resolvedAt).getTime()<7*86400000);return[s.filter(p=>p.result==='win').length,s.filter(p=>p.result==='loss').length];})()), sub:'hit rate',c:'#555'},
-                    {label:'Total Picks',value:total,sub:'tracked',c:'#555'},
-                    {label:'Best Streak',value:(()=>{let s=0,m=0;for(const p of [...pickHistory].reverse()){if(p.result==='win'){s++;m=Math.max(m,s);}else s=0;}return m+'W';})(),sub:'in a row',c:'#5588ee'},
+                <div style={{ padding:'16px 20px',borderBottom:'1px solid rgba(0,0,0,0.06)',display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12 }}>
+                  {[{label:'ALL TIME',value:`${rate}%`,sub:`${wins}W-${losses}L`,color:rate>=60?'#33aa00':rate>=50?'#bb8800':'#dd4444'},
+                    {label:'TOTAL PICKS',value:total,sub:'tracked',color:'#555'},
                   ].map((s,i)=>(
-                    <div key={i} style={{ background:'rgba(246,249,246,0.7)',border:'1px solid rgba(195,240,195,0.5)',borderRadius:10,padding:'10px 8px',textAlign:'center' }}>
-                      <div style={{ fontSize:9,color:'#aaa',letterSpacing:'0.06em',marginBottom:3,textTransform:'uppercase' }}>{s.label}</div>
-                      <div style={{ fontSize:20,fontWeight:800,color:s.c,lineHeight:1 }}>{s.value}</div>
-                      <div style={{ fontSize:9,color:'#bbb',marginTop:2 }}>{s.sub}</div>
+                    <div key={i} style={{ background:'rgba(246,249,246,0.7)',border:'1px solid rgba(195,240,195,0.5)',borderRadius:10,padding:'12px 10px',textAlign:'center' }}>
+                      <div style={{ fontSize:9,color:'#aaa',letterSpacing:'0.06em',marginBottom:4,textTransform:'uppercase' }}>{s.label}</div>
+                      <div style={{ fontSize:22,fontWeight:800,color:s.color,lineHeight:1 }}>{s.value}</div>
+                      <div style={{ fontSize:9,color:'#bbb',marginTop:3 }}>{s.sub}</div>
                     </div>
                   ))}
                 </div>
               );
             })()}
             <div style={{ flex:1,padding:'12px 20px 100px' }}>
-              {pickHistory.length===0?(
+              {pickHistory.length===0 ? (
                 <div style={{ textAlign:'center',padding:'60px 20px',color:'#aaa' }}>No picks tracked yet</div>
-              ):[...pickHistory].reverse().map((pick,i)=>{
-                const isWin=pick.result==='win';const isLoss=pick.result==='loss';
-                return (
-                  <div key={i} style={{ background:isWin?'rgba(57,255,20,0.05)':isLoss?'rgba(255,80,80,0.04)':'rgba(255,255,255,0.5)',border:`1px solid ${isWin?'rgba(57,255,20,0.25)':isLoss?'rgba(255,80,80,0.2)':'rgba(0,0,0,0.05)'}`,borderRadius:12,padding:'12px 14px',marginBottom:8,display:'flex',justifyContent:'space-between',alignItems:'center',gap:12 }}>
-                    <div style={{ flex:1,minWidth:0 }}>
-                      <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:3,flexWrap:'wrap' }}>
-                        <span style={{ fontSize:9,fontWeight:800,padding:'2px 7px',borderRadius:5,background:pick.slot==='VEGAS'?'rgba(57,255,20,0.1)':'rgba(80,140,255,0.08)',color:pick.slot==='VEGAS'?'#2aa800':'#5588ee' }}>{pick.slot||'PUBLIC'}</span>
-                        <span style={{ fontSize:12,fontWeight:700,color:'#111' }}>{pick.pick}</span>
-                        <span style={{ fontSize:10,color:'#aaa' }}>{pick.betType}</span>
+              ) : (
+                [...pickHistory].reverse().map((pick,i)=>{
+                  const isWin=pick.result==='win';
+                  const isLoss=pick.result==='loss';
+                  return (
+                    <div key={i} style={{ background:isWin?'rgba(57,255,20,0.05)':isLoss?'rgba(255,80,80,0.04)':'rgba(255,255,255,0.5)',border:`1px solid ${isWin?'rgba(57,255,20,0.25)':isLoss?'rgba(255,80,80,0.2)':'rgba(0,0,0,0.05)'}`,borderRadius:12,padding:'12px 14px',marginBottom:8,display:'flex',justifyContent:'space-between',alignItems:'center',gap:12 }}>
+                      <div style={{ flex:1,minWidth:0 }}>
+                        <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:3,flexWrap:'wrap' }}>
+                          <span style={{ fontSize:9,fontWeight:800,padding:'2px 7px',borderRadius:5,background:pick.slot==='VEGAS'?'rgba(255,80,80,0.08)':'rgba(80,140,255,0.08)',color:pick.slot==='VEGAS'?'#dd4444':'#5588ee' }}>{pick.slot||'PUBLIC'}</span>
+                          <span style={{ fontSize:12,fontWeight:700,color:'#111' }}>{pick.pick}</span>
+                          <span style={{ fontSize:10,color:'#aaa' }}>{pick.betType}</span>
+                        </div>
+                        <div style={{ fontSize:10,color:'#999' }}>{pick.game}</div>
+                        {pick.score && <div style={{ fontSize:9,color:'#bbb' }}>Final: {pick.score}</div>}
+                        <div style={{ fontSize:8,color:'#ccc',marginTop:3 }}>{pick.resolvedAt?new Date(pick.resolvedAt).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):pick.date}</div>
                       </div>
-                      <div style={{ fontSize:10,color:'#999' }}>{pick.game}</div>
-                      {pick.score&&<div style={{ fontSize:9,color:'#bbb' }}>Final: {pick.score}</div>}
-                      <div style={{ fontSize:8,color:'#ccc',marginTop:3 }}>{pick.resolvedAt?new Date(pick.resolvedAt).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):pick.date}</div>
+                      <div style={{ flexShrink:0,fontSize:12,fontWeight:800,padding:'6px 14px',borderRadius:8,background:isWin?'rgba(57,255,20,0.12)':isLoss?'rgba(255,80,80,0.1)':'rgba(0,0,0,0.03)',border:`1px solid ${isWin?'rgba(57,255,20,0.3)':isLoss?'rgba(255,80,80,0.3)':'rgba(0,0,0,0.06)'}`,color:isWin?'#33aa00':isLoss?'#dd4444':'#999' }}>
+                        {isWin?'✅ WIN':isLoss?'❌ LOSS':'PENDING'}
+                      </div>
                     </div>
-                    <div style={{ flexShrink:0,fontSize:12,fontWeight:800,padding:'6px 14px',borderRadius:8,background:isWin?'rgba(57,255,20,0.12)':isLoss?'rgba(255,80,80,0.1)':'rgba(0,0,0,0.03)',border:`1px solid ${isWin?'rgba(57,255,20,0.3)':isLoss?'rgba(255,80,80,0.3)':'rgba(0,0,0,0.06)'}`,color:isWin?'#33aa00':isLoss?'#dd4444':'#999' }}>
-                      {isWin?'✅ WIN':isLoss?'❌ LOSS':'PENDING'}
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
-            {pickHistory.length>0&&(
+            {pickHistory.length>0 && (
               <div style={{ padding:'12px 20px',borderTop:'1px solid rgba(0,0,0,0.05)',position:'sticky',bottom:0,background:'#fff' }}>
                 <button onClick={()=>{if(window.confirm('Clear all pick history?')){setPickHistory([]);if(authUser?.id)syncDelete(authUser.id,'pick_history');}}}
                   style={{ width:'100%',padding:'10px 0',background:'rgba(255,80,80,0.06)',border:'1px solid rgba(255,80,80,0.15)',borderRadius:8,fontSize:11,color:'#dd4444',cursor:'pointer',fontFamily:'inherit' }}>
@@ -2004,54 +2316,28 @@ export default function VegasVaultApp() {
       )}
 
       {/* ── GAME DETAIL MODAL ── */}
-      {activeGame&&activeResult&&(
+      {activeGame && activeResult && (
         <div style={{ position:'fixed',inset:0,zIndex:9000,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(8px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}
           onClick={e=>e.target===e.currentTarget&&setActiveGame(null)}>
-          <div style={{ background:'#fff',borderRadius:20,width:'100%',maxWidth:680,maxHeight:'90vh',overflowY:'auto',boxShadow:'0 40px 100px rgba(0,0,0,0.15)' }}>
-            <div style={{ padding:'16px 20px',borderBottom:'1px solid rgba(0,0,0,0.06)',display:'flex',alignItems:'center',justifyContent:'space-between',position:'sticky',top:0,background:'#fff',zIndex:1 }}>
-              <div>
-                <div style={{ fontSize:15,fontWeight:800,color:'#111' }}>{activeGame.away} @ {activeGame.home}</div>
-                <div style={{ fontSize:10,color:'#aaa',marginTop:2 }}>{activeGame.slot} SLOT · {activeGame.time}</div>
-              </div>
+          <div style={{ background:'#fff',borderRadius:20,width:'100%',maxWidth:700,maxHeight:'90vh',overflowY:'auto',boxShadow:'0 40px 100px rgba(0,0,0,0.15)' }}>
+            <div style={{ padding:'16px 20px',borderBottom:'1px solid rgba(0,0,0,0.06)',display:'flex',alignItems:'center',justifyContent:'space-between' }}>
+              <div style={{ fontWeight:800,color:'#111',fontSize:14 }}>{activeGame.away} @ {activeGame.home}</div>
               <button onClick={()=>setActiveGame(null)} style={{ width:32,height:32,borderRadius:8,border:'1px solid rgba(0,0,0,0.07)',background:'rgba(255,255,255,0.8)',cursor:'pointer',fontSize:16,display:'flex',alignItems:'center',justifyContent:'center',color:'#666' }}>✕</button>
             </div>
             <div style={{ padding:20 }}>
-              {/* Recommendation */}
-              {activeResult?.summary&&(
-                <div style={{ background:'rgba(255,255,255,0.62)',border:'1px solid rgba(57,255,20,0.28)',borderRadius:14,padding:'14px 16px',marginBottom:14,boxShadow:'0 4px 16px rgba(57,255,20,0.08)' }}>
-                  <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8 }}>
-                    <div>
-                      <div style={{ fontSize:9,fontWeight:800,color:'#33aa00',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:3 }}>AI PLAY RECOMMENDATION</div>
-                      <div style={{ fontSize:20,fontWeight:900,color:'#111',display:'flex',alignItems:'center',gap:8,flexWrap:'wrap' }}>
-                        {activeResult.summary.pick}
-                        {activeResult.summary.tier==='1'&&<span style={{ fontSize:9,fontWeight:800,color:'#33aa00',border:'1px solid rgba(57,255,20,0.4)',padding:'3px 9px',borderRadius:14,background:'rgba(57,255,20,0.07)' }}>🔒 AI LOCK</span>}
-                      </div>
-                      <div style={{ fontSize:12,fontWeight:700,color:'#33aa00',marginTop:3 }}>{activeResult.summary.betType}</div>
-                    </div>
-                    <div style={{ textAlign:'center',padding:'8px 14px',background:'rgba(57,255,20,0.07)',border:'1px solid rgba(57,255,20,0.2)',borderRadius:10 }}>
-                      <div style={{ fontSize:8,color:'#aaa',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:3 }}>Confidence</div>
-                      <div style={{ fontSize:18,fontWeight:900,color:'#111' }}>{activeResult.summary.confidence||'HIGH'}</div>
-                    </div>
-                  </div>
-                </div>
-              )}
-              {/* AI Reasoning */}
-              {activeResult?.analysis&&Object.entries(activeResult.analysis).filter(([,v])=>v&&typeof v==='string').map(([k,v])=>(
-                <div key={k} style={{ marginBottom:10,padding:'10px 14px',background:'rgba(246,249,246,0.7)',border:'1px solid rgba(195,240,195,0.5)',borderRadius:10 }}>
+              <div style={{ fontSize:11,color:'#aaa',marginBottom:16 }}>{activeResult?.analysis?.matchupFoundation}</div>
+              {Object.entries(activeResult?.analysis||{}).filter(([k])=>k!=='matchupFoundation').map(([k,v])=>(
+                v && <div key={k} style={{ marginBottom:12,padding:'10px 14px',background:'rgba(246,249,246,0.7)',border:'1px solid rgba(195,240,195,0.5)',borderRadius:10 }}>
                   <div style={{ fontSize:9,fontWeight:800,color:'#33aa00',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:4 }}>{k.replace(/([A-Z])/g,' $1').trim()}</div>
-                  <div style={{ fontSize:11,color:'#444',lineHeight:1.6 }}>{v}</div>
+                  <div style={{ fontSize:11,color:'#444',lineHeight:1.6 }}>{typeof v==='object'?JSON.stringify(v):v}</div>
                 </div>
               ))}
-              {activeResult?.summary?.verdict&&(
-                <div style={{ padding:'12px 14px',background:'rgba(57,255,20,0.07)',border:'1px solid rgba(57,255,20,0.2)',borderRadius:10,marginTop:4 }}>
+              {activeResult?.summary?.verdict && (
+                <div style={{ marginTop:16,padding:'12px 14px',background:'rgba(57,255,20,0.07)',border:'1px solid rgba(57,255,20,0.2)',borderRadius:10 }}>
                   <div style={{ fontSize:9,fontWeight:800,color:'#33aa00',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:4 }}>Bottom Line</div>
                   <div style={{ fontSize:12,color:'#444',lineHeight:1.6 }}>{activeResult.summary.verdict}</div>
                 </div>
               )}
-              <button onClick={()=>{setActiveGame(null);handleGenerate(activeGame,activeGame.slot);}}
-                style={{ width:'100%',marginTop:14,padding:11,borderRadius:10,background:'linear-gradient(135deg,#39FF14,#22cc00)',border:'none',fontFamily:'inherit',fontSize:12,fontWeight:700,color:'#111',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:7,boxShadow:'0 4px 16px rgba(57,255,20,0.35)' }}>
-                <i className="ti ti-refresh"/>Re-analyze
-              </button>
             </div>
           </div>
         </div>
