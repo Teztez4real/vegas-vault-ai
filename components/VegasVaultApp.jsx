@@ -1731,7 +1731,7 @@ export default function VegasVaultApp() {
 
   const shellNavigate = (key) => {
     if (key === "settings") { window.location.href = "/settings"; return; }
-    if (["dashboard","slate","vault","analytics","agents","memory","models"].includes(key)) {
+    if (["dashboard","slate","vault","analytics","agents","memory","models","aichat"].includes(key)) {
       setShellView(key);
     }
   };
@@ -1930,6 +1930,142 @@ export default function VegasVaultApp() {
         .vv-model-cfg{font-size:10px;color:#39FF14;font-weight:600;margin-top:8px;cursor:pointer;display:flex;align-items:center;gap:4px}
         @media (max-width:1300px){ .vv-model-grid{grid-template-columns:repeat(2,1fr)} .vv-engine-mets{grid-template-columns:repeat(2,1fr)} }
         @media (max-width:700px){ .vv-model-grid{grid-template-columns:1fr} .vv-engine-row{flex-direction:column;align-items:flex-start} }
+
+        /* AI Chat page */
+        .vv-chat-layout{flex:1;display:grid;grid-template-columns:230px 1fr;gap:10px;min-height:0;height:100%}
+        .vv-history-col{padding:14px 12px;display:flex;flex-direction:column;gap:8px;overflow-y:auto;height:100%;min-height:0}
+        .vv-hc-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+        .vv-hc-t{font-size:11px;font-weight:800;color:#111;text-transform:uppercase;letter-spacing:0.4px}
+        .vv-new-chat{width:26px;height:26px;border-radius:8px;background:#39FF14;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 0 10px rgba(57,255,20,0.4);flex-shrink:0}
+        .vv-hc-search{display:flex;align-items:center;gap:6px;background:rgba(246,255,246,0.7);border:1px solid rgba(195,240,195,0.6);border-radius:9px;padding:6px 9px;margin-bottom:4px}
+        .vv-hc-search i{font-size:13px;color:#bbb}
+        .vv-hc-search input{flex:1;border:none;background:transparent;font-family:'Inter',sans-serif;font-size:10px;color:#333;outline:none}
+        .vv-hc-item{padding:8px 9px;border-radius:9px;cursor:pointer;border:1px solid transparent}
+        .vv-hc-item:hover{background:rgba(57,255,20,0.05)}
+        .vv-hc-item.on{background:rgba(57,255,20,0.1);border-color:rgba(57,255,20,0.25)}
+        .vv-hc-title{font-size:10.5px;font-weight:600;color:#222;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .vv-hc-time{font-size:8px;color:#bbb;margin-top:2px}
+        .vv-hc-divider{font-size:8px;text-transform:uppercase;letter-spacing:0.7px;color:#ccc;font-weight:700;margin:6px 0 2px;padding-left:2px}
+
+        .vv-chat-main{display:flex;flex-direction:column;min-height:0;height:100%}
+        .vv-chat-hd{padding:13px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(0,0,0,0.04);flex-wrap:wrap;gap:8px}
+        .vv-chat-hd-l{display:flex;align-items:center;gap:10px}
+        .vv-chat-ic{width:32px;height:32px;border-radius:9px;background:rgba(57,255,20,0.1);border:1px solid rgba(57,255,20,0.25);display:flex;align-items:center;justify-content:center}
+        .vv-chat-ic i{font-size:16px;color:#39FF14}
+        .vv-chat-title{font-size:13px;font-weight:800;color:#111}
+        .vv-chat-status{font-size:9px;color:#39FF14;font-weight:500;display:flex;align-items:center;gap:4px}
+        .vv-chat-std{width:5px;height:5px;border-radius:50%;background:#39FF14;box-shadow:0 0 4px #39FF14}
+        .vv-model-pill{font-size:9px;font-weight:700;color:#33aa00;border:1px solid rgba(57,255,20,0.3);padding:4px 11px;border-radius:9px;background:rgba(57,255,20,0.06);display:flex;align-items:center;gap:5px}
+
+        .vv-chat-body{flex:1;padding:18px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;min-height:0}
+
+        .vv-msg{display:flex;gap:10px;max-width:78%}
+        .vv-msg.vv-user{align-self:flex-end;flex-direction:row-reverse}
+        .vv-msg-av{width:30px;height:30px;border-radius:9px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+        .vv-msg-av.ai{background:rgba(57,255,20,0.1);border:1px solid rgba(57,255,20,0.25)}
+        .vv-msg-av.ai i{color:#39FF14;font-size:15px}
+        .vv-msg-av.vv-user{background:linear-gradient(135deg,#bbb,#999)}
+        .vv-msg-av.vv-user i{color:#fff;font-size:15px}
+        .vv-msg-bubble{border-radius:14px;padding:11px 14px;font-size:11.5px;line-height:1.6}
+        .vv-msg.ai .vv-msg-bubble{background:rgba(246,255,246,0.85);border:1px solid rgba(195,240,195,0.65);color:#444;border-top-left-radius:4px}
+        .vv-msg.vv-user .vv-msg-bubble{background:linear-gradient(135deg,#39FF14,#2ecc00);color:#0a2200;border-top-right-radius:4px;font-weight:500}
+        .vv-msg-bubble p{margin-bottom:6px}
+        .vv-msg-bubble p:last-child{margin-bottom:0}
+        .vv-msg-pt{display:flex;align-items:flex-start;gap:5px;margin-bottom:4px}
+        .vv-msg-ptd{width:4px;height:4px;border-radius:50%;background:#39FF14;flex-shrink:0;margin-top:5px;box-shadow:0 0 3px rgba(57,255,20,0.6)}
+        .vv-msg-pt span{font-size:11px;color:#444;line-height:1.6}
+        .vv-msg-time{font-size:8px;color:#ccc;margin-top:4px}
+        .vv-msg.vv-user .vv-msg-time{text-align:right;color:rgba(10,40,0,0.4)}
+
+        .vv-msg-card{background:rgba(255,255,255,0.7);border:1px solid rgba(57,255,20,0.25);border-radius:11px;padding:10px 12px;margin-top:8px}
+        .vv-msg-card-hd{font-size:9px;font-weight:800;color:#33aa00;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;display:flex;align-items:center;gap:5px}
+        .vv-msg-card-row{display:flex;justify-content:space-between;font-size:10.5px;padding:3px 0;border-bottom:0.5px solid rgba(0,0,0,0.04)}
+        .vv-msg-card-row:last-child{border-bottom:none}
+        .vv-mcr-k{color:#999}.vv-mcr-v{color:#111;font-weight:700}.vv-mcr-v.g{color:#33aa00}
+
+        .vv-suggest-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+        .vv-suggest-chip{font-size:10px;font-weight:600;color:#33aa00;border:1px solid rgba(57,255,20,0.3);padding:5px 12px;border-radius:14px;background:rgba(57,255,20,0.05);cursor:pointer}
+
+        .vv-chat-input-area{padding:14px 18px;border-top:1px solid rgba(0,0,0,0.04)}
+        .vv-chat-input{display:flex;align-items:center;gap:8px;background:rgba(246,255,246,0.7);border:1px solid rgba(195,240,195,0.75);border-radius:12px;padding:10px 14px}
+        .vv-chat-input input{flex:1;border:none;background:transparent;font-family:'Inter',sans-serif;font-size:12px;color:#333;outline:none}
+        .vv-chat-input input::placeholder{color:#ccc}
+        .vv-chat-input i.vv-attach{font-size:16px;color:#bbb;cursor:pointer}
+        .vv-chat-send{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#39FF14,#22cc00);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 0 10px rgba(57,255,20,0.4);flex-shrink:0}
+        .vv-input-hint{font-size:9px;color:#ccc;margin-top:6px;text-align:center}
+
+        @media (max-width:900px){
+          .vv-chat-layout{grid-template-columns:1fr;height:auto}
+          .vv-history-col{display:none}
+        }
+
+        /* AI Chat page */
+        .vv-chat-layout{flex:1;display:grid;grid-template-columns:230px 1fr;gap:10px;min-height:0;height:100%}
+        .vv-history-col{padding:14px 12px;display:flex;flex-direction:column;gap:8px;overflow-y:auto;min-height:0}
+        .vv-hc-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+        .vv-hc-t{font-size:11px;font-weight:800;color:#111;text-transform:uppercase;letter-spacing:0.4px}
+        .vv-new-chat{width:26px;height:26px;border-radius:8px;background:#39FF14;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 0 10px rgba(57,255,20,0.4);flex-shrink:0}
+        .vv-hc-search{display:flex;align-items:center;gap:6px;background:rgba(246,255,246,0.7);border:1px solid rgba(195,240,195,0.6);border-radius:9px;padding:6px 9px;margin-bottom:4px}
+        .vv-hc-search i{font-size:13px;color:#bbb}
+        .vv-hc-search input{flex:1;border:none;background:transparent;font-family:'Inter',sans-serif;font-size:10px;color:#333;outline:none}
+        .vv-hc-item{padding:8px 9px;border-radius:9px;cursor:pointer;border:1px solid transparent}
+        .vv-hc-item:hover{background:rgba(57,255,20,0.05)}
+        .vv-hc-item.on{background:rgba(57,255,20,0.1);border-color:rgba(57,255,20,0.25)}
+        .vv-hc-title{font-size:10.5px;font-weight:600;color:#222;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .vv-hc-time{font-size:8px;color:#bbb;margin-top:2px}
+        .vv-hc-divider{font-size:8px;text-transform:uppercase;letter-spacing:0.7px;color:#ccc;font-weight:700;margin:6px 0 2px;padding-left:2px}
+
+        .vv-chat-main{display:flex;flex-direction:column;min-height:0;height:100%}
+        .vv-chat-hd{padding:13px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(0,0,0,0.04);flex-wrap:wrap;gap:8px}
+        .vv-chat-hd-l{display:flex;align-items:center;gap:10px}
+        .vv-chat-ic{width:32px;height:32px;border-radius:9px;background:rgba(57,255,20,0.1);border:1px solid rgba(57,255,20,0.25);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+        .vv-chat-ic i{font-size:16px;color:#39FF14}
+        .vv-chat-title{font-size:13px;font-weight:800;color:#111}
+        .vv-chat-status{font-size:9px;color:#39FF14;font-weight:500;display:flex;align-items:center;gap:4px}
+        .vv-chat-std{width:5px;height:5px;border-radius:50%;background:#39FF14;box-shadow:0 0 4px #39FF14}
+        .vv-model-pill{font-size:9px;font-weight:700;color:#33aa00;border:1px solid rgba(57,255,20,0.3);padding:4px 11px;border-radius:9px;background:rgba(57,255,20,0.06);display:flex;align-items:center;gap:5px;white-space:nowrap}
+
+        .vv-chat-body{flex:1;padding:18px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;min-height:0}
+
+        .vv-msg{display:flex;gap:10px;max-width:78%}
+        .vv-msg.user{align-self:flex-end;flex-direction:row-reverse}
+        .vv-msg-av{width:30px;height:30px;border-radius:9px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+        .vv-msg-av.ai{background:rgba(57,255,20,0.1);border:1px solid rgba(57,255,20,0.25)}
+        .vv-msg-av.ai i{color:#39FF14;font-size:15px}
+        .vv-msg-av.user{background:linear-gradient(135deg,#bbb,#999)}
+        .vv-msg-av.user i{color:#fff;font-size:15px}
+        .vv-msg-bubble{border-radius:14px;padding:11px 14px;font-size:11.5px;line-height:1.6}
+        .vv-msg.ai .vv-msg-bubble{background:rgba(246,255,246,0.85);border:1px solid rgba(195,240,195,0.65);color:#444;border-top-left-radius:4px}
+        .vv-msg.user .vv-msg-bubble{background:linear-gradient(135deg,#39FF14,#2ecc00);color:#0a2200;border-top-right-radius:4px;font-weight:500}
+        .vv-msg-bubble p{margin-bottom:6px}
+        .vv-msg-bubble p:last-child{margin-bottom:0}
+        .vv-msg-pt{display:flex;align-items:flex-start;gap:5px;margin-bottom:4px}
+        .vv-msg-ptd{width:4px;height:4px;border-radius:50%;background:#39FF14;flex-shrink:0;margin-top:5px;box-shadow:0 0 3px rgba(57,255,20,0.6)}
+        .vv-msg-pt span{font-size:11px;color:#444;line-height:1.6}
+        .vv-msg-time{font-size:8px;color:#ccc;margin-top:4px}
+        .vv-msg.user .vv-msg-time{text-align:right;color:rgba(10,40,0,0.4)}
+
+        .vv-msg-card{background:rgba(255,255,255,0.7);border:1px solid rgba(57,255,20,0.25);border-radius:11px;padding:10px 12px;margin-top:8px}
+        .vv-msg-card-hd{font-size:9px;font-weight:800;color:#33aa00;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;display:flex;align-items:center;gap:5px}
+        .vv-msg-card-row{display:flex;justify-content:space-between;font-size:10.5px;padding:3px 0;border-bottom:0.5px solid rgba(0,0,0,0.04)}
+        .vv-msg-card-row:last-child{border-bottom:none}
+        .vv-mcr-k{color:#999}.vv-mcr-v{color:#111;font-weight:700}.vv-mcr-v.g{color:#33aa00}
+
+        .vv-suggest-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+        .vv-suggest-chip{font-size:10px;font-weight:600;color:#33aa00;border:1px solid rgba(57,255,20,0.3);padding:5px 12px;border-radius:14px;background:rgba(57,255,20,0.05);cursor:pointer}
+
+        .vv-chat-input-area{padding:14px 18px;border-top:1px solid rgba(0,0,0,0.04)}
+        .vv-chat-input{display:flex;align-items:center;gap:8px;background:rgba(246,255,246,0.7);border:1px solid rgba(195,240,195,0.75);border-radius:12px;padding:10px 14px}
+        .vv-chat-input input{flex:1;border:none;background:transparent;font-family:'Inter',sans-serif;font-size:12px;color:#333;outline:none}
+        .vv-chat-input input::placeholder{color:#ccc}
+        .vv-chat-input i.attach{font-size:16px;color:#bbb;cursor:pointer}
+        .vv-chat-send{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#39FF14,#22cc00);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 0 10px rgba(57,255,20,0.4);flex-shrink:0}
+        .vv-input-hint{font-size:9px;color:#ccc;margin-top:6px;text-align:center}
+
+        @media (max-width:900px){
+          .vv-chat-layout{grid-template-columns:1fr}
+          .vv-history-col{display:none}
+        }
         .vv-gc-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:1px}
         .vv-gc-t{font-size:11px;font-weight:800;color:#111;text-transform:uppercase;letter-spacing:0.4px}
         .vv-gc-sub{font-size:9px;color:#bbb;margin-bottom:8px}
@@ -2423,6 +2559,224 @@ export default function VegasVaultApp() {
         </div>
         );
       })()}
+
+      {/* ── AI CHAT — static UI matching mockup ── */}
+      {authUser && isSubscribed && shellView === 'aichat' && (
+        <div className="vv-chat-layout">
+
+          <div className="vv-glass vv-history-col">
+            <div className="vv-hc-hd">
+              <div className="vv-hc-t">Conversations</div>
+              <div className="vv-new-chat"><i className="ti ti-plus" style={{ fontSize:14, color:'#111' }} /></div>
+            </div>
+            <div className="vv-hc-search"><i className="ti ti-search" /><input type="text" placeholder="Search chats..." readOnly /></div>
+
+            <div className="vv-hc-divider">Today</div>
+            <div className="vv-hc-item on"><div className="vv-hc-title">TEX @ HOU full breakdown</div><div className="vv-hc-time">2 min ago</div></div>
+            <div className="vv-hc-item"><div className="vv-hc-title">Why is NYY -1.5 a scam play?</div><div className="vv-hc-time">1 hr ago</div></div>
+            <div className="vv-hc-item"><div className="vv-hc-title">Today's Tier 1 locks summary</div><div className="vv-hc-time">3 hr ago</div></div>
+
+            <div className="vv-hc-divider">Yesterday</div>
+            <div className="vv-hc-item"><div className="vv-hc-title">Dodgers line movement analysis</div><div className="vv-hc-time">Yesterday</div></div>
+            <div className="vv-hc-item"><div className="vv-hc-title">Explain the Trell Rule</div><div className="vv-hc-time">Yesterday</div></div>
+            <div className="vv-hc-item"><div className="vv-hc-title">NBA slot pattern for tonight</div><div className="vv-hc-time">Yesterday</div></div>
+
+            <div className="vv-hc-divider">This Week</div>
+            <div className="vv-hc-item"><div className="vv-hc-title">Weekly win rate breakdown</div><div className="vv-hc-time">3 days ago</div></div>
+            <div className="vv-hc-item"><div className="vv-hc-title">Astros bullpen overuse — flag?</div><div className="vv-hc-time">4 days ago</div></div>
+            <div className="vv-hc-item"><div className="vv-hc-title">Tennis surface edge — Sinner match</div><div className="vv-hc-time">5 days ago</div></div>
+          </div>
+
+          <div className="vv-glass vv-chat-main">
+            <div className="vv-chat-hd">
+              <div className="vv-chat-hd-l">
+                <div className="vv-chat-ic"><i className="ti ti-brain" /></div>
+                <div>
+                  <div className="vv-chat-title">Vegas Vault AI Assistant</div>
+                  <div className="vv-chat-status"><div className="vv-chat-std"></div>Online · Ready</div>
+                </div>
+              </div>
+              <div className="vv-model-pill"><i className="ti ti-hexagon" style={{ fontSize:11 }} />Vegas Vault Analysis Engine</div>
+            </div>
+
+            <div className="vv-chat-body">
+
+              <div className="vv-msg user">
+                <div className="vv-msg-av user"><i className="ti ti-user" /></div>
+                <div>
+                  <div className="vv-msg-bubble">Give me the full breakdown on TEX @ HOU tonight — is this really a Tier 1 lock?</div>
+                  <div className="vv-msg-time">7:42 PM</div>
+                </div>
+              </div>
+
+              <div className="vv-msg ai">
+                <div className="vv-msg-av ai"><i className="ti ti-brain" /></div>
+                <div>
+                  <div className="vv-msg-bubble">
+                    <p>Yes — TEX @ HOU checks out as a Tier 1 lock. Here's the core reasoning:</p>
+                    <div className="vv-msg-pt"><div className="vv-msg-ptd"></div><span>Eovaldi dominates RHB this season (2.45 xERA, 28% K rate) vs Valdez struggling against righties (3.81 ERA, velocity down ~1.2 mph)</span></div>
+                    <div className="vv-msg-pt"><div className="vv-msg-ptd"></div><span>Rangers offense is elite at home (wRC+ 122) and Astros bullpen is overworked — 3rd most innings in MLB last 7 days</span></div>
+                    <div className="vv-msg-pt"><div className="vv-msg-ptd"></div><span>Sharp money is heavily on TEX (87%), with the line moving from -118 to -128 in our favor</span></div>
+                    <p>This is the AI Lock recommendation: <b>Rangers ML -128</b>, 94% confidence, +13.6% expected value.</p>
+                    <div className="vv-msg-card">
+                      <div className="vv-msg-card-hd"><i className="ti ti-circle-check" />AI Play Recommendation</div>
+                      <div className="vv-msg-card-row"><span className="vv-mcr-k">Pick</span><span className="vv-mcr-v">Rangers ML -128</span></div>
+                      <div className="vv-msg-card-row"><span className="vv-mcr-k">Confidence</span><span className="vv-mcr-v g">94% · Very High</span></div>
+                      <div className="vv-msg-card-row"><span className="vv-mcr-k">Tier</span><span className="vv-mcr-v g">Tier 1 · Lock</span></div>
+                      <div className="vv-msg-card-row"><span className="vv-mcr-k">Slot</span><span className="vv-mcr-v">Vegas Slot</span></div>
+                    </div>
+                  </div>
+                  <div className="vv-msg-time">7:42 PM</div>
+                </div>
+              </div>
+
+              <div className="vv-msg user">
+                <div className="vv-msg-av user"><i className="ti ti-user" /></div>
+                <div>
+                  <div className="vv-msg-bubble">What about the weather — does that change anything?</div>
+                  <div className="vv-msg-time">7:43 PM</div>
+                </div>
+              </div>
+
+              <div className="vv-msg ai">
+                <div className="vv-msg-av ai"><i className="ti ti-brain" /></div>
+                <div>
+                  <div className="vv-msg-bubble">
+                    <p>88°F, partly cloudy, wind out to right field at 9 mph. I'm reading that as <b>neutral</b> — not enough to favor the over or change the pitching matchup meaningfully. It doesn't move the needle on the Rangers ML call.</p>
+                  </div>
+                  <div className="vv-msg-time">7:43 PM</div>
+                  <div className="vv-suggest-row">
+                    <div className="vv-suggest-chip">Show line movement chart</div>
+                    <div className="vv-suggest-chip">Check injury report</div>
+                    <div className="vv-suggest-chip">Compare to last H2H</div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <div className="vv-chat-input-area">
+              <div className="vv-chat-input">
+                <i className="ti ti-paperclip attach" />
+                <input type="text" placeholder="Ask Vegas Vault AI anything about today's slate..." readOnly />
+                <i className="ti ti-microphone attach" />
+                <div className="vv-chat-send"><i className="ti ti-arrow-right" style={{ color:'#111', fontSize:14 }} /></div>
+              </div>
+              <div className="vv-input-hint">Vegas Vault AI can analyze any game, explain reasoning, or pull live odds & injury data</div>
+            </div>
+          </div>
+
+        </div>
+      )}
+
+      {/* ── AI CHAT — static UI matching mockup (not yet wired to live API) ── */}
+      {authUser && isSubscribed && shellView === 'aichat' && (
+        <div className="vv-chat-layout">
+
+          <div className="vv-glass vv-history-col">
+            <div className="vv-hc-hd">
+              <div className="vv-hc-t">Conversations</div>
+              <div className="vv-new-chat"><i className="ti ti-plus" style={{ fontSize:14, color:'#111' }} /></div>
+            </div>
+            <div className="vv-hc-search"><i className="ti ti-search" /><input type="text" placeholder="Search chats..." readOnly /></div>
+
+            <div className="vv-hc-divider">Today</div>
+            <div className="vv-hc-item on"><div className="vv-hc-title">TEX @ HOU full breakdown</div><div className="vv-hc-time">2 min ago</div></div>
+            <div className="vv-hc-item"><div className="vv-hc-title">Why is NYY -1.5 a scam play?</div><div className="vv-hc-time">1 hr ago</div></div>
+            <div className="vv-hc-item"><div className="vv-hc-title">Today's Tier 1 locks summary</div><div className="vv-hc-time">3 hr ago</div></div>
+
+            <div className="vv-hc-divider">Yesterday</div>
+            <div className="vv-hc-item"><div className="vv-hc-title">Dodgers line movement analysis</div><div className="vv-hc-time">Yesterday</div></div>
+            <div className="vv-hc-item"><div className="vv-hc-title">Explain the Trell Rule</div><div className="vv-hc-time">Yesterday</div></div>
+            <div className="vv-hc-item"><div className="vv-hc-title">NBA slot pattern for tonight</div><div className="vv-hc-time">Yesterday</div></div>
+
+            <div className="vv-hc-divider">This Week</div>
+            <div className="vv-hc-item"><div className="vv-hc-title">Weekly win rate breakdown</div><div className="vv-hc-time">3 days ago</div></div>
+            <div className="vv-hc-item"><div className="vv-hc-title">Astros bullpen overuse — flag?</div><div className="vv-hc-time">4 days ago</div></div>
+            <div className="vv-hc-item"><div className="vv-hc-title">Tennis surface edge — Sinner match</div><div className="vv-hc-time">5 days ago</div></div>
+          </div>
+
+          <div className="vv-glass vv-chat-main">
+            <div className="vv-chat-hd">
+              <div className="vv-chat-hd-l">
+                <div className="vv-chat-ic"><i className="ti ti-brain" /></div>
+                <div>
+                  <div className="vv-chat-title">Vegas Vault AI Assistant</div>
+                  <div className="vv-chat-status"><div className="vv-chat-std"></div>Online · Ready</div>
+                </div>
+              </div>
+              <div className="vv-model-pill"><i className="ti ti-hexagon" style={{ fontSize:11 }} />Vegas Vault Analysis Engine</div>
+            </div>
+
+            <div className="vv-chat-body">
+
+              <div className="vv-msg vv-user">
+                <div className="vv-msg-av vv-user"><i className="ti ti-user" /></div>
+                <div>
+                  <div className="vv-msg-bubble">Give me the full breakdown on TEX @ HOU tonight — is this really a Tier 1 lock?</div>
+                  <div className="vv-msg-time">7:42 PM</div>
+                </div>
+              </div>
+
+              <div className="vv-msg ai">
+                <div className="vv-msg-av ai"><i className="ti ti-brain" /></div>
+                <div>
+                  <div className="vv-msg-bubble">
+                    <p>Yes — TEX @ HOU checks out as a Tier 1 lock. Here's the core reasoning:</p>
+                    <div className="vv-msg-pt"><div className="vv-msg-ptd"></div><span>Eovaldi dominates RHB this season (2.45 xERA, 28% K rate) vs Valdez struggling against righties (3.81 ERA, velocity down ~1.2 mph)</span></div>
+                    <div className="vv-msg-pt"><div className="vv-msg-ptd"></div><span>Rangers offense is elite at home (wRC+ 122) and Astros bullpen is overworked — 3rd most innings in MLB last 7 days</span></div>
+                    <div className="vv-msg-pt"><div className="vv-msg-ptd"></div><span>Sharp money is heavily on TEX (87%), with the line moving from -118 to -128 in our favor</span></div>
+                    <p>This is the AI Lock recommendation: <b>Rangers ML -128</b>, 94% confidence, +13.6% expected value.</p>
+                    <div className="vv-msg-card">
+                      <div className="vv-msg-card-hd"><i className="ti ti-circle-check" />AI Play Recommendation</div>
+                      <div className="vv-msg-card-row"><span className="vv-mcr-k">Pick</span><span className="vv-mcr-v">Rangers ML -128</span></div>
+                      <div className="vv-msg-card-row"><span className="vv-mcr-k">Confidence</span><span className="vv-mcr-v g">94% · Very High</span></div>
+                      <div className="vv-msg-card-row"><span className="vv-mcr-k">Tier</span><span className="vv-mcr-v g">Tier 1 · Lock</span></div>
+                      {hasSlotPattern && <div className="vv-msg-card-row"><span className="vv-mcr-k">Slot</span><span className="vv-mcr-v">Vegas Slot</span></div>}
+                    </div>
+                  </div>
+                  <div className="vv-msg-time">7:42 PM</div>
+                </div>
+              </div>
+
+              <div className="vv-msg vv-user">
+                <div className="vv-msg-av vv-user"><i className="ti ti-user" /></div>
+                <div>
+                  <div className="vv-msg-bubble">What about the weather — does that change anything?</div>
+                  <div className="vv-msg-time">7:43 PM</div>
+                </div>
+              </div>
+
+              <div className="vv-msg ai">
+                <div className="vv-msg-av ai"><i className="ti ti-brain" /></div>
+                <div>
+                  <div className="vv-msg-bubble">
+                    <p>88°F, partly cloudy, wind out to right field at 9 mph. I'm reading that as <b>neutral</b> — not enough to favor the over or change the pitching matchup meaningfully. It doesn't move the needle on the Rangers ML call.</p>
+                  </div>
+                  <div className="vv-msg-time">7:43 PM</div>
+                  <div className="vv-suggest-row">
+                    <div className="vv-suggest-chip">Show line movement chart</div>
+                    <div className="vv-suggest-chip">Check injury report</div>
+                    <div className="vv-suggest-chip">Compare to last H2H</div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <div className="vv-chat-input-area">
+              <div className="vv-chat-input">
+                <i className="ti ti-paperclip vv-attach" />
+                <input type="text" placeholder="Ask Vegas Vault AI anything about today's slate..." readOnly />
+                <i className="ti ti-microphone vv-attach" />
+                <div className="vv-chat-send"><i className="ti ti-arrow-right" style={{ color:'#111', fontSize:14 }} /></div>
+              </div>
+              <div className="vv-input-hint">Vegas Vault AI can analyze any game, explain reasoning, or pull live odds & injury data</div>
+            </div>
+          </div>
+
+        </div>
+      )}
 
       {/* ── MODELS — sport-specific AI analysis engines ── */}
       {authUser && isSubscribed && shellView === 'models' && (() => {
