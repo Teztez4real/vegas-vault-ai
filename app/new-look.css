@@ -42,15 +42,23 @@ body {
 html, body {
   height: 100%;
   margin: 0;
+  overflow-x: hidden;
+  max-width: 100vw;
 }
 .vv-root {
   font-family: 'Inter', sans-serif;
   background: var(--vv-bg);
   height: 100vh;
+  width: 100%;
+  max-width: 100vw;
   position: relative;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+.vv-topbar, .vv-body, .vv-main {
+  max-width: 100%;
+  min-width: 0;
 }
 
 /* ── NEURAL BACKGROUND ── */
