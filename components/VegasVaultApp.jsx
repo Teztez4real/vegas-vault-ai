@@ -1894,7 +1894,7 @@ export default function VegasVaultApp() {
         .vv-vf-tm{font-size:8px;color:#ddd;min-width:24px;text-align:right}
         .vv-vf-va{font-size:10px;color:#39FF14;font-weight:600;text-align:center;padding-top:7px;cursor:pointer}
 
-        .vv-slate{width:230px;flex-shrink:0;padding:14px 13px;display:flex;flex-direction:column}
+        .vv-slate{width:230px;flex-shrink:0;padding:14px 13px;display:flex;flex-direction:column;max-height:calc(100vh - var(--vv-topbar-h) - 24px);overflow-y:auto;position:sticky;top:calc(var(--vv-topbar-h) + 12px)}
         .vv-gc-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:1px}
         .vv-gc-t{font-size:11px;font-weight:800;color:#111;text-transform:uppercase;letter-spacing:0.4px}
         .vv-gc-sub{font-size:9px;color:#bbb;margin-bottom:8px}
@@ -2021,7 +2021,7 @@ export default function VegasVaultApp() {
 
       {/* ── DASHBOARD — 3-column command center + games slate ── */}
       {authUser && isSubscribed && (
-        <div className="vv-dashboard-row" style={{ display:'flex', gap:10, alignItems:'flex-start' }}>
+        <div className="vv-dashboard-row" style={{ display:'flex', gap:10, alignItems:'flex-start', minWidth:0 }}>
 
           <div className="vv-center">
 
@@ -2234,7 +2234,9 @@ export default function VegasVaultApp() {
                     ) : (
                       <span className="vv-gr-pick" style={{ color:'#bbb', fontSize:10 }}>Click to analyze</span>
                     )}
-                    <span className={`vv-sl ${isPass?'pass':slotClass}`}>{isPass?'PASS':game.slot==='VEGAS'?'Vegas Slot':'Public Slot'}</span>
+                    {hasSlotPattern && (
+                      <span className={`vv-sl ${isPass?'pass':slotClass}`}>{isPass?'PASS':game.slot==='VEGAS'?'Vegas Slot':'Public Slot'}</span>
+                    )}
                   </div>
                 </div>
               );
