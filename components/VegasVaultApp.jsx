@@ -2077,12 +2077,12 @@ export default function VegasVaultApp() {
         }
         @media (max-width:900px){
           .vv-dashboard-row{flex-direction:column;height:auto;min-height:0}
-          .vv-center{grid-template-columns:1fr;height:auto;overflow-y:visible}
+          .vv-center{flex:none !important;grid-template-columns:1fr;height:auto;overflow-y:visible}
           .vv-center > .vv-col:nth-child(3){grid-column:span 1}
           .vv-col{height:auto;min-height:0}
           .vv-col > .vv-glass, .vv-col > .vv-glass-g{flex:none !important}
           .vv-orb-card{min-height:280px}
-          .vv-slate{width:100%;height:auto;overflow-y:visible;max-height:none}
+          .vv-slate{flex:none !important;width:100%;height:auto;overflow-y:visible;max-height:none}
           .vv-game-grid{grid-template-columns:1fr !important}
         }
         @media (max-width:480px){
