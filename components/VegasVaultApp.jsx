@@ -796,6 +796,7 @@ export default function VegasVaultApp() {
   });
   const [preAnalyzing, setPreAnalyzing] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [analyticsFilter, setAnalyticsFilter] = useState('All');
   const [showOddsMovement, setShowOddsMovement] = useState(false);
   const [topPlay, setTopPlay] = useState(null);
   const [topPlayLoading, setTopPlayLoading] = useState(false);
@@ -1722,18 +1723,17 @@ export default function VegasVaultApp() {
   // "dashboard" = command-center view, "slate" = full games grid page.
   // AI Chat / Models / Memory / Agents / Vault / Analytics are visual
   // placeholders that stay on whichever main view is active.
+  // "dashboard" = command-center view, "slate" = full games grid,
+  // "vault" = saved/watchlisted plays, "analytics" = pick history & performance.
+  // AI Chat / Models / Memory / Agents are visual placeholders for now.
   const [shellView, setShellView] = useState("dashboard");
-  const shellSection = showHistory ? "history" : shellView;
+  const shellSection = shellView;
 
   const shellNavigate = (key) => {
-    if (key === "history")  { setShowHistory(true); return; }
     if (key === "settings") { window.location.href = "/settings"; return; }
-    setShowHistory(false);
-    if (key === "dashboard" || key === "slate") {
+    if (["dashboard","slate","vault","analytics"].includes(key)) {
       setShellView(key);
     }
-    // AI Chat / Models / Memory / Agents / Vault / Analytics: placeholders,
-    // no view change for now.
   };
 
   const shellUserName = authUser?.user_metadata?.full_name || authUser?.email?.split("@")[0] || "Member";
@@ -2039,7 +2039,7 @@ export default function VegasVaultApp() {
                   ))}
                   {pickHistory.filter(p=>p.tier==='1').length===0 && <div style={{ fontSize:10,color:'#ccc',textAlign:'center',padding:'8px 0' }}>No locks tracked yet</div>}
                 </div>
-                <div className="vv-vf-va" onClick={()=>setShowHistory(true)}>View all locks →</div>
+                <div className="vv-vf-va" onClick={()=>setShellView('analytics')}>View all locks →</div>
               </div>
             </div>
 
@@ -2205,7 +2205,7 @@ export default function VegasVaultApp() {
                 </div>
               );
             })}
-            <div className="vv-gc-va" onClick={()=>setShowHistory(true)}>View pick history <i className="ti ti-arrow-right" style={{ fontSize:10 }} /></div>
+            <div className="vv-gc-va" onClick={()=>setShellView('analytics')}>View pick history <i className="ti ti-arrow-right" style={{ fontSize:10 }} /></div>
           </div>
 
         </div>
@@ -2301,75 +2301,178 @@ export default function VegasVaultApp() {
         </div>
       )}
 
-      {/* ── HISTORY MODAL ── */}
-      {showHistory && (
-        <div style={{ position:'fixed',inset:0,zIndex:9000,display:'flex' }}>
-          <div onClick={()=>setShowHistory(false)} style={{ position:'absolute',inset:0,background:'rgba(0,0,0,0.4)',backdropFilter:'blur(8px)' }}/>
-          <div style={{ position:'relative',marginLeft:'auto',width:'100%',maxWidth:560,height:'100%',background:'#fff',borderLeft:'1px solid rgba(57,255,20,0.15)',overflowY:'auto',display:'flex',flexDirection:'column' }}>
-            <div style={{ padding:'18px 20px',borderBottom:'1px solid rgba(0,0,0,0.06)',display:'flex',alignItems:'center',justifyContent:'space-between',position:'sticky',top:0,background:'#fff',zIndex:10 }}>
-              <div>
-                <div style={{ fontSize:14,fontWeight:800,color:'#111' }}>My Picks History</div>
-                <div style={{ fontSize:10,color:'#aaa',marginTop:2 }}>{pickHistory.length} total picks tracked</div>
-              </div>
-              <button onClick={()=>setShowHistory(false)} style={{ width:32,height:32,borderRadius:8,border:'1px solid rgba(0,0,0,0.07)',background:'rgba(255,255,255,0.8)',cursor:'pointer',color:'#666',fontSize:16,display:'flex',alignItems:'center',justifyContent:'center' }}>✕</button>
+      {/* ── VAULT — saved/bookmarked plays ── */}
+      {authUser && isSubscribed && shellView === 'vault' && (() => {
+        const vaultGames = games.filter(g => watchlist.includes(g.id));
+        return (
+        <div style={{ display:'flex', flexDirection:'column', gap:12, flex:1, minHeight:0, overflowY:'auto' }}>
+          <div className="vv-glass" style={{ padding:'16px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10 }}>
+            <div>
+              <div style={{ fontSize:18, fontWeight:800, color:'#111', letterSpacing:-0.3 }}>Vault</div>
+              <div style={{ fontSize:11, color:'#aaa', marginTop:2 }}>{vaultGames.length} saved {vaultGames.length===1?'play':'plays'}</div>
             </div>
-            {pickHistory.length > 0 && (()=>{
-              const wins=pickHistory.filter(p=>p.result==='win').length;
-              const losses=pickHistory.filter(p=>p.result==='loss').length;
-              const total=wins+losses;
-              const rate=total>0?Math.round((wins/total)*100):0;
-              return (
-                <div style={{ padding:'16px 20px',borderBottom:'1px solid rgba(0,0,0,0.06)',display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12 }}>
-                  {[{label:'ALL TIME',value:`${rate}%`,sub:`${wins}W-${losses}L`,color:rate>=60?'#33aa00':rate>=50?'#bb8800':'#dd4444'},
-                    {label:'TOTAL PICKS',value:total,sub:'tracked',color:'#555'},
-                  ].map((s,i)=>(
-                    <div key={i} style={{ background:'rgba(246,249,246,0.7)',border:'1px solid rgba(195,240,195,0.5)',borderRadius:10,padding:'12px 10px',textAlign:'center' }}>
-                      <div style={{ fontSize:9,color:'#aaa',letterSpacing:'0.06em',marginBottom:4,textTransform:'uppercase' }}>{s.label}</div>
-                      <div style={{ fontSize:22,fontWeight:800,color:s.color,lineHeight:1 }}>{s.value}</div>
-                      <div style={{ fontSize:9,color:'#bbb',marginTop:3 }}>{s.sub}</div>
-                    </div>
-                  ))}
-                </div>
-              );
-            })()}
-            <div style={{ flex:1,padding:'12px 20px 100px' }}>
-              {pickHistory.length===0 ? (
-                <div style={{ textAlign:'center',padding:'60px 20px',color:'#aaa' }}>No picks tracked yet</div>
-              ) : (
-                [...pickHistory].reverse().map((pick,i)=>{
-                  const isWin=pick.result==='win';
-                  const isLoss=pick.result==='loss';
-                  return (
-                    <div key={i} style={{ background:isWin?'rgba(57,255,20,0.05)':isLoss?'rgba(255,80,80,0.04)':'rgba(255,255,255,0.5)',border:`1px solid ${isWin?'rgba(57,255,20,0.25)':isLoss?'rgba(255,80,80,0.2)':'rgba(0,0,0,0.05)'}`,borderRadius:12,padding:'12px 14px',marginBottom:8,display:'flex',justifyContent:'space-between',alignItems:'center',gap:12 }}>
-                      <div style={{ flex:1,minWidth:0 }}>
-                        <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:3,flexWrap:'wrap' }}>
-                          <span style={{ fontSize:9,fontWeight:800,padding:'2px 7px',borderRadius:5,background:pick.slot==='VEGAS'?'rgba(255,80,80,0.08)':'rgba(80,140,255,0.08)',color:pick.slot==='VEGAS'?'#dd4444':'#5588ee' }}>{pick.slot||'PUBLIC'}</span>
-                          <span style={{ fontSize:12,fontWeight:700,color:'#111' }}>{pick.pick}</span>
-                          <span style={{ fontSize:10,color:'#aaa' }}>{pick.betType}</span>
-                        </div>
-                        <div style={{ fontSize:10,color:'#999' }}>{pick.game}</div>
-                        {pick.score && <div style={{ fontSize:9,color:'#bbb' }}>Final: {pick.score}</div>}
-                        <div style={{ fontSize:8,color:'#ccc',marginTop:3 }}>{pick.resolvedAt?new Date(pick.resolvedAt).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):pick.date}</div>
-                      </div>
-                      <div style={{ flexShrink:0,fontSize:12,fontWeight:800,padding:'6px 14px',borderRadius:8,background:isWin?'rgba(57,255,20,0.12)':isLoss?'rgba(255,80,80,0.1)':'rgba(0,0,0,0.03)',border:`1px solid ${isWin?'rgba(57,255,20,0.3)':isLoss?'rgba(255,80,80,0.3)':'rgba(0,0,0,0.06)'}`,color:isWin?'#33aa00':isLoss?'#dd4444':'#999' }}>
-                        {isWin?'✅ WIN':isLoss?'❌ LOSS':'PENDING'}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
+            <i className="ti ti-shield" style={{ fontSize:18, color:'#39FF14' }} />
+          </div>
+
+          {vaultGames.length === 0 ? (
+            <div className="vv-glass" style={{ padding:'60px 20px', textAlign:'center' }}>
+              <i className="ti ti-shield-half" style={{ fontSize:32, color:'#ddd', marginBottom:10, display:'block' }} />
+              <div style={{ fontSize:13, fontWeight:700, color:'#999', marginBottom:4 }}>No saved plays yet</div>
+              <div style={{ fontSize:11, color:'#bbb' }}>Tap the star on any game or "Add to Vault" in the game detail to save it here.</div>
             </div>
-            {pickHistory.length>0 && (
-              <div style={{ padding:'12px 20px',borderTop:'1px solid rgba(0,0,0,0.05)',position:'sticky',bottom:0,background:'#fff' }}>
-                <button onClick={()=>{if(window.confirm('Clear all pick history?')){setPickHistory([]);if(authUser?.id)syncDelete(authUser.id,'pick_history');}}}
-                  style={{ width:'100%',padding:'10px 0',background:'rgba(255,80,80,0.06)',border:'1px solid rgba(255,80,80,0.15)',borderRadius:8,fontSize:11,color:'#dd4444',cursor:'pointer',fontFamily:'inherit' }}>
-                  Clear History
-                </button>
-              </div>
+          ) : (
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(340px,1fr))', gap:12 }}>
+              {vaultGames.map(game=>{
+                const key = `${game.id}-${game.slot}`;
+                return (
+                  <GameCard
+                    key={key}
+                    game={game}
+                    onGenerate={handleGenerate}
+                    results={results}
+                    generating={generating}
+                    onCardClick={(g,r)=>{setActiveGame(g);setActiveResult(r);setActiveDetailTab('AI Reasoning');}}
+                    liveScores={liveScores}
+                    isSubscribed={isSubscribed}
+                    finalized={finalized}
+                    isQueued={preAnalyzeQueue.includes(key)}
+                    betReady={!!betReadyAlerts[key]}
+                    onShowAuth={()=>setShowAuth(true)}
+                    watchlist={watchlist}
+                    onToggleWatch={(id)=>setWatchlist(p=>{const u=p.includes(id)?p.filter(x=>x!==id):[...p,id];if(authUser?.id)syncSave(authUser.id,'watchlist',u);return u;})}
+                    pickHistory={pickHistory}
+                    hasSlotPattern={hasSlotPattern}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </div>
+        );
+      })()}
+
+      {/* ── ANALYTICS — pick history & performance (V7) ── */}
+      {authUser && isSubscribed && shellView === 'analytics' && (() => {
+        const wins = pickHistory.filter(p=>p.result==='win').length;
+        const losses = pickHistory.filter(p=>p.result==='loss').length;
+        const total = wins + losses;
+        const rate = total > 0 ? Math.round((wins/total)*100) : 0;
+
+        // Last 7 days
+        const sevenDaysAgo = Date.now() - 7*24*60*60*1000;
+        const recent = pickHistory.filter(p => p.resolvedAt && new Date(p.resolvedAt).getTime() >= sevenDaysAgo && (p.result==='win'||p.result==='loss'));
+        const recentWins = recent.filter(p=>p.result==='win').length;
+        const recentTotal = recent.length;
+        const recentRate = recentTotal > 0 ? Math.round((recentWins/recentTotal)*100) : null;
+
+        // Best streak
+        let bestStreak = 0, curStreak = 0;
+        [...pickHistory].forEach(p => {
+          if (p.result === 'win') { curStreak++; bestStreak = Math.max(bestStreak, curStreak); }
+          else if (p.result === 'loss') { curStreak = 0; }
+        });
+
+        const sports = [...new Set(pickHistory.map(p=>p.sport).filter(Boolean))];
+        const filterTabs = ['All','Wins','Losses','Pending',...sports];
+        const filtered = [...pickHistory].reverse().filter(p => {
+          if (analyticsFilter === 'All') return true;
+          if (analyticsFilter === 'Wins') return p.result === 'win';
+          if (analyticsFilter === 'Losses') return p.result === 'loss';
+          if (analyticsFilter === 'Pending') return p.result !== 'win' && p.result !== 'loss';
+          return p.sport === analyticsFilter;
+        });
+
+        return (
+        <div style={{ display:'flex', flexDirection:'column', gap:12, flex:1, minHeight:0, overflowY:'auto' }}>
+
+          <div className="vv-glass" style={{ padding:'16px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10 }}>
+            <div>
+              <div style={{ fontSize:18, fontWeight:800, color:'#111', letterSpacing:-0.3 }}>My Picks History</div>
+              <div style={{ fontSize:11, color:'#aaa', marginTop:2 }}>{pickHistory.length} total picks tracked</div>
+            </div>
+            {pickHistory.length > 0 && (
+              <button onClick={()=>{if(window.confirm('Clear all pick history?')){setPickHistory([]);if(authUser?.id)syncDelete(authUser.id,'pick_history');}}}
+                style={{ display:'flex', alignItems:'center', gap:6, fontSize:11, fontWeight:700, color:'#dd4444', background:'rgba(255,80,80,0.07)', border:'1px solid rgba(255,80,80,0.2)', padding:'9px 16px', borderRadius:10, cursor:'pointer', fontFamily:'inherit' }}>
+                <i className="ti ti-trash" style={{ fontSize:13 }} />Clear History
+              </button>
             )}
           </div>
+
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10 }}>
+            <div className="vv-glass-g" style={{ padding:'14px 16px', textAlign:'center' }}>
+              <div style={{ fontSize:9, textTransform:'uppercase', letterSpacing:'0.7px', color:'#bbb', marginBottom:4, fontWeight:600 }}>All Time</div>
+              <div style={{ fontSize:24, fontWeight:900, color: total===0?'#999':rate>=60?'#33aa00':rate>=50?'#bb8800':'#dd4444' }}>{total===0?'—':`${rate}%`}</div>
+              <div style={{ fontSize:10, color:'#aaa', marginTop:3 }}>{wins}W - {losses}L</div>
+            </div>
+            <div className="vv-glass" style={{ padding:'14px 16px', textAlign:'center' }}>
+              <div style={{ fontSize:9, textTransform:'uppercase', letterSpacing:'0.7px', color:'#bbb', marginBottom:4, fontWeight:600 }}>Last 7 Days</div>
+              <div style={{ fontSize:24, fontWeight:900, color: recentRate===null?'#999':recentRate>=60?'#33aa00':recentRate>=50?'#bb8800':'#dd4444' }}>{recentRate===null?'—':`${recentRate}%`}</div>
+              <div style={{ fontSize:10, color:'#aaa', marginTop:3 }}>{recentWins}W - {recentTotal-recentWins}L</div>
+            </div>
+            <div className="vv-glass" style={{ padding:'14px 16px', textAlign:'center' }}>
+              <div style={{ fontSize:9, textTransform:'uppercase', letterSpacing:'0.7px', color:'#bbb', marginBottom:4, fontWeight:600 }}>Total Picks</div>
+              <div style={{ fontSize:24, fontWeight:900, color:'#111' }}>{pickHistory.length}</div>
+              <div style={{ fontSize:10, color:'#aaa', marginTop:3 }}>tracked</div>
+            </div>
+            <div className="vv-glass" style={{ padding:'14px 16px', textAlign:'center' }}>
+              <div style={{ fontSize:9, textTransform:'uppercase', letterSpacing:'0.7px', color:'#bbb', marginBottom:4, fontWeight:600 }}>Best Streak</div>
+              <div style={{ fontSize:24, fontWeight:900, color:'#5588ee' }}>{bestStreak>0?`${bestStreak}W`:'—'}</div>
+              <div style={{ fontSize:10, color:'#aaa', marginTop:3 }}>in a row</div>
+            </div>
+          </div>
+
+          <div className="vv-glass" style={{ padding:'14px 16px', flex:1, minHeight:0, display:'flex', flexDirection:'column' }}>
+            <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:10 }}>
+              {filterTabs.map(t=>(
+                <div key={t} onClick={()=>setAnalyticsFilter(t)}
+                  style={{ fontSize:10, fontWeight:700, padding:'6px 14px', borderRadius:9, cursor:'pointer',
+                    border: analyticsFilter===t ? '1px solid #39FF14' : '1px solid rgba(0,0,0,0.07)',
+                    background: analyticsFilter===t ? '#39FF14' : 'rgba(255,255,255,0.7)',
+                    color: analyticsFilter===t ? '#111' : '#999',
+                    boxShadow: analyticsFilter===t ? '0 0 10px rgba(57,255,20,0.35)' : 'none' }}>
+                  {t}
+                </div>
+              ))}
+            </div>
+
+            <div style={{ flex:1, minHeight:0, overflowY:'auto' }}>
+              {filtered.length === 0 ? (
+                <div style={{ textAlign:'center', padding:'60px 20px', color:'#aaa', fontSize:12 }}>No picks {analyticsFilter==='All'?'tracked yet':`matching "${analyticsFilter}"`}</div>
+              ) : filtered.map((pick,i)=>{
+                const isWin = pick.result==='win';
+                const isLoss = pick.result==='loss';
+                return (
+                  <div key={i} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, padding:'12px 14px', borderRadius:12, marginBottom:8,
+                    background: isWin?'rgba(57,255,20,0.05)':isLoss?'rgba(255,80,80,0.04)':'rgba(255,255,255,0.5)',
+                    border: `1px solid ${isWin?'rgba(57,255,20,0.25)':isLoss?'rgba(255,80,80,0.2)':'rgba(0,0,0,0.05)'}` }}>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:3, flexWrap:'wrap' }}>
+                        {hasSlotPattern && (
+                          <span style={{ fontSize:9, fontWeight:800, padding:'2px 7px', borderRadius:5, background:pick.slot==='VEGAS'?'rgba(57,255,20,0.08)':'rgba(80,140,255,0.08)', color:pick.slot==='VEGAS'?'#2aa800':'#5588ee' }}>{pick.slot||'PUBLIC'}</span>
+                        )}
+                        <span style={{ fontSize:12, fontWeight:700, color:'#111' }}>{pick.pick}</span>
+                        <span style={{ fontSize:10, color:'#aaa' }}>{pick.betType}</span>
+                      </div>
+                      <div style={{ fontSize:10, color:'#999' }}>{pick.game}</div>
+                      {pick.score && <div style={{ fontSize:9, color:'#bbb' }}>Final: {pick.score}</div>}
+                      <div style={{ fontSize:8, color:'#ccc', marginTop:3 }}>{pick.resolvedAt?new Date(pick.resolvedAt).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):pick.date}</div>
+                    </div>
+                    <div style={{ flexShrink:0, fontSize:12, fontWeight:800, padding:'6px 14px', borderRadius:8,
+                      background: isWin?'rgba(57,255,20,0.12)':isLoss?'rgba(255,80,80,0.1)':'rgba(0,0,0,0.03)',
+                      border: `1px solid ${isWin?'rgba(57,255,20,0.3)':isLoss?'rgba(255,80,80,0.3)':'rgba(0,0,0,0.06)'}`,
+                      color: isWin?'#33aa00':isLoss?'#dd4444':'#999' }}>
+                      {isWin?'✅ WIN':isLoss?'❌ LOSS':'PENDING'}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
-      )}
+        );
+      })()}
+
+      {/* ── GAME DETAIL MODAL ── */}
 
       {/* ── GAME DETAIL MODAL ── */}
       {activeGame && activeResult && (() => {
@@ -2415,8 +2518,13 @@ export default function VegasVaultApp() {
                     <i className="ti ti-arrow-left" style={{ fontSize:13 }} /> Back to Games Slate
                   </div>
                   <div style={{ display:'flex',alignItems:'center',gap:8 }}>
-                    <div style={{ fontSize:10,fontWeight:700,color:'#666',background:'rgba(0,0,0,0.04)',border:'1px solid rgba(0,0,0,0.07)',borderRadius:8,padding:'6px 12px',display:'flex',alignItems:'center',gap:5,cursor:'pointer' }}>
-                      <i className="ti ti-folder-plus" style={{ fontSize:12 }} /> Add to Vault
+                    <div onClick={()=>setWatchlist(p=>{const u=p.includes(game.id)?p.filter(x=>x!==game.id):[...p,game.id];if(authUser?.id)syncSave(authUser.id,'watchlist',u);return u;})} style={{ fontSize:10,fontWeight:700,cursor:'pointer',
+                      color: watchlist?.includes(game.id) ? '#2aa800' : '#666',
+                      background: watchlist?.includes(game.id) ? 'rgba(57,255,20,0.1)' : 'rgba(0,0,0,0.04)',
+                      border: watchlist?.includes(game.id) ? '1px solid rgba(57,255,20,0.25)' : '1px solid rgba(0,0,0,0.07)',
+                      borderRadius:8,padding:'6px 12px',display:'flex',alignItems:'center',gap:5 }}>
+                      <i className={watchlist?.includes(game.id) ? "ti ti-folder-check" : "ti ti-folder-plus"} style={{ fontSize:12 }} />
+                      {watchlist?.includes(game.id) ? 'In Vault' : 'Add to Vault'}
                     </div>
                     <button onClick={()=>setActiveGame(null)} style={{ width:32,height:32,borderRadius:8,border:'1px solid rgba(0,0,0,0.07)',background:'rgba(255,255,255,0.8)',cursor:'pointer',fontSize:16,display:'flex',alignItems:'center',justifyContent:'center',color:'#666' }}>✕</button>
                   </div>
@@ -2529,8 +2637,11 @@ export default function VegasVaultApp() {
                         <button onClick={()=>{handleGenerate(game,game.slot);setActiveGame(null);}} style={{ flex:1,padding:'10px',borderRadius:9,border:'1px solid rgba(57,255,20,0.25)',background:'rgba(57,255,20,0.07)',color:'#33aa00',fontSize:11,fontWeight:700,cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',justifyContent:'center',gap:6 }}>
                           <i className="ti ti-refresh" style={{ fontSize:13 }} /> Re-analyze
                         </button>
-                        <button style={{ flex:1,padding:'10px',borderRadius:9,border:'1px solid rgba(0,0,0,0.07)',background:'rgba(255,255,255,0.7)',color:'#555',fontSize:11,fontWeight:700,cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',justifyContent:'center',gap:6 }}>
-                          <i className="ti ti-folder-plus" style={{ fontSize:13 }} /> Add to Vault
+                        <button onClick={()=>setWatchlist(p=>{const u=p.includes(game.id)?p.filter(x=>x!==game.id):[...p,game.id];if(authUser?.id)syncSave(authUser.id,'watchlist',u);return u;})} style={{ flex:1,padding:'10px',borderRadius:9,fontSize:11,fontWeight:700,cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',justifyContent:'center',gap:6,
+                          border: watchlist?.includes(game.id) ? '1px solid rgba(57,255,20,0.25)' : '1px solid rgba(0,0,0,0.07)',
+                          background: watchlist?.includes(game.id) ? 'rgba(57,255,20,0.07)' : 'rgba(255,255,255,0.7)',
+                          color: watchlist?.includes(game.id) ? '#2aa800' : '#555' }}>
+                          <i className={watchlist?.includes(game.id) ? "ti ti-folder-check" : "ti ti-folder-plus"} style={{ fontSize:13 }} /> {watchlist?.includes(game.id) ? 'In Vault' : 'Add to Vault'}
                         </button>
                       </div>
                     </div>
