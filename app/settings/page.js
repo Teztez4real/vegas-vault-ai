@@ -310,8 +310,8 @@ export default function SettingsPage() {
           </div>
           <div style={{ padding:'16px 20px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
             {[
-              { id:'weekly', label:'Weekly', price:'$14.99', period:'/week', features:['Full AI model','All games','Auto plays','Trell Rule alerts'], highlight:false },
-              { id:'monthly', label:'Monthly', price:'$29.99', period:'/month', features:['Everything in weekly','Priority generation','Model updates','Early access'], highlight:true, badge:'Best Value' },
+              { id:'weekly', label:'Weekly', price:'$19.99', period:'/week', features:['Full AI model','All games','Auto plays','Trell Rule alerts'], highlight:false },
+              { id:'monthly', label:'Monthly', price:'$49.99', period:'/month', features:['Everything in weekly','Priority generation','Model updates','Early access'], highlight:true, badge:'Best Value' },
             ].map(plan => (
               <div key={plan.id} style={{
                 background: plan.highlight ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.5)',

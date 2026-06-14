@@ -1953,8 +1953,8 @@ export default function VegasVaultApp() {
               <div style={{ fontSize:11,color:'#aaa',marginTop:4,lineHeight:1.5 }}>Subscribe to access live AI analysis, Tier 1 locks,<br/>and the full Games Slate across all sports.</div>
             </div>
             <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,padding:'16px 28px' }}>
-              {[{name:'Weekly',price:'$14.99',period:'per week',save:''},
-                {name:'Monthly',price:'$29.99',period:'per month',save:'Save 50% vs weekly',best:true}].map(plan=>(
+              {[{name:'Weekly',price:'$19.99',period:'per week',save:''},
+                {name:'Monthly',price:'$49.99',period:'per month',save:'Save vs weekly',best:true}].map(plan=>(
                 <div key={plan.name} onClick={()=>doSubscribe(plan.name.toLowerCase())} style={{ border:plan.best?'2px solid #39FF14':'1px solid rgba(0,0,0,0.07)',borderRadius:14,padding:'16px 14px',textAlign:'center',cursor:'pointer',position:'relative',background:plan.best?'rgba(255,255,255,0.8)':'rgba(255,255,255,0.5)',boxShadow:plan.best?'0 0 24px rgba(57,255,20,0.15)':'none' }}>
                   {plan.best && <div style={{ position:'absolute',top:-9,left:'50%',transform:'translateX(-50%)',fontSize:8,fontWeight:800,color:'#111',background:'#39FF14',padding:'3px 10px',borderRadius:8,letterSpacing:0.5 }}>BEST VALUE</div>}
                   <div style={{ fontSize:11,fontWeight:700,color:'#aaa',textTransform:'uppercase',letterSpacing:'0.6px',marginTop:6 }}>{plan.name}</div>
