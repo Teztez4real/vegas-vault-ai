@@ -586,13 +586,6 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
   const awayRec  = isTennis ? `#${game.player1Ranking}` : game.awayRecord;
   const homeRec  = isTennis ? `#${game.player2Ranking}` : game.homeRecord;
 
-  const fmtOdds = v => { if (!v||v==='N/A'||v==='null') return null; if (typeof v==='number') return v>0?`+${v}`:`${v}`; return v; };
-  const awayOdds = fmtOdds(game.dkAwayML)||fmtOdds(game.awayML)||'—';
-  const homeOdds = fmtOdds(game.dkHomeML)||fmtOdds(game.homeML)||'—';
-  const spreadVal = game.dkSpread||game.spread||'—';
-  const totalVal  = game.dkTotal ||game.total ||'—';
-  const awaySpread = (() => { if(spreadVal==='—') return '—'; const n=parseFloat(spreadVal); if(isNaN(n)) return spreadVal; return n>0?`-${n.toFixed(1)}`:`+${Math.abs(n).toFixed(1)}`; })();
-  const hasMovement = game.lineMovement && !['No significant movement','N/A','No significant movement detected'].includes(game.lineMovement);
 
   const isVegas = game.slot === 'VEGAS';
   const key = `${game.id}-${game.slot}`;
@@ -674,35 +667,6 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
         </div>
       </div>
 
-      {/* Row 3: DK Odds */}
-      {!isTennis&&(game.awayML||game.homeML||game.dkAwayML||game.dkHomeML)&&(
-        <div style={{ marginBottom:10 }}>
-          <div style={{ display:'flex',alignItems:'center',gap:5,marginBottom:5 }}>
-            <span style={{ fontSize:8,fontWeight:700,color:'#5588ee',background:'rgba(80,140,255,0.08)',border:'1px solid rgba(80,140,255,0.2)',borderRadius:3,padding:'1px 6px',letterSpacing:'0.06em' }}>DK</span>
-            <span style={{ fontSize:8,color:'#aaa',letterSpacing:'0.06em' }}>DRAFTKINGS ODDS</span>
-          </div>
-          <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6 }}>
-            {[
-              { label:'Moneyline', left:awayOdds, right:homeOdds, color:(v)=>v.startsWith('-')?'#dd4444':'#33aa00' },
-              { label:game.sport==='MLB'?'Run Line':'Spread', left:awaySpread, right:spreadVal, color:()=>'#555' },
-              { label:'Total', left:totalVal!=='—'?'o'+totalVal:'—', right:totalVal!=='—'?'u'+totalVal:'—', color:()=>'#5588ee' },
-            ].map(({label,left,right,color})=>(
-              <div key={label} style={{ background:'rgba(255,255,255,0.55)',border:'1px solid rgba(0,0,0,0.05)',borderRadius:9,padding:'6px 0',textAlign:'center' }}>
-                <div style={{ fontSize:7,color:'#bbb',textTransform:'uppercase',letterSpacing:'0.6px',fontWeight:700,marginBottom:4 }}>{label}</div>
-                <div style={{ display:'flex',justifyContent:'space-around' }}>
-                  <span style={{ fontSize:11,fontWeight:700,color:color(left) }}>{left}</span>
-                  <span style={{ fontSize:11,fontWeight:700,color:color(right) }}>{right}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-          {hasMovement&&isSubscribed&&(
-            <div style={{ marginTop:6,padding:'5px 9px',background:'rgba(246,249,246,0.7)',border:'1px solid rgba(195,240,195,0.5)',borderRadius:7,fontSize:9,color:'#444',fontWeight:600 }}>
-              ⚡ {game.lineMovement}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Row 4: AI result strip */}
       {isSubscribed&&hasRes&&summary&&(
@@ -2429,8 +2393,14 @@ export default function VegasVaultApp() {
 
         const fmtOdds = v => { if(!v||v==='N/A'||v==='null') return null; if(typeof v==='number') return v>0?`+${v}`:`${v}`; return v; };
         const pickOdds = fmtOdds(game.dkAwayML) || fmtOdds(game.awayML) || fmtOdds(game.dkHomeML) || fmtOdds(game.homeML);
+        const awayOdds = fmtOdds(game.dkAwayML) || fmtOdds(game.awayML) || '—';
+        const homeOdds = fmtOdds(game.dkHomeML) || fmtOdds(game.homeML) || '—';
+        const spreadVal = game.dkSpread || game.spread || '—';
+        const totalVal  = game.dkTotal  || game.total  || '—';
+        const awaySpread = (() => { if(spreadVal==='—') return '—'; const n=parseFloat(spreadVal); if(isNaN(n)) return spreadVal; return n>0?`-${n.toFixed(1)}`:`+${Math.abs(n).toFixed(1)}`; })();
+        const hasMovement = game.lineMovement && !['No significant movement','N/A','No significant movement detected'].includes(game.lineMovement);
 
-        const TABS = ['AI Reasoning','Matchup & Stats','Injury & Weather','Scam Play','Line Movement','Series Context'];
+        const TABS = ['AI Reasoning','Matchup & Stats','Odds & Sharp Money','Injury & Weather','Scam Play','Line Movement','Series Context'];
         const activeTab = activeDetailTab || 'AI Reasoning';
 
         return (
@@ -2658,6 +2628,58 @@ export default function VegasVaultApp() {
                         <div style={{ fontSize:11,color:'#444',lineHeight:1.7 }}>{analysis.hitterLineup}</div>
                       </div>
                     )}
+                  </>
+                )}
+
+                {/* Odds & Sharp Money tab */}
+                {activeTab === 'Odds & Sharp Money' && (
+                  <>
+                    {!isTennis && (game.awayML||game.homeML||game.dkAwayML||game.dkHomeML) && (
+                      <div style={{ background:'rgba(255,255,255,0.7)',border:'1px solid rgba(255,255,255,0.93)',borderRadius:14,padding:'14px 16px',marginBottom:12 }}>
+                        <div style={{ display:'flex',alignItems:'center',gap:6,marginBottom:10 }}>
+                          <span style={{ fontSize:8,fontWeight:700,color:'#5588ee',background:'rgba(80,140,255,0.08)',border:'1px solid rgba(80,140,255,0.2)',borderRadius:3,padding:'1px 6px',letterSpacing:'0.06em' }}>DK</span>
+                          <span style={{ fontSize:11,fontWeight:800,color:'#111' }}>DraftKings Odds</span>
+                        </div>
+                        <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8 }}>
+                          {[
+                            { label:'Moneyline', left:awayOdds, right:homeOdds, color:(v)=>v.startsWith('-')?'#dd4444':'#33aa00' },
+                            { label:game.sport==='MLB'?'Run Line':'Spread', left:awaySpread, right:spreadVal, color:()=>'#555' },
+                            { label:'Total', left:totalVal!=='—'?'o'+totalVal:'—', right:totalVal!=='—'?'u'+totalVal:'—', color:()=>'#5588ee' },
+                          ].map(({label,left,right,color})=>(
+                            <div key={label} style={{ background:'rgba(246,249,246,0.7)',border:'1px solid rgba(195,240,195,0.5)',borderRadius:10,padding:'10px 0',textAlign:'center' }}>
+                              <div style={{ fontSize:8,color:'#bbb',textTransform:'uppercase',letterSpacing:'0.6px',fontWeight:700,marginBottom:5 }}>{label}</div>
+                              <div style={{ display:'flex',justifyContent:'space-around' }}>
+                                <span style={{ fontSize:13,fontWeight:700,color:color(left) }}>{left}</span>
+                                <span style={{ fontSize:13,fontWeight:700,color:color(right) }}>{right}</span>
+                              </div>
+                              <div style={{ display:'flex',justifyContent:'space-around',marginTop:3 }}>
+                                <span style={{ fontSize:8,color:'#aaa' }}>{game.away}</span>
+                                <span style={{ fontSize:8,color:'#aaa' }}>{game.home}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div style={{ background:'rgba(240,248,255,0.5)',border:'1px solid rgba(80,140,255,0.25)',borderRadius:14,padding:'14px 16px' }}>
+                      <div style={{ fontSize:11,fontWeight:800,color:'#5588ee',marginBottom:10,display:'flex',alignItems:'center',gap:6 }}>
+                        <i className="ti ti-currency-dollar" style={{ fontSize:14 }} /> Sharp Money
+                      </div>
+                      {game.sharpSignal && (
+                        <div style={{ fontSize:10,color:'#789',marginBottom:8 }}>Sharp Signal: <b>{game.sharpSignal}</b></div>
+                      )}
+                      {hasMovement && (
+                        <div style={{ fontSize:11,color:'#456',lineHeight:1.7,marginBottom:analysis.sharpMoney?8:0 }}>
+                          <i className="ti ti-bolt" style={{ fontSize:12,color:'#5588ee',marginRight:5 }} />{game.lineMovement}
+                        </div>
+                      )}
+                      {analysis.sharpMoney ? (
+                        <div style={{ fontSize:11,color:'#456',lineHeight:1.7 }}>{analysis.sharpMoney}</div>
+                      ) : !hasMovement && !game.sharpSignal && (
+                        <div style={{ fontSize:11,color:'#bbb' }}>No sharp action data available.</div>
+                      )}
+                    </div>
                   </>
                 )}
 
