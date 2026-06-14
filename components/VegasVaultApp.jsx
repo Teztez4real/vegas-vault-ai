@@ -3142,7 +3142,7 @@ export default function VegasVaultApp() {
                               <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(57,255,20,0.13)" strokeWidth="6"/>
                               <circle cx="32" cy="32" r="26" fill="none" stroke={conf.color} strokeWidth="6" strokeDasharray={ringCirc} strokeDashoffset={ringOffset} strokeLinecap="round" transform="rotate(-90 32 32)"/>
                             </svg>
-                            <div style={{ position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:800,color:'#111' }}>{summary.confidence||'—'}</div>
+                            <div style={{ position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',fontSize:15,fontWeight:800,color:'#111' }}>{Math.round(conf.ring*100)}%</div>
                           </div>
                           <div style={{ fontSize:8,fontWeight:800,color:conf.color,marginTop:4,letterSpacing:'0.5px' }}>{conf.text}</div>
                         </div>
