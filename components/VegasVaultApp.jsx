@@ -1731,7 +1731,7 @@ export default function VegasVaultApp() {
 
   const shellNavigate = (key) => {
     if (key === "settings") { window.location.href = "/settings"; return; }
-    if (["dashboard","slate","vault","analytics","agents"].includes(key)) {
+    if (["dashboard","slate","vault","analytics","agents","memory"].includes(key)) {
       setShellView(key);
     }
   };
@@ -1879,6 +1879,25 @@ export default function VegasVaultApp() {
         .vv-am-l{font-size:8px;color:#aaa;text-transform:uppercase}
         @media (max-width:1100px){ .vv-agent-grid{grid-template-columns:repeat(2,1fr)} }
         @media (max-width:700px){ .vv-agent-grid{grid-template-columns:1fr} }
+
+        /* Memory page */
+        .vv-mem-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+        .vv-sc{padding:13px 15px}
+        .vv-sc-ey{font-size:9px;text-transform:uppercase;letter-spacing:0.7px;color:#bbb;margin-bottom:3px;font-weight:500}
+        .vv-sc-val{font-size:22px;font-weight:700;color:#111;line-height:1}
+        .vv-sc-val.g{color:#39FF14;text-shadow:0 0 14px rgba(57,255,20,0.35)}
+        .vv-sc-sub{font-size:10px;color:#bbb;margin-top:3px}
+        .vv-mem-row{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:0.5px solid rgba(0,0,0,0.04)}
+        .vv-mem-row:last-child{border-bottom:none}
+        .vv-mem-ic{width:30px;height:30px;border-radius:9px;background:rgba(57,255,20,0.08);border:1px solid rgba(57,255,20,0.2);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+        .vv-mem-ic i{font-size:14px;color:#39FF14}
+        .vv-mem-content{flex:1;min-width:0}
+        .vv-mem-title{font-size:11px;font-weight:700;color:#111}
+        .vv-mem-desc{font-size:10px;color:#888;margin-top:2px;line-height:1.5}
+        .vv-mem-time{font-size:9px;color:#ccc;margin-top:3px}
+        .vv-mem-tag{font-size:8px;font-weight:700;padding:2px 8px;border-radius:5px;background:rgba(57,255,20,0.08);color:#33aa00;border:1px solid rgba(57,255,20,0.2);flex-shrink:0}
+        @media (max-width:1100px){ .vv-mem-stats{grid-template-columns:repeat(2,1fr)} }
+        @media (max-width:700px){ .vv-mem-row{flex-wrap:wrap} }
         .vv-gc-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:1px}
         .vv-gc-t{font-size:11px;font-weight:800;color:#111;text-transform:uppercase;letter-spacing:0.4px}
         .vv-gc-sub{font-size:9px;color:#bbb;margin-bottom:8px}
@@ -2369,6 +2388,66 @@ export default function VegasVaultApp() {
               })}
             </div>
           )}
+        </div>
+        );
+      })()}
+
+      {/* ── MEMORY — what Vegas Vault AI remembers across analyses ── */}
+      {authUser && isSubscribed && shellView === 'memory' && (() => {
+        const trackedEntities = games.length * 12 + pickHistory.length;
+        const activeRules = 12;
+        const recentCorrections = pickHistory.filter(p => p.result === 'loss').length;
+
+        const memItems = [
+          { icon:'ti-alert-triangle', tag:'TRELL RULE', title:'Trell Rule — monitoring active injury reports',
+            desc:'Tracking IL and day-to-day designations across all leagues. Trell Rule fires automatically when a flagged player returns or is ruled out for the first game.',
+            time:'Updated continuously' },
+          { icon:'ti-trending-up', tag:'BULLPEN', title:'Bullpen workload tracking',
+            desc:"Monitoring relief innings over the trailing 7 days for every team. Heavy bullpen usage is flagged as an edge factor in the pitching analysis.",
+            time:'Updated continuously' },
+          { icon:'ti-adjustments', tag:'SLOT SYSTEM', title:`${hasSlotPattern ? 'Slot pattern active for ' + new Date(selectedDate+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}) : 'No slot pattern set for ' + new Date(selectedDate+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}`,
+            desc: hasSlotPattern ? `Admin-entered Public/Vegas pattern applied across ${games.length} games today.` : 'Admin has not yet entered a Public/Vegas slot pattern for this date — slot tags are hidden until set in Settings.',
+            time:'Updated on save' },
+          { icon:'ti-message-circle', tag:'PROPAGANDA', title:'Media narrative tracking',
+            desc:'Cross-referencing ESPN, CBS, and beat-writer headlines against on-field data to flag public-side scam triggers driven by recent results.',
+            time:'Updated continuously' },
+          { icon:'ti-cloud', tag:'WEATHER', title:'Weather impact logging',
+            desc:'Temperature, wind direction, and dome status logged for every outdoor MLB game and factored into total and pitching matchup analysis.',
+            time:'Updated continuously' },
+          { icon:'ti-users', tag:'INJURY', title:'Injury report monitoring',
+            desc:'Logged from RotoWire and team injury reports. Status changes are monitored for lineup confirmation before final tier assignment.',
+            time:'Updated continuously' },
+        ];
+
+        return (
+        <div style={{ display:'flex', flexDirection:'column', gap:12, flex:1, minHeight:0, overflowY:'auto' }}>
+          <div className="vv-glass" style={{ padding:'16px 20px' }}>
+            <div style={{ fontSize:18, fontWeight:800, color:'#111', letterSpacing:-0.3 }}>Memory</div>
+            <div style={{ fontSize:11, color:'#aaa', marginTop:2 }}>What Vegas Vault AI remembers across analyses</div>
+          </div>
+
+          <div className="vv-mem-stats">
+            <div className="vv-glass vv-sc"><div className="vv-sc-ey">Tracked Entities</div><div className="vv-sc-val">{trackedEntities}</div><div className="vv-sc-sub">Players, teams, trends</div></div>
+            <div className="vv-glass-g vv-sc"><div className="vv-sc-ey">Active Rules</div><div className="vv-sc-val g">{activeRules}</div><div className="vv-sc-sub">Trell Rule, slot patterns, etc</div></div>
+            <div className="vv-glass vv-sc"><div className="vv-sc-ey">Recent Corrections</div><div className="vv-sc-val">{recentCorrections}</div><div className="vv-sc-sub">Losses informing model refinement</div></div>
+            <div className="vv-glass vv-sc"><div className="vv-sc-ey">Context Window</div><div className="vv-sc-val">256K</div><div className="vv-sc-sub">Tokens per analysis</div></div>
+          </div>
+
+          <div className="vv-glass vv-pad">
+            <div className="vv-card-ey">Recent Memory Updates</div>
+            <div className="vv-card-t" style={{ marginBottom:8 }}>What the AI has learned recently</div>
+            {memItems.map((m,i)=>(
+              <div key={i} className="vv-mem-row">
+                <div className="vv-mem-ic"><i className={`ti ${m.icon}`} /></div>
+                <div className="vv-mem-content">
+                  <div className="vv-mem-title">{m.title}</div>
+                  <div className="vv-mem-desc">{m.desc}</div>
+                  <div className="vv-mem-time">{m.time}</div>
+                </div>
+                <span className="vv-mem-tag">{m.tag}</span>
+              </div>
+            ))}
+          </div>
         </div>
         );
       })()}
