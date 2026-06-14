@@ -2010,7 +2010,7 @@ export default function VegasVaultApp() {
 
       {/* ── DASHBOARD — 3-column command center + games slate ── */}
       {authUser && isSubscribed && (
-        <div className="vv-dashboard-row" style={{ display:'flex', gap:10, alignItems:'stretch', minWidth:0, height:'100%', minHeight:0 }}>
+        <div className="vv-dashboard-row" style={{ display:'flex', gap:10, alignItems:'stretch', minWidth:0, flex:1, minHeight:0, height:0 }}>
 
           <div className="vv-center">
 
