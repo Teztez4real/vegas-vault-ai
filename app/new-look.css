@@ -39,6 +39,9 @@ body {
   color: var(--vv-text) !important;
 }
 
+*, *::before, *::after {
+  box-sizing: border-box;
+}
 html, body {
   height: 100%;
   margin: 0;
@@ -89,6 +92,7 @@ html, body {
 /* ── TOPBAR ── */
 .vv-topbar {
   width: 100%;
+  box-sizing: border-box;
   height: var(--vv-topbar-h);
   background: rgba(255,255,255,0.88);
   border-bottom: 1px solid rgba(57,255,20,0.12);
