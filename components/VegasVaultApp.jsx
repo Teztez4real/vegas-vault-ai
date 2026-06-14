@@ -1911,10 +1911,10 @@ export default function VegasVaultApp() {
           .vv-center > .vv-col:nth-child(3){grid-column:span 2}
         }
         @media (max-width:900px){
-          .vv-dashboard-row{flex-direction:column}
-          .vv-center{grid-template-columns:1fr}
+          .vv-dashboard-row{flex-direction:column;height:auto;min-height:0}
+          .vv-center{grid-template-columns:1fr;height:auto;overflow-y:visible}
           .vv-center > .vv-col:nth-child(3){grid-column:span 1}
-          .vv-slate{width:100%}
+          .vv-slate{width:100%;height:auto;overflow-y:visible;max-height:400px}
         }
       `}</style>
 

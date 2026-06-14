@@ -39,12 +39,16 @@ body {
   color: var(--vv-text) !important;
 }
 
+html, body {
+  height: 100%;
+  margin: 0;
+}
 .vv-root {
   font-family: 'Inter', sans-serif;
   background: var(--vv-bg);
   height: 100vh;
   position: relative;
-  overflow-x: hidden;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
@@ -393,5 +397,7 @@ body {
 @media (max-width: 900px) {
   .vv-menu-toggle { display: flex; }
   .vv-sidebar { display: none; }
-  .vv-body { padding: 10px; }
+  .vv-body { padding: 10px; overflow-y: auto; }
+  .vv-root { overflow-y: auto; height: auto; min-height: 100vh; }
+  .vv-main { height: auto; }
 }
