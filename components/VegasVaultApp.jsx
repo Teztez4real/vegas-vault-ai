@@ -1781,8 +1781,8 @@ export default function VegasVaultApp() {
         button { font-family: inherit; }
         ::-webkit-scrollbar{width:4px;}
         ::-webkit-scrollbar-thumb{background:rgba(57,255,20,0.2);border-radius:2px;}
-        .vv-center{flex:1;min-width:0;display:grid;grid-template-columns:1fr 1.15fr 1fr;gap:10px;align-items:start;height:100%;overflow-y:auto;align-content:start}
-        .vv-col{display:flex;flex-direction:column;gap:10px;min-width:0}
+        .vv-center{flex:1;min-width:0;display:grid;grid-template-columns:1fr 1.15fr 1fr;gap:10px;height:100%;min-height:0}
+        .vv-col{display:flex;flex-direction:column;gap:10px;min-width:0;height:100%;min-height:0}
         .vv-glass{background:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.93);border-radius:16px;backdrop-filter:blur(20px);box-shadow:0 8px 30px rgba(0,0,0,0.06),0 2px 8px rgba(0,0,0,0.03),inset 0 1px 0 rgba(255,255,255,0.95)}
         .vv-glass-g{background:rgba(255,255,255,0.62);border:1px solid rgba(57,255,20,0.28);border-radius:16px;backdrop-filter:blur(20px);box-shadow:0 10px 36px rgba(57,255,20,0.09),0 3px 10px rgba(0,0,0,0.04),inset 0 1px 0 rgba(255,255,255,0.95)}
         .vv-pad{padding:13px 15px}
@@ -2051,26 +2051,28 @@ export default function VegasVaultApp() {
                 </div>
               </div>
 
-              <div className="vv-glass vv-pad">
+              <div className="vv-glass vv-pad" style={{ flex:1, minHeight:0, display:'flex', flexDirection:'column' }}>
                 <div style={{ display:'flex',alignItems:'center',gap:6,marginBottom:2 }}><i className="ti ti-lock" style={{ fontSize:13,color:'#39FF14' }} /><span style={{ fontSize:11,fontWeight:800,color:'#111' }}>Vault Locks</span></div>
                 <div style={{ fontSize:8,color:'#bbb',marginBottom:7,display:'flex',justifyContent:'space-between' }}><span>Tier 1 AI Lock Picks</span><span style={{ fontWeight:600,color:'#555' }}>{pickHistory.filter(p=>p.tier==='1').length} tracked</span></div>
-                {pickHistory.filter(p=>p.tier==='1').slice(-4).reverse().map((p,i)=>(
-                  <div key={i} className="vv-vf-r">
-                    <div className={`vv-vf-ic ${p.result==='win'?'g':p.result==='loss'?'r':'y'}`}>
-                      <i className={`ti ${p.result==='win'?'ti-check':p.result==='loss'?'ti-x':'ti-clock'}`} style={{ color:p.result==='win'?'#2aa800':p.result==='loss'?'#e55':'#aa8800',fontSize:11 }} />
+                <div style={{ flex:1, minHeight:0, overflowY:'auto' }}>
+                  {pickHistory.filter(p=>p.tier==='1').slice(-4).reverse().map((p,i)=>(
+                    <div key={i} className="vv-vf-r">
+                      <div className={`vv-vf-ic ${p.result==='win'?'g':p.result==='loss'?'r':'y'}`}>
+                        <i className={`ti ${p.result==='win'?'ti-check':p.result==='loss'?'ti-x':'ti-clock'}`} style={{ color:p.result==='win'?'#2aa800':p.result==='loss'?'#e55':'#aa8800',fontSize:11 }} />
+                      </div>
+                      <div className="vv-vf-nm">{p.pick}</div>
+                      <div className="vv-vf-tm">{p.result==='win'?'WIN':p.result==='loss'?'LOSS':'—'}</div>
                     </div>
-                    <div className="vv-vf-nm">{p.pick}</div>
-                    <div className="vv-vf-tm">{p.result==='win'?'WIN':p.result==='loss'?'LOSS':'—'}</div>
-                  </div>
-                ))}
-                {pickHistory.filter(p=>p.tier==='1').length===0 && <div style={{ fontSize:10,color:'#ccc',textAlign:'center',padding:'8px 0' }}>No locks tracked yet</div>}
+                  ))}
+                  {pickHistory.filter(p=>p.tier==='1').length===0 && <div style={{ fontSize:10,color:'#ccc',textAlign:'center',padding:'8px 0' }}>No locks tracked yet</div>}
+                </div>
                 <div className="vv-vf-va" onClick={()=>setShowHistory(true)}>View all locks →</div>
               </div>
             </div>
 
             {/* COLUMN 2: AI Core Orb, Icon Dock, Model Card */}
             <div className="vv-col">
-              <div className="vv-glass-g vv-orb-card">
+              <div className="vv-glass-g vv-orb-card" style={{ flex:1, minHeight:0 }}>
                 <div className="vv-oc-ey">Vegas Vault AI Core</div>
                 <div className="vv-oc-title">4-Stage Analysis Engine</div>
                 <div className="vv-oc-badge"><div className="vv-oc-dot"></div>ACTIVE</div>
@@ -2136,7 +2138,7 @@ export default function VegasVaultApp() {
 
             {/* COLUMN 3: AI Assistant + Analytics */}
             <div className="vv-col">
-              <div className="vv-glass vv-ai-card">
+              <div className="vv-glass vv-ai-card" style={{ flex:1, minHeight:0, display:'flex', flexDirection:'column' }}>
                 <div className="vv-ai-hd">
                   <div className="vv-ai-trow">
                     <div className="vv-ai-ic"><i className="ti ti-brain" /></div>
@@ -2144,7 +2146,7 @@ export default function VegasVaultApp() {
                   </div>
                   <i className="ti ti-dots" style={{ color:'#ccc',fontSize:13 }} />
                 </div>
-                <div className="vv-ai-bubble">
+                <div className="vv-ai-bubble" style={{ flex:1, minHeight:0, overflowY:'auto' }}>
                   {topPlay && topPlay.summary ? (
                     <>
                       <p>Here's today's top play based on the full slate analysis:</p>
