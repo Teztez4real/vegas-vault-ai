@@ -1728,7 +1728,7 @@ export default function VegasVaultApp() {
 
   function handleCardClick(game){
     const result=results[`${game.id}-VEGAS`]||results[`${game.id}-PUBLIC`]||results[`${game.id}-WNBA`];
-    if(result){setActiveResult(result);setActiveGame(game);}
+    if(result){setActiveResult(result);setActiveGame(game);setActiveDetailTab('AI Reasoning');}
   }
 
   // Date navigation helpers
@@ -2216,7 +2216,7 @@ export default function VegasVaultApp() {
               const fmtOdds = v => { if(!v||v==='N/A'||v==='null') return null; if(typeof v==='number') return v>0?`+${v}`:`${v}`; return v; };
               const pickOdds = summary ? (fmtOdds(game.dkAwayML)||fmtOdds(game.awayML)||'—') : null;
               return (
-                <div key={key} className="vv-gr" onClick={()=>{ if(result) { setActiveGame(game); setActiveResult(result); } else { handleGenerate(game, game.slot); } }}>
+                <div key={key} className="vv-gr" onClick={()=>{ if(result) { setActiveGame(game); setActiveResult(result); setActiveDetailTab('AI Reasoning'); } else { handleGenerate(game, game.slot); } }}>
                   <div className="vv-gr-a">
                     <span className="vv-gr-t">
                       <img className="vv-gr-lg" src={`https://a.espncdn.com/i/teamlogos/${game.sport==='NBA'?'nba':game.sport==='NFL'?'nfl':'mlb'}/500/${(game.awayAbbr||'').toLowerCase()}.png`} alt="" onError={e=>e.target.style.display='none'} />
@@ -2430,7 +2430,7 @@ export default function VegasVaultApp() {
         const fmtOdds = v => { if(!v||v==='N/A'||v==='null') return null; if(typeof v==='number') return v>0?`+${v}`:`${v}`; return v; };
         const pickOdds = fmtOdds(game.dkAwayML) || fmtOdds(game.awayML) || fmtOdds(game.dkHomeML) || fmtOdds(game.homeML);
 
-        const TABS = ['AI Reasoning','Scam Play','Line Movement','Series Context'];
+        const TABS = ['AI Reasoning','Matchup & Stats','Injury & Weather','Scam Play','Line Movement','Series Context'];
         const activeTab = activeDetailTab || 'AI Reasoning';
 
         return (
@@ -2567,6 +2567,126 @@ export default function VegasVaultApp() {
                   </>
                 )}
 
+                {/* Matchup & Stats tab */}
+                {activeTab === 'Matchup & Stats' && (
+                  <>
+                    {/* Starting Pitchers (MLB) */}
+                    {!isTennis && (game.awayPitcher || game.homePitcher) && (
+                      <div style={{ background:'rgba(255,255,255,0.7)',border:'1px solid rgba(255,255,255,0.93)',borderRadius:14,padding:'14px 16px',marginBottom:12 }}>
+                        <div style={{ fontSize:11,fontWeight:800,color:'#111',marginBottom:10,display:'flex',alignItems:'center',gap:6 }}>
+                          <i className="ti ti-baseball" style={{ fontSize:13,color:'#33aa00' }} /> Starting Pitchers
+                        </div>
+                        <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10 }}>
+                          <div style={{ padding:'10px 12px',background:'rgba(246,249,246,0.7)',border:'1px solid rgba(195,240,195,0.5)',borderRadius:10 }}>
+                            <div style={{ fontSize:8,color:'#aaa',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:3 }}>{game.away}</div>
+                            <div style={{ fontSize:13,fontWeight:800,color:'#111' }}>{game.awayPitcher || 'TBD'}</div>
+                            {game.awayPitcherStats && <div style={{ fontSize:10,color:'#777',marginTop:4,lineHeight:1.6 }}>{game.awayPitcherStats}</div>}
+                            {game.awayPitcherVsOpponent && game.awayPitcherVsOpponent!=='N/A' && <div style={{ fontSize:10,color:'#999',marginTop:4 }}>vs {game.home}: {game.awayPitcherVsOpponent}</div>}
+                          </div>
+                          <div style={{ padding:'10px 12px',background:'rgba(246,249,246,0.7)',border:'1px solid rgba(195,240,195,0.5)',borderRadius:10 }}>
+                            <div style={{ fontSize:8,color:'#aaa',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:3 }}>{game.home}</div>
+                            <div style={{ fontSize:13,fontWeight:800,color:'#111' }}>{game.homePitcher || 'TBD'}</div>
+                            {game.homePitcherStats && <div style={{ fontSize:10,color:'#777',marginTop:4,lineHeight:1.6 }}>{game.homePitcherStats}</div>}
+                            {game.homePitcherVsOpponent && game.homePitcherVsOpponent!=='N/A' && <div style={{ fontSize:10,color:'#999',marginTop:4 }}>vs {game.away}: {game.homePitcherVsOpponent}</div>}
+                          </div>
+                        </div>
+                        {analysis.pitching && <div style={{ marginTop:10,fontSize:11,color:'#444',lineHeight:1.6 }}>{analysis.pitching}</div>}
+                      </div>
+                    )}
+
+                    {/* Team Comparison / Records */}
+                    {!isTennis && (game.awayRecord || game.homeRecord) && (
+                      <div style={{ background:'rgba(255,255,255,0.7)',border:'1px solid rgba(255,255,255,0.93)',borderRadius:14,padding:'14px 16px',marginBottom:12 }}>
+                        <div style={{ fontSize:11,fontWeight:800,color:'#111',marginBottom:10,display:'flex',alignItems:'center',gap:6 }}>
+                          <i className="ti ti-chart-bar" style={{ fontSize:13,color:'#33aa00' }} /> Team Comparison
+                        </div>
+                        <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10 }}>
+                          <div style={{ padding:'10px 12px',background:'rgba(255,255,255,0.6)',border:'1px solid rgba(0,0,0,0.05)',borderRadius:10 }}>
+                            <div style={{ fontSize:8,color:'#bbb',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:5 }}>{game.away}</div>
+                            <div style={{ fontSize:10,color:'#555',lineHeight:1.8 }}>
+                              <div>Overall: <b>{game.awayRecord || '—'}</b></div>
+                              <div>Home / Away: <b>{game.awayHomeRecord || '—'} / {game.awayAwayRecord || '—'}</b></div>
+                              <div>L5: <b>{game.awayLast5 || '—'}</b> · L10: <b>{game.awayLast10 || '—'}</b></div>
+                              {game.awayStreak && <div>Streak: <b>{game.awayStreak}</b></div>}
+                              {game.awayATS && game.awayATS!=='N/A' && <div>ATS: <b>{game.awayATS}</b></div>}
+                            </div>
+                          </div>
+                          <div style={{ padding:'10px 12px',background:'rgba(255,255,255,0.6)',border:'1px solid rgba(0,0,0,0.05)',borderRadius:10 }}>
+                            <div style={{ fontSize:8,color:'#bbb',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:5 }}>{game.home}</div>
+                            <div style={{ fontSize:10,color:'#555',lineHeight:1.8 }}>
+                              <div>Overall: <b>{game.homeRecord || '—'}</b></div>
+                              <div>Home / Away: <b>{game.homeHomeRecord || '—'} / {game.homeAwayRecord || '—'}</b></div>
+                              <div>L5: <b>{game.homeLast5 || '—'}</b> · L10: <b>{game.homeLast10 || '—'}</b></div>
+                              {game.homeStreak && <div>Streak: <b>{game.homeStreak}</b></div>}
+                              {game.homeATS && game.homeATS!=='N/A' && <div>ATS: <b>{game.homeATS}</b></div>}
+                            </div>
+                          </div>
+                        </div>
+                        {analysis.recentForm && <div style={{ marginTop:10,fontSize:11,color:'#444',lineHeight:1.6 }}>{analysis.recentForm}</div>}
+                      </div>
+                    )}
+
+                    {/* Matchup Truth */}
+                    {analysis.matchupFoundation && (
+                      <div style={{ background:'rgba(255,255,255,0.7)',border:'1px solid rgba(255,255,255,0.93)',borderRadius:14,padding:'14px 16px',marginBottom:12 }}>
+                        <div style={{ fontSize:11,fontWeight:800,color:'#111',marginBottom:8,display:'flex',alignItems:'center',gap:6 }}>
+                          <i className="ti ti-versus" style={{ fontSize:13,color:'#33aa00' }} /> Matchup Truth
+                        </div>
+                        <div style={{ fontSize:11,color:'#444',lineHeight:1.7 }}>{analysis.matchupFoundation}</div>
+                      </div>
+                    )}
+
+                    {/* H2H */}
+                    {(analysis.headToHead || game.h2hLast5) && (
+                      <div style={{ background:'rgba(255,255,255,0.7)',border:'1px solid rgba(255,255,255,0.93)',borderRadius:14,padding:'14px 16px',marginBottom:12 }}>
+                        <div style={{ fontSize:11,fontWeight:800,color:'#111',marginBottom:8,display:'flex',alignItems:'center',gap:6 }}>
+                          <i className="ti ti-swords" style={{ fontSize:13,color:'#33aa00' }} /> Head to Head
+                        </div>
+                        <div style={{ fontSize:11,color:'#444',lineHeight:1.7 }}>{analysis.headToHead || game.h2hLast5}</div>
+                        {game.h2hAtHome && game.h2hAtHome !== game.h2hLast5 && (
+                          <div style={{ marginTop:8,paddingTop:8,borderTop:'1px solid rgba(0,0,0,0.05)',fontSize:10,color:'#999' }}>Last time at {game.home}: {game.h2hAtHome}</div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Lineups & Hitters (MLB) */}
+                    {!isTennis && analysis.hitterLineup && (
+                      <div style={{ background:'rgba(255,255,255,0.7)',border:'1px solid rgba(255,255,255,0.93)',borderRadius:14,padding:'14px 16px' }}>
+                        <div style={{ fontSize:11,fontWeight:800,color:'#111',marginBottom:8,display:'flex',alignItems:'center',gap:6 }}>
+                          <i className="ti ti-bat" style={{ fontSize:13,color:'#33aa00' }} /> Lineups & Hitters
+                        </div>
+                        <div style={{ fontSize:11,color:'#444',lineHeight:1.7 }}>{analysis.hitterLineup}</div>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Injury & Weather tab */}
+                {activeTab === 'Injury & Weather' && (
+                  <>
+                    <div style={{ background:'rgba(255,250,235,0.5)',border:'1px solid rgba(255,150,0,0.35)',borderRadius:14,padding:'14px 16px',marginBottom:12 }}>
+                      <div style={{ fontSize:11,fontWeight:800,color:'#bb6600',marginBottom:10,display:'flex',alignItems:'center',gap:6 }}>
+                        <i className="ti ti-first-aid-kit" style={{ fontSize:14 }} /> Injury Impact
+                      </div>
+                      {game.injuries ? (
+                        <div style={{ fontSize:11,color:'#664400',lineHeight:1.7 }}>{typeof game.injuries==='object'?JSON.stringify(game.injuries):game.injuries}</div>
+                      ) : (
+                        <div style={{ fontSize:11,color:'#bbb' }}>No injury report available.</div>
+                      )}
+                    </div>
+                    <div style={{ background:'rgba(240,248,255,0.5)',border:'1px solid rgba(80,140,255,0.25)',borderRadius:14,padding:'14px 16px' }}>
+                      <div style={{ fontSize:11,fontWeight:800,color:'#5588ee',marginBottom:10,display:'flex',alignItems:'center',gap:6 }}>
+                        <i className="ti ti-cloud" style={{ fontSize:14 }} /> Weather
+                      </div>
+                      {game.weather ? (
+                        <div style={{ fontSize:11,color:'#456',lineHeight:1.7 }}>{typeof game.weather==='object'?JSON.stringify(game.weather):game.weather}</div>
+                      ) : (
+                        <div style={{ fontSize:11,color:'#bbb' }}>No weather data — indoor or unavailable.</div>
+                      )}
+                    </div>
+                  </>
+                )}
+
                 {/* Scam Play tab */}
                 {activeTab === 'Scam Play' && (
                   <div style={{ background:'rgba(255,250,235,0.5)',border:'1px solid rgba(255,150,0,0.35)',borderRadius:14,padding:'14px 16px' }}>
@@ -2643,6 +2763,25 @@ export default function VegasVaultApp() {
                       <div style={{ marginTop:12,paddingTop:12,borderTop:'1px solid rgba(0,0,0,0.05)' }}>
                         <div style={{ fontSize:9,fontWeight:800,color:'#33aa00',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:4 }}>Situational</div>
                         <div style={{ fontSize:11,color:'#444',lineHeight:1.6 }}>{analysis.situational}</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Public vs Sharp — within Series Context tab */}
+                {activeTab === 'Series Context' && (analysis.sharpMoney || analysis.propaganda || game.sharpSignal) && (
+                  <div style={{ marginTop:12,background:'rgba(240,248,255,0.5)',border:'1px solid rgba(80,140,255,0.25)',borderRadius:14,padding:'14px 16px' }}>
+                    <div style={{ fontSize:11,fontWeight:800,color:'#5588ee',marginBottom:10,display:'flex',alignItems:'center',gap:6 }}>
+                      <i className="ti ti-users" style={{ fontSize:14 }} /> Public vs Sharp
+                    </div>
+                    {game.sharpSignal && <div style={{ fontSize:10,color:'#789',marginBottom:8 }}>Sharp Signal: <b>{game.sharpSignal}</b></div>}
+                    {analysis.sharpMoney && (
+                      <div style={{ fontSize:11,color:'#456',lineHeight:1.7,marginBottom:analysis.propaganda?10:0 }}>{analysis.sharpMoney}</div>
+                    )}
+                    {analysis.propaganda && (
+                      <div style={{ paddingTop:analysis.sharpMoney?10:0,borderTop:analysis.sharpMoney?'1px solid rgba(80,140,255,0.15)':'none' }}>
+                        <div style={{ fontSize:9,fontWeight:800,color:'#5588ee',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:4 }}>Media Narrative</div>
+                        <div style={{ fontSize:11,color:'#456',lineHeight:1.7 }}>{analysis.propaganda}</div>
                       </div>
                     )}
                   </div>
