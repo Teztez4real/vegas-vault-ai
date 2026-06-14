@@ -836,6 +836,7 @@ export default function VegasVaultApp() {
   const [authMode, setAuthMode]         = useState('login');
   const [authEmail, setAuthEmail]       = useState('');
   const [authPw, setAuthPw]             = useState('');
+  const [authFullName, setAuthFullName] = useState('');
   const [authLoading, setAuthLoading]   = useState(false);
   const [authError, setAuthError]       = useState('');
   const [showPw, setShowPw]             = useState(false);
@@ -916,7 +917,11 @@ export default function VegasVaultApp() {
       const sb = getSB();
       if (!sb) { setAuthError('Auth unavailable'); setAuthLoading(false); return; }
       if (authMode === 'signup') {
-        const { error } = await sb.auth.signUp({ email: authEmail, password: authPw });
+        const { error } = await sb.auth.signUp({
+          email: authEmail,
+          password: authPw,
+          options: { data: { full_name: authFullName.trim() } },
+        });
         if (error) { setAuthError(error.message); } else { setAuthMode('plans'); }
       } else {
         const { data, error } = await sb.auth.signInWithPassword({ email: authEmail, password: authPw });
@@ -2135,8 +2140,19 @@ export default function VegasVaultApp() {
               <div style={{ fontSize:14,fontWeight:800,color:'#111',letterSpacing:0.5 }}>VEGAS VAULT AI</div>
               <div style={{ fontSize:10,color:'#aaa',letterSpacing:'1.5px',textTransform:'uppercase',marginTop:2 }}>AI Model OS</div>
             </div>
-            <div style={{ fontSize:18,fontWeight:800,color:'#111',textAlign:'center',marginBottom:4 }}>Welcome back</div>
-            <div style={{ fontSize:11,color:'#aaa',textAlign:'center',marginBottom:20 }}>Sign in to access your AI sports intelligence platform</div>
+            <div style={{ fontSize:18,fontWeight:800,color:'#111',textAlign:'center',marginBottom:4 }}>{authMode==='signup' ? 'Create your account' : 'Welcome back'}</div>
+            <div style={{ fontSize:11,color:'#aaa',textAlign:'center',marginBottom:20 }}>{authMode==='signup' ? 'Sign up to access your AI sports intelligence platform' : 'Sign in to access your AI sports intelligence platform'}</div>
+            {authMode==='signup' && (
+              <div style={{ marginBottom:12 }}>
+                <div style={{ fontSize:9,textTransform:'uppercase',letterSpacing:'0.6px',color:'#aaa',marginBottom:5,fontWeight:600 }}>Full Name</div>
+                <div style={{ display:'flex',alignItems:'center',gap:8,border:'1px solid rgba(0,0,0,0.08)',borderRadius:10,padding:'11px 13px',background:'rgba(255,255,255,0.8)' }}>
+                  <i className="ti ti-user" style={{ fontSize:15,color:'#bbb' }} />
+                  <input type="text" value={authFullName} onChange={e=>setAuthFullName(e.target.value)} placeholder="Your name"
+                    style={{ flex:1,border:'none',background:'transparent',fontSize:12,color:'#333',outline:'none',fontFamily:'inherit' }}
+                    onKeyDown={e=>e.key==='Enter'&&doAuth()} />
+                </div>
+              </div>
+            )}
             <div style={{ marginBottom:12 }}>
               <div style={{ fontSize:9,textTransform:'uppercase',letterSpacing:'0.6px',color:'#aaa',marginBottom:5,fontWeight:600 }}>Email</div>
               <div style={{ display:'flex',alignItems:'center',gap:8,border:'1px solid rgba(0,0,0,0.08)',borderRadius:10,padding:'11px 13px',background:'rgba(255,255,255,0.8)' }}>
@@ -2161,10 +2177,10 @@ export default function VegasVaultApp() {
             {authError && <div style={{ fontSize:11,color:'#dd4444',background:'rgba(255,80,80,0.08)',border:'1px solid rgba(255,80,80,0.2)',borderRadius:8,padding:'8px 12px',marginBottom:12,textAlign:'center' }}>{authError}</div>}
             <button onClick={doAuth} disabled={authLoading}
               style={{ width:'100%',padding:13,borderRadius:11,background:'linear-gradient(135deg,#39FF14,#22cc00)',border:'none',fontFamily:'inherit',fontSize:13,fontWeight:800,color:'#111',cursor:authLoading?'wait':'pointer',boxShadow:'0 4px 16px rgba(57,255,20,0.35)',marginBottom:12 }}>
-              {authLoading ? 'Signing in...' : 'Log In to Vault →'}
+              {authLoading ? (authMode==='signup' ? 'Creating account...' : 'Signing in...') : (authMode==='signup' ? 'Create Account →' : 'Log In to Vault →')}
             </button>
             <div style={{ textAlign:'center',fontSize:11,color:'#aaa' }}>
-              Don't have an account?{' '}
+              {authMode==='login' ? "Don't have an account? " : "Already have an account? "}{' '}
               <span onClick={()=>setAuthMode(authMode==='login'?'signup':'login')} style={{ color:'#33aa00',fontWeight:700,cursor:'pointer' }}>
                 {authMode==='login'?'Sign up':'Sign in'}
               </span>
