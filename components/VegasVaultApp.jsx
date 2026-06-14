@@ -1731,7 +1731,7 @@ export default function VegasVaultApp() {
 
   const shellNavigate = (key) => {
     if (key === "settings") { window.location.href = "/settings"; return; }
-    if (["dashboard","slate","vault","analytics","agents","memory"].includes(key)) {
+    if (["dashboard","slate","vault","analytics","agents","memory","models"].includes(key)) {
       setShellView(key);
     }
   };
@@ -1898,6 +1898,38 @@ export default function VegasVaultApp() {
         .vv-mem-tag{font-size:8px;font-weight:700;padding:2px 8px;border-radius:5px;background:rgba(57,255,20,0.08);color:#33aa00;border:1px solid rgba(57,255,20,0.2);flex-shrink:0}
         @media (max-width:1100px){ .vv-mem-stats{grid-template-columns:repeat(2,1fr)} }
         @media (max-width:700px){ .vv-mem-row{flex-wrap:wrap} }
+
+        /* Models page */
+        .vv-engine-card{padding:16px}
+        .vv-engine-row{display:flex;align-items:center;gap:14px}
+        .vv-engine-icon{width:54px;height:54px;border-radius:14px;background:linear-gradient(135deg,rgba(57,255,20,0.2),rgba(40,180,0,0.32));border:1px solid rgba(57,255,20,0.35);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(57,255,20,0.2);flex-shrink:0}
+        .vv-engine-icon i{font-size:26px;color:#2aa800}
+        .vv-engine-info{flex:1;min-width:0}
+        .vv-engine-nm{font-size:14px;font-weight:800;color:#111;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+        .vv-engine-badge{font-size:8px;font-weight:800;padding:2px 8px;border-radius:6px;background:linear-gradient(135deg,#39FF14,#22cc00);color:#111}
+        .vv-engine-sub{font-size:10px;color:#aaa;margin-top:2px}
+        .vv-engine-mets{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}
+        .vv-em{background:rgba(246,255,246,0.6);border:1px solid rgba(195,240,195,0.5);border-radius:10px;padding:10px;text-align:center}
+        .vv-em-v{font-size:16px;font-weight:800;color:#111}
+        .vv-em-l{font-size:8px;color:#aaa;text-transform:uppercase;letter-spacing:0.4px;margin-top:1px}
+        .vv-model-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+        .vv-model-card{padding:14px}
+        .vv-model-hd{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+        .vv-model-ic{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-weight:800;color:#fff}
+        .vv-model-ic.mlb{background:linear-gradient(135deg,#003278,#0a4ba0)}
+        .vv-model-ic.nba{background:linear-gradient(135deg,#c8102e,#1d428a)}
+        .vv-model-ic.nfl{background:linear-gradient(135deg,#013369,#d50a0a)}
+        .vv-model-ic.ten{background:linear-gradient(135deg,#33aa00,#39FF14)}
+        .vv-model-nm{font-size:12px;font-weight:800;color:#111}
+        .vv-model-stages{font-size:9px;color:#aaa}
+        .vv-model-status{display:flex;align-items:center;gap:4px;font-size:9px;color:#33aa00;font-weight:700;margin-bottom:8px}
+        .vv-model-std{width:5px;height:5px;border-radius:50%;background:#39FF14;box-shadow:0 0 4px #39FF14}
+        .vv-model-r{display:flex;justify-content:space-between;font-size:10px;padding:3px 0;border-bottom:0.5px solid rgba(0,0,0,0.04)}
+        .vv-model-r:last-child{border-bottom:none}
+        .vv-mrk{color:#aaa}.vv-mrv{color:#111;font-weight:600}.vv-mrv.g{color:#33aa00;font-weight:700}
+        .vv-model-cfg{font-size:10px;color:#39FF14;font-weight:600;margin-top:8px;cursor:pointer;display:flex;align-items:center;gap:4px}
+        @media (max-width:1300px){ .vv-model-grid{grid-template-columns:repeat(2,1fr)} .vv-engine-mets{grid-template-columns:repeat(2,1fr)} }
+        @media (max-width:700px){ .vv-model-grid{grid-template-columns:1fr} .vv-engine-row{flex-direction:column;align-items:flex-start} }
         .vv-gc-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:1px}
         .vv-gc-t{font-size:11px;font-weight:800;color:#111;text-transform:uppercase;letter-spacing:0.4px}
         .vv-gc-sub{font-size:9px;color:#bbb;margin-bottom:8px}
@@ -2388,6 +2420,72 @@ export default function VegasVaultApp() {
               })}
             </div>
           )}
+        </div>
+        );
+      })()}
+
+      {/* ── MODELS — sport-specific AI analysis engines ── */}
+      {authUser && isSubscribed && shellView === 'models' && (() => {
+        const overallWins = pickHistory.filter(p=>p.result==='win').length;
+        const overallLosses = pickHistory.filter(p=>p.result==='loss').length;
+        const overallTotal = overallWins + overallLosses;
+        const overallRate = overallTotal > 0 ? Math.round((overallWins/overallTotal)*100) : null;
+
+        const sportStats = (sport) => {
+          const picks = pickHistory.filter(p => p.sport === sport);
+          const w = picks.filter(p=>p.result==='win').length;
+          const l = picks.filter(p=>p.result==='loss').length;
+          const total = w + l;
+          const rate = total > 0 ? Math.round((w/total)*100) : null;
+          return { rate, record: total>0?`${w}-${l}`:'—' };
+        };
+
+        const models = [
+          { ic:'MLB', cls:'mlb', name:'MLB Model', stages:'18-step analysis flow', dataSources:'MLB Stats API, The Odds API', slot:'MLB Pattern', ...sportStats('MLB') },
+          { ic:'NBA', cls:'nba', name:'NBA Model', stages:'4-stage analysis flow', dataSources:'ESPN', slot:'NBA Pattern', ...sportStats('NBA') },
+          { ic:'NFL', cls:'nfl', name:'NFL Model', stages:'4-stage analysis flow', dataSources:'CBS, The Odds API', slot:'NFL Pattern', ...sportStats('NFL') },
+          { ic:'ATP', cls:'ten', name:'Tennis Model', stages:'14-step analysis flow', dataSources:'ATP/WTA Live', slot:'N/A', ...sportStats('Tennis') },
+        ];
+
+        return (
+        <div style={{ display:'flex', flexDirection:'column', gap:12, flex:1, minHeight:0, overflowY:'auto' }}>
+          <div className="vv-glass" style={{ padding:'16px 20px' }}>
+            <div style={{ fontSize:18, fontWeight:800, color:'#111', letterSpacing:-0.3 }}>Models</div>
+            <div style={{ fontSize:11, color:'#aaa', marginTop:2 }}>Sport-specific AI analysis engines & configurations</div>
+          </div>
+
+          <div className="vv-glass-g vv-engine-card">
+            <div className="vv-engine-row">
+              <div className="vv-engine-icon"><i className="ti ti-cube-3d-sphere" /></div>
+              <div className="vv-engine-info">
+                <div className="vv-engine-nm">Vegas Vault Analysis Engine <span className="vv-engine-badge">PREMIUM</span></div>
+                <div className="vv-engine-sub">Core engine · Anthropic Claude API · MLB · NBA · NFL · Tennis</div>
+              </div>
+            </div>
+            <div className="vv-engine-mets">
+              <div className="vv-em"><div className="vv-em-v">{overallRate!=null?`${overallRate}%`:'—'}</div><div className="vv-em-l">Win Rate</div></div>
+              <div className="vv-em"><div className="vv-em-v">{overallTotal>0?`${overallWins}-${overallLosses}`:'—'}</div><div className="vv-em-l">Record</div></div>
+              <div className="vv-em"><div className="vv-em-v">{games.length}</div><div className="vv-em-l">Games Today</div></div>
+              <div className="vv-em"><div className="vv-em-v">{hasSlotPattern?'Set':'Unset'}</div><div className="vv-em-l">Slot Pattern</div></div>
+            </div>
+          </div>
+
+          <div className="vv-model-grid">
+            {models.map((m,i)=>(
+              <div key={i} className="vv-glass vv-model-card">
+                <div className="vv-model-hd">
+                  <div className={`vv-model-ic ${m.cls}`}>{m.ic}</div>
+                  <div><div className="vv-model-nm">{m.name}</div><div className="vv-model-stages">{m.stages}</div></div>
+                </div>
+                <div className="vv-model-status"><div className="vv-model-std"></div>Active</div>
+                <div className="vv-model-r"><span className="vv-mrk">Win Rate</span><span className={`vv-mrv${m.rate!=null?' g':''}`}>{m.rate!=null?`${m.rate}%`:'—'}</span></div>
+                <div className="vv-model-r"><span className="vv-mrk">Record</span><span className="vv-mrv">{m.record}</span></div>
+                <div className="vv-model-r"><span className="vv-mrk">Data Sources</span><span className="vv-mrv">{m.dataSources}</span></div>
+                <div className="vv-model-r"><span className="vv-mrk">Slot System</span><span className="vv-mrv">{m.slot}</span></div>
+                <div className="vv-model-cfg" onClick={()=>window.location.href='/settings'}>Configure <i className="ti ti-arrow-right" style={{ fontSize:10 }} /></div>
+              </div>
+            ))}
+          </div>
         </div>
         );
       })()}
