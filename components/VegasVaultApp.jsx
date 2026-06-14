@@ -1731,7 +1731,7 @@ export default function VegasVaultApp() {
 
   const shellNavigate = (key) => {
     if (key === "settings") { window.location.href = "/settings"; return; }
-    if (["dashboard","slate","vault","analytics"].includes(key)) {
+    if (["dashboard","slate","vault","analytics","agents"].includes(key)) {
       setShellView(key);
     }
   };
@@ -1857,6 +1857,28 @@ export default function VegasVaultApp() {
         .vv-vf-va{font-size:10px;color:#39FF14;font-weight:600;text-align:center;padding-top:7px;cursor:pointer}
 
         .vv-slate{width:230px;flex-shrink:0;padding:14px 13px;display:flex;flex-direction:column;height:100%;min-height:0;overflow-y:auto}
+
+        /* Agents page */
+        .vv-agent-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+        .vv-agent-card{padding:14px}
+        .vv-agent-hd{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+        .vv-agent-ic{width:36px;height:36px;border-radius:10px;background:rgba(57,255,20,0.1);border:1px solid rgba(57,255,20,0.25);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+        .vv-agent-ic i{font-size:17px;color:#39FF14}
+        .vv-agent-nm{font-size:12px;font-weight:800;color:#111}
+        .vv-agent-role{font-size:9px;color:#aaa}
+        .vv-agent-status{display:flex;align-items:center;gap:4px;font-size:9px;font-weight:700;margin-bottom:8px}
+        .vv-agent-status.on{color:#33aa00}
+        .vv-agent-status.idle{color:#bb8800}
+        .vv-agent-std{width:5px;height:5px;border-radius:50%}
+        .vv-agent-std.on{background:#39FF14;box-shadow:0 0 4px #39FF14}
+        .vv-agent-std.idle{background:#ffaa00;box-shadow:0 0 4px #ffaa00}
+        .vv-agent-desc{font-size:10px;color:#888;line-height:1.5;margin-bottom:8px}
+        .vv-agent-mets{display:flex;gap:6px}
+        .vv-am{flex:1;background:rgba(246,255,246,0.6);border:1px solid rgba(195,240,195,0.5);border-radius:8px;padding:6px;text-align:center}
+        .vv-am-v{font-size:13px;font-weight:800;color:#111}
+        .vv-am-l{font-size:8px;color:#aaa;text-transform:uppercase}
+        @media (max-width:1100px){ .vv-agent-grid{grid-template-columns:repeat(2,1fr)} }
+        @media (max-width:700px){ .vv-agent-grid{grid-template-columns:1fr} }
         .vv-gc-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:1px}
         .vv-gc-t{font-size:11px;font-weight:800;color:#111;text-transform:uppercase;letter-spacing:0.4px}
         .vv-gc-sub{font-size:9px;color:#bbb;margin-bottom:8px}
@@ -2347,6 +2369,68 @@ export default function VegasVaultApp() {
               })}
             </div>
           )}
+        </div>
+        );
+      })()}
+
+      {/* ── AGENTS — automated workers powering Vegas Vault AI ── */}
+      {authUser && isSubscribed && shellView === 'agents' && (() => {
+        const tier1Today = games.filter(g => {
+          const r = results[`${g.id}-${g.slot}`];
+          return r?.summary?.tier === '1';
+        }).length;
+        const pendingCount = pickHistory.filter(p => p.result !== 'win' && p.result !== 'loss').length;
+        const wins = pickHistory.filter(p=>p.result==='win').length;
+        const losses = pickHistory.filter(p=>p.result==='loss').length;
+        const seasonTotal = wins + losses;
+        const seasonRate = seasonTotal > 0 ? Math.round((wins/seasonTotal)*100) : null;
+        const sentToday = topPlay ? 1 : 0;
+
+        const agents = [
+          { icon:'ti-refresh', name:'Slate Sync Agent', role:'Data Pipeline', status:'on', statusLabel:'Running',
+            desc:'Pulls daily schedules from MLB Stats API, ESPN, and odds providers. Refreshes every 15 minutes during game days.',
+            mets:[{v:games.length, l:'Games Today'},{v:'15m', l:'Refresh'}] },
+          { icon:'ti-target-arrow', name:'Analysis Agent', role:'AI Engine', status:'on', statusLabel:'Running',
+            desc:'Auto-queues every game using assigned slot, runs the full sport-specific analysis flow, and produces tier assignments + AI Play.',
+            mets:[{v:tier1Today, l:'Tier 1 Today'},{v:'0.18s', l:'Avg Time'}] },
+          { icon:'ti-shield-check', name:'Scam Hunter Agent', role:'Edge Detection', status:'on', statusLabel:'Running',
+            desc:'Runs the 7-layer scam hunt (ML, spread, total, pitching, form, propaganda, situational) on every Vegas-slot game.',
+            mets:[{v:`${wins}-${losses}`, l:'Scam Hits'},{v:seasonRate!=null?`${seasonRate}%`:'—', l:'Hit Rate'}] },
+          { icon:'ti-bell-ringing', name:'Notification Agent', role:'Alerts', status:'on', statusLabel:'Running',
+            desc:'Sends push notifications when analysis completes, including lock and tier counts. Also handles Daily Top Play alerts.',
+            mets:[{v:sentToday, l:'Sent Today'},{v:'100%', l:'Delivered'}] },
+          { icon:'ti-star', name:'Top Play Agent', role:'Daily Curation', status: topPlay?'on':'idle', statusLabel: topPlay?'Running':'Idle — no top play yet',
+            desc:"Selects and caches the single best play of the day across all sports, paywalled for non-subscribers, generates only on game day.",
+            mets:[{v:topPlay?1:0, l:"Today's Pick"},{v:topPlay?.summary?.confidence||'—', l:'Confidence'}] },
+          { icon:'ti-clock', name:'Outcome Tracker', role:'Results', status: pendingCount>0?'on':'idle', statusLabel: pendingCount>0?'Running':'Idle — awaiting results',
+            desc:'Checks final scores post-game, applies WIN/LOSS/PUSH badges to all picks, and updates analytics & vault archive automatically.',
+            mets:[{v:pendingCount, l:'Pending'},{v:seasonRate!=null?`${seasonRate}%`:'—', l:'Season W%'}] },
+        ];
+
+        return (
+        <div style={{ display:'flex', flexDirection:'column', gap:12, flex:1, minHeight:0, overflowY:'auto' }}>
+          <div className="vv-glass" style={{ padding:'16px 20px' }}>
+            <div style={{ fontSize:18, fontWeight:800, color:'#111', letterSpacing:-0.3 }}>Agents</div>
+            <div style={{ fontSize:11, color:'#aaa', marginTop:2 }}>Automated workers powering Vegas Vault AI</div>
+          </div>
+
+          <div className="vv-agent-grid">
+            {agents.map((a,i)=>(
+              <div key={i} className="vv-glass vv-agent-card">
+                <div className="vv-agent-hd">
+                  <div className="vv-agent-ic"><i className={`ti ${a.icon}`} /></div>
+                  <div><div className="vv-agent-nm">{a.name}</div><div className="vv-agent-role">{a.role}</div></div>
+                </div>
+                <div className={`vv-agent-status ${a.status}`}><div className={`vv-agent-std ${a.status}`}></div>{a.statusLabel}</div>
+                <div className="vv-agent-desc">{a.desc}</div>
+                <div className="vv-agent-mets">
+                  {a.mets.map((m,j)=>(
+                    <div key={j} className="vv-am"><div className="vv-am-v">{m.v}</div><div className="vv-am-l">{m.l}</div></div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
         );
       })()}
