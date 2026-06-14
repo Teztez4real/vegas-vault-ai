@@ -4,13 +4,13 @@ import React, { useState } from "react";
 // ── NAV SECTIONS (matches existing 9 sections in VegasVaultApp) ──────────────
 const NAV_SECTIONS = [
   { key: "dashboard",     label: "Dashboard",     icon: "ti-layout-dashboard" },
-  { key: "slate",         label: "Today's Slate",  icon: "ti-calendar" },
-  { key: "analyzer",      label: "AI Analyzer",    icon: "ti-target" },
-  { key: "vault",         label: "Vault Locks",    icon: "ti-lock" },
-  { key: "odds",          label: "Odds Movement",  icon: "ti-chart-bar" },
-  { key: "sharp",         label: "Sharp Money",    icon: "ti-currency-dollar" },
-  { key: "props",         label: "Props AI",       icon: "ti-diamond" },
-  { key: "history",       label: "History",        icon: "ti-history" },
+  { key: "aichat",        label: "AI Chat",        icon: "ti-message-circle" },
+  { key: "models",        label: "Models",         icon: "ti-cube" },
+  { key: "memory",        label: "Memory",         icon: "ti-server" },
+  { key: "agents",        label: "Agents",         icon: "ti-users" },
+  { key: "vault",         label: "Vault",          icon: "ti-shield" },
+  { key: "analytics",     label: "Analytics",      icon: "ti-chart-bar" },
+  { key: "slate",         label: "Games Slate",    icon: "ti-ball-baseball" },
   { key: "settings",      label: "Settings",       icon: "ti-settings" },
 ];
 
@@ -55,21 +55,30 @@ function SidebarUser({ userName, isAdmin }) {
 
 // ── SIDEBAR NAV ───────────────────────────────────────────────────────────────
 function SidebarNav({ activeSection, onNavigate }) {
+  // Dashboard stays highlighted whenever we're not in a separate view (history/settings),
+  // alongside whichever placeholder section (Games Slate by default) is also active —
+  // matches the mockup where both "Dashboard" and "Games Slate" show the active state.
+  const isOnDashboardView = activeSection !== "history" && activeSection !== "settings";
   return (
     <>
-      {NAV_SECTIONS.map(s => (
-        <div
-          key={s.key}
-          className={`vv-nb${activeSection === s.key ? " active" : ""}`}
-          onClick={() => onNavigate(s.key)}
-        >
-          <i className={`ti ${s.icon}`} />
-          {s.label}
-          {activeSection === s.key && (
-            <span className="vv-nb-arr"><i className="ti ti-chevron-right" /></span>
-          )}
-        </div>
-      ))}
+      {NAV_SECTIONS.map(s => {
+        const isActive = s.key === "dashboard"
+          ? isOnDashboardView
+          : activeSection === s.key;
+        return (
+          <div
+            key={s.key}
+            className={`vv-nb${isActive ? " active" : ""}`}
+            onClick={() => onNavigate(s.key)}
+          >
+            <i className={`ti ${s.icon}`} />
+            {s.label}
+            {isActive && (
+              <span className="vv-nb-arr"><i className="ti ti-chevron-right" /></span>
+            )}
+          </div>
+        );
+      })}
     </>
   );
 }

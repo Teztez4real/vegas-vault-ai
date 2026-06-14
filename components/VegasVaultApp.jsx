@@ -1748,30 +1748,19 @@ export default function VegasVaultApp() {
   const greeting = hour<12?"Good morning":hour<17?"Good afternoon":"Good evening";
 
   // Map current nav state to new shell section keys
-  const shellSection = (() => {
-    if (showHistory) return "history";
-    if (showOddsMovement) return "odds";
-    const nav = (activeNav || "").toUpperCase();
-    if (nav === "SHARP MONEY") return "sharp";
-    if (nav === "PROPS AI") return "props";
-    if (nav === "VAULT LOCKS") return "vault";
-    if (nav === "AI ANALYZER") return "analyzer";
-    return "dashboard";
-  })();
+  // Dashboard is the single main page. "Games Slate" nav item highlights
+  // alongside Dashboard (matches mockup: both show "on" state). AI Chat,
+  // Models, Memory, Agents, Vault, Analytics are visual placeholders that
+  // stay on the dashboard. Only History (via slide-out panel) and Settings
+  // (separate route) navigate away.
+  const [shellActiveExtra, setShellActiveExtra] = useState("slate");
+  const shellSection = showHistory ? "history" : (shellActiveExtra || "dashboard");
 
   const shellNavigate = (key) => {
     if (key === "history")  { setShowHistory(true); return; }
-    if (key === "odds")     { setShowOddsMovement(true); return; }
     if (key === "settings") { window.location.href = "/settings"; return; }
-    const labelMap = {
-      dashboard: "DASHBOARD", slate: "DASHBOARD",
-      analyzer:  "AI ANALYZER", vault: "VAULT LOCKS",
-      sharp:     "SHARP MONEY", props: "PROPS AI",
-    };
-    setActiveNav(labelMap[key] || "DASHBOARD");
-    setActiveTab("DASHBOARD");
     setShowHistory(false);
-    setShowOddsMovement(false);
+    setShellActiveExtra(key);
   };
 
   const shellUserName = authUser?.user_metadata?.full_name || authUser?.email?.split("@")[0] || "Member";
