@@ -1804,7 +1804,7 @@ export default function VegasVaultApp() {
         button { font-family: inherit; }
         ::-webkit-scrollbar{width:4px;}
         ::-webkit-scrollbar-thumb{background:rgba(57,255,20,0.2);border-radius:2px;}
-        .vv-center{flex:1;min-width:0;display:grid;grid-template-columns:1fr 1.15fr 1fr;gap:10px;height:100%;min-height:0}
+        .vv-center{flex:1;min-width:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr) minmax(0,1fr);gap:10px;height:100%;min-height:0}
         .vv-col{display:flex;flex-direction:column;gap:10px;min-width:0;height:100%;min-height:0}
         .vv-glass{background:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.93);border-radius:16px;backdrop-filter:blur(20px);box-shadow:0 8px 30px rgba(0,0,0,0.06),0 2px 8px rgba(0,0,0,0.03),inset 0 1px 0 rgba(255,255,255,0.95)}
         .vv-glass-g{background:rgba(255,255,255,0.62);border:1px solid rgba(57,255,20,0.28);border-radius:16px;backdrop-filter:blur(20px);box-shadow:0 10px 36px rgba(57,255,20,0.09),0 3px 10px rgba(0,0,0,0.04),inset 0 1px 0 rgba(255,255,255,0.95)}
@@ -1890,7 +1890,7 @@ export default function VegasVaultApp() {
         .vv-an-hd{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px}
         .vv-an-sel{font-size:9px;color:#aaa;border:1px solid #e8e8e8;border-radius:5px;padding:2px 6px;background:#fff;font-family:'Inter',sans-serif}
         .vv-an-chart{width:100%;height:50px;margin-bottom:8px}
-        .vv-an-mets{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+        .vv-an-mets{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
         .vv-anm{text-align:center}
         .vv-anm-l{font-size:6.5px;color:#bbb;text-transform:uppercase;letter-spacing:0.3px}
         .vv-anm-v{font-size:13px;font-weight:700;color:#111}
@@ -1909,7 +1909,7 @@ export default function VegasVaultApp() {
         .vv-slate{width:230px;flex-shrink:0;padding:14px 13px;display:flex;flex-direction:column;height:100%;min-height:0;overflow-y:auto}
 
         /* Agents page */
-        .vv-agent-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+        .vv-agent-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
         .vv-agent-card{padding:14px}
         .vv-agent-hd{display:flex;align-items:center;gap:10px;margin-bottom:8px}
         .vv-agent-ic{width:36px;height:36px;border-radius:10px;background:rgba(57,255,20,0.1);border:1px solid rgba(57,255,20,0.25);display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -1931,7 +1931,7 @@ export default function VegasVaultApp() {
         @media (max-width:700px){ .vv-agent-grid{grid-template-columns:1fr} }
 
         /* Memory page */
-        .vv-mem-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+        .vv-mem-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
         .vv-sc{padding:13px 15px}
         .vv-sc-ey{font-size:9px;text-transform:uppercase;letter-spacing:0.7px;color:#bbb;margin-bottom:3px;font-weight:500}
         .vv-sc-val{font-size:22px;font-weight:700;color:#111;line-height:1}
@@ -1958,11 +1958,11 @@ export default function VegasVaultApp() {
         .vv-engine-nm{font-size:14px;font-weight:800;color:#111;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
         .vv-engine-badge{font-size:8px;font-weight:800;padding:2px 8px;border-radius:6px;background:linear-gradient(135deg,#39FF14,#22cc00);color:#111}
         .vv-engine-sub{font-size:10px;color:#aaa;margin-top:2px}
-        .vv-engine-mets{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}
+        .vv-engine-mets{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:14px}
         .vv-em{background:rgba(246,255,246,0.6);border:1px solid rgba(195,240,195,0.5);border-radius:10px;padding:10px;text-align:center}
         .vv-em-v{font-size:16px;font-weight:800;color:#111}
         .vv-em-l{font-size:8px;color:#aaa;text-transform:uppercase;letter-spacing:0.4px;margin-top:1px}
-        .vv-model-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+        .vv-model-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
         .vv-model-card{padding:14px}
         .vv-model-hd{display:flex;align-items:center;gap:10px;margin-bottom:10px}
         .vv-model-ic{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-weight:800;color:#fff}
@@ -1974,15 +1974,15 @@ export default function VegasVaultApp() {
         .vv-model-stages{font-size:9px;color:#aaa}
         .vv-model-status{display:flex;align-items:center;gap:4px;font-size:9px;color:#33aa00;font-weight:700;margin-bottom:8px}
         .vv-model-std{width:5px;height:5px;border-radius:50%;background:#39FF14;box-shadow:0 0 4px #39FF14}
-        .vv-model-r{display:flex;justify-content:space-between;font-size:10px;padding:3px 0;border-bottom:0.5px solid rgba(0,0,0,0.04)}
+        .vv-model-r{display:flex;justify-content:space-between;gap:8px;font-size:10px;padding:3px 0;border-bottom:0.5px solid rgba(0,0,0,0.04);min-width:0}
         .vv-model-r:last-child{border-bottom:none}
-        .vv-mrk{color:#aaa}.vv-mrv{color:#111;font-weight:600}.vv-mrv.g{color:#33aa00;font-weight:700}
+        .vv-mrk{color:#aaa;flex-shrink:0}.vv-mrv{color:#111;font-weight:600;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.vv-mrv.g{color:#33aa00;font-weight:700}
         .vv-model-cfg{font-size:10px;color:#39FF14;font-weight:600;margin-top:8px;cursor:pointer;display:flex;align-items:center;gap:4px}
         @media (max-width:1300px){ .vv-model-grid{grid-template-columns:repeat(2,1fr)} .vv-engine-mets{grid-template-columns:repeat(2,1fr)} }
         @media (max-width:700px){ .vv-model-grid{grid-template-columns:1fr} .vv-engine-row{flex-direction:column;align-items:flex-start} }
 
         /* AI Chat page */
-        .vv-chat-layout{flex:1;display:grid;grid-template-columns:230px 1fr;gap:10px;min-height:0;height:100%}
+        .vv-chat-layout{flex:1;display:grid;grid-template-columns:230px minmax(0,1fr);gap:10px;min-height:0;height:100%}
         .vv-history-col{padding:14px 12px;display:flex;flex-direction:column;gap:8px;overflow-y:auto;height:100%;min-height:0}
         .vv-hc-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
         .vv-hc-t{font-size:11px;font-weight:800;color:#111;text-transform:uppercase;letter-spacing:0.4px}
