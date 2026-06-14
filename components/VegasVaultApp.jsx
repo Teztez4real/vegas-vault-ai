@@ -503,1349 +503,295 @@ function PlayResult({ result, game, onClose, isResolved, resolvedResult }) {
   );
 }
 
-// ── GAME CARD — new glass design ─────────────────────────────────────────────
 
+const NAME_TO_ABBR = {
+  "Arizona Diamondbacks":"ARI","Atlanta Braves":"ATL","Baltimore Orioles":"BAL",
+  "Boston Red Sox":"BOS","Chicago Cubs":"CHC","Chicago White Sox":"CHW",
+  "Cincinnati Reds":"CIN","Cleveland Guardians":"CLE","Colorado Rockies":"COL",
+  "Detroit Tigers":"DET","Houston Astros":"HOU","Kansas City Royals":"KC",
+  "Los Angeles Angels":"LAA","Los Angeles Dodgers":"LAD","Miami Marlins":"MIA",
+  "Milwaukee Brewers":"MIL","Minnesota Twins":"MIN","New York Mets":"NYM",
+  "New York Yankees":"NYY","Oakland Athletics":"OAK","Philadelphia Phillies":"PHI",
+  "Pittsburgh Pirates":"PIT","San Diego Padres":"SD","Seattle Mariners":"SEA",
+  "San Francisco Giants":"SF","St. Louis Cardinals":"STL","Tampa Bay Rays":"TB",
+  "Texas Rangers":"TEX","Toronto Blue Jays":"TOR","Washington Nationals":"WSH",
+  "Diamondbacks":"ARI","Braves":"ATL","Orioles":"BAL","Red Sox":"BOS",
+  "Cubs":"CHC","White Sox":"CHW","Reds":"CIN","Guardians":"CLE","Rockies":"COL",
+  "Tigers":"DET","Astros":"HOU","Royals":"KC","Angels":"LAA","Dodgers":"LAD",
+  "Marlins":"MIA","Brewers":"MIL","Twins":"MIN","Mets":"NYM","Yankees":"NYY",
+  "Athletics":"OAK","Phillies":"PHI","Pirates":"PIT","Padres":"SD",
+  "Mariners":"SEA","Giants":"SF","Cardinals":"STL","Rays":"TB","Rangers":"TEX",
+  "Blue Jays":"TOR","Nationals":"WSH",
+  "Atlanta Hawks":"ATL","Boston Celtics":"BOS","Brooklyn Nets":"BKN",
+  "Charlotte Hornets":"CHA","Chicago Bulls":"CHI","Cleveland Cavaliers":"CLE",
+  "Dallas Mavericks":"DAL","Denver Nuggets":"DEN","Detroit Pistons":"DET",
+  "Golden State Warriors":"GSW","Houston Rockets":"HOU","Indiana Pacers":"IND",
+  "Los Angeles Clippers":"LAC","Los Angeles Lakers":"LAL","Memphis Grizzlies":"MEM",
+  "Miami Heat":"MIA","Milwaukee Bucks":"MIL","Minnesota Timberwolves":"MIN",
+  "New Orleans Pelicans":"NOP","New York Knicks":"NYK","Oklahoma City Thunder":"OKC",
+  "Orlando Magic":"ORL","Philadelphia 76ers":"PHI","Phoenix Suns":"PHX",
+  "Portland Trail Blazers":"POR","Sacramento Kings":"SAC","San Antonio Spurs":"SAS",
+  "Toronto Raptors":"TOR","Utah Jazz":"UTA","Washington Wizards":"WAS",
+};
+function getAbbr(name) {
+  if (!name) return '???';
+  return NAME_TO_ABBR[name] || NAME_TO_ABBR[name.split(' ').pop()] || name.slice(0,3).toUpperCase();
+}
+
+// ── GAME CARD (new glass design) ──────────────────────────────────────────────
 function GameCard({ game, onGenerate, results, generating, onCardClick, liveScores, isSubscribed, finalized, isQueued, betReady, onShowAuth, watchlist, onToggleWatch, pickHistory }) {
   const resultVegas  = results[`${game.id}-VEGAS`];
   const resultPublic = results[`${game.id}-PUBLIC`];
-  const bestResult   = resultVegas || resultPublic;
-  const tier = bestResult?.summary ? (TIER_STYLES[bestResult.summary.tier] || TIER_STYLES["3"]) : null;
-  const isLock = tier?.label === "LOCK";
-  const isTennis = game.sport === "Tennis";
+  const slotResult   = results[`${game.id}-${game.slot}`];
+  const bestResult   = slotResult || resultVegas || resultPublic;
+  const summary      = bestResult?.summary;
+  const tier         = summary ? (TIER_STYLES[summary.tier] || TIER_STYLES["3"]) : null;
+  const isLock       = tier?.label === "LOCK";
+  const isTennis     = game.sport === "Tennis";
 
-  // Live score lookup
   const awayLast = game.away?.split(' ').pop();
   const homeLast = game.home?.split(' ').pop();
   const live = liveScores?.[game.id]
     || liveScores?.[`${game.away}|${game.home}`]
     || liveScores?.[`${game.awayAbbr}|${game.homeAbbr}`]
     || liveScores?.[`${awayLast}|${homeLast}`];
-  const isLive = live?.status === 'Live' || live?.detailedState === 'In Progress';
+  const isLive  = live?.status === 'Live' || live?.detailedState === 'In Progress';
   const isFinal = live?.status === 'Final' || live?.detailedState === 'Final';
-  const hasScoreData = live?.awayScore != null || live?.homeScore != null;
-  const isPostponed = !hasScoreData && !isLive && !isFinal && (live?.isPostponed || false);
-  const isDelayed = !hasScoreData && (live?.isDelayed || false);
+  const hasScore = live?.awayScore != null;
+  const isPostponed = !hasScore && !isLive && !isFinal && (live?.isPostponed || false);
+  const isDelayed   = !hasScore && (live?.isDelayed || false);
   const gameStarted = isLive || isFinal;
 
-  const awayName = isTennis ? game.player1 : game.away;
-  const homeName = isTennis ? game.player2 : game.home;
-  const NAME_TO_ABBR = {
-    "Arizona Diamondbacks":"ARI","Atlanta Braves":"ATL","Baltimore Orioles":"BAL",
-    "Boston Red Sox":"BOS","Chicago Cubs":"CHC","Chicago White Sox":"CHW",
-    "Cincinnati Reds":"CIN","Cleveland Guardians":"CLE","Colorado Rockies":"COL",
-    "Detroit Tigers":"DET","Houston Astros":"HOU","Kansas City Royals":"KC",
-    "Los Angeles Angels":"LAA","Los Angeles Dodgers":"LAD","Miami Marlins":"MIA",
-    "Milwaukee Brewers":"MIL","Minnesota Twins":"MIN","New York Mets":"NYM",
-    "New York Yankees":"NYY","Oakland Athletics":"OAK","Philadelphia Phillies":"PHI",
-    "Pittsburgh Pirates":"PIT","San Diego Padres":"SD","Seattle Mariners":"SEA",
-    "San Francisco Giants":"SF","St. Louis Cardinals":"STL","Tampa Bay Rays":"TB",
-    "Texas Rangers":"TEX","Toronto Blue Jays":"TOR","Washington Nationals":"WSH",
-    "Diamondbacks":"ARI","Braves":"ATL","Orioles":"BAL","Red Sox":"BOS",
-    "Cubs":"CHC","White Sox":"CHW","Reds":"CIN","Guardians":"CLE","Rockies":"COL",
-    "Tigers":"DET","Astros":"HOU","Royals":"KC","Angels":"LAA","Dodgers":"LAD",
-    "Marlins":"MIA","Brewers":"MIL","Twins":"MIN","Mets":"NYM","Yankees":"NYY",
-    "Athletics":"OAK","Phillies":"PHI","Pirates":"PIT","Padres":"SD",
-    "Mariners":"SEA","Giants":"SF","Cardinals":"STL","Rays":"TB","Rangers":"TEX",
-    "Blue Jays":"TOR","Nationals":"WSH",
-  };
-  const awayAbbr = game.awayAbbr || NAME_TO_ABBR[awayName] || NAME_TO_ABBR[awayName?.split(" ").pop()] || awayName?.slice(0,3).toUpperCase();
-  const homeAbbr = game.homeAbbr || NAME_TO_ABBR[homeName] || NAME_TO_ABBR[homeName?.split(" ").pop()] || homeName?.slice(0,3).toUpperCase();
-  const awayRec = isTennis ? `#${game.player1Ranking}` : game.awayRecord;
-  const homeRec = isTennis ? `#${game.player2Ranking}` : game.homeRecord;
+  const awayName = isTennis ? game.player1 : (game.away || '');
+  const homeName = isTennis ? game.player2 : (game.home || '');
+  const awayAbbr = game.awayAbbr || getAbbr(awayName);
+  const homeAbbr = game.homeAbbr || getAbbr(homeName);
+  const awayRec  = isTennis ? `#${game.player1Ranking}` : game.awayRecord;
+  const homeRec  = isTennis ? `#${game.player2Ranking}` : game.homeRecord;
 
-  // Odds formatting
-  const fmtOdds = (v) => {
-    if (!v || v === 'N/A' || v === 'null') return null;
-    if (typeof v === 'number') return v > 0 ? `+${v}` : `${v}`;
-    return v;
-  };
-  const awayOdds = fmtOdds(game.dkAwayML) || fmtOdds(game.awayML) || '—';
-  const homeOdds = fmtOdds(game.dkHomeML) || fmtOdds(game.homeML) || '—';
-  const spreadVal = game.dkSpread || game.spread || '—';
-  const totalVal  = game.dkTotal  || game.total  || '—';
-  const awaySpread = (() => {
-    if (spreadVal === '—') return '—';
-    const n = parseFloat(spreadVal);
-    if (isNaN(n)) return spreadVal;
-    return n > 0 ? `-${n.toFixed(1)}` : `+${Math.abs(n).toFixed(1)}`;
-  })();
+  const fmtOdds = v => { if (!v||v==='N/A'||v==='null') return null; if (typeof v==='number') return v>0?`+${v}`:`${v}`; return v; };
+  const awayOdds = fmtOdds(game.dkAwayML)||fmtOdds(game.awayML)||'—';
+  const homeOdds = fmtOdds(game.dkHomeML)||fmtOdds(game.homeML)||'—';
+  const spreadVal = game.dkSpread||game.spread||'—';
+  const totalVal  = game.dkTotal ||game.total ||'—';
+  const awaySpread = (() => { if(spreadVal==='—') return '—'; const n=parseFloat(spreadVal); if(isNaN(n)) return spreadVal; return n>0?`-${n.toFixed(1)}`:`+${Math.abs(n).toFixed(1)}`; })();
   const hasMovement = game.lineMovement && !['No significant movement','N/A','No significant movement detected'].includes(game.lineMovement);
 
-  // Slot tag styles
-  const slotStyle = game.slot === 'VEGAS'
-    ? { bg:'rgba(57,255,20,0.1)', color:'#2aa800', border:'1px solid rgba(57,255,20,0.25)', label:'VEGAS SLOT' }
-    : { bg:'rgba(80,140,255,0.08)', color:'#5588ee', border:'1px solid rgba(80,140,255,0.2)', label:'PUBLIC SLOT' };
-
-  // Tier badge
-  const tierStyle = tier?.label === 'LOCK'
-    ? { bg:'rgba(57,255,20,0.1)', color:'#2aa800', border:'1px solid rgba(57,255,20,0.25)', stars:'★★★★★' }
-    : tier?.label === '2'
-    ? { bg:'rgba(255,200,0,0.08)', color:'#bb8800', border:'1px solid rgba(255,200,0,0.2)', stars:'★★★★' }
-    : { bg:'rgba(0,0,0,0.04)', color:'#999', border:'1px solid rgba(0,0,0,0.07)', stars:'' };
-
+  const isVegas = game.slot === 'VEGAS';
   const key = `${game.id}-${game.slot}`;
   const isGen = generating === key;
   const hasRes = !!results[key];
+  const histEntry = pickHistory?.find(p => p.key === key);
+  const pickResult = histEntry?.result;
 
   return (
-    <div
-      onClick={() => hasRes && onCardClick && onCardClick(game, results[key])}
-      style={{
-        background: 'rgba(255,255,255,0.7)',
-        border: isLock && isSubscribed
-          ? '1px solid rgba(57,255,20,0.3)'
-          : '1px solid rgba(255,255,255,0.93)',
-        borderRadius: 16,
-        backdropFilter: 'blur(20px)',
-        boxShadow: isLock && isSubscribed
-          ? '0 8px 30px rgba(57,255,20,0.1), 0 2px 8px rgba(0,0,0,0.03), inset 0 1px 0 rgba(255,255,255,0.95)'
-          : '0 8px 30px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.03), inset 0 1px 0 rgba(255,255,255,0.95)',
-        padding: '14px 16px',
-        cursor: hasRes ? 'pointer' : 'default',
-        position: 'relative',
-      }}
-    >
-      {/* Header row — slot tag + tier + time + watchlist */}
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-          {/* Slot tag */}
-          {!isPostponed && !isDelayed && (
-            <span style={{ fontSize:9, fontWeight:800, padding:'3px 9px', borderRadius:6, letterSpacing:'0.5px', background:slotStyle.bg, color:slotStyle.color, border:slotStyle.border }}>
-              {slotStyle.label}
-            </span>
-          )}
-          {isLive && <span style={{ fontSize:9, fontWeight:800, color:'#fff', background:'#dc2626', padding:'3px 9px', borderRadius:6, display:'flex', alignItems:'center', gap:4 }}><span style={{ width:5, height:5, borderRadius:'50%', background:'#fff', display:'inline-block', animation:'pulse 1s infinite' }}/> LIVE</span>}
-          {isFinal && !isPostponed && <span style={{ fontSize:9, fontWeight:700, color:'#999', background:'rgba(0,0,0,0.04)', padding:'3px 9px', borderRadius:6, border:'1px solid rgba(0,0,0,0.07)' }}>FINAL</span>}
-          {isDelayed && <span style={{ fontSize:9, fontWeight:700, color:'#bb8800', background:'rgba(255,200,0,0.08)', padding:'3px 9px', borderRadius:6 }}>⏸ DELAYED</span>}
-          {isPostponed && <span style={{ fontSize:9, fontWeight:700, color:'#dd4444', background:'rgba(255,80,80,0.08)', padding:'3px 9px', borderRadius:6 }}>⛔ POSTPONED</span>}
-          {betReady && !gameStarted && isSubscribed && <span style={{ fontSize:9, fontWeight:800, color:'#111', background:'#39FF14', padding:'3px 9px', borderRadius:6 }}>🎯 BET NOW</span>}
+    <div onClick={()=>hasRes&&onCardClick&&onCardClick(game, results[key])}
+      style={{ background:'rgba(255,255,255,0.72)',border:isLock&&isSubscribed?'1px solid rgba(57,255,20,0.35)':'1px solid rgba(255,255,255,0.93)',borderRadius:16,backdropFilter:'blur(20px)',boxShadow:isLock&&isSubscribed?'0 8px 30px rgba(57,255,20,0.12),inset 0 1px 0 rgba(255,255,255,0.95)':'0 8px 30px rgba(0,0,0,0.06),inset 0 1px 0 rgba(255,255,255,0.95)',padding:'14px 16px',cursor:hasRes?'pointer':'default' }}>
+
+      {/* Row 1: slot tag + status + time + watchlist */}
+      <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10 }}>
+        <div style={{ display:'flex',alignItems:'center',gap:6,flexWrap:'wrap' }}>
+          <span style={{ fontSize:9,fontWeight:800,padding:'3px 9px',borderRadius:6,letterSpacing:'0.5px',background:isVegas?'rgba(57,255,20,0.1)':'rgba(80,140,255,0.08)',color:isVegas?'#2aa800':'#5588ee',border:isVegas?'1px solid rgba(57,255,20,0.25)':'1px solid rgba(80,140,255,0.2)' }}>
+            {isVegas?'VEGAS SLOT':'PUBLIC SLOT'}
+          </span>
+          {isLive&&<span style={{ fontSize:9,fontWeight:800,color:'#fff',background:'#dc2626',padding:'3px 9px',borderRadius:6,display:'flex',alignItems:'center',gap:4 }}><span style={{ width:5,height:5,borderRadius:'50%',background:'#fff',display:'inline-block',animation:'pulse 1s infinite' }}/> LIVE</span>}
+          {isFinal&&!isPostponed&&<span style={{ fontSize:9,fontWeight:700,color:'#999',background:'rgba(0,0,0,0.04)',padding:'3px 9px',borderRadius:6,border:'1px solid rgba(0,0,0,0.07)' }}>FINAL</span>}
+          {isDelayed&&<span style={{ fontSize:9,fontWeight:700,color:'#bb8800',background:'rgba(255,200,0,0.08)',padding:'3px 9px',borderRadius:6 }}>⏸ DELAYED</span>}
+          {isPostponed&&<span style={{ fontSize:9,fontWeight:700,color:'#dd4444',background:'rgba(255,80,80,0.08)',padding:'3px 9px',borderRadius:6 }}>⛔ POSTPONED</span>}
+          {betReady&&!gameStarted&&isSubscribed&&<span style={{ fontSize:9,fontWeight:800,color:'#111',background:'#39FF14',padding:'3px 9px',borderRadius:6 }}>🎯 BET NOW</span>}
         </div>
-        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+        <div style={{ display:'flex',alignItems:'center',gap:8 }}>
           {/* Tier badge */}
-          {tier && isSubscribed && (
-            <span style={{ display:'flex', alignItems:'center', gap:4, fontSize:10, fontWeight:800, padding:'3px 10px', borderRadius:7, background:tierStyle.bg, color:tierStyle.color, border:tierStyle.border }}>
-              {tierStyle.stars && <span style={{ fontSize:10 }}>{tierStyle.stars}</span>}
-              {tier.label === 'LOCK' ? 'TIER 1' : tier.label === '2' ? 'TIER 2' : 'PASS'}
+          {tier&&isSubscribed&&(
+            <span style={{ display:'flex',alignItems:'center',gap:4,fontSize:10,fontWeight:800,padding:'3px 10px',borderRadius:7,
+              background:isLock?'rgba(57,255,20,0.1)':summary?.tier==='2'?'rgba(255,200,0,0.08)':'rgba(0,0,0,0.04)',
+              color:isLock?'#2aa800':summary?.tier==='2'?'#bb8800':'#999',
+              border:isLock?'1px solid rgba(57,255,20,0.25)':summary?.tier==='2'?'1px solid rgba(255,200,0,0.2)':'1px solid rgba(0,0,0,0.07)' }}>
+              {isLock?'★★★★★ ':summary?.tier==='2'?'★★★★ ':''}
+              {isLock?'TIER 1':summary?.tier==='2'?'TIER 2':'PASS'}
             </span>
           )}
-          <span style={{ fontSize:10, color:'#aaa', fontVariantNumeric:'tabular-nums' }}>{live?.updatedTime || live?.scheduledTime || game.time}</span>
-          <span
-            onClick={e => { e.stopPropagation(); onToggleWatch?.(game.id); }}
-            style={{ fontSize:16, color:watchlist?.includes(game.id) ? '#39FF14' : '#ccc', cursor:'pointer', lineHeight:1 }}
-          >{watchlist?.includes(game.id) ? '★' : '☆'}</span>
+          <span style={{ fontSize:10,color:'#aaa' }}>{live?.scheduledTime||game.time}</span>
+          <span onClick={e=>{e.stopPropagation();onToggleWatch?.(game.id);}} style={{ fontSize:16,color:watchlist?.includes(game.id)?'#39FF14':'#ccc',cursor:'pointer',lineHeight:1 }}>
+            {watchlist?.includes(game.id)?'★':'☆'}
+          </span>
         </div>
       </div>
 
-      {/* Teams row */}
-      <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
-        {/* Away */}
-        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4, width:64, flexShrink:0 }}>
-          <TeamLogo abbr={awayAbbr} size={42} sport={game.sport} />
-          <div style={{ fontSize:10, fontWeight:800, color:'#111', textAlign:'center' }}>{awayAbbr}</div>
-          <div style={{ fontSize:8, color:'#bbb', textAlign:'center' }}>{awayRec}</div>
+      {/* Row 2: teams + logos + records */}
+      <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:10 }}>
+        <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:3,width:60,flexShrink:0 }}>
+          <TeamLogo abbr={awayAbbr} sport={game.sport} size={42} />
+          <div style={{ fontSize:10,fontWeight:800,color:'#111' }}>{awayAbbr}</div>
+          <div style={{ fontSize:8,color:'#bbb' }}>{awayRec}</div>
         </div>
-        {/* Middle */}
-        <div style={{ flex:1, textAlign:'center' }}>
-          <div style={{ fontSize:14, fontWeight:800, color:'#111' }}>
-            {isTennis ? `${awayName} vs ${homeName}` : `${awayAbbr} @ ${homeAbbr}`}
+        <div style={{ flex:1,textAlign:'center' }}>
+          <div style={{ fontSize:13,fontWeight:800,color:'#111' }}>
+            {isTennis?`${awayName} vs ${homeName}`:`${awayAbbr} @ ${homeAbbr}`}
           </div>
-          <div style={{ fontSize:9, color:'#aaa', marginTop:2 }}>{game.venue || ''}</div>
+          <div style={{ fontSize:9,color:'#aaa',marginTop:2 }}>{game.venue||''}</div>
           {/* Live score */}
-          {gameStarted && live && (
-            <div style={{ marginTop:8, background:'rgba(0,0,0,0.04)', borderRadius:10, padding:'8px 12px', display:'flex', justifyContent:'space-around', alignItems:'center' }}>
+          {gameStarted&&live&&(
+            <div style={{ marginTop:8,background:'rgba(0,0,0,0.04)',borderRadius:10,padding:'8px 12px',display:'flex',justifyContent:'space-around',alignItems:'center' }}>
               <div style={{ textAlign:'center' }}>
-                <div style={{ fontSize:9, color:'#aaa', marginBottom:2 }}>{awayAbbr}</div>
-                <div style={{ fontSize:24, fontWeight:900, color:'#111' }}>{live.awayScore ?? '-'}</div>
+                <div style={{ fontSize:9,color:'#aaa',marginBottom:2 }}>{awayAbbr}</div>
+                <div style={{ fontSize:24,fontWeight:900,color:'#111' }}>{live.awayScore??'-'}</div>
               </div>
               <div style={{ textAlign:'center' }}>
-                {isLive ? (
-                  <div>
-                    <div style={{ fontSize:9, color:'#dc2626', fontWeight:700 }}>{live.inningHalf?.slice(0,3).toUpperCase()||''} {live.inning||''}</div>
-                    <div style={{ fontSize:9, color:'#aaa' }}>{live.outs ?? 0} out{live.outs===1?'':'s'}</div>
-                  </div>
-                ) : <div style={{ fontSize:10, color:'#aaa', fontWeight:600 }}>FINAL</div>}
+                {isLive?<div><div style={{ fontSize:9,color:'#dc2626',fontWeight:700 }}>{live.inningHalf?.slice(0,3).toUpperCase()||''} {live.inning||''}</div><div style={{ fontSize:9,color:'#aaa' }}>{live.outs??0} out{live.outs===1?'':'s'}</div></div>
+                :<div style={{ fontSize:10,color:'#aaa',fontWeight:600 }}>FINAL</div>}
               </div>
               <div style={{ textAlign:'center' }}>
-                <div style={{ fontSize:9, color:'#aaa', marginBottom:2 }}>{homeAbbr}</div>
-                <div style={{ fontSize:24, fontWeight:900, color:'#111' }}>{live.homeScore ?? '-'}</div>
+                <div style={{ fontSize:9,color:'#aaa',marginBottom:2 }}>{homeAbbr}</div>
+                <div style={{ fontSize:24,fontWeight:900,color:'#111' }}>{live.homeScore??'-'}</div>
               </div>
             </div>
           )}
         </div>
-        {/* Home */}
-        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4, width:64, flexShrink:0 }}>
-          <TeamLogo abbr={homeAbbr} size={42} sport={game.sport} />
-          <div style={{ fontSize:10, fontWeight:800, color:'#111', textAlign:'center' }}>{homeAbbr}</div>
-          <div style={{ fontSize:8, color:'#bbb', textAlign:'center' }}>{homeRec}</div>
+        <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:3,width:60,flexShrink:0 }}>
+          <TeamLogo abbr={homeAbbr} sport={game.sport} size={42} />
+          <div style={{ fontSize:10,fontWeight:800,color:'#111' }}>{homeAbbr}</div>
+          <div style={{ fontSize:8,color:'#bbb' }}>{homeRec}</div>
         </div>
       </div>
 
-      {/* DraftKings odds row */}
-      {!isTennis && (game.awayML || game.homeML || game.dkAwayML || game.dkHomeML) && (
+      {/* Row 3: DK Odds */}
+      {!isTennis&&(game.awayML||game.homeML||game.dkAwayML||game.dkHomeML)&&(
         <div style={{ marginBottom:10 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:5 }}>
-            <div style={{ fontSize:8, fontWeight:700, color:'#5588ee', background:'rgba(80,140,255,0.08)', border:'1px solid rgba(80,140,255,0.2)', borderRadius:3, padding:'1px 6px', letterSpacing:'0.06em' }}>DK</div>
-            <span style={{ fontSize:8, color:'#aaa', letterSpacing:'0.06em' }}>DRAFTKINGS ODDS</span>
+          <div style={{ display:'flex',alignItems:'center',gap:5,marginBottom:5 }}>
+            <span style={{ fontSize:8,fontWeight:700,color:'#5588ee',background:'rgba(80,140,255,0.08)',border:'1px solid rgba(80,140,255,0.2)',borderRadius:3,padding:'1px 6px',letterSpacing:'0.06em' }}>DK</span>
+            <span style={{ fontSize:8,color:'#aaa',letterSpacing:'0.06em' }}>DRAFTKINGS ODDS</span>
           </div>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:6 }}>
-            {/* Moneyline */}
-            <div style={{ background:'rgba(255,255,255,0.55)', border:'1px solid rgba(0,0,0,0.05)', borderRadius:9, padding:'6px 0', textAlign:'center' }}>
-              <div style={{ fontSize:7, color:'#bbb', textTransform:'uppercase', letterSpacing:'0.6px', fontWeight:700, marginBottom:4 }}>Moneyline</div>
-              <div style={{ display:'flex', justifyContent:'space-around' }}>
-                <span style={{ fontSize:11, fontWeight:700, color:awayOdds.startsWith('-')?'#dd4444':'#33aa00' }}>{awayOdds}</span>
-                <span style={{ fontSize:11, fontWeight:700, color:homeOdds.startsWith('-')?'#dd4444':'#33aa00' }}>{homeOdds}</span>
+          <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6 }}>
+            {[
+              { label:'Moneyline', left:awayOdds, right:homeOdds, color:(v)=>v.startsWith('-')?'#dd4444':'#33aa00' },
+              { label:game.sport==='MLB'?'Run Line':'Spread', left:awaySpread, right:spreadVal, color:()=>'#555' },
+              { label:'Total', left:totalVal!=='—'?'o'+totalVal:'—', right:totalVal!=='—'?'u'+totalVal:'—', color:()=>'#5588ee' },
+            ].map(({label,left,right,color})=>(
+              <div key={label} style={{ background:'rgba(255,255,255,0.55)',border:'1px solid rgba(0,0,0,0.05)',borderRadius:9,padding:'6px 0',textAlign:'center' }}>
+                <div style={{ fontSize:7,color:'#bbb',textTransform:'uppercase',letterSpacing:'0.6px',fontWeight:700,marginBottom:4 }}>{label}</div>
+                <div style={{ display:'flex',justifyContent:'space-around' }}>
+                  <span style={{ fontSize:11,fontWeight:700,color:color(left) }}>{left}</span>
+                  <span style={{ fontSize:11,fontWeight:700,color:color(right) }}>{right}</span>
+                </div>
               </div>
-            </div>
-            {/* Run Line / Spread */}
-            <div style={{ background:'rgba(255,255,255,0.55)', border:'1px solid rgba(0,0,0,0.05)', borderRadius:9, padding:'6px 0', textAlign:'center' }}>
-              <div style={{ fontSize:7, color:'#bbb', textTransform:'uppercase', letterSpacing:'0.6px', fontWeight:700, marginBottom:4 }}>{game.sport==='MLB'?'Run Line':'Spread'}</div>
-              <div style={{ display:'flex', justifyContent:'space-around' }}>
-                <span style={{ fontSize:11, fontWeight:700, color:'#555' }}>{awaySpread === '—' ? '—' : awaySpread}</span>
-                <span style={{ fontSize:11, fontWeight:700, color:'#555' }}>{spreadVal}</span>
-              </div>
-            </div>
-            {/* Total */}
-            <div style={{ background:'rgba(255,255,255,0.55)', border:'1px solid rgba(0,0,0,0.05)', borderRadius:9, padding:'6px 0', textAlign:'center' }}>
-              <div style={{ fontSize:7, color:'#bbb', textTransform:'uppercase', letterSpacing:'0.6px', fontWeight:700, marginBottom:4 }}>Total</div>
-              <div style={{ display:'flex', justifyContent:'space-around' }}>
-                <span style={{ fontSize:11, fontWeight:700, color:'#5588ee' }}>{totalVal !== '—' ? 'o'+totalVal : '—'}</span>
-                <span style={{ fontSize:11, fontWeight:700, color:'#5588ee' }}>{totalVal !== '—' ? 'u'+totalVal : '—'}</span>
-              </div>
-            </div>
+            ))}
           </div>
-          {/* Line movement */}
-          {hasMovement && isSubscribed && (
-            <div style={{ marginTop:6, padding:'5px 9px', background:'rgba(246,249,246,0.7)', border:'1px solid rgba(195,240,195,0.5)', borderRadius:7, fontSize:9, color:'#444', fontWeight:600 }}>
+          {hasMovement&&isSubscribed&&(
+            <div style={{ marginTop:6,padding:'5px 9px',background:'rgba(246,249,246,0.7)',border:'1px solid rgba(195,240,195,0.5)',borderRadius:7,fontSize:9,color:'#444',fontWeight:600 }}>
               ⚡ {game.lineMovement}
             </div>
           )}
         </div>
       )}
 
-      {/* Result / pick strip */}
-      {isSubscribed && hasRes && results[key]?.summary && (() => {
-        const r = results[key];
-        const ts = TIER_STYLES[r.summary.tier] || TIER_STYLES["3"];
-        const isVeg = game.slot === 'VEGAS';
-        const histEntry = pickHistory?.find(p => p.key === key);
-        const pickRes = histEntry?.result;
-        const isWin = pickRes === 'win';
-        const isLoss = pickRes === 'loss';
-        return (
-          <div style={{ background:isVeg?'rgba(57,255,20,0.06)':'rgba(80,140,255,0.05)', border:isVeg?'1px solid rgba(57,255,20,0.2)':'1px solid rgba(80,140,255,0.15)', borderRadius:9, padding:'8px 10px', marginBottom:8 }}>
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-              <div>
-                <div style={{ fontSize:7, fontWeight:800, color:isVeg?'#2aa800':'#5588ee', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:2 }}>{game.slot} PRIMARY</div>
-                <div style={{ fontSize:13, fontWeight:800, color:'#111' }}>{r.summary.pick}</div>
-                <div style={{ fontSize:10, color:'#aaa', marginTop:1 }}>{r.summary.betType}</div>
-              </div>
-              <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:4 }}>
-                <span style={{ fontSize:9, fontWeight:800, padding:'3px 8px', borderRadius:6, background:ts.bg || 'rgba(57,255,20,0.1)', color:ts.text || '#33aa00', border:`1px solid ${ts.border||'rgba(57,255,20,0.25)'}` }}>
-                  {ts.label === 'LOCK' ? '🔒 LOCK' : ts.label === '2' ? 'TIER 2' : 'PASS'}
-                </span>
-                {isWin && <span style={{ fontSize:10, fontWeight:800, color:'#33aa00' }}>✅ WIN</span>}
-                {isLoss && <span style={{ fontSize:10, fontWeight:800, color:'#dd4444' }}>❌ LOSS</span>}
-              </div>
+      {/* Row 4: AI result strip */}
+      {isSubscribed&&hasRes&&summary&&(
+        <div style={{ background:isVegas?'rgba(57,255,20,0.06)':'rgba(80,140,255,0.05)',border:isVegas?'1px solid rgba(57,255,20,0.2)':'1px solid rgba(80,140,255,0.15)',borderRadius:9,padding:'8px 10px',marginBottom:8 }}>
+          <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between' }}>
+            <div>
+              <div style={{ fontSize:7,fontWeight:800,color:isVegas?'#2aa800':'#5588ee',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:2 }}>{game.slot} PRIMARY</div>
+              <div style={{ fontSize:13,fontWeight:800,color:'#111' }}>{summary.pick}</div>
+              <div style={{ fontSize:10,color:'#aaa',marginTop:1 }}>{summary.betType}</div>
+            </div>
+            <div style={{ textAlign:'right' }}>
+              {isLock&&<div style={{ fontSize:9,fontWeight:800,color:'#2aa800',border:'1px solid rgba(57,255,20,0.3)',borderRadius:6,padding:'2px 8px',background:'rgba(57,255,20,0.07)',marginBottom:4 }}>🔒 LOCK</div>}
+              {pickResult==='win'&&<div style={{ fontSize:11,fontWeight:800,color:'#33aa00' }}>✅ WIN</div>}
+              {pickResult==='loss'&&<div style={{ fontSize:11,fontWeight:800,color:'#dd4444' }}>❌ LOSS</div>}
             </div>
           </div>
-        );
-      })()}
+        </div>
+      )}
 
-      {/* Action button */}
-      {!gameStarted && !isPostponed && isSubscribed && (() => {
-        if (isGen) return (
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'10px 0', background:'rgba(57,255,20,0.06)', border:'1px solid rgba(57,255,20,0.2)', borderRadius:10 }}>
-            <div style={{ width:12, height:12, borderRadius:'50%', border:'2px solid rgba(57,255,20,0.3)', borderTop:'2px solid #39FF14', animation:'spin 0.8s linear infinite' }}/>
-            <span style={{ fontSize:10, fontWeight:700, color:'#33aa00', letterSpacing:'0.06em' }}>ANALYZING {game.slot}…</span>
-          </div>
-        );
-        if (hasRes) return (
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'9px 12px', background:'rgba(248,255,248,0.7)', border:'1px solid rgba(195,240,195,0.5)', borderRadius:10 }}>
-            <span style={{ fontSize:10, fontWeight:700, color:'#33aa00' }}>✓ {game.slot} — ANALYZED</span>
-            <button onClick={e => { e.stopPropagation(); onGenerate(game, game.slot); }}
-              style={{ fontSize:10, fontWeight:700, color:'#555', background:'rgba(255,255,255,0.7)', border:'1px solid rgba(0,0,0,0.07)', borderRadius:7, padding:'4px 10px', cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', gap:4 }}>
-              <i className="ti ti-refresh" style={{ fontSize:12 }}/> Re-analyze
-            </button>
-          </div>
-        );
-        return (
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, padding:'10px 0', background:'rgba(248,255,248,0.7)', border:'1px solid rgba(195,240,195,0.5)', borderRadius:10, cursor:'pointer' }}
-            onClick={() => onGenerate(game, game.slot)}>
-            <i className="ti ti-sparkles" style={{ fontSize:13, color:'#33aa00' }}/>
-            <span style={{ fontSize:10, fontWeight:700, color:'#33aa00', letterSpacing:'0.06em' }}>ANALYZE</span>
-          </div>
-        );
-      })()}
-      {!isSubscribed && !gameStarted && (
-        <div onClick={() => onShowAuth?.('plans')} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'10px 0', background:'rgba(57,255,20,0.06)', border:'1px solid rgba(57,255,20,0.2)', borderRadius:10, cursor:'pointer' }}>
+      {/* Row 5: Action */}
+      {isPostponed?(
+        <div style={{ display:'flex',alignItems:'center',justifyContent:'center',padding:'10px 0',background:'rgba(255,80,80,0.04)',border:'1px solid rgba(255,80,80,0.15)',borderRadius:10 }}>
+          <span style={{ fontSize:10,fontWeight:700,color:'#dd4444' }}>⛔ POSTPONED — Analysis unavailable</span>
+        </div>
+      ):gameStarted?(
+        <div style={{ display:'flex',alignItems:'center',justifyContent:'center',padding:'10px 0',background:'rgba(0,0,0,0.03)',border:'1px solid rgba(0,0,0,0.06)',borderRadius:10 }}>
+          <span style={{ fontSize:10,fontWeight:700,color:'#aaa' }}>{isLive?'🔴 GAME IN PROGRESS — LOCKED':'⬛ FINAL — ANALYSIS LOCKED'}</span>
+        </div>
+      ):!isSubscribed?(
+        <div onClick={()=>onShowAuth?.('plans')} style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:'10px 0',background:'rgba(57,255,20,0.06)',border:'1px solid rgba(57,255,20,0.2)',borderRadius:10,cursor:'pointer' }}>
           <span style={{ fontSize:13 }}>🔒</span>
-          <span style={{ fontSize:10, fontWeight:700, color:'#33aa00', letterSpacing:'0.08em' }}>SUBSCRIBE TO UNLOCK</span>
+          <span style={{ fontSize:10,fontWeight:700,color:'#33aa00',letterSpacing:'0.08em' }}>SUBSCRIBE TO UNLOCK</span>
+        </div>
+      ):isGen?(
+        <div style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:'10px 0',background:'rgba(57,255,20,0.06)',border:'1px solid rgba(57,255,20,0.2)',borderRadius:10 }}>
+          <div style={{ width:12,height:12,borderRadius:'50%',border:'2px solid rgba(57,255,20,0.3)',borderTop:'2px solid #39FF14',animation:'spin 0.8s linear infinite' }}/>
+          <span style={{ fontSize:10,fontWeight:700,color:'#33aa00' }}>ANALYZING {game.slot}…</span>
+        </div>
+      ):hasRes?(
+        <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'9px 12px',background:'rgba(248,255,248,0.7)',border:'1px solid rgba(195,240,195,0.5)',borderRadius:10 }}>
+          <span style={{ fontSize:10,fontWeight:700,color:'#33aa00' }}>✓ {game.slot} — ANALYZED</span>
+          <button onClick={e=>{e.stopPropagation();onGenerate(game,game.slot);}}
+            style={{ fontSize:10,fontWeight:700,color:'#555',background:'rgba(255,255,255,0.7)',border:'1px solid rgba(0,0,0,0.07)',borderRadius:7,padding:'4px 10px',cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',gap:4 }}>
+            <i className="ti ti-refresh" style={{ fontSize:12 }}/> Re-analyze
+          </button>
+        </div>
+      ):(
+        <div onClick={()=>onGenerate(game,game.slot)} style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'10px 0',background:'rgba(248,255,248,0.7)',border:'1px solid rgba(195,240,195,0.5)',borderRadius:10,cursor:'pointer' }}>
+          <i className="ti ti-sparkles" style={{ fontSize:13,color:'#33aa00' }}/>
+          <span style={{ fontSize:10,fontWeight:700,color:'#33aa00',letterSpacing:'0.06em' }}>ANALYZE</span>
         </div>
       )}
-      {gameStarted && (
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'center', padding:'10px 0', background:'rgba(0,0,0,0.03)', border:'1px solid rgba(0,0,0,0.06)', borderRadius:10 }}>
-          <span style={{ fontSize:10, fontWeight:700, color:'#aaa', letterSpacing:'0.08em' }}>
-            {isLive ? '🔴 GAME IN PROGRESS — LOCKED' : '⬛ FINAL — ANALYSIS LOCKED'}
-          </span>
-        </div>
-      )}
     </div>
   );
 }
 
-// ── SVG COMPONENTS ────────────────────────────────────────────────────────────
-
-function Sparkline({ color="#4ade80", width=80, height=36 }) {
-  const pts=[18,22,14,28,20,32,24,36,28,30,38,32].map((v,i)=>`${i*(width/11)},${height-(v/40)*height}`).join(" ");
-  return <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}><polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.9" /></svg>;
-}
-
-function RadarChart({ size=160 }) {
-  const cx=size/2,cy=size/2,r=size*0.37;
-  const rings=[0.3,0.55,0.8,1];
-  const dots=[{a:-90,d:0.85,c:"#3b82f6"},{a:-18,d:0.72,c:"#a78bfa"},{a:54,d:0.6,c:"#10b981"},{a:126,d:0.82,c:"#f59e0b"},{a:198,d:0.68,c:"#f87171"}];
-  const toXY=(a,d)=>({x:cx+Math.cos(a*Math.PI/180)*r*d,y:cy+Math.sin(a*Math.PI/180)*r*d});
-  const poly=dots.map(d=>toXY(d.a,d.d));
-  const polyStr=poly.map(p=>`${p.x},${p.y}`).join(" ");
-  const spokes=[0,45,90,135,180,225,270,315];
-  return(
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      {rings.map((f,i)=><circle key={i} cx={cx} cy={cy} r={r*f} fill="none" stroke="rgba(59,130,246,0.12)" strokeWidth="1"/>)}
-      {spokes.map((a,i)=><line key={i} x1={cx} y1={cy} x2={cx+Math.cos(a*Math.PI/180)*r} y2={cy+Math.sin(a*Math.PI/180)*r} stroke="rgba(59,130,246,0.08)" strokeWidth="1"/>)}
-      <polygon points={polyStr} fill="rgba(59,130,246,0.12)" stroke="rgba(59,130,246,0.5)" strokeWidth="1.5"/>
-      {dots.map((d,i)=>{const p=toXY(d.a,d.d);return<circle key={i} cx={p.x} cy={p.y} r={3.5} fill={d.c} opacity="0.95"/>;})}
-    </svg>
-  );
-}
-
-function ConfidenceChart({ history }) {
-  const base = [20,35,28,45,38,52,42,60,55,58,65,70,62,75,70];
-  const data = history && history.length > 1 ? history : base;
-  const pts = data.map((v,i)=>`${i*(200/(data.length-1))},${70-(v/100)*60}`).join(" ");
-  return(
-    <svg width="100%" height="56" viewBox="0 0 200 70" preserveAspectRatio="none">
-      <defs><linearGradient id="cg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#4ade80" stopOpacity="0.25"/><stop offset="100%" stopColor="#4ade80" stopOpacity="0"/></linearGradient></defs>
-      <polygon points={`0,70 ${pts} 200,70`} fill="url(#cg)"/>
-      <polyline points={pts} fill="none" stroke="#4ade80" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  );
-}
-
-function GlobeSVG({ timeStr }) {
-  return(
-    <div style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:6 }}>
-      <svg width={110} height={110} viewBox="0 0 110 110">
-        <defs><radialGradient id="gg" cx="38%" cy="32%"><stop offset="0%" stopColor="#1a3a6e"/><stop offset="100%" stopColor="#050a14"/></radialGradient></defs>
-        <circle cx={55} cy={55} r={50} fill="url(#gg)" stroke="rgba(59,130,246,0.25)" strokeWidth="1"/>
-        {[35,55,75].map((y,i)=><ellipse key={i} cx={55} cy={y} rx={50} ry={9} fill="none" stroke="rgba(59,130,246,0.12)" strokeWidth="0.8"/>)}
-        <line x1={55} y1={5} x2={55} y2={105} stroke="rgba(59,130,246,0.12)" strokeWidth="0.8"/>
-        <line x1={5} y1={55} x2={105} y2={55} stroke="rgba(59,130,246,0.12)" strokeWidth="0.8"/>
-        {[[30,35],[60,48],[75,65],[42,70],[65,30],[38,52]].map(([x,y],i)=><circle key={i} cx={x} cy={y} r={2.2} fill="#3b82f6" opacity="0.75"/>)}
-        <circle cx={55} cy={55} r={50} fill="none" stroke="rgba(59,130,246,0.15)" strokeWidth="0.5"/>
-      </svg>
-      <div style={{ fontSize:9,color:"#2d3a4a",textAlign:"center" }}>Last updated: <span style={{ color:"#3b82f6" }}>{timeStr}</span></div>
-    </div>
-  );
-}
-
-function OddsTicker({ feed }) {
-  const ref=useRef(null);
-  useEffect(()=>{
-    const el=ref.current; if(!el)return;
-    let pos=0; const speed=0.5;
-    const getHalf=()=>el.scrollWidth/2;
-    const tick=()=>{pos+=speed;if(pos>=getHalf())pos=0;el.scrollLeft=pos;requestAnimationFrame(tick);};
-    const id=requestAnimationFrame(tick); return()=>cancelAnimationFrame(id);
-  },[feed]);
-  const items=[...feed,...feed];
-  return(
-    <div ref={ref} style={{ overflowX:"hidden",display:"flex",whiteSpace:"nowrap" }}>
-      {items.map((o,i)=>(
-        <div key={i} style={{ display:"inline-flex",alignItems:"center",gap:5,padding:"0 18px",borderRight:"1px solid rgba(255,255,255,0.04)" }}>
-          <span style={{ fontSize:11,fontWeight:700,color:"#cbd5e1" }}>{o.team}{o.line}</span>
-          <span style={{ fontSize:11,fontWeight:600,color:o.odds&&o.odds.startsWith("+")?"#10b981":"#e2e8f0" }}>{o.odds}</span>
-          <span style={{ fontSize:9,color:o.up?"#10b981":"#f87171" }}>{o.up?"▲":"▼"}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ── RIGHT PANEL CONTENT (reused for desktop + stacked mobile) ─────────────────
-
-function RightPanelContent({ marketScanner, insights, aiConfidence, confHistory }) {
-  return(
-    <>
-      {/* AI Market Scanner */}
-      <div style={{ marginBottom:20 }}>
-        <div style={{ fontSize:10,fontWeight:700,letterSpacing:"0.06em",color:"#64748b",marginBottom:14,display:"flex",alignItems:"center",gap:6 }}>
-          <span style={{ width:3,height:10,background:"#3b82f6",borderRadius:2,display:"inline-block" }}/>
-          AI MARKET SCANNER
-        </div>
-        <div style={{ display:"flex",justifyContent:"center",marginBottom:14 }}>
-          <RadarChart size={160} />
-        </div>
-        <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
-          {[
-            {label:"Reverse Line Movement",count:marketScanner.reverseLineMovement,sub:"Games",color:"#64748b"},
-            {label:"Sharp Money Detected",  count:marketScanner.sharpMoneyDetected, sub:"Games",color:"#10b981"},
-            {label:"Public Heavy",           count:marketScanner.publicHeavy,        sub:"Games",color:"#64748b"},
-            {label:"Vegas Trap Alert",       count:marketScanner.vegasTrapAlert,     sub:"Games",color:"#f87171"},
-          ].map((item,i)=>(
-            <div key={i}>
-              <div style={{ fontSize:9,color:"#3a4a5e",letterSpacing:"0.06em",marginBottom:1 }}>{item.label}</div>
-              <div style={{ display:"flex",alignItems:"baseline",gap:5 }}>
-                <span style={{ fontSize:22,fontWeight:800,color:item.color,letterSpacing:"-0.02em",lineHeight:1 }}>{item.count}</span>
-                <span style={{ fontSize:9,color:"#2d3a4a" }}>{item.sub}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ borderTop:"1px solid rgba(255,255,255,0.05)",paddingTop:16,marginBottom:20 }}>
-        <div style={{ fontSize:10,fontWeight:700,letterSpacing:"0.06em",color:"#64748b",marginBottom:14,display:"flex",alignItems:"center",gap:6 }}>
-          <span style={{ width:3,height:10,background:"#3b82f6",borderRadius:2,display:"inline-block" }}/>
-          AI INSIGHTS
-        </div>
-        <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
-          {insights.map((ins,i)=>(
-            <div key={i} style={{ display:"flex",gap:10,alignItems:"flex-start" }}>
-              <div style={{ width:22,height:22,borderRadius:6,background:"rgba(59,130,246,0.1)",border:"1px solid rgba(59,130,246,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:"#3b82f6",flexShrink:0,marginTop:1 }}>{ins.icon}</div>
-              <div style={{ flex:1 }}>
-                <div style={{ fontSize:11,color:"#94a3b8",lineHeight:1.55 }}>{ins.text}</div>
-                <div style={{ fontSize:9,color:"#2d3a4a",marginTop:3 }}>{ins.time}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ borderTop:"1px solid rgba(255,255,255,0.05)",paddingTop:16 }}>
-        <div style={{ fontSize:10,fontWeight:700,letterSpacing:"0.06em",color:"#64748b",marginBottom:10,display:"flex",alignItems:"center",gap:6 }}>
-          <span style={{ width:3,height:10,background:"#4ade80",borderRadius:2,display:"inline-block" }}/>
-          AI CONFIDENCE MONITOR
-        </div>
-        <ConfidenceChart history={confHistory} />
-        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:8 }}>
-          <span style={{ fontSize:9,color:"#2d3a4a" }}>Overall AI Confidence</span>
-          <span style={{ fontSize:22,fontWeight:800,color:aiConfidence===null?"#4ade80":aiConfidence>=75?"#4ade80":aiConfidence>=50?"#fbbf24":"#f87171",letterSpacing:"-0.02em" }}>{aiConfidence!==null?`${aiConfidence}%`:"—"}</span>
-        </div>
-      </div>
-    </>
-  );
-}
-
-
-// ── TOP PLAY BANNER ──────────────────────────────────────────────────────────
-function TopPlayBanner({ topPlay, loading, results, games, pickHistory, isSubscribed, onShowAuth, onForceRefresh, isAdmin, watchlist, onToggleWatch, sport }) {
-  const result = topPlay ? (results[`${topPlay.id}-${topPlay.slot}`] || results[`${topPlay.id}-PUBLIC`] || results[`${topPlay.id}-VEGAS`]) : null;
+// ── TOP PLAY BANNER ───────────────────────────────────────────────────────────
+function TopPlayBanner({ topPlay, loading, results, pickHistory, isSubscribed, isAdmin, watchlist, onToggleWatch, onForceRefresh }) {
+  const result = topPlay && (results[`${topPlay.id}-${topPlay.slot}`]||results[`${topPlay.id}-PUBLIC`]||results[`${topPlay.id}-VEGAS`]);
   const summary = result?.summary;
-  const tier = summary ? (TIER_STYLES[summary.tier] || TIER_STYLES["3"]) : null;
-  const histEntry = topPlay && pickHistory?.find(p => p.key === `${topPlay.id}-${topPlay.slot}`);
+  const histEntry = topPlay && pickHistory?.find(p=>p.key===`${topPlay.id}-${topPlay.slot}`);
   const pickResult = histEntry?.result;
+  const isVegas = topPlay?.slot === 'VEGAS';
+  const isLock = summary?.tier === '1';
 
   if (loading) return (
-    <div style={{ background:'rgba(255,255,255,0.7)', border:'1px solid rgba(255,255,255,0.93)', borderRadius:16, backdropFilter:'blur(20px)', boxShadow:'0 8px 30px rgba(0,0,0,0.06)', padding:'16px 20px', display:'flex', alignItems:'center', gap:10 }}>
-      <div style={{ width:14, height:14, borderRadius:'50%', border:'2px solid rgba(57,255,20,0.3)', borderTop:'2px solid #39FF14', animation:'spin 0.8s linear infinite', flexShrink:0 }}/>
-      <span style={{ fontSize:11, color:'#aaa' }}>Loading today's top play...</span>
+    <div style={{ background:'rgba(255,255,255,0.72)',border:'1px solid rgba(255,255,255,0.93)',borderRadius:16,backdropFilter:'blur(20px)',boxShadow:'0 8px 30px rgba(0,0,0,0.06)',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
+      <div style={{ width:14,height:14,borderRadius:'50%',border:'2px solid rgba(57,255,20,0.3)',borderTop:'2px solid #39FF14',animation:'spin 0.8s linear infinite',flexShrink:0 }}/>
+      <span style={{ fontSize:11,color:'#aaa' }}>Loading today's top play...</span>
     </div>
   );
-
-  if (!topPlay || !summary) return null;
+  if (!topPlay||!summary) return null;
 
   return (
-    <div style={{ background:'rgba(255,255,255,0.62)', border:'1px solid rgba(57,255,20,0.28)', borderRadius:16, backdropFilter:'blur(20px)', boxShadow:'0 10px 36px rgba(57,255,20,0.09)', padding:'14px 20px' }}>
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-          <span style={{ fontSize:9, fontWeight:800, color:'#111', background:'#39FF14', padding:'3px 10px', borderRadius:6, letterSpacing:'0.5px' }}>⭐ TOP PLAY</span>
-          <span style={{ fontSize:9, fontWeight:800, padding:'3px 9px', borderRadius:6, background:topPlay.slot==='VEGAS'?'rgba(57,255,20,0.1)':'rgba(80,140,255,0.08)', color:topPlay.slot==='VEGAS'?'#2aa800':'#5588ee', border:topPlay.slot==='VEGAS'?'1px solid rgba(57,255,20,0.25)':'1px solid rgba(80,140,255,0.2)' }}>
-            {topPlay.slot}
-          </span>
-          {tier && <span style={{ fontSize:9, fontWeight:800, padding:'3px 9px', borderRadius:6, background:'rgba(57,255,20,0.1)', color:'#2aa800', border:'1px solid rgba(57,255,20,0.25)' }}>Tier {summary.tier}</span>}
+    <div style={{ background:'rgba(255,255,255,0.62)',border:'1px solid rgba(57,255,20,0.28)',borderRadius:16,backdropFilter:'blur(20px)',boxShadow:'0 10px 36px rgba(57,255,20,0.09)',padding:'14px 20px' }}>
+      <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:10,marginBottom:10 }}>
+        <div style={{ display:'flex',alignItems:'center',gap:6 }}>
+          <span style={{ fontSize:9,fontWeight:800,color:'#111',background:'#39FF14',padding:'3px 10px',borderRadius:6,letterSpacing:'0.5px',boxShadow:'0 0 8px rgba(57,255,20,0.4)' }}>⭐ TOP PLAY</span>
+          <span style={{ fontSize:9,fontWeight:800,padding:'3px 9px',borderRadius:6,background:isVegas?'rgba(57,255,20,0.1)':'rgba(80,140,255,0.08)',color:isVegas?'#2aa800':'#5588ee',border:isVegas?'1px solid rgba(57,255,20,0.25)':'1px solid rgba(80,140,255,0.2)' }}>{topPlay.slot}</span>
+          {isLock&&<span style={{ fontSize:9,fontWeight:800,color:'#2aa800',background:'rgba(57,255,20,0.1)',border:'1px solid rgba(57,255,20,0.25)',padding:'3px 9px',borderRadius:6 }}>★★★★★ TIER 1</span>}
         </div>
-        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-          <span style={{ fontSize:10, color:'#aaa' }}>{topPlay.time}</span>
-          <span onClick={e => { e.stopPropagation(); onToggleWatch?.(topPlay.id); }} style={{ fontSize:16, color:watchlist?.includes(topPlay.id)?'#39FF14':'#ccc', cursor:'pointer' }}>
+        <div style={{ display:'flex',alignItems:'center',gap:8 }}>
+          <span style={{ fontSize:10,color:'#aaa' }}>{topPlay.time}</span>
+          <span onClick={()=>onToggleWatch?.(topPlay.id)} style={{ fontSize:16,color:watchlist?.includes(topPlay.id)?'#39FF14':'#ccc',cursor:'pointer' }}>
             {watchlist?.includes(topPlay.id)?'★':'☆'}
           </span>
-          {isAdmin && onForceRefresh && (
-            <button onClick={onForceRefresh} style={{ fontSize:10, fontWeight:700, color:'#555', background:'rgba(255,255,255,0.7)', border:'1px solid rgba(0,0,0,0.07)', borderRadius:7, padding:'4px 10px', cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', gap:4 }}>
+          {isAdmin&&onForceRefresh&&(
+            <button onClick={onForceRefresh} style={{ fontSize:10,fontWeight:700,color:'#555',background:'rgba(255,255,255,0.7)',border:'1px solid rgba(0,0,0,0.07)',borderRadius:7,padding:'4px 10px',cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',gap:4 }}>
               <i className="ti ti-refresh" style={{ fontSize:12 }}/> Re-analyze
             </button>
           )}
         </div>
       </div>
-      <div style={{ marginTop:10 }}>
-        <div style={{ fontSize:12, color:'#aaa', marginBottom:4 }}>{topPlay.away} @ {topPlay.home}</div>
-        <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
-          <div style={{ background:'rgba(255,255,255,0.7)', border:'1px solid rgba(57,255,20,0.2)', borderRadius:10, padding:'10px 14px' }}>
-            <div style={{ fontSize:9, color:'#33aa00', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:3 }}>THE PLAY</div>
-            <div style={{ fontSize:16, fontWeight:900, color:'#111' }}>{summary.pick}</div>
-            <div style={{ fontSize:10, color:'#aaa', marginTop:2 }}>{summary.betType}</div>
-          </div>
-          {pickResult && (
-            <div style={{ fontSize:14, fontWeight:800, color:pickResult==='win'?'#33aa00':'#dd4444' }}>
-              {pickResult==='win'?'✅ WIN':'❌ LOSS'}
-            </div>
-          )}
+      <div style={{ display:'flex',alignItems:'flex-start',gap:14,flexWrap:'wrap' }}>
+        <div style={{ background:'rgba(255,255,255,0.7)',border:'1px solid rgba(57,255,20,0.2)',borderRadius:10,padding:'10px 14px',flexShrink:0 }}>
+          <div style={{ fontSize:9,color:'#33aa00',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:3 }}>THE PLAY</div>
+          <div style={{ fontSize:18,fontWeight:900,color:'#111' }}>{summary.pick}</div>
+          <div style={{ fontSize:10,color:'#aaa',marginTop:2 }}>{summary.betType}</div>
         </div>
-        {summary.verdict && (
-          <div style={{ marginTop:10, fontSize:11, color:'#666', lineHeight:1.6 }}>{summary.verdict.length > 120 ? summary.verdict.slice(0,117)+'...' : summary.verdict}</div>
-        )}
+        <div style={{ flex:1,minWidth:0 }}>
+          <div style={{ fontSize:11,color:'#999',marginBottom:4 }}>{topPlay.away} @ {topPlay.home}</div>
+          {summary.verdict&&<div style={{ fontSize:11,color:'#555',lineHeight:1.6 }}>{summary.verdict.length>140?summary.verdict.slice(0,137)+'...':summary.verdict}</div>}
+          {pickResult&&<div style={{ marginTop:6,fontSize:13,fontWeight:800,color:pickResult==='win'?'#33aa00':'#dd4444' }}>{pickResult==='win'?'✅ WIN':'❌ LOSS'}</div>}
+        </div>
       </div>
     </div>
   );
 }
-
-
-function AlertsView({ betReadyAlerts, trellAlerts, games, results, pickHistory, watchlist }) {
-  const allAlerts = [
-    ...Object.entries(betReadyAlerts)
-      .filter(([key]) => {
-        const game = games.find(g => key.startsWith(g.id+'-'));
-        return game && watchlist.includes(game.id);
-      })
-      .map(([key, data]) => ({
-        type: 'BET_READY', key, data,
-        game: games.find(g => key.startsWith(g.id+'-')),
-        slot: key.split('-').pop(),
-        title: '🔔 Bet Ready',
-        color: '#3b82f6', bg: 'rgba(59,130,246,0.08)', border: 'rgba(59,130,246,0.25)',
-      })),
-    ...trellAlerts
-      .filter(a => {
-        if (!a.gameId) return true; // global trell alerts always show
-        return watchlist.includes(a.gameId);
-      })
-      .map((a, i) => ({
-        type: 'TRELL', key: `trell-${i}`, data: a,
-        title: '⚡ Trell Rule Alert', color: '#f87171', bg: 'rgba(248,113,113,0.08)', border: 'rgba(248,113,113,0.25)',
-      })),
-  ];
-
-  const pendingPicks = pickHistory.filter(p => !p.result);
-  const recentWins = pickHistory.filter(p => p.result==='win').slice(-3);
-
-  return (
-    <div>
-      <div style={{ marginBottom:20 }}>
-        <h1 style={{ fontSize:22,fontWeight:700,color:'#f1f5f9',letterSpacing:'-0.02em',marginBottom:4 }}>🔔 Alerts</h1>
-        <p style={{ fontSize:12,color:'#3a4a5e' }}>{allAlerts.length} active alerts · {pendingPicks.length} pending picks</p>
-      </div>
-
-      {allAlerts.length === 0 && (
-        <div style={{ textAlign:'center',padding:'60px 20px',background:'rgba(255,255,255,0.02)',borderRadius:12,border:'1px solid rgba(255,255,255,0.05)',marginBottom:16 }}>
-          <div style={{ fontSize:32,marginBottom:12 }}>🔕</div>
-          <div style={{ fontSize:14,fontWeight:600,color:'#2d3a4a',marginBottom:6 }}>No active alerts</div>
-          <div style={{ fontSize:12,color:'#1e2a3a' }}>Alerts fire when games are about to start,<br/>Trell Rule activates, or sharp money moves.</div>
-        </div>
-      )}
-
-      {allAlerts.map((alert, i) => (
-        <div key={alert.key} style={{ background:alert.bg,border:`1px solid ${alert.border}`,borderRadius:12,padding:'14px 16px',marginBottom:10 }}>
-          <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:6 }}>
-            <span style={{ fontSize:12,fontWeight:700,color:alert.color }}>{alert.title}</span>
-          </div>
-          {alert.game && <div style={{ fontSize:12,color:'#e2e8f0',fontWeight:600 }}>{alert.game.away} @ {alert.game.home}</div>}
-          {alert.data?.message && <div style={{ fontSize:11,color:'#94a3b8',marginTop:4 }}>{alert.data.message}</div>}
-          {alert.type==='BET_READY' && alert.game && (
-            <div style={{ fontSize:11,color:'#94a3b8',marginTop:4 }}>{alert.slot} slot · {alert.game.time}</div>
-          )}
-          {alert.type==='TRELL' && typeof alert.data === 'object' && (
-            <div style={{ fontSize:11,color:'#94a3b8',marginTop:4 }}>{alert.data.team} — {alert.data.note}</div>
-          )}
-        </div>
-      ))}
-
-      {/* Recent Wins */}
-      {recentWins.length > 0 && (
-        <div style={{ marginTop:24 }}>
-          <div style={{ fontSize:10,fontWeight:700,color:'#3a4a5e',letterSpacing:'0.1em',marginBottom:10 }}>RECENT WINS</div>
-          {recentWins.reverse().map((p,i) => (
-            <div key={i} style={{ background:'rgba(74,222,128,0.04)',border:'1px solid rgba(74,222,128,0.15)',borderRadius:10,padding:'10px 14px',marginBottom:8,display:'flex',justifyContent:'space-between',alignItems:'center' }}>
-              <div>
-                <div style={{ fontSize:11,fontWeight:600,color:'#e2e8f0' }}>{p.pick}</div>
-                <div style={{ fontSize:10,color:'#3a4a5e' }}>{p.game} · {p.slot}</div>
-              </div>
-              <div style={{ fontSize:13,fontWeight:800,color:'#4ade80' }}>✅ WIN</div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Pending Picks */}
-      {pendingPicks.length > 0 && (
-        <div style={{ marginTop:24 }}>
-          <div style={{ fontSize:10,fontWeight:700,color:'#3a4a5e',letterSpacing:'0.1em',marginBottom:10 }}>PENDING PICKS ({pendingPicks.length})</div>
-          {pendingPicks.map((p,i) => (
-            <div key={i} style={{ background:'rgba(255,255,255,0.02)',border:'1px solid rgba(59,130,246,0.1)',borderRadius:10,padding:'10px 14px',marginBottom:8,display:'flex',justifyContent:'space-between',alignItems:'center' }}>
-              <div>
-                <div style={{ fontSize:11,fontWeight:600,color:'#e2e8f0' }}>{p.pick}</div>
-                <div style={{ fontSize:10,color:'#3a4a5e' }}>{p.game} · {p.slot}</div>
-              </div>
-              <div style={{ fontSize:11,color:'#3a4a5e',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(59,130,246,0.1)',borderRadius:6,padding:'4px 10px' }}>PENDING</div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── WATCHLIST VIEW ────────────────────────────────────────────────────────────
-function WatchlistView({ watchlist, toggleWatch, games, results, finalized }) {
-  const watchedGames = games.filter(g => watchlist.includes(g.id));
-  const unwatchedGames = games.filter(g => !watchlist.includes(g.id));
-
-  const NOTIF_TYPES = [
-    { icon:'🔔', label:'Bet Ready', desc:'30 min before game starts' },
-    { icon:'⚡', label:'Trell Rule', desc:'Star player in/out' },
-    { icon:'📈', label:'Line Movement', desc:'Sharp money detected' },
-    { icon:'🔒', label:'Finalized Play', desc:'AI locks in the pick' },
-    { icon:'🚨', label:'Injury Alert', desc:'Key player update' },
-  ];
-
-  return (
-    <div>
-      <div style={{ marginBottom:16 }}>
-        <h1 style={{ fontSize:22,fontWeight:700,color:'#f1f5f9',letterSpacing:'-0.02em',marginBottom:4 }}>★ My Games</h1>
-        <p style={{ fontSize:12,color:'#3a4a5e' }}>Choose which games to receive notifications for. AI tracks all games — you only get alerted on yours.</p>
-      </div>
-
-      {/* Notification types legend */}
-      <div style={{ background:'rgba(201,162,39,0.05)',border:'1px solid rgba(59,130,246,0.15)',borderRadius:12,padding:'12px 16px',marginBottom:20 }}>
-        <div style={{ fontSize:9,fontWeight:700,color:'#3b82f6',letterSpacing:'0.1em',marginBottom:8 }}>YOU GET NOTIFIED FOR WATCHLISTED GAMES WHEN:</div>
-        <div style={{ display:'flex',flexWrap:'wrap',gap:8 }}>
-          {NOTIF_TYPES.map((n,i) => (
-            <div key={i} style={{ display:'flex',alignItems:'center',gap:5,background:'rgba(255,255,255,0.03)',border:'1px solid rgba(59,130,246,0.1)',borderRadius:8,padding:'5px 10px' }}>
-              <span style={{ fontSize:11 }}>{n.icon}</span>
-              <div>
-                <div style={{ fontSize:9,fontWeight:700,color:'#e2e8f0' }}>{n.label}</div>
-                <div style={{ fontSize:8,color:'#3a4a5e' }}>{n.desc}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Watched games */}
-      <div style={{ fontSize:10,fontWeight:700,color:'#3b82f6',letterSpacing:'0.1em',marginBottom:10 }}>
-        MY GAMES ({watchedGames.length}) <span style={{ color:'#3a4a5e',fontWeight:400 }}>— notifications ON</span>
-      </div>
-
-      {watchedGames.length === 0 ? (
-        <div style={{ textAlign:'center',padding:'30px 20px',background:'rgba(255,255,255,0.02)',borderRadius:12,border:'1px solid rgba(255,255,255,0.05)',marginBottom:20 }}>
-          <div style={{ fontSize:24,marginBottom:8 }}>☆</div>
-          <div style={{ fontSize:13,fontWeight:600,color:'#2d3a4a',marginBottom:4 }}>No games selected yet</div>
-          <div style={{ fontSize:11,color:'#1e2a3a' }}>Add games below — or tap ☆ on any card from the dashboard.</div>
-        </div>
-      ) : (
-        <div style={{ marginBottom:20 }}>
-          {watchedGames.map((game) => {
-            const hasResult = results[`${game.id}-PUBLIC`] || results[`${game.id}-VEGAS`];
-            const isFin = finalized?.[`${game.id}-PUBLIC`] || finalized?.[`${game.id}-VEGAS`];
-            const lmLower = (game.lineMovement||'').toLowerCase();
-            const isSharp = lmLower.includes('sharp') || lmLower.includes('steam') || lmLower.includes('reverse') || !!game.rlm;
-            return (
-              <div key={game.id} style={{ background:'rgba(201,162,39,0.04)',border:'1px solid rgba(59,130,246,0.25)',borderRadius:12,padding:'14px 16px',marginBottom:8 }}>
-                <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6 }}>
-                  <div style={{ display:'flex',alignItems:'center',gap:8,flexWrap:'wrap' }}>
-                    <span style={{ fontSize:9,fontWeight:700,color:game.slot==='VEGAS'?'#f87171':'#60a5fa',background:game.slot==='VEGAS'?'rgba(248,113,113,0.1)':'rgba(96,165,250,0.1)',borderRadius:4,padding:'1px 6px' }}>{game.sport}·{game.slot}</span>
-                    <span style={{ fontSize:12,fontWeight:700,color:'#f1f5f9' }}>{game.awayAbbr||game.away?.split(' ').pop()} @ {game.homeAbbr||game.home?.split(' ').pop()}</span>
-                    <span style={{ fontSize:10,color:'#3a4a5e' }}>{game.time}</span>
-                  </div>
-                  <button onClick={()=>toggleWatch(game.id)} title="Remove from watchlist" style={{ background:'transparent',border:'none',color:'#3b82f6',fontSize:18,cursor:'pointer',lineHeight:1,padding:'0 2px' }}>★</button>
-                </div>
-                {/* Status badges */}
-                <div style={{ display:'flex',gap:6,flexWrap:'wrap' }}>
-                  <span style={{ fontSize:9,color:(game.awayML||'').startsWith('-')?'#f87171':'#4ade80' }}>{game.awayML}</span>
-                  <span style={{ fontSize:9,color:'#2d3a4a' }}>·</span>
-                  <span style={{ fontSize:9,color:(game.homeML||'').startsWith('-')?'#f87171':'#4ade80' }}>{game.homeML}</span>
-                  {isSharp && <span style={{ fontSize:9,fontWeight:700,color:'#f87171',background:'rgba(248,113,113,0.1)',borderRadius:4,padding:'1px 6px' }}>⚡ SHARP</span>}
-                  {hasResult && !isFin && <span style={{ fontSize:9,fontWeight:700,color:'#60a5fa',background:'rgba(96,165,250,0.08)',borderRadius:4,padding:'1px 6px' }}>✓ ANALYZED</span>}
-                  {isFin && <span style={{ fontSize:9,fontWeight:700,color:'#3b82f6',background:'rgba(59,130,246,0.1)',borderRadius:4,padding:'1px 6px' }}>🔒 FINALIZED</span>}
-                  <span style={{ fontSize:9,color:'#1e2a3a',marginLeft:'auto' }}>{game.lineMovement?.slice(0,40)||'No data'}</span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* All other games to add */}
-      {unwatchedGames.length > 0 && (
-        <>
-          <div style={{ fontSize:10,fontWeight:700,color:'#3a4a5e',letterSpacing:'0.1em',marginBottom:10 }}>
-            ALL GAMES ({unwatchedGames.length}) <span style={{ fontWeight:400 }}>— tap to add</span>
-          </div>
-          {unwatchedGames.map((game) => (
-            <div key={game.id} onClick={()=>toggleWatch(game.id)} style={{ background:'rgba(255,255,255,0.01)',border:'1px solid rgba(255,255,255,0.05)',borderRadius:10,padding:'11px 14px',marginBottom:6,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer' }}>
-              <div style={{ display:'flex',alignItems:'center',gap:8,flex:1,minWidth:0 }}>
-                <span style={{ fontSize:9,fontWeight:700,color:game.slot==='VEGAS'?'#f87171':'#60a5fa',background:game.slot==='VEGAS'?'rgba(248,113,113,0.1)':'rgba(96,165,250,0.1)',borderRadius:4,padding:'1px 6px',flexShrink:0 }}>{game.slot}</span>
-                <span style={{ fontSize:11,fontWeight:600,color:'#64748b',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{game.away?.split(' ').pop()} @ {game.home?.split(' ').pop()}</span>
-                <span style={{ fontSize:10,color:'#2d3a4a',flexShrink:0 }}>{game.time}</span>
-              </div>
-              <span style={{ fontSize:16,color:'#2d3a4a',marginLeft:8 }}>☆</span>
-            </div>
-          ))}
-        </>
-      )}
-    </div>
-  );
-}
-
-// ── SHARP MONEY VIEW ──────────────────────────────────────────────────────────
-function SharpMoneyView({ games, marketScanner }) {
-  const sharpGames = games.filter(g => {
-    const lm = (g.lineMovement||'').toLowerCase();
-    return lm.includes('sharp') || lm.includes('steam') || lm.includes('reverse') || g.rlm;
-  });
-  const movingGames = games.filter(g => {
-    const lm = g.lineMovement||'';
-    return lm.includes('moved toward') && !sharpGames.includes(g);
-  });
-
-  return (
-    <div>
-      <div style={{ marginBottom:20 }}>
-        <h1 style={{ fontSize:22,fontWeight:700,color:'#f1f5f9',letterSpacing:'-0.02em',marginBottom:4 }}>💰 Sharp Money</h1>
-        <p style={{ fontSize:12,color:'#3a4a5e' }}>Real-time sharp action · FanDuel vs DraftKings vs BetOnline</p>
-      </div>
-
-      {/* Market Scanner Stats */}
-      <div style={{ display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:10,marginBottom:20 }}>
-        {[
-          { label:'SHARP SIGNALS', value:marketScanner.sharpMoneyDetected, color:'#f87171', icon:'⚡' },
-          { label:'REVERSE LINE', value:marketScanner.reverseLineMovement, color:'#3b82f6', icon:'↩' },
-          { label:'PUBLIC HEAVY', value:marketScanner.publicHeavy, color:'#60a5fa', icon:'👥' },
-          { label:'VEGAS TRAPS', value:marketScanner.vegasTrapAlert, color:'#a78bfa', icon:'🎰' },
-        ].map((s,i) => (
-          <div key={i} style={{ background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.05)',borderRadius:12,padding:'14px 16px' }}>
-            <div style={{ fontSize:9,color:'#3a4a5e',letterSpacing:'0.1em',marginBottom:6 }}>{s.icon} {s.label}</div>
-            <div style={{ fontSize:28,fontWeight:800,color:s.color,lineHeight:1 }}>{s.value}</div>
-            <div style={{ fontSize:9,color:'#2d3a4a',marginTop:2 }}>games today</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Sharp games */}
-      {sharpGames.length > 0 && (
-        <>
-          <div style={{ fontSize:10,fontWeight:700,color:'#f87171',letterSpacing:'0.1em',marginBottom:10 }}>⚡ SHARP ACTION DETECTED</div>
-          {sharpGames.map((game,i) => (
-            <div key={game.id||i} style={{ background:'rgba(248,113,113,0.06)',border:'1px solid rgba(248,113,113,0.25)',borderRadius:12,padding:'14px 16px',marginBottom:10 }}>
-              <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6 }}>
-                <div style={{ display:'flex',alignItems:'center',gap:8 }}>
-                  <span style={{ fontSize:9,fontWeight:700,color:game.slot==='VEGAS'?'#f87171':'#60a5fa',background:game.slot==='VEGAS'?'rgba(248,113,113,0.1)':'rgba(96,165,250,0.1)',borderRadius:4,padding:'1px 6px' }}>{game.slot}</span>
-                  <span style={{ fontSize:12,fontWeight:700,color:'#e2e8f0' }}>{game.awayAbbr||game.away?.split(' ').pop()} @ {game.homeAbbr||game.home?.split(' ').pop()}</span>
-                  <span style={{ fontSize:10,color:'#3a4a5e' }}>{game.time}</span>
-                </div>
-                <span style={{ fontSize:9,fontWeight:700,color:'#f87171',background:'rgba(248,113,113,0.1)',borderRadius:4,padding:'2px 8px' }}>⚡ SHARP</span>
-              </div>
-              {game.rlm && <div style={{ fontSize:11,fontWeight:700,color:'#f87171',marginBottom:4 }}>Sharp side: {game.rlm}</div>}
-              <div style={{ fontSize:10,color:'#94a3b8' }}>{game.lineMovement}</div>
-              {(game.homeEV > 0 || game.awayEV > 0) && (
-                <div style={{ marginTop:6,fontSize:10 }}>
-                  {game.awayEV > 0 && <span style={{ color:'#4ade80',marginRight:12 }}>+EV: {game.away?.split(' ').pop()} +{game.awayEV}%</span>}
-                  {game.homeEV > 0 && <span style={{ color:'#4ade80' }}>+EV: {game.home?.split(' ').pop()} +{game.homeEV}%</span>}
-                </div>
-              )}
-            </div>
-          ))}
-        </>
-      )}
-
-      {/* Moving lines */}
-      {movingGames.length > 0 && (
-        <>
-          <div style={{ fontSize:10,fontWeight:700,color:'#3b82f6',letterSpacing:'0.1em',marginBottom:10,marginTop:20 }}>📈 LINE MOVEMENT</div>
-          {movingGames.map((game,i) => (
-            <div key={game.id||i} style={{ background:'rgba(201,162,39,0.05)',border:'1px solid rgba(59,130,246,0.2)',borderRadius:12,padding:'14px 16px',marginBottom:10 }}>
-              <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:6 }}>
-                <span style={{ fontSize:12,fontWeight:700,color:'#e2e8f0' }}>{game.awayAbbr||game.away?.split(' ').pop()} @ {game.homeAbbr||game.home?.split(' ').pop()}</span>
-                <span style={{ fontSize:10,color:'#3a4a5e' }}>{game.time}</span>
-              </div>
-              <div style={{ fontSize:10,color:'#94a3b8' }}>{game.lineMovement}</div>
-            </div>
-          ))}
-        </>
-      )}
-
-      {sharpGames.length === 0 && movingGames.length === 0 && (
-        <div style={{ textAlign:'center',padding:'40px 20px',background:'rgba(255,255,255,0.02)',borderRadius:12,border:'1px solid rgba(255,255,255,0.05)' }}>
-          <div style={{ fontSize:28,marginBottom:10 }}>💰</div>
-          <div style={{ fontSize:13,color:'#2d3a4a' }}>No sharp signals detected yet.<br/>Lines are stable across all games.</div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-
-// ── SUBSCRIBE LOCK PLACEHOLDER ────────────────────────────────────────────────
-function SubscribeLock({ feature, onShowAuth }) {
-  return (
-    <div style={{ display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'60px 20px',textAlign:'center' }}>
-      <div style={{ fontSize:36,marginBottom:16 }}>🔒</div>
-      <div style={{ fontSize:18,fontWeight:800,color:'#f1f5f9',marginBottom:8 }}>{feature}</div>
-      <div style={{ fontSize:13,color:'#475569',marginBottom:24,lineHeight:1.6 }}>Subscribe to unlock {feature} and all Vegas Vault AI features.</div>
-      <div onClick={()=>onShowAuth&&onShowAuth('plans')} style={{ fontSize:10,fontWeight:700,color:'#3b82f6',background:'rgba(59,130,246,0.1)',border:'1px solid rgba(59,130,246,0.3)',borderRadius:8,padding:'10px 24px',letterSpacing:'0.08em',cursor:'pointer' }}>SUBSCRIBE TO UNLOCK</div>
-    </div>
-  );
-}
-
-// ── VAULT LOCKS VIEW ──────────────────────────────────────────────────────────
-function VaultLocksView({ results, games, finalized }) {
-  const locks = Object.entries(results)
-    .filter(([key, val]) => {
-      const tier = val?.summary?.tier || val?.tier;
-      const label = val?.summary?.tierLabel || val?.tierLabel || '';
-      return tier === '1' || label === 'LOCK';
-    })
-    .map(([key, val]) => {
-      const parts = key.split('-');
-      const slot = parts[parts.length - 1];
-      const gameId = parts.slice(0, -1).join('-');
-      const game = games.find(g => String(g.id) === gameId);
-      const summary = val?.summary || val;
-      return { key, slot, game, summary };
-    });
-
-  return (
-    <div>
-      <div style={{ marginBottom:20 }}>
-        <h1 style={{ fontSize:22,fontWeight:700,color:'#f1f5f9',letterSpacing:'-0.02em',marginBottom:4 }}>🔒 Vault Locks</h1>
-        <p style={{ fontSize:12,color:'#3a4a5e' }}>{locks.length} Tier 1 lock{locks.length !== 1 ? 's' : ''} identified today</p>
-      </div>
-
-      {locks.length === 0 ? (
-        <div style={{ textAlign:'center',padding:'60px 20px',background:'rgba(255,255,255,0.02)',borderRadius:12,border:'1px solid rgba(255,255,255,0.05)' }}>
-          <div style={{ fontSize:32,marginBottom:12 }}>🔒</div>
-          <div style={{ fontSize:14,fontWeight:600,color:'#2d3a4a',marginBottom:6 }}>No locks generated yet</div>
-          <div style={{ fontSize:12,color:'#1e2a3a' }}>Generate game analyses — Tier 1 picks appear here automatically.</div>
-        </div>
-      ) : locks.map((lock) => (
-        <div key={lock.key} style={{ background:'rgba(74,222,128,0.05)',border:'1px solid rgba(74,222,128,0.3)',borderRadius:12,padding:'16px',marginBottom:12 }}>
-          <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:8 }}>
-            <span style={{ fontSize:16 }}>🔒</span>
-            <span style={{ fontSize:9,fontWeight:700,color:lock.slot==='VEGAS'?'#f87171':'#60a5fa',background:lock.slot==='VEGAS'?'rgba(248,113,113,0.1)':'rgba(96,165,250,0.1)',borderRadius:4,padding:'1px 6px' }}>{lock.slot}</span>
-            {lock.game && <span style={{ fontSize:12,fontWeight:700,color:'#f1f5f9' }}>{lock.game.away?.split(' ').pop()} @ {lock.game.home?.split(' ').pop()}</span>}
-            {lock.game && <span style={{ fontSize:10,color:'#3a4a5e' }}>{lock.game.time}</span>}
-          </div>
-          <div style={{ fontSize:15,fontWeight:800,color:'#4ade80',marginBottom:4 }}>
-            {lock.summary?.pick} {lock.summary?.betType}
-          </div>
-          <div style={{ fontSize:11,color:'#94a3b8',lineHeight:1.5 }}>{lock.summary?.verdict}</div>
-          {finalized?.[lock.key] && <span style={{ fontSize:9,color:'#475569',background:'rgba(255,255,255,0.04)',borderRadius:4,padding:'2px 6px',marginTop:6,display:'inline-block' }}>FINALIZED</span>}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ── TODAY'S SLATE VIEW ────────────────────────────────────────────────────────
-function TodaySlateView({ games, results, generating, onGenerate, liveScores, isSubscribed, finalized, onShowAuth, preAnalyzeQueue, betReadyAlerts }) {
-  const [sportFilter, setSportFilter] = useState('ALL');
-  const wnbaGames = games.filter(g => g.sport === 'WNBA');
-  const mainGames = games.filter(g => g.sport !== 'WNBA');
-  const sports = ['ALL', ...new Set(mainGames.map(g=>g.sport).filter(Boolean))];
-  const filtered = sportFilter==='ALL' ? mainGames : mainGames.filter(g=>g.sport===sportFilter);
-
-  function SlateGameRow({ game }) {
-    return (
-      <div key={game.id} style={{ background:'rgba(255,255,255,0.02)',border:'1px solid rgba(59,130,246,0.1)',borderRadius:12,padding:'14px 16px' }}>
-        <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8 }}>
-          <div style={{ display:'flex',alignItems:'center',gap:8 }}>
-            {game.sport !== 'WNBA' && (
-              <span style={{ fontSize:9,fontWeight:700,color:game.slot==='VEGAS'?'#f87171':'#60a5fa',background:game.slot==='VEGAS'?'rgba(248,113,113,0.1)':'rgba(96,165,250,0.1)',borderRadius:4,padding:'1px 6px' }}>{game.sport}·{game.slot}</span>
-            )}
-            <span style={{ fontSize:12,fontWeight:700,color:'#e2e8f0' }}>{game.away?.split(' ').pop()} @ {game.home?.split(' ').pop()}</span>
-          </div>
-          <span style={{ fontSize:10,color:'#3a4a5e' }}>{game.time}</span>
-        </div>
-        <div style={{ display:'flex',gap:16,fontSize:10,color:'#475569' }}>
-          <span>Away ML: <span style={{ color:(game.awayML||'').startsWith('-')?'#f87171':'#4ade80' }}>{game.awayML||'N/A'}</span></span>
-          <span>Home ML: <span style={{ color:(game.homeML||'').startsWith('-')?'#f87171':'#4ade80' }}>{game.homeML||'N/A'}</span></span>
-          {game.spread && game.spread!=='N/A' && <span>Spread: {game.spread}</span>}
-          {game.total && game.total!=='N/A' && <span>O/U: {game.total}</span>}
-        </div>
-        {game.homePitcher && game.homePitcher!=='TBD' && (
-          <div style={{ marginTop:6,fontSize:10,color:'#3a4a5e' }}>SP: {game.awayPitcher} vs {game.homePitcher}</div>
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <div style={{ marginBottom:16 }}>
-        <h1 style={{ fontSize:22,fontWeight:700,color:'#f1f5f9',letterSpacing:'-0.02em',marginBottom:4 }}>📅 Today\'s Slate</h1>
-        <p style={{ fontSize:12,color:'#3a4a5e' }}>{games.length} games · full schedule</p>
-      </div>
-
-      {/* Sport filter pills — excludes WNBA since it has its own section */}
-      <div style={{ display:'flex',gap:6,marginBottom:16,flexWrap:'wrap' }}>
-        {sports.map(s => (
-          <button key={s} onClick={()=>setSportFilter(s)} style={{ padding:'5px 14px',background:sportFilter===s?'rgba(59,130,246,0.15)':'transparent',border:`1px solid ${sportFilter===s?'rgba(59,130,246,0.4)':'rgba(59,130,246,0.14)'}`,borderRadius:20,fontSize:10,fontWeight:sportFilter===s?700:400,color:sportFilter===s?'#3b82f6':'#3a4a5e',cursor:'pointer',fontFamily:'inherit',letterSpacing:'0.06em' }}>{s}</button>
-        ))}
-      </div>
-
-      {/* Main slate */}
-      <div style={{ display:'grid',gap:10,marginBottom: wnbaGames.length ? 28 : 0 }}>
-        {filtered.map(game => <SlateGameRow key={game.id} game={game} />)}
-      </div>
-
-      {/* WNBA Section */}
-      {wnbaGames.length > 0 && (
-        <div>
-          <div style={{ display:'flex',alignItems:'center',gap:10,marginBottom:12 }}>
-            <div style={{ flex:1,height:1,background:'rgba(255,255,255,0.05)' }}/>
-            <div style={{ display:'flex',alignItems:'center',gap:8 }}>
-              <span style={{ fontSize:11,fontWeight:700,color:'#c084fc',letterSpacing:'0.08em' }}>WNBA</span>
-              <span style={{ fontSize:9,color:'#7c3aed',background:'rgba(192,132,252,0.1)',border:'1px solid rgba(192,132,252,0.25)',borderRadius:4,padding:'2px 7px',fontWeight:600 }}>{wnbaGames.length} GAMES</span>
-            </div>
-            <div style={{ flex:1,height:1,background:'rgba(255,255,255,0.05)' }}/>
-          </div>
-          <div style={{ background:'rgba(192,132,252,0.03)',border:'1px solid rgba(192,132,252,0.1)',borderRadius:12,padding:'12px',marginBottom:8,fontSize:10,color:'#7c3aed' }}>
-            ⚡ Auto-analyzing · Pure sharp edge framework · No slot pattern
-          </div>
-          <div style={{ display:'grid',gap:10 }}>
-            {wnbaGames.map(game => (
-              <div key={game.id} style={{ background:'rgba(192,132,252,0.03)',border:'1px solid rgba(192,132,252,0.12)',borderRadius:12,padding:'14px 16px' }}>
-                <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8 }}>
-                  <div style={{ display:'flex',alignItems:'center',gap:8 }}>
-                    <span style={{ fontSize:9,fontWeight:700,color:'#c084fc',background:'rgba(192,132,252,0.1)',border:'1px solid rgba(192,132,252,0.25)',borderRadius:4,padding:'1px 6px',letterSpacing:'0.06em' }}>WNBA</span>
-                    <span style={{ fontSize:12,fontWeight:700,color:'#e2e8f0' }}>{game.away?.split(' ').pop()} @ {game.home?.split(' ').pop()}</span>
-                  </div>
-                  <span style={{ fontSize:10,color:'#3a4a5e' }}>{game.time}</span>
-                </div>
-                <div style={{ display:'flex',gap:16,fontSize:10,color:'#475569' }}>
-                  <span>Away ML: <span style={{ color:(game.awayML||'').startsWith('-')?'#f87171':'#4ade80' }}>{game.awayML||'N/A'}</span></span>
-                  <span>Home ML: <span style={{ color:(game.homeML||'').startsWith('-')?'#f87171':'#4ade80' }}>{game.homeML||'N/A'}</span></span>
-                  {game.spread && game.spread!=='N/A' && <span>Spread: {game.spread}</span>}
-                  {game.total && game.total!=='N/A' && <span>O/U: {game.total}</span>}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── AI ANALYZER VIEW ──────────────────────────────────────────────────────────
-function AIAnalyzerView({ games, results, generating, onGenerate, isSubscribed }) {
-  const analyzed = games.filter(g => results[`${g.id}-PUBLIC`] || results[`${g.id}-VEGAS`]);
-  const pending = games.filter(g => !results[`${g.id}-PUBLIC`] && !results[`${g.id}-VEGAS`]);
-
-  return (
-    <div>
-      <div style={{ marginBottom:20 }}>
-        <h1 style={{ fontSize:22,fontWeight:700,color:'#f1f5f9',letterSpacing:'-0.02em',marginBottom:4 }}>◎ AI Analyzer</h1>
-        <p style={{ fontSize:12,color:'#3a4a5e' }}>{analyzed.length} analyzed · {pending.length} pending</p>
-      </div>
-
-      {/* Progress */}
-      <div style={{ background:'rgba(255,255,255,0.02)',border:'1px solid rgba(59,130,246,0.1)',borderRadius:12,padding:'16px',marginBottom:20 }}>
-        <div style={{ display:'flex',justifyContent:'space-between',marginBottom:8 }}>
-          <span style={{ fontSize:10,color:'#3a4a5e',letterSpacing:'0.08em' }}>ANALYSIS PROGRESS</span>
-          <span style={{ fontSize:10,color:'#3b82f6',fontWeight:700 }}>{games.length>0?Math.round((analyzed.length/games.length)*100):0}%</span>
-        </div>
-        <div style={{ height:4,background:'rgba(255,255,255,0.04)',borderRadius:2 }}>
-          <div style={{ height:'100%',width:games.length?`${Math.min(100,(analyzed.length/games.length)*100)}%`:'0%',background:'linear-gradient(90deg,#1d4ed8,#3b82f6)',borderRadius:2,transition:'width 0.4s' }}/>
-        </div>
-        <div style={{ display:'flex',gap:16,marginTop:10,fontSize:10,color:'#3a4a5e' }}>
-          <span>✅ {analyzed.length} analyzed</span>
-          <span>⏳ {pending.length} pending</span>
-          <span>🎮 {games.length} total</span>
-        </div>
-      </div>
-
-      {analyzed.length > 0 && (
-        <>
-          <div style={{ fontSize:10,fontWeight:700,color:'#3a4a5e',letterSpacing:'0.1em',marginBottom:10 }}>ANALYZED GAMES</div>
-          {analyzed.map((game,i) => {
-            const pubRes = results[`${game.id}-PUBLIC`];
-            const vegRes = results[`${game.id}-VEGAS`];
-            const _r = typeof (pubRes||vegRes) === 'string' ? (pubRes||vegRes) : JSON.stringify(pubRes||vegRes||''); const isTier1 = _r.includes('Tier 1') || _r.includes('LOCK');
-            return (
-              <div key={game.id} style={{ background:'rgba(255,255,255,0.02)',border:`1px solid ${isTier1?'rgba(59,130,246,0.3)':'rgba(59,130,246,0.1)'}`,borderRadius:12,padding:'14px 16px',marginBottom:10 }}>
-                <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6 }}>
-                  <div style={{ display:'flex',alignItems:'center',gap:8 }}>
-                    {isTier1 && <span style={{ fontSize:12 }}>🔒</span>}
-                    <span style={{ fontSize:12,fontWeight:700,color:'#e2e8f0' }}>{game.away?.split(' ').pop()} @ {game.home?.split(' ').pop()}</span>
-                    <span style={{ fontSize:10,color:'#3a4a5e' }}>{game.time}</span>
-                  </div>
-                  <div style={{ display:'flex',gap:6 }}>
-                    {pubRes && <span style={{ fontSize:9,background:'rgba(96,165,250,0.1)',border:'1px solid rgba(96,165,250,0.2)',borderRadius:4,padding:'1px 6px',color:'#60a5fa' }}>PUBLIC ✓</span>}
-                    {vegRes && <span style={{ fontSize:9,background:'rgba(248,113,113,0.1)',border:'1px solid rgba(248,113,113,0.2)',borderRadius:4,padding:'1px 6px',color:'#f87171' }}>VEGAS ✓</span>}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </>
-      )}
-
-      {pending.length > 0 && (
-        <>
-          <div style={{ fontSize:10,fontWeight:700,color:'#3a4a5e',letterSpacing:'0.1em',marginBottom:10,marginTop:analyzed.length>0?20:0 }}>AWAITING ANALYSIS</div>
-          {pending.map((game,i) => (
-            <div key={game.id} style={{ background:'rgba(255,255,255,0.01)',border:'1px solid rgba(255,255,255,0.04)',borderRadius:12,padding:'14px 16px',marginBottom:8,display:'flex',alignItems:'center',justifyContent:'space-between' }}>
-              <div style={{ display:'flex',alignItems:'center',gap:8 }}>
-                <span style={{ fontSize:9,fontWeight:700,color:game.slot==='VEGAS'?'#f87171':'#60a5fa',background:game.slot==='VEGAS'?'rgba(248,113,113,0.1)':'rgba(96,165,250,0.1)',borderRadius:4,padding:'1px 6px' }}>{game.slot}</span>
-                <span style={{ fontSize:11,fontWeight:600,color:'#94a3b8' }}>{game.away?.split(' ').pop()} @ {game.home?.split(' ').pop()}</span>
-                <span style={{ fontSize:10,color:'#3a4a5e' }}>{game.time}</span>
-              </div>
-              {isSubscribed && (
-                <div style={{ display:'flex',gap:6 }}>
-                  <button onClick={()=>onGenerate(game,'PUBLIC')} disabled={!!generating} style={{ padding:'5px 10px',background:'rgba(96,165,250,0.06)',border:'1px solid rgba(96,165,250,0.2)',borderRadius:6,fontSize:9,color:'#60a5fa',cursor:generating?'not-allowed':'pointer',fontFamily:'inherit' }}>PUBLIC</button>
-                  <button onClick={()=>onGenerate(game,'VEGAS')} disabled={!!generating} style={{ padding:'5px 10px',background:'rgba(248,113,113,0.06)',border:'1px solid rgba(248,113,113,0.2)',borderRadius:6,fontSize:9,color:'#f87171',cursor:generating?'not-allowed':'pointer',fontFamily:'inherit' }}>VEGAS</button>
-                </div>
-              )}
-            </div>
-          ))}
-        </>
-      )}
-    </div>
-  );
-}
-
-// ── PROPS AI VIEW ─────────────────────────────────────────────────────────────
-function PropsAIView({ games, isSubscribed }) {
-  const { useState: useLocalState, useEffect: useLocalEffect } = React;
-  const [props, setProps] = useLocalState([]);
-  const [openingLines, setOpeningLines] = useLocalState({});
-  const [propResults, setPropResults] = useLocalState({});
-  const [generating, setGenerating] = useLocalState(null);
-  const [activeGame, setActiveGame] = useLocalState(null);
-  const [activeProp, setActiveProp] = useLocalState(null);
-  const [sportFilter, setSportFilter] = useLocalState('ALL');
-  const [loadingProps, setLoadingProps] = useLocalState(false);
-
-  const TIER_COLORS = { '1': '#f59e0b', '2': '#fbbf24', '3': '#475569' };
-  const TIER_BG    = { '1': 'rgba(245,158,11,0.12)', '2': 'rgba(251,191,36,0.08)', '3': 'rgba(71,85,105,0.12)' };
-  const TIER_BORDER= { '1': 'rgba(245,158,11,0.35)', '2': 'rgba(251,191,36,0.25)', '3': 'rgba(71,85,105,0.25)' };
-  const TIER_LABELS = { '1': 'LOCK', '2': 'TIER 2', '3': 'PASS' };
-
-  const SPORT_ACCENT = { MLB:'#3b82f6', NBA:'#f97316', NFL:'#22c55e', Tennis:'#a78bfa', WNBA:'#f472b6', ALL:'#64748b' };
-
-  // Fetch props from Odds API for today's games
-  // Subscription gate — after all hooks
-  const _notSubscribed = !isSubscribed;
-
-  useLocalEffect(() => {
-    if (!games.length) return;
-    setLoadingProps(true);
-    const sports = [...new Set(games.map(g => g.sport))];
-    Promise.all(sports.map(sport =>
-      fetch(`/api/props?sport=${sport}`).then(r => r.json()).catch(() => ({ props: [] }))
-    )).then(results => {
-      const all = results.flatMap(r => r.props || []);
-      const matched = all.filter(p => {
-        return games.some(g =>
-          (g.away?.toLowerCase().includes(p.away?.split(' ').pop()?.toLowerCase()) ||
-           g.home?.toLowerCase().includes(p.home?.split(' ').pop()?.toLowerCase()))
-        );
-      });
-      setProps(matched);
-      // Store opening lines (only set once — never overwrite)
-      setOpeningLines(prev => {
-        const updated = { ...prev };
-        matched.forEach(p => {
-          const key = `${p.playerName}-${p.propType}`;
-          if (!updated[key]) {
-            updated[key] = { line: p.line, overPrice: p.overPrice, underPrice: p.underPrice, time: new Date().toISOString() };
-          }
-        });
-        return updated;
-      });
-      setLoadingProps(false);
-    });
-  }, [games]);
-
-  const filteredGames = sportFilter === 'ALL' ? games : games.filter(g => g.sport === sportFilter);
-  const sports = ['ALL', ...new Set(games.map(g => g.sport))];
-
-  async function analyzeProp(propData) {
-    const key = `${propData.playerName}-${propData.propType}-${propData.line}`;
-    setGenerating(key);
-    try {
-      const res = await fetch('/api/props', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(propData),
-      });
-      const result = await res.json();
-      setPropResults(prev => ({ ...prev, [key]: result }));
-      setActiveProp({ ...propData, key });
-    } catch (err) {
-      console.error('Props analyze error:', err);
-    } finally {
-      setGenerating(null);
-    }
-  }
-
-
-
-  const activeResult = activeProp ? propResults[activeProp.key] : null;
-
-  const accentColor = SPORT_ACCENT[sportFilter] || '#3b82f6';
-
-  return (
-    <div style={{ paddingBottom:40 }}>
-
-      {/* ── Subscription lock ── */}
-      {!isSubscribed ? (
-        <div style={{ display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'60px 20px',textAlign:'center' }}>
-          <div style={{ fontSize:36,marginBottom:16 }}>🔒</div>
-          <div style={{ fontSize:18,fontWeight:800,color:'#f1f5f9',marginBottom:8 }}>Props AI</div>
-          <div style={{ fontSize:13,color:'#475569',marginBottom:24,lineHeight:1.6 }}>Subscribe to unlock player props analysis.</div>
-          <div style={{ fontSize:10,fontWeight:700,color:'#3b82f6',background:'rgba(59,130,246,0.1)',border:'1px solid rgba(59,130,246,0.3)',borderRadius:8,padding:'10px 24px',letterSpacing:'0.08em' }}>SUBSCRIBE TO UNLOCK</div>
-        </div>
-      ) : null}
-
-      {isSubscribed && <>
-
-      {/* ── Header ── */}
-      <div style={{ marginBottom:16,paddingBottom:14,borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
-        <div style={{ display:'flex',alignItems:'center',gap:10 }}>
-          <div style={{ width:32,height:32,borderRadius:8,background:'linear-gradient(135deg,rgba(139,92,246,0.3),rgba(59,130,246,0.2))',border:'1px solid rgba(139,92,246,0.3)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16 }}>◇</div>
-          <div>
-            <h1 style={{ fontSize:20,fontWeight:800,color:'#f1f5f9',letterSpacing:'-0.03em',margin:0,lineHeight:1 }}>Props AI</h1>
-            <p style={{ fontSize:11,color:'#475569',margin:0,marginTop:2 }}>Player props · Powered by DraftKings</p>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Sport filter pills ── */}
-      <div style={{ display:'flex',gap:5,marginBottom:16,flexWrap:'wrap' }}>
-        {sports.map(s => {
-          const ac = SPORT_ACCENT[s] || '#64748b';
-          const active = sportFilter === s;
-          return (
-            <button key={s} onClick={() => setSportFilter(s)} style={{ fontSize:9,fontWeight:800,padding:'5px 11px',borderRadius:20,border:`1px solid ${active ? ac : 'rgba(255,255,255,0.07)'}`,background:active ? `${ac}22` : 'transparent',color:active ? ac : '#475569',cursor:'pointer',letterSpacing:'0.08em' }}>
-              {s}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* ── Loading shimmer ── */}
-      {loadingProps && (
-        <div style={{ display:'flex',flexDirection:'column',gap:10 }}>
-          {[1,2,3].map(i => (
-            <div key={i} style={{ height:200,borderRadius:16,background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.05)',overflow:'hidden',position:'relative' }}>
-              <div style={{ position:'absolute',inset:0,background:'linear-gradient(90deg,transparent,rgba(255,255,255,0.03),transparent)',animation:'shimmer 1.5s infinite' }}/>
-            </div>
-          ))}
-          <style>{`@keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}`}</style>
-        </div>
-      )}
-
-      {/* ── Player prop cards ── */}
-      {!loadingProps && filteredGames.map(game => {
-        const gameProps = props.filter(p =>
-          p.away?.toLowerCase().includes(game.away?.split(' ').pop()?.toLowerCase()) ||
-          p.home?.toLowerCase().includes(game.home?.split(' ').pop()?.toLowerCase())
-        );
-        const byPlayer = {};
-        gameProps.forEach(p => {
-          const k = p.playerName || 'Unknown';
-          if (!byPlayer[k]) byPlayer[k] = [];
-          byPlayer[k].push(p);
-        });
-        const sportColor = SPORT_ACCENT[game.sport] || '#3b82f6';
-        if (!Object.keys(byPlayer).length) return null;
-
-        return Object.entries(byPlayer).slice(0,12).map(([playerName, playerProps]) => {
-          const initials = playerName.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-          const propTypes = {};
-          playerProps.forEach(p => {
-            if (!propTypes[p.propType]) propTypes[p.propType] = { over:null, under:null, line:p.line };
-            // Use DraftKings prices directly from API
-            if (p.overPrice)  propTypes[p.propType].over  = p.overPrice;
-            if (p.underPrice) propTypes[p.propType].under = p.underPrice;
-            // Also handle side-based format as fallback
-            if (p.side === 'Over')  propTypes[p.propType].over  = p.price || p.overPrice;
-            if (p.side === 'Under') propTypes[p.propType].under = p.price || p.underPrice;
-          });
-
-          return (
-            <div key={`${game.id}-${playerName}`} style={{ background:'rgba(10,15,30,0.95)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:16,marginBottom:16,overflow:'hidden' }}>
-
-              {/* ── Player header (dark gradient like PrizePicks) ── */}
-              <div style={{ background:'linear-gradient(135deg,rgba(15,25,50,0.95),rgba(20,10,40,0.9))',padding:'16px 16px 14px',position:'relative',borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
-                <div style={{ display:'flex',alignItems:'flex-end',justifyContent:'space-between' }}>
-                  <div>
-                    <div style={{ fontSize:11,color:'#64748b',fontWeight:600,marginBottom:2 }}>{game.sport} · {game.away?.split(' ').pop()} @ {game.home?.split(' ').pop()}</div>
-                    <div style={{ fontSize:13,color:'#94a3b8',fontWeight:500 }}>{playerProps[0]?.playerTeam || ''}</div>
-                    <div style={{ fontSize:26,fontWeight:900,color:'#f8fafc',letterSpacing:'-0.02em',lineHeight:1.1 }}>{playerName.split(' ')[0]}</div>
-                    <div style={{ fontSize:26,fontWeight:900,color:'#f8fafc',letterSpacing:'-0.02em',lineHeight:1.1 }}>{playerName.split(' ').slice(1).join(' ')}</div>
-                  </div>
-                  {/* Avatar circle */}
-                  <div style={{ width:64,height:64,borderRadius:12,background:`linear-gradient(135deg,${sportColor}40,${sportColor}20)`,border:`2px solid ${sportColor}50`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
-                    <span style={{ fontSize:20,fontWeight:900,color:sportColor }}>{initials}</span>
-                  </div>
-                </div>
-
-                {/* Game matchup bar */}
-                <div style={{ marginTop:12,background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:10,padding:'8px 12px',display:'flex',alignItems:'center',justifyContent:'space-between' }}>
-                  <div style={{ display:'flex',alignItems:'center',gap:8 }}>
-                    <div style={{ width:28,height:28,borderRadius:6,background:`${sportColor}25`,border:`1px solid ${sportColor}40`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,fontWeight:800,color:sportColor }}>{game.away?.split(' ').pop()?.slice(0,3).toUpperCase()}</div>
-                    <span style={{ fontSize:11,fontWeight:700,color:'#94a3b8' }}>{game.away?.split(' ').pop()}</span>
-                  </div>
-                  <div style={{ textAlign:'center' }}>
-                    <div style={{ fontSize:9,color:'#475569',fontWeight:600 }}>Today · {game.time}</div>
-                  </div>
-                  <div style={{ display:'flex',alignItems:'center',gap:8 }}>
-                    <span style={{ fontSize:11,fontWeight:700,color:'#94a3b8' }}>{game.home?.split(' ').pop()}</span>
-                    <div style={{ width:28,height:28,borderRadius:6,background:`${sportColor}25`,border:`1px solid ${sportColor}40`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,fontWeight:800,color:sportColor }}>{game.home?.split(' ').pop()?.slice(0,3).toUpperCase()}</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* ── Individual prop rows ── */}
-              {Object.entries(propTypes).map(([pType, pData]) => {
-                const propKey = `${playerName}-${pType}-${pData.line}`;
-                const result = propResults[propKey];
-                const isGen = generating === propKey;
-                const opKey = `${playerName}-${pType}`;
-                const opening = openingLines[opKey];
-                const moved = opening && opening.line !== pData.line;
-                const tier = result?.summary?.tier;
-                const pick = result?.summary?.pick?.toLowerCase();
-                const isOver = pick?.includes('over') || pick?.includes('more');
-                const isUnder = pick?.includes('under') || pick?.includes('less');
-                const tierColor = tier === '1' ? '#f59e0b' : tier === '2' ? '#3b82f6' : '#64748b';
-                const verdict = result?.summary?.verdict || '';
-                const summary = verdict.length > 100 ? verdict.slice(0,97)+'...' : verdict;
-
-                const doAnalyze = () => {
-                  const op = openingLines[opKey];
-                  const lineMoved = op && op.line !== pData.line ? `Moved from ${op.line} to ${pData.line} (${pData.line > op.line ? 'UP' : 'DOWN'})` : 'No movement';
-                  analyzeProp({
-                    sport:game.sport, away:game.away, home:game.home, time:game.time,
-                    playerName, playerTeam:playerProps[0]?.playerTeam||'',
-                    propType:pType, line:pData.line,
-                    openingLine:op?.line||'Unknown', lineMovement:lineMoved, priceMovement:'N/A',
-                    overPrice:pData.over?(pData.over>0?`+${pData.over}`:String(pData.over)):'-110',
-                    underPrice:pData.under?(pData.under>0?`+${pData.under}`:String(pData.under)):'-110',
-                    opponent:game.home,
-                  });
-                };
-
-                return (
-                  <div key={pType} style={{ padding:'14px 16px',borderBottom:'1px solid rgba(255,255,255,0.04)',cursor:result?'pointer':'default' }}
-                    onClick={() => result && setActiveProp({ playerName, propType:pType, line:pData.line, key:propKey, sport:game.sport, away:game.away, home:game.home })}>
-
-                    {/* Line + prop type row */}
-                    <div style={{ display:'flex',alignItems:'center',gap:12,marginBottom:10 }}>
-                      {/* Direction indicator */}
-                      <div style={{ fontSize:16,color:isOver?'#22c55e':isUnder?'#f87171':'#334155',fontWeight:900,width:16,textAlign:'center' }}>
-                        {isOver ? '↑' : isUnder ? '↓' : '·'}
-                      </div>
-                      {/* Big line number */}
-                      <div style={{ fontSize:28,fontWeight:900,color:'#f8fafc',lineHeight:1,minWidth:60 }}>{pData.line}</div>
-                      <div>
-                        <div style={{ fontSize:12,color:'#94a3b8',fontWeight:700 }}>{pType}</div>
-                        {moved && <div style={{ fontSize:9,color:'#f59e0b',fontWeight:700,marginTop:1 }}>{opening.line} → {pData.line}</div>}
-                      </div>
-                      <div style={{ marginLeft:'auto',display:'flex',alignItems:'center',gap:6 }}>
-                        {tier && (
-                          <span style={{ fontSize:8,fontWeight:800,color:tierColor,background:`${tierColor}18`,border:`1px solid ${tierColor}30`,padding:'2px 7px',borderRadius:4,letterSpacing:'0.06em' }}>
-                            {tier==='1'?'🔒 LOCK':tier==='2'?'TIER 2':'PASS'}
-                          </span>
-                        )}
-                        {/* Analyze button */}
-                        {!result && (
-                          <button onClick={e => { e.stopPropagation(); doAnalyze(); }} disabled={isGen}
-                            style={{ padding:'6px 14px',borderRadius:8,border:'1px solid rgba(59,130,246,0.4)',background:'rgba(59,130,246,0.1)',color:'#60a5fa',fontSize:10,fontWeight:700,cursor:isGen?'wait':'pointer',letterSpacing:'0.05em',fontFamily:'inherit',opacity:isGen?0.6:1 }}>
-                            {isGen ? '···' : 'Analyze'}
-                          </button>
-                        )}
-                        {result && (
-                          <button onClick={e => { e.stopPropagation(); doAnalyze(); }} disabled={isGen}
-                            style={{ padding:'6px 14px',borderRadius:8,border:'1px solid rgba(255,255,255,0.1)',background:'transparent',color:'#475569',fontSize:10,fontWeight:700,cursor:isGen?'wait':'pointer',letterSpacing:'0.05em',fontFamily:'inherit' }}>
-                            {isGen ? '···' : '↺'}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Prices row */}
-                    <div style={{ display:'flex',gap:10,marginBottom:summary?10:0 }}>
-                      <div style={{ flex:1,padding:'6px 10px',borderRadius:8,background:isOver&&result?'rgba(34,197,94,0.1)':'rgba(34,197,94,0.04)',border:`1px solid ${isOver&&result?'rgba(34,197,94,0.4)':'rgba(34,197,94,0.15)'}`,textAlign:'center' }}>
-                        <div style={{ fontSize:9,color:'#4ade80',fontWeight:700,letterSpacing:'0.05em' }}>OVER</div>
-                        <div style={{ fontSize:11,color:'#86efac',fontWeight:600,marginTop:1 }}>{pData.over?(pData.over>0?'+'+pData.over:pData.over):'-110'}</div>
-                      </div>
-                      <div style={{ flex:1,padding:'6px 10px',borderRadius:8,background:isUnder&&result?'rgba(248,113,113,0.1)':'rgba(248,113,113,0.04)',border:`1px solid ${isUnder&&result?'rgba(248,113,113,0.4)':'rgba(248,113,113,0.15)'}`,textAlign:'center' }}>
-                        <div style={{ fontSize:9,color:'#f87171',fontWeight:700,letterSpacing:'0.05em' }}>UNDER</div>
-                        <div style={{ fontSize:11,color:'#fca5a5',fontWeight:600,marginTop:1 }}>{pData.under?(pData.under>0?'+'+pData.under:pData.under):'-110'}</div>
-                      </div>
-                    </div>
-
-                    {/* AI summary */}
-                    {summary && (
-                      <div style={{ marginTop:10,padding:'8px 10px',background:'rgba(255,255,255,0.02)',borderRadius:8,border:'1px solid rgba(255,255,255,0.04)' }}>
-                        <span style={{ fontSize:9,fontWeight:700,color:tierColor,letterSpacing:'0.06em',marginRight:6 }}>AI:</span>
-                        <span style={{ fontSize:11,color:'#64748b',lineHeight:1.5 }}>{summary}</span>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          );
-        });
-      })}
-
-      {/* ── Result Modal ── */}
-      {activeProp && activeResult && (
-        <div style={{ position:'fixed',inset:0,background:'rgba(0,0,10,0.88)',zIndex:9999,display:'flex',alignItems:'flex-end',justifyContent:'center' }}
-          onClick={e => { if (e.target===e.currentTarget) setActiveProp(null); }}>
-          <div style={{ background:'#080f1e',border:'1px solid rgba(139,92,246,0.2)',borderRadius:'20px 20px 0 0',width:'100%',maxWidth:480,maxHeight:'92vh',overflowY:'auto',paddingBottom:40,WebkitOverflowScrolling:'touch' }}>
-            <div style={{ padding:'14px 20px 0',textAlign:'center' }}>
-              <div style={{ width:40,height:4,background:'rgba(255,255,255,0.12)',borderRadius:2,display:'inline-block' }}/>
-            </div>
-            <div style={{ padding:'14px 20px 12px',borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
-              <div style={{ fontSize:9,fontWeight:700,letterSpacing:'0.12em',color:'#475569',marginBottom:6 }}>{activeResult.sport} · {activeResult.game}</div>
-              <div style={{ fontSize:24,fontWeight:800,color:'#f8fafc',letterSpacing:'-0.02em',marginBottom:2 }}>{activeProp.playerName}</div>
-              <div style={{ display:'flex',gap:8,alignItems:'center' }}>
-                <span style={{ fontSize:11,color:'#64748b' }}>{activeProp.propType}</span>
-                <span style={{ width:3,height:3,borderRadius:'50%',background:'#334155',display:'inline-block' }}/>
-                <span style={{ fontSize:11,color:'#64748b' }}>Line: <strong style={{ color:'#94a3b8' }}>{activeProp.line}</strong></span>
-              </div>
-            </div>
-            <div style={{ margin:'14px 16px 8px',background:'linear-gradient(135deg,rgba(59,130,246,0.1),rgba(139,92,246,0.06))',border:'1px solid rgba(59,130,246,0.25)',borderRadius:14,padding:'14px 16px' }}>
-              <div style={{ fontSize:8,fontWeight:800,letterSpacing:'0.12em',color:'#3b82f6',marginBottom:8 }}>PRIMARY PLAY</div>
-              <div style={{ fontSize:28,fontWeight:900,color:'#f8fafc',marginBottom:6 }}>{activeResult.summary?.pick} {activeResult.summary?.line}</div>
-              <p style={{ fontSize:12,color:'#94a3b8',lineHeight:1.65,margin:0 }}>{activeResult.summary?.verdict}</p>
-            </div>
-            {activeResult.analysis && (
-              <div style={{ margin:'0 16px 8px' }}>
-                {[['Prop Line Audit',activeResult.analysis.propLineAudit],['Player Baseline',activeResult.analysis.playerBaseline],['Matchup',activeResult.analysis.matchupContext],['Situational',activeResult.analysis.situationalFactors],['vs Opponent',activeResult.analysis.historicalVsOpponent],['Edge Calc',activeResult.analysis.discrepancyCalc]].filter(([,v])=>v).map(([label,value])=>(
-                  <div key={label} style={{ marginBottom:6,padding:'10px 12px',background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.04)',borderRadius:10 }}>
-                    <div style={{ fontSize:9,fontWeight:700,color:'#334155',marginBottom:4 }}>{label.toUpperCase()}</div>
-                    <div style={{ fontSize:12,color:'#64748b',lineHeight:1.65 }}>{value}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-            <div style={{ padding:'0 16px' }}>
-              <button onClick={() => setActiveProp(null)} style={{ width:'100%',padding:'13px',borderRadius:12,border:'1px solid rgba(255,255,255,0.08)',background:'rgba(255,255,255,0.03)',color:'#64748b',fontSize:13,fontWeight:600,cursor:'pointer' }}>Close</button>
-            </div>
-          </div>
-        </div>
-      )}
-      </>}
-    </div>
-  );
-}
-
-// ── MAIN APP ──────────────────────────────────────────────────────────────────
 
 export default function VegasVaultApp() {
   const [games, setGames]             = useState([]);
@@ -2818,6 +1764,7 @@ export default function VegasVaultApp() {
   const shellUserName = authUser?.user_metadata?.full_name || authUser?.email?.split("@")[0] || "Member";
   const shellIsAdmin  = authUser?.email === ADMIN_EMAIL;
 
+
   return (
     <NewLookShell
       activeSection={shellSection}
@@ -2834,7 +1781,7 @@ export default function VegasVaultApp() {
         ::-webkit-scrollbar-thumb{background:rgba(57,255,20,0.2);border-radius:2px;}
       `}</style>
 
-      {/* ── AUTH GATE — show login/paywall if not signed in ── */}
+      {/* ── NOT SIGNED IN → auth screen ── */}
       {!authUser && (
         <div style={{ position:'fixed',inset:0,zIndex:9999,background:'rgba(246,249,246,0.97)',backdropFilter:'blur(20px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
           <div style={{ background:'rgba(255,255,255,0.9)',border:'1px solid rgba(57,255,20,0.3)',borderRadius:20,width:'100%',maxWidth:420,padding:'32px 28px',boxShadow:'0 20px 60px rgba(0,0,0,0.1)' }}>
@@ -2847,125 +1794,100 @@ export default function VegasVaultApp() {
             </div>
             <div style={{ fontSize:18,fontWeight:800,color:'#111',textAlign:'center',marginBottom:4 }}>Welcome back</div>
             <div style={{ fontSize:11,color:'#aaa',textAlign:'center',marginBottom:20 }}>Sign in to access your AI sports intelligence platform</div>
-            <div style={{ marginBottom:12 }}>
-              <div style={{ fontSize:9,textTransform:'uppercase',letterSpacing:'0.6px',color:'#aaa',marginBottom:5,fontWeight:600 }}>Email</div>
-              <div style={{ display:'flex',alignItems:'center',gap:8,border:'1px solid rgba(0,0,0,0.08)',borderRadius:10,padding:'11px 13px',background:'rgba(255,255,255,0.8)' }}>
-                <i className="ti ti-mail" style={{ fontSize:15,color:'#bbb' }} />
-                <input type="email" value={authEmail} onChange={e=>setAuthEmail(e.target.value)} placeholder="you@email.com"
-                  style={{ flex:1,border:'none',background:'transparent',fontSize:12,color:'#333',outline:'none',fontFamily:'inherit' }}
-                  onKeyDown={e=>e.key==='Enter'&&doAuth()} />
+            {['email','password'].map(f=>(
+              <div key={f} style={{ marginBottom:12 }}>
+                <div style={{ fontSize:9,textTransform:'uppercase',letterSpacing:'0.6px',color:'#aaa',marginBottom:5,fontWeight:600 }}>{f}</div>
+                <div style={{ display:'flex',alignItems:'center',gap:8,border:'1px solid rgba(0,0,0,0.08)',borderRadius:10,padding:'11px 13px',background:'rgba(255,255,255,0.8)' }}>
+                  <i className={f==='email'?'ti ti-mail':'ti ti-lock'} style={{ fontSize:15,color:'#bbb' }}/>
+                  <input type={f==='password'&&!showPw?'password':f==='email'?'email':'text'}
+                    value={f==='email'?authEmail:authPw}
+                    onChange={e=>f==='email'?setAuthEmail(e.target.value):setAuthPw(e.target.value)}
+                    placeholder={f==='email'?'you@email.com':'••••••••'}
+                    onKeyDown={e=>e.key==='Enter'&&doAuth()}
+                    style={{ flex:1,border:'none',background:'transparent',fontSize:12,color:'#333',outline:'none',fontFamily:'inherit' }}/>
+                  {f==='password'&&<span onClick={()=>setShowPw(p=>!p)} style={{ cursor:'pointer',fontSize:15,color:'#bbb' }}><i className={showPw?'ti ti-eye-off':'ti ti-eye'}/></span>}
+                </div>
               </div>
-            </div>
-            <div style={{ marginBottom:16 }}>
-              <div style={{ fontSize:9,textTransform:'uppercase',letterSpacing:'0.6px',color:'#aaa',marginBottom:5,fontWeight:600 }}>Password</div>
-              <div style={{ display:'flex',alignItems:'center',gap:8,border:'1px solid rgba(0,0,0,0.08)',borderRadius:10,padding:'11px 13px',background:'rgba(255,255,255,0.8)' }}>
-                <i className="ti ti-lock" style={{ fontSize:15,color:'#bbb' }} />
-                <input type={showPw?'text':'password'} value={authPw} onChange={e=>setAuthPw(e.target.value)} placeholder="••••••••"
-                  style={{ flex:1,border:'none',background:'transparent',fontSize:12,color:'#333',outline:'none',fontFamily:'inherit' }}
-                  onKeyDown={e=>e.key==='Enter'&&doAuth()} />
-                <span onClick={()=>setShowPw(p=>!p)} style={{ cursor:'pointer',fontSize:15,color:'#bbb' }}>
-                  <i className={showPw?'ti ti-eye-off':'ti ti-eye'} />
-                </span>
-              </div>
-            </div>
-            {authError && <div style={{ fontSize:11,color:'#dd4444',background:'rgba(255,80,80,0.08)',border:'1px solid rgba(255,80,80,0.2)',borderRadius:8,padding:'8px 12px',marginBottom:12,textAlign:'center' }}>{authError}</div>}
+            ))}
+            {authError&&<div style={{ fontSize:11,color:'#dd4444',background:'rgba(255,80,80,0.08)',border:'1px solid rgba(255,80,80,0.2)',borderRadius:8,padding:'8px 12px',marginBottom:12,textAlign:'center' }}>{authError}</div>}
             <button onClick={doAuth} disabled={authLoading}
               style={{ width:'100%',padding:13,borderRadius:11,background:'linear-gradient(135deg,#39FF14,#22cc00)',border:'none',fontFamily:'inherit',fontSize:13,fontWeight:800,color:'#111',cursor:authLoading?'wait':'pointer',boxShadow:'0 4px 16px rgba(57,255,20,0.35)',marginBottom:12 }}>
-              {authLoading ? 'Signing in...' : 'Log In to Vault →'}
+              {authLoading?'Signing in...':'Log In to Vault →'}
             </button>
             <div style={{ textAlign:'center',fontSize:11,color:'#aaa' }}>
               Don't have an account?{' '}
-              <span onClick={()=>setAuthMode(authMode==='login'?'signup':'login')} style={{ color:'#33aa00',fontWeight:700,cursor:'pointer' }}>
-                {authMode==='login'?'Sign up':'Sign in'}
-              </span>
+              <span onClick={()=>setAuthMode(m=>m==='login'?'signup':'login')} style={{ color:'#33aa00',fontWeight:700,cursor:'pointer' }}>{authMode==='login'?'Sign up':'Sign in'}</span>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── PAYWALL — signed in but not subscribed ── */}
-      {authUser && !isSubscribed && (
+      {/* ── SIGNED IN BUT NOT SUBSCRIBED → paywall ── */}
+      {authUser&&!isSubscribed&&(
         <div style={{ position:'fixed',inset:0,zIndex:9998,background:'rgba(246,249,246,0.97)',backdropFilter:'blur(20px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
           <div style={{ background:'rgba(255,255,255,0.7)',border:'1px solid rgba(57,255,20,0.28)',borderRadius:20,width:'100%',maxWidth:420,overflow:'hidden',boxShadow:'0 20px 60px rgba(57,255,20,0.09)' }}>
             <div style={{ padding:'24px 28px 8px',textAlign:'center' }}>
               <div style={{ display:'inline-flex',alignItems:'center',gap:6,fontSize:9,fontWeight:800,letterSpacing:'1.2px',color:'#39FF14',border:'1px solid rgba(57,255,20,0.35)',padding:'4px 14px',borderRadius:14,background:'rgba(57,255,20,0.07)',marginBottom:12 }}>
-                <span style={{ width:5,height:5,borderRadius:'50%',background:'#39FF14',boxShadow:'0 0 5px #39FF14',display:'inline-block' }} />
-                SUBSCRIPTION REQUIRED
+                <span style={{ width:5,height:5,borderRadius:'50%',background:'#39FF14',boxShadow:'0 0 5px #39FF14',display:'inline-block' }}/>SUBSCRIPTION REQUIRED
               </div>
               <div style={{ fontSize:20,fontWeight:800,color:'#111' }}>Unlock Vegas Vault AI</div>
               <div style={{ fontSize:11,color:'#aaa',marginTop:4,lineHeight:1.5 }}>Subscribe to access live AI analysis, Tier 1 locks,<br/>and the full Games Slate across all sports.</div>
             </div>
             <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,padding:'16px 28px' }}>
-              {[{name:'Weekly',price:'$14.99',period:'per week',save:''},
-                {name:'Monthly',price:'$29.99',period:'per month',save:'Save 50% vs weekly',best:true}].map(plan=>(
-                <div key={plan.name} onClick={()=>doSubscribe(plan.name.toLowerCase())} style={{ border:plan.best?'2px solid #39FF14':'1px solid rgba(0,0,0,0.07)',borderRadius:14,padding:'16px 14px',textAlign:'center',cursor:'pointer',position:'relative',background:plan.best?'rgba(255,255,255,0.8)':'rgba(255,255,255,0.5)',boxShadow:plan.best?'0 0 24px rgba(57,255,20,0.15)':'none' }}>
-                  {plan.best && <div style={{ position:'absolute',top:-9,left:'50%',transform:'translateX(-50%)',fontSize:8,fontWeight:800,color:'#111',background:'#39FF14',padding:'3px 10px',borderRadius:8,letterSpacing:0.5 }}>BEST VALUE</div>}
-                  <div style={{ fontSize:11,fontWeight:700,color:'#aaa',textTransform:'uppercase',letterSpacing:'0.6px',marginTop:6 }}>{plan.name}</div>
-                  <div style={{ fontSize:24,fontWeight:900,color:'#111',marginTop:6 }}>{plan.price}</div>
-                  <div style={{ fontSize:10,color:'#bbb' }}>{plan.period}</div>
-                  {plan.save && <div style={{ fontSize:9,color:'#33aa00',fontWeight:700,marginTop:4 }}>{plan.save}</div>}
+              {[{name:'Weekly',price:'$14.99',period:'per week',plan:'weekly'},
+                {name:'Monthly',price:'$29.99',period:'per month',save:'Save 50% vs weekly',best:true,plan:'monthly'}].map(p=>(
+                <div key={p.name} onClick={()=>doSubscribe(p.plan)}
+                  style={{ border:p.best?'2px solid #39FF14':'1px solid rgba(0,0,0,0.07)',borderRadius:14,padding:'16px 14px',textAlign:'center',cursor:'pointer',position:'relative',background:p.best?'rgba(255,255,255,0.8)':'rgba(255,255,255,0.5)',boxShadow:p.best?'0 0 24px rgba(57,255,20,0.15)':'none' }}>
+                  {p.best&&<div style={{ position:'absolute',top:-9,left:'50%',transform:'translateX(-50%)',fontSize:8,fontWeight:800,color:'#111',background:'#39FF14',padding:'3px 10px',borderRadius:8 }}>BEST VALUE</div>}
+                  <div style={{ fontSize:11,fontWeight:700,color:'#aaa',textTransform:'uppercase',letterSpacing:'0.6px',marginTop:6 }}>{p.name}</div>
+                  <div style={{ fontSize:24,fontWeight:900,color:'#111',marginTop:6 }}>{p.price}</div>
+                  <div style={{ fontSize:10,color:'#bbb' }}>{p.period}</div>
+                  {p.save&&<div style={{ fontSize:9,color:'#33aa00',fontWeight:700,marginTop:4 }}>{p.save}</div>}
                 </div>
               ))}
             </div>
             <div style={{ padding:'0 28px 20px' }}>
-              {['Full AI analysis on every game — MLB, NBA, NFL, Tennis','Daily Top Play of the Day with AI Lock','Tier 1 / Tier 2 / Pass breakdowns','Scam play alerts, line movement & sharp money','Vault storage for saved plays'].map((f,i)=>(
+              {['Full AI analysis on every game — MLB, NBA, NFL, Tennis','Daily Top Play of the Day with AI Lock','Tier 1 / Tier 2 / Pass breakdowns with confidence levels','Scam play alerts, line movement & sharp money tracking','Vault Locks archive with W/L record tracking'].map((f,i)=>(
                 <div key={i} style={{ display:'flex',alignItems:'flex-start',gap:8,padding:'6px 0',fontSize:11,color:'#444',lineHeight:1.5 }}>
                   <div style={{ width:18,height:18,borderRadius:'50%',background:'rgba(57,255,20,0.1)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,marginTop:1 }}>
-                    <i className="ti ti-check" style={{ fontSize:11,color:'#33aa00' }} />
-                  </div>
-                  {f}
+                    <i className="ti ti-check" style={{ fontSize:11,color:'#33aa00' }}/>
+                  </div>{f}
                 </div>
               ))}
-              <div style={{ textAlign:'center',fontSize:10,color:'#ccc',marginTop:12,lineHeight:1.6 }}>
-                Cancel anytime. Manage via Settings → Customer Portal.
-              </div>
+              <div style={{ textAlign:'center',fontSize:10,color:'#ccc',marginTop:12 }}>Cancel anytime. Manage via Settings → Customer Portal.</div>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── MAIN DASHBOARD — game slate ── */}
-      {authUser && isSubscribed && (
+      {/* ── SIGNED IN + SUBSCRIBED → main app ── */}
+      {authUser&&isSubscribed&&(
         <div style={{ display:'flex',flexDirection:'column',gap:12 }}>
 
           {/* Top Play Banner */}
-          <TopPlayBanner
-            topPlay={topPlay}
-            loading={topPlayLoading}
-            results={results}
-            games={games}
-            pickHistory={pickHistory}
-            isSubscribed={isSubscribed}
-            onShowAuth={()=>setShowAuth(true)}
-            onForceRefresh={null}
-            isAdmin={shellIsAdmin}
-            watchlist={watchlist}
-            onToggleWatch={(id)=>setWatchlist(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id])}
-            sport={filter}
-          />
+          <TopPlayBanner topPlay={topPlay} loading={topPlayLoading} results={results} pickHistory={pickHistory}
+            isSubscribed={isSubscribed} isAdmin={shellIsAdmin} watchlist={watchlist}
+            onToggleWatch={id=>setWatchlist(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id])}
+            onForceRefresh={null} />
 
-          {/* Date nav + sport filter */}
+          {/* Page header: title + date nav + sport filter */}
           <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:10 }}>
             <div>
               <div style={{ fontSize:18,fontWeight:800,color:'#111',letterSpacing:-0.3 }}>Today's Slate</div>
               <div style={{ fontSize:11,color:'#aaa',marginTop:2 }}>
                 {new Date(selectedDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'})}
-                {' · '}{games.length} games
+                {' · '}{games.filter(g=>filter==='ALL'||g.sport===filter).length} games
               </div>
             </div>
             <div style={{ display:'flex',alignItems:'center',gap:8,flexWrap:'wrap' }}>
-              {/* Date navigation */}
               <div style={{ display:'flex',alignItems:'center',gap:4 }}>
-                <button onClick={()=>{const d=new Date(selectedDate+'T12:00:00');d.setDate(d.getDate()-1);setSelectedDate(d.toISOString().split('T')[0]);}}
-                  style={{ width:30,height:30,borderRadius:9,border:'1px solid rgba(0,0,0,0.07)',background:'rgba(255,255,255,0.7)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'#666' }}>
-                  <i className="ti ti-chevron-left" style={{ fontSize:14 }} />
-                </button>
-                <button onClick={()=>{const d=new Date(selectedDate+'T12:00:00');d.setDate(d.getDate()+1);setSelectedDate(d.toISOString().split('T')[0]);}}
-                  style={{ width:30,height:30,borderRadius:9,border:'1px solid rgba(0,0,0,0.07)',background:'rgba(255,255,255,0.7)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'#666' }}>
-                  <i className="ti ti-chevron-right" style={{ fontSize:14 }} />
-                </button>
+                {[{dir:-1,icon:'ti-chevron-left'},{dir:1,icon:'ti-chevron-right'}].map(({dir,icon})=>(
+                  <button key={dir} onClick={()=>{const d=new Date(selectedDate+'T12:00:00');d.setDate(d.getDate()+dir);setSelectedDate(d.toISOString().split('T')[0]);}}
+                    style={{ width:30,height:30,borderRadius:9,border:'1px solid rgba(0,0,0,0.07)',background:'rgba(255,255,255,0.7)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'#666' }}>
+                    <i className={`ti ${icon}`} style={{ fontSize:14 }}/>
+                  </button>
+                ))}
               </div>
-              {/* Sport filter tabs */}
               {['ALL',...new Set(games.map(g=>g.sport).filter(Boolean))].map(s=>(
                 <button key={s} onClick={()=>setFilter(s)}
                   style={{ fontSize:11,fontWeight:700,padding:'6px 14px',borderRadius:14,border:filter===s?'1px solid #39FF14':'1px solid rgba(0,0,0,0.07)',background:filter===s?'#39FF14':'rgba(255,255,255,0.7)',color:filter===s?'#111':'#999',cursor:'pointer',boxShadow:filter===s?'0 0 8px rgba(57,255,20,0.3)':'none' }}>
@@ -2975,112 +1897,101 @@ export default function VegasVaultApp() {
             </div>
           </div>
 
-          {/* Admin slot pattern controls */}
-          {shellIsAdmin && (
-            <div style={{ background:'rgba(255,255,255,0.62)',border:'1px solid rgba(57,255,20,0.28)',borderRadius:14,padding:'12px 16px',display:'flex',alignItems:'center',gap:12,flexWrap:'wrap' }}>
+          {/* Admin slot pattern banner */}
+          {shellIsAdmin&&(
+            <div style={{ background:'rgba(255,255,255,0.62)',border:'1px solid rgba(57,255,20,0.28)',borderRadius:14,padding:'10px 16px',display:'flex',alignItems:'center',gap:10,flexWrap:'wrap' }}>
               <span style={{ fontSize:9,fontWeight:800,color:'#fff',background:'linear-gradient(135deg,#111,#333)',padding:'2px 9px',borderRadius:6,letterSpacing:1 }}>ADMIN</span>
               <span style={{ fontSize:11,fontWeight:600,color:'#555' }}>Slot Pattern Manager</span>
               <button onClick={()=>window.location.href='/settings'}
-                style={{ fontSize:10,fontWeight:700,padding:'6px 12px',borderRadius:8,background:'linear-gradient(135deg,#39FF14,#22cc00)',border:'none',color:'#111',cursor:'pointer',marginLeft:'auto' }}>
-                <i className="ti ti-settings" style={{ fontSize:12,marginRight:4 }} />Open Settings
+                style={{ fontSize:10,fontWeight:700,padding:'6px 12px',borderRadius:8,background:'linear-gradient(135deg,#39FF14,#22cc00)',border:'none',color:'#111',cursor:'pointer',marginLeft:'auto',display:'flex',alignItems:'center',gap:4 }}>
+                <i className="ti ti-settings" style={{ fontSize:12 }}/>Open Settings
               </button>
             </div>
           )}
 
-          {/* Game cards grid */}
-          {loading ? (
+          {/* Games grid */}
+          {loading?(
             <div style={{ textAlign:'center',padding:'60px 0',color:'#aaa',fontSize:13 }}>
-              <div style={{ width:32,height:32,border:'3px solid rgba(57,255,20,0.2)',borderTopColor:'#39FF14',borderRadius:'50%',margin:'0 auto 12px',animation:'spin 0.8s linear infinite' }} />
+              <div style={{ width:32,height:32,border:'3px solid rgba(57,255,20,0.2)',borderTopColor:'#39FF14',borderRadius:'50%',margin:'0 auto 12px',animation:'spin 0.8s linear infinite' }}/>
               Loading today's games...
             </div>
-          ) : (
+          ):(
             <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(340px,1fr))',gap:12 }}>
-              {games.filter(g=>filter==='ALL'||g.sport===filter).map(game=>{
-                const key = `${game.id}-${game.slot}`;
-                return (
-                  <GameCard
-                    key={key}
-                    game={game}
-                    onGenerate={handleGenerate}
-                    results={results}
-                    generating={generating}
-                    onCardClick={(g,r)=>{setActiveGame(g);setActiveResult(r);}}
-                    liveScores={liveScores}
-                    isSubscribed={isSubscribed}
-                    finalized={finalized}
-                    isQueued={preAnalyzeQueue.includes(key)}
-                    betReady={!!betReadyAlerts[key]}
-                    onShowAuth={()=>setShowAuth(true)}
-                    watchlist={watchlist}
-                    onToggleWatch={(id)=>setWatchlist(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id])}
-                    pickHistory={pickHistory}
-                  />
-                );
-              })}
+              {games.filter(g=>filter==='ALL'||g.sport===filter).map(game=>(
+                <GameCard key={`${game.id}-${game.slot}`} game={game}
+                  onGenerate={handleGenerate} results={results} generating={generating}
+                  onCardClick={(g,r)=>{setActiveGame(g);setActiveResult(r);}}
+                  liveScores={liveScores} isSubscribed={isSubscribed} finalized={finalized}
+                  isQueued={preAnalyzeQueue.includes(`${game.id}-${game.slot}`)}
+                  betReady={!!betReadyAlerts[`${game.id}-${game.slot}`]}
+                  onShowAuth={()=>setShowAuth(true)} watchlist={watchlist}
+                  onToggleWatch={id=>setWatchlist(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id])}
+                  pickHistory={pickHistory}
+                />
+              ))}
             </div>
           )}
         </div>
       )}
 
       {/* ── HISTORY MODAL ── */}
-      {showHistory && (
+      {showHistory&&(
         <div style={{ position:'fixed',inset:0,zIndex:9000,display:'flex' }}>
           <div onClick={()=>setShowHistory(false)} style={{ position:'absolute',inset:0,background:'rgba(0,0,0,0.4)',backdropFilter:'blur(8px)' }}/>
-          <div style={{ position:'relative',marginLeft:'auto',width:'100%',maxWidth:560,height:'100%',background:'#fff',borderLeft:'1px solid rgba(57,255,20,0.15)',overflowY:'auto',display:'flex',flexDirection:'column' }}>
+          <div style={{ position:'relative',marginLeft:'auto',width:'100%',maxWidth:520,height:'100%',background:'#fff',borderLeft:'1px solid rgba(57,255,20,0.15)',overflowY:'auto',display:'flex',flexDirection:'column' }}>
             <div style={{ padding:'18px 20px',borderBottom:'1px solid rgba(0,0,0,0.06)',display:'flex',alignItems:'center',justifyContent:'space-between',position:'sticky',top:0,background:'#fff',zIndex:10 }}>
               <div>
                 <div style={{ fontSize:14,fontWeight:800,color:'#111' }}>My Picks History</div>
                 <div style={{ fontSize:10,color:'#aaa',marginTop:2 }}>{pickHistory.length} total picks tracked</div>
               </div>
-              <button onClick={()=>setShowHistory(false)} style={{ width:32,height:32,borderRadius:8,border:'1px solid rgba(0,0,0,0.07)',background:'rgba(255,255,255,0.8)',cursor:'pointer',color:'#666',fontSize:16,display:'flex',alignItems:'center',justifyContent:'center' }}>✕</button>
+              <button onClick={()=>setShowHistory(false)} style={{ width:32,height:32,borderRadius:8,border:'1px solid rgba(0,0,0,0.07)',background:'rgba(255,255,255,0.8)',cursor:'pointer',fontSize:16,display:'flex',alignItems:'center',justifyContent:'center',color:'#666' }}>✕</button>
             </div>
-            {pickHistory.length > 0 && (()=>{
+            {pickHistory.length>0&&(()=>{
               const wins=pickHistory.filter(p=>p.result==='win').length;
               const losses=pickHistory.filter(p=>p.result==='loss').length;
               const total=wins+losses;
               const rate=total>0?Math.round((wins/total)*100):0;
               return (
-                <div style={{ padding:'16px 20px',borderBottom:'1px solid rgba(0,0,0,0.06)',display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12 }}>
-                  {[{label:'ALL TIME',value:`${rate}%`,sub:`${wins}W-${losses}L`,color:rate>=60?'#33aa00':rate>=50?'#bb8800':'#dd4444'},
-                    {label:'TOTAL PICKS',value:total,sub:'tracked',color:'#555'},
+                <div style={{ padding:'14px 20px',borderBottom:'1px solid rgba(0,0,0,0.06)',display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10 }}>
+                  {[{label:'All Time',value:`${rate}%`,sub:`${wins}W-${losses}L`,c:rate>=60?'#33aa00':rate>=50?'#bb8800':'#dd4444'},
+                    {label:'Last 7D',value:((w,l)=>l+w>0?Math.round(w/(w+l)*100)+'%':'—')(...(()=>{const s=pickHistory.filter(p=>p.resolvedAt&&Date.now()-new Date(p.resolvedAt).getTime()<7*86400000);return[s.filter(p=>p.result==='win').length,s.filter(p=>p.result==='loss').length];})()), sub:'hit rate',c:'#555'},
+                    {label:'Total Picks',value:total,sub:'tracked',c:'#555'},
+                    {label:'Best Streak',value:(()=>{let s=0,m=0;for(const p of [...pickHistory].reverse()){if(p.result==='win'){s++;m=Math.max(m,s);}else s=0;}return m+'W';})(),sub:'in a row',c:'#5588ee'},
                   ].map((s,i)=>(
-                    <div key={i} style={{ background:'rgba(246,249,246,0.7)',border:'1px solid rgba(195,240,195,0.5)',borderRadius:10,padding:'12px 10px',textAlign:'center' }}>
-                      <div style={{ fontSize:9,color:'#aaa',letterSpacing:'0.06em',marginBottom:4,textTransform:'uppercase' }}>{s.label}</div>
-                      <div style={{ fontSize:22,fontWeight:800,color:s.color,lineHeight:1 }}>{s.value}</div>
-                      <div style={{ fontSize:9,color:'#bbb',marginTop:3 }}>{s.sub}</div>
+                    <div key={i} style={{ background:'rgba(246,249,246,0.7)',border:'1px solid rgba(195,240,195,0.5)',borderRadius:10,padding:'10px 8px',textAlign:'center' }}>
+                      <div style={{ fontSize:9,color:'#aaa',letterSpacing:'0.06em',marginBottom:3,textTransform:'uppercase' }}>{s.label}</div>
+                      <div style={{ fontSize:20,fontWeight:800,color:s.c,lineHeight:1 }}>{s.value}</div>
+                      <div style={{ fontSize:9,color:'#bbb',marginTop:2 }}>{s.sub}</div>
                     </div>
                   ))}
                 </div>
               );
             })()}
             <div style={{ flex:1,padding:'12px 20px 100px' }}>
-              {pickHistory.length===0 ? (
+              {pickHistory.length===0?(
                 <div style={{ textAlign:'center',padding:'60px 20px',color:'#aaa' }}>No picks tracked yet</div>
-              ) : (
-                [...pickHistory].reverse().map((pick,i)=>{
-                  const isWin=pick.result==='win';
-                  const isLoss=pick.result==='loss';
-                  return (
-                    <div key={i} style={{ background:isWin?'rgba(57,255,20,0.05)':isLoss?'rgba(255,80,80,0.04)':'rgba(255,255,255,0.5)',border:`1px solid ${isWin?'rgba(57,255,20,0.25)':isLoss?'rgba(255,80,80,0.2)':'rgba(0,0,0,0.05)'}`,borderRadius:12,padding:'12px 14px',marginBottom:8,display:'flex',justifyContent:'space-between',alignItems:'center',gap:12 }}>
-                      <div style={{ flex:1,minWidth:0 }}>
-                        <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:3,flexWrap:'wrap' }}>
-                          <span style={{ fontSize:9,fontWeight:800,padding:'2px 7px',borderRadius:5,background:pick.slot==='VEGAS'?'rgba(255,80,80,0.08)':'rgba(80,140,255,0.08)',color:pick.slot==='VEGAS'?'#dd4444':'#5588ee' }}>{pick.slot||'PUBLIC'}</span>
-                          <span style={{ fontSize:12,fontWeight:700,color:'#111' }}>{pick.pick}</span>
-                          <span style={{ fontSize:10,color:'#aaa' }}>{pick.betType}</span>
-                        </div>
-                        <div style={{ fontSize:10,color:'#999' }}>{pick.game}</div>
-                        {pick.score && <div style={{ fontSize:9,color:'#bbb' }}>Final: {pick.score}</div>}
-                        <div style={{ fontSize:8,color:'#ccc',marginTop:3 }}>{pick.resolvedAt?new Date(pick.resolvedAt).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):pick.date}</div>
+              ):[...pickHistory].reverse().map((pick,i)=>{
+                const isWin=pick.result==='win';const isLoss=pick.result==='loss';
+                return (
+                  <div key={i} style={{ background:isWin?'rgba(57,255,20,0.05)':isLoss?'rgba(255,80,80,0.04)':'rgba(255,255,255,0.5)',border:`1px solid ${isWin?'rgba(57,255,20,0.25)':isLoss?'rgba(255,80,80,0.2)':'rgba(0,0,0,0.05)'}`,borderRadius:12,padding:'12px 14px',marginBottom:8,display:'flex',justifyContent:'space-between',alignItems:'center',gap:12 }}>
+                    <div style={{ flex:1,minWidth:0 }}>
+                      <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:3,flexWrap:'wrap' }}>
+                        <span style={{ fontSize:9,fontWeight:800,padding:'2px 7px',borderRadius:5,background:pick.slot==='VEGAS'?'rgba(57,255,20,0.1)':'rgba(80,140,255,0.08)',color:pick.slot==='VEGAS'?'#2aa800':'#5588ee' }}>{pick.slot||'PUBLIC'}</span>
+                        <span style={{ fontSize:12,fontWeight:700,color:'#111' }}>{pick.pick}</span>
+                        <span style={{ fontSize:10,color:'#aaa' }}>{pick.betType}</span>
                       </div>
-                      <div style={{ flexShrink:0,fontSize:12,fontWeight:800,padding:'6px 14px',borderRadius:8,background:isWin?'rgba(57,255,20,0.12)':isLoss?'rgba(255,80,80,0.1)':'rgba(0,0,0,0.03)',border:`1px solid ${isWin?'rgba(57,255,20,0.3)':isLoss?'rgba(255,80,80,0.3)':'rgba(0,0,0,0.06)'}`,color:isWin?'#33aa00':isLoss?'#dd4444':'#999' }}>
-                        {isWin?'✅ WIN':isLoss?'❌ LOSS':'PENDING'}
-                      </div>
+                      <div style={{ fontSize:10,color:'#999' }}>{pick.game}</div>
+                      {pick.score&&<div style={{ fontSize:9,color:'#bbb' }}>Final: {pick.score}</div>}
+                      <div style={{ fontSize:8,color:'#ccc',marginTop:3 }}>{pick.resolvedAt?new Date(pick.resolvedAt).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):pick.date}</div>
                     </div>
-                  );
-                })
-              )}
+                    <div style={{ flexShrink:0,fontSize:12,fontWeight:800,padding:'6px 14px',borderRadius:8,background:isWin?'rgba(57,255,20,0.12)':isLoss?'rgba(255,80,80,0.1)':'rgba(0,0,0,0.03)',border:`1px solid ${isWin?'rgba(57,255,20,0.3)':isLoss?'rgba(255,80,80,0.3)':'rgba(0,0,0,0.06)'}`,color:isWin?'#33aa00':isLoss?'#dd4444':'#999' }}>
+                      {isWin?'✅ WIN':isLoss?'❌ LOSS':'PENDING'}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-            {pickHistory.length>0 && (
+            {pickHistory.length>0&&(
               <div style={{ padding:'12px 20px',borderTop:'1px solid rgba(0,0,0,0.05)',position:'sticky',bottom:0,background:'#fff' }}>
                 <button onClick={()=>{if(window.confirm('Clear all pick history?')){setPickHistory([]);if(authUser?.id)syncDelete(authUser.id,'pick_history');}}}
                   style={{ width:'100%',padding:'10px 0',background:'rgba(255,80,80,0.06)',border:'1px solid rgba(255,80,80,0.15)',borderRadius:8,fontSize:11,color:'#dd4444',cursor:'pointer',fontFamily:'inherit' }}>
@@ -3093,28 +2004,54 @@ export default function VegasVaultApp() {
       )}
 
       {/* ── GAME DETAIL MODAL ── */}
-      {activeGame && activeResult && (
+      {activeGame&&activeResult&&(
         <div style={{ position:'fixed',inset:0,zIndex:9000,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(8px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}
           onClick={e=>e.target===e.currentTarget&&setActiveGame(null)}>
-          <div style={{ background:'#fff',borderRadius:20,width:'100%',maxWidth:700,maxHeight:'90vh',overflowY:'auto',boxShadow:'0 40px 100px rgba(0,0,0,0.15)' }}>
-            <div style={{ padding:'16px 20px',borderBottom:'1px solid rgba(0,0,0,0.06)',display:'flex',alignItems:'center',justifyContent:'space-between' }}>
-              <div style={{ fontWeight:800,color:'#111',fontSize:14 }}>{activeGame.away} @ {activeGame.home}</div>
+          <div style={{ background:'#fff',borderRadius:20,width:'100%',maxWidth:680,maxHeight:'90vh',overflowY:'auto',boxShadow:'0 40px 100px rgba(0,0,0,0.15)' }}>
+            <div style={{ padding:'16px 20px',borderBottom:'1px solid rgba(0,0,0,0.06)',display:'flex',alignItems:'center',justifyContent:'space-between',position:'sticky',top:0,background:'#fff',zIndex:1 }}>
+              <div>
+                <div style={{ fontSize:15,fontWeight:800,color:'#111' }}>{activeGame.away} @ {activeGame.home}</div>
+                <div style={{ fontSize:10,color:'#aaa',marginTop:2 }}>{activeGame.slot} SLOT · {activeGame.time}</div>
+              </div>
               <button onClick={()=>setActiveGame(null)} style={{ width:32,height:32,borderRadius:8,border:'1px solid rgba(0,0,0,0.07)',background:'rgba(255,255,255,0.8)',cursor:'pointer',fontSize:16,display:'flex',alignItems:'center',justifyContent:'center',color:'#666' }}>✕</button>
             </div>
             <div style={{ padding:20 }}>
-              <div style={{ fontSize:11,color:'#aaa',marginBottom:16 }}>{activeResult?.analysis?.matchupFoundation}</div>
-              {Object.entries(activeResult?.analysis||{}).filter(([k])=>k!=='matchupFoundation').map(([k,v])=>(
-                v && <div key={k} style={{ marginBottom:12,padding:'10px 14px',background:'rgba(246,249,246,0.7)',border:'1px solid rgba(195,240,195,0.5)',borderRadius:10 }}>
+              {/* Recommendation */}
+              {activeResult?.summary&&(
+                <div style={{ background:'rgba(255,255,255,0.62)',border:'1px solid rgba(57,255,20,0.28)',borderRadius:14,padding:'14px 16px',marginBottom:14,boxShadow:'0 4px 16px rgba(57,255,20,0.08)' }}>
+                  <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8 }}>
+                    <div>
+                      <div style={{ fontSize:9,fontWeight:800,color:'#33aa00',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:3 }}>AI PLAY RECOMMENDATION</div>
+                      <div style={{ fontSize:20,fontWeight:900,color:'#111',display:'flex',alignItems:'center',gap:8,flexWrap:'wrap' }}>
+                        {activeResult.summary.pick}
+                        {activeResult.summary.tier==='1'&&<span style={{ fontSize:9,fontWeight:800,color:'#33aa00',border:'1px solid rgba(57,255,20,0.4)',padding:'3px 9px',borderRadius:14,background:'rgba(57,255,20,0.07)' }}>🔒 AI LOCK</span>}
+                      </div>
+                      <div style={{ fontSize:12,fontWeight:700,color:'#33aa00',marginTop:3 }}>{activeResult.summary.betType}</div>
+                    </div>
+                    <div style={{ textAlign:'center',padding:'8px 14px',background:'rgba(57,255,20,0.07)',border:'1px solid rgba(57,255,20,0.2)',borderRadius:10 }}>
+                      <div style={{ fontSize:8,color:'#aaa',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:3 }}>Confidence</div>
+                      <div style={{ fontSize:18,fontWeight:900,color:'#111' }}>{activeResult.summary.confidence||'HIGH'}</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {/* AI Reasoning */}
+              {activeResult?.analysis&&Object.entries(activeResult.analysis).filter(([,v])=>v&&typeof v==='string').map(([k,v])=>(
+                <div key={k} style={{ marginBottom:10,padding:'10px 14px',background:'rgba(246,249,246,0.7)',border:'1px solid rgba(195,240,195,0.5)',borderRadius:10 }}>
                   <div style={{ fontSize:9,fontWeight:800,color:'#33aa00',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:4 }}>{k.replace(/([A-Z])/g,' $1').trim()}</div>
-                  <div style={{ fontSize:11,color:'#444',lineHeight:1.6 }}>{typeof v==='object'?JSON.stringify(v):v}</div>
+                  <div style={{ fontSize:11,color:'#444',lineHeight:1.6 }}>{v}</div>
                 </div>
               ))}
-              {activeResult?.summary?.verdict && (
-                <div style={{ marginTop:16,padding:'12px 14px',background:'rgba(57,255,20,0.07)',border:'1px solid rgba(57,255,20,0.2)',borderRadius:10 }}>
+              {activeResult?.summary?.verdict&&(
+                <div style={{ padding:'12px 14px',background:'rgba(57,255,20,0.07)',border:'1px solid rgba(57,255,20,0.2)',borderRadius:10,marginTop:4 }}>
                   <div style={{ fontSize:9,fontWeight:800,color:'#33aa00',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:4 }}>Bottom Line</div>
                   <div style={{ fontSize:12,color:'#444',lineHeight:1.6 }}>{activeResult.summary.verdict}</div>
                 </div>
               )}
+              <button onClick={()=>{setActiveGame(null);handleGenerate(activeGame,activeGame.slot);}}
+                style={{ width:'100%',marginTop:14,padding:11,borderRadius:10,background:'linear-gradient(135deg,#39FF14,#22cc00)',border:'none',fontFamily:'inherit',fontSize:12,fontWeight:700,color:'#111',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:7,boxShadow:'0 4px 16px rgba(57,255,20,0.35)' }}>
+                <i className="ti ti-refresh"/>Re-analyze
+              </button>
             </div>
           </div>
         </div>
