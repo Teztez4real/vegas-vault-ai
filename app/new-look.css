@@ -123,6 +123,7 @@ html, body {
 }
 .vv-tb-search {
   flex: 1;
+  min-width: 0;
   max-width: 500px;
   display: flex;
   align-items: center;
@@ -412,4 +413,9 @@ html, body {
   .vv-body { padding: 10px; overflow-y: auto; }
   .vv-root { overflow-y: auto; height: auto; min-height: 100vh; }
   .vv-main { height: auto; }
+}
+@media (max-width: 480px) {
+  .vv-topbar { padding: 0 10px; gap: 8px; }
+  .vv-tb-search { padding: 7px 10px; }
+  .vv-tb-search input { font-size: 11px; }
 }

@@ -152,6 +152,9 @@ export default function SettingsPage() {
         input, select { font-family: inherit; }
         ::-webkit-scrollbar{width:4px;}
         ::-webkit-scrollbar-thumb{background:rgba(57,255,20,0.2);border-radius:2px;}
+        @media (max-width:520px){
+          .vv-sub-grid{grid-template-columns:1fr !important}
+        }
       `}</style>
 
       <div style={{ display:'flex', flexDirection:'column', gap:14, flex:1, minHeight:0, overflowY:'auto', maxWidth:760, margin:'0 auto', width:'100%', paddingBottom:30 }}>
@@ -308,7 +311,7 @@ export default function SettingsPage() {
             </div>
             <div style={{ fontSize:9, fontWeight:800, color:'#dd4444', background:'rgba(255,80,80,0.08)', border:'1px solid rgba(255,80,80,0.2)', borderRadius:6, padding:'4px 11px', letterSpacing:'0.5px' }}>FREE</div>
           </div>
-          <div style={{ padding:'16px 20px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+          <div className="vv-sub-grid" style={{ padding:'16px 20px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
             {[
               { id:'weekly', label:'Weekly', price:'$19.99', period:'/week', features:['Full AI model','All games','Auto plays','Trell Rule alerts'], highlight:false },
               { id:'monthly', label:'Monthly', price:'$49.99', period:'/month', features:['Everything in weekly','Priority generation','Model updates','Early access'], highlight:true, badge:'Best Value' },

@@ -2045,8 +2045,9 @@ export default function VegasVaultApp() {
         .vv-input-hint{font-size:9px;color:#ccc;margin-top:6px;text-align:center}
 
         @media (max-width:900px){
-          .vv-chat-layout{grid-template-columns:1fr;height:auto}
+          .vv-chat-layout{grid-template-columns:1fr;height:calc(100vh - var(--vv-topbar-h) - 24px);min-height:500px}
           .vv-history-col{display:none}
+          .vv-chat-main{height:100%}
         }
         .vv-gc-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:1px}
         .vv-gc-t{font-size:11px;font-weight:800;color:#111;text-transform:uppercase;letter-spacing:0.4px}
@@ -2079,6 +2080,22 @@ export default function VegasVaultApp() {
           .vv-center{grid-template-columns:1fr;height:auto;overflow-y:visible}
           .vv-center > .vv-col:nth-child(3){grid-column:span 1}
           .vv-slate{width:100%;height:auto;overflow-y:visible;max-height:400px}
+          .vv-game-grid{grid-template-columns:1fr !important}
+        }
+        @media (max-width:480px){
+          .vv-orb-stage{width:170px;height:170px}
+          .vv-orb-sphere{width:128px;height:128px}
+          .vv-orb-core{width:84px;height:84px}
+          .vv-orb-glow-base{width:135px}
+          .vv-orb-p1{width:125px}
+          .vv-orb-p2{width:90px}
+          .vv-orb-p3{width:58px}
+          .vv-modal-2col{grid-template-columns:1fr !important}
+          .vv-odds-grid{grid-template-columns:1fr !important}
+          .vv-analytics-stats{grid-template-columns:repeat(2,1fr) !important}
+          .vv-an-mets{grid-template-columns:repeat(2,1fr) !important}
+          .vv-engine-mets{grid-template-columns:repeat(2,1fr) !important}
+          .vv-mem-stats{grid-template-columns:1fr !important}
         }
       `}</style>
 
@@ -2463,7 +2480,7 @@ export default function VegasVaultApp() {
               Loading today's games...
             </div>
           ) : (
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(340px,1fr))', gap:12 }}>
+            <div className="vv-game-grid" style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(340px,1fr))', gap:12 }}>
               {games.filter(g=>filter==='ALL'||g.sport===filter).map(game=>{
                 const key = `${game.id}-${game.slot}`;
                 return (
@@ -2512,7 +2529,7 @@ export default function VegasVaultApp() {
               <div style={{ fontSize:11, color:'#bbb' }}>Tap the star on any game or "Add to Vault" in the game detail to save it here.</div>
             </div>
           ) : (
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(340px,1fr))', gap:12 }}>
+            <div className="vv-game-grid" style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(340px,1fr))', gap:12 }}>
               {vaultGames.map(game=>{
                 const key = `${game.id}-${game.slot}`;
                 return (
@@ -2887,7 +2904,7 @@ export default function VegasVaultApp() {
             )}
           </div>
 
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10 }}>
+          <div className="vv-analytics-stats" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10 }}>
             <div className="vv-glass-g" style={{ padding:'14px 16px', textAlign:'center' }}>
               <div style={{ fontSize:9, textTransform:'uppercase', letterSpacing:'0.7px', color:'#bbb', marginBottom:4, fontWeight:600 }}>All Time</div>
               <div style={{ fontSize:24, fontWeight:900, color: total===0?'#999':rate>=60?'#33aa00':rate>=50?'#bb8800':'#dd4444' }}>{total===0?'—':`${rate}%`}</div>
@@ -3146,7 +3163,7 @@ export default function VegasVaultApp() {
                         <div style={{ fontSize:11,fontWeight:800,color:'#111',marginBottom:10,display:'flex',alignItems:'center',gap:6 }}>
                           <i className="ti ti-baseball" style={{ fontSize:13,color:'#33aa00' }} /> Starting Pitchers
                         </div>
-                        <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10 }}>
+                        <div className="vv-modal-2col" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10 }}>
                           <div style={{ padding:'10px 12px',background:'rgba(246,249,246,0.7)',border:'1px solid rgba(195,240,195,0.5)',borderRadius:10 }}>
                             <div style={{ fontSize:8,color:'#aaa',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:3 }}>{game.away}</div>
                             <div style={{ fontSize:13,fontWeight:800,color:'#111' }}>{game.awayPitcher || 'TBD'}</div>
@@ -3170,7 +3187,7 @@ export default function VegasVaultApp() {
                         <div style={{ fontSize:11,fontWeight:800,color:'#111',marginBottom:10,display:'flex',alignItems:'center',gap:6 }}>
                           <i className="ti ti-chart-bar" style={{ fontSize:13,color:'#33aa00' }} /> Team Comparison
                         </div>
-                        <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10 }}>
+                        <div className="vv-modal-2col" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10 }}>
                           <div style={{ padding:'10px 12px',background:'rgba(255,255,255,0.6)',border:'1px solid rgba(0,0,0,0.05)',borderRadius:10 }}>
                             <div style={{ fontSize:8,color:'#bbb',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:5 }}>{game.away}</div>
                             <div style={{ fontSize:10,color:'#555',lineHeight:1.8 }}>
@@ -3240,7 +3257,7 @@ export default function VegasVaultApp() {
                           <span style={{ fontSize:8,fontWeight:700,color:'#5588ee',background:'rgba(80,140,255,0.08)',border:'1px solid rgba(80,140,255,0.2)',borderRadius:3,padding:'1px 6px',letterSpacing:'0.06em' }}>DK</span>
                           <span style={{ fontSize:11,fontWeight:800,color:'#111' }}>DraftKings Odds</span>
                         </div>
-                        <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8 }}>
+                        <div className="vv-odds-grid" style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8 }}>
                           {[
                             { label:'Moneyline', left:awayOdds, right:homeOdds, color:(v)=>v.startsWith('-')?'#dd4444':'#33aa00' },
                             { label:game.sport==='MLB'?'Run Line':'Spread', left:awaySpread, right:spreadVal, color:()=>'#555' },
