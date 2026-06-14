@@ -121,7 +121,19 @@ export default function SettingsPage() {
   }
 
   const isAdmin = session?.user?.email === ADMIN_EMAIL;
-  const shellUserName = session?.user?.user_metadata?.full_name || session?.user?.email?.split('@')[0] || 'Member';
+  const formatEmailName = (email) => {
+    if (!email) return 'Member';
+    const local = email.split('@')[0];
+    return local
+      .replace(/[._-]+/g, ' ')
+      .split(' ')
+      .filter(Boolean)
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ') || 'Member';
+  };
+  const shellUserName = session?.user?.email === ADMIN_EMAIL
+    ? 'Cortez Battle'
+    : (session?.user?.user_metadata?.full_name || formatEmailName(session?.user?.email) || 'Member');
 
   const glass = { background:'rgba(255,255,255,0.7)', border:'1px solid rgba(255,255,255,0.93)', borderRadius:16, backdropFilter:'blur(20px)', boxShadow:'0 8px 30px rgba(0,0,0,0.06),0 2px 8px rgba(0,0,0,0.03),inset 0 1px 0 rgba(255,255,255,0.95)' };
   const glassG = { background:'rgba(255,255,255,0.62)', border:'1px solid rgba(57,255,20,0.28)', borderRadius:16, backdropFilter:'blur(20px)', boxShadow:'0 10px 36px rgba(57,255,20,0.09),0 3px 10px rgba(0,0,0,0.04),inset 0 1px 0 rgba(255,255,255,0.95)' };

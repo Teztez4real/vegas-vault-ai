@@ -1796,7 +1796,19 @@ export default function VegasVaultApp() {
     }
   };
 
-  const shellUserName = authUser?.user_metadata?.full_name || authUser?.email?.split("@")[0] || "Member";
+  const formatEmailName = (email) => {
+    if (!email) return "Member";
+    const local = email.split("@")[0];
+    return local
+      .replace(/[._-]+/g, " ")
+      .split(" ")
+      .filter(Boolean)
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ") || "Member";
+  };
+  const shellUserName = authUser?.email === ADMIN_EMAIL
+    ? "Cortez Battle"
+    : (authUser?.user_metadata?.full_name || formatEmailName(authUser?.email) || "Member");
   const shellIsAdmin  = authUser?.email === ADMIN_EMAIL;
 
 
