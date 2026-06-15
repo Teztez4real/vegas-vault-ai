@@ -10,7 +10,14 @@ import { createClient } from '@supabase/supabase-js';
 // ── UTILITIES ─────────────────────────────────────────────────────────────────
 
 function todayStr() {
-  return new Date().toISOString().split('T')[0];
+  // Use US Central time, not UTC — UTC's date rolls over to "tomorrow"
+  // during US evening hours (e.g. 9 PM CT = ~2-3 AM UTC next day), which
+  // would otherwise shift the default slate to tomorrow's games/odds.
+  const ctNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+  const y = ctNow.getFullYear();
+  const m = String(ctNow.getMonth() + 1).padStart(2, '0');
+  const d = String(ctNow.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 function formatTime(isoString) {

@@ -224,6 +224,17 @@ function starRating(summary) {
   return 0;
 }
 
+// Today's date in US Central time — matches the backend's date convention.
+// new Date().toISOString() uses UTC, which rolls to "tomorrow" during US
+// evening hours and would shift the default slate/date label a day early.
+function todayStrCT() {
+  const ctNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+  const y = ctNow.getFullYear();
+  const m = String(ctNow.getMonth() + 1).padStart(2, '0');
+  const d = String(ctNow.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 const NAV_ITEMS = [
   { icon:"⊞", label:"DASHBOARD",     active:true  },
   { icon:"📅", label:"TODAY'S SLATE", active:false },
@@ -999,7 +1010,7 @@ export default function VegasVaultApp() {
   const [error, setError]             = useState(null);
   const [loading, setLoading]         = useState(true);
   const [time, setTime]               = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(todayStrCT());
   const [hasSlotPattern, setHasSlotPattern] = useState(false);
 
   useEffect(()=>{
@@ -1801,9 +1812,9 @@ export default function VegasVaultApp() {
   }
   function formatDisplayDate(dateStr) {
     const d = new Date(dateStr + 'T12:00:00');
-    const today = new Date().toISOString().split('T')[0];
-    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-    const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+    const today = todayStrCT();
+    const yesterday = new Date(new Date(today+'T12:00:00').getTime() - 86400000).toISOString().split('T')[0];
+    const tomorrow = new Date(new Date(today+'T12:00:00').getTime() + 86400000).toISOString().split('T')[0];
     if (dateStr === today) return 'Today';
     if (dateStr === yesterday) return 'Yesterday';
     if (dateStr === tomorrow) return 'Tomorrow';
