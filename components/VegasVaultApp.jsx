@@ -1400,9 +1400,19 @@ export default function VegasVaultApp() {
 
   async function sendNotification(title, body) {
     if (typeof window === 'undefined') return;
+
+    // Broadcast via Web Push so this reaches every subscribed device —
+    // including when the app is fully closed, not just open/backgrounded.
+    fetch('/api/push/notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, body, tag: 'vv-play' }),
+    }).catch(() => {});
+
     await requestNotificationPermission();
     if (Notification.permission !== 'granted') return;
-    // Use service worker notification if available (works on mobile)
+    // Also show an immediate local notification if the app is open — the
+    // service worker push above may take a moment, this gives instant feedback.
     if ('serviceWorker' in navigator) {
       const reg = await navigator.serviceWorker.ready.catch(() => null);
       if (reg?.showNotification) {
