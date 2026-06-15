@@ -1046,6 +1046,26 @@ export default function VegasVaultApp() {
     return()=>clearInterval(t);
   },[]);
 
+  // ── MIDNIGHT CT ROLLOVER — auto-advance the slate to the new day ───────────
+  // Tracks whether the user is currently viewing "today" (vs. having
+  // navigated to a specific past/future date). Only auto-advances the slate
+  // at midnight CT if they're following "today".
+  const followingTodayRef = useRef(true);
+  useEffect(() => {
+    followingTodayRef.current = (selectedDate === todayStrCT());
+  }, [selectedDate]);
+
+  useEffect(() => {
+    const check = () => {
+      const ctToday = todayStrCT();
+      if (followingTodayRef.current) {
+        setSelectedDate(prev => prev === ctToday ? prev : ctToday);
+      }
+    };
+    const interval = setInterval(check, 60 * 1000); // check every minute
+    return () => clearInterval(interval);
+  }, []);
+
   // ── PER-SPORT TOP PLAY — runs after all games in sport are analyzed ────────────
   useEffect(() => {
     const SPORTS = ['MLB', 'NBA', 'NFL'];
