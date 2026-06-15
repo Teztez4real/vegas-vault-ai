@@ -3077,7 +3077,6 @@ export default function VegasVaultApp() {
           .slice(0, 6);
 
         const fmtOdds = v => { if(!v||v==='N/A'||v==='null') return null; if(typeof v==='number') return v>0?`+${v}`:`${v}`; return v; };
-        const pickOdds = fmtOdds(game.dkAwayML) || fmtOdds(game.awayML) || fmtOdds(game.dkHomeML) || fmtOdds(game.homeML);
         const awayOdds = fmtOdds(game.dkAwayML) || fmtOdds(game.awayML) || '—';
         const homeOdds = fmtOdds(game.dkHomeML) || fmtOdds(game.homeML) || '—';
         const spreadVal = game.dkSpread || game.spread || '—';
@@ -3196,7 +3195,7 @@ export default function VegasVaultApp() {
                             {summary.pick}
                             {summary.tier==='1' && <span style={{ fontSize:8,fontWeight:800,color:'#111',background:'#39FF14',padding:'2px 8px',borderRadius:6 }}>AI LOCK</span>}
                           </div>
-                          <div style={{ fontSize:13,color:'#aaa',marginTop:2 }}>{summary.betType}{pickOdds?` · ${pickOdds}`:''}</div>
+                          <div style={{ fontSize:13,color:'#aaa',marginTop:2 }}>{summary.betType}</div>
                         </div>
                         <div style={{ textAlign:'center' }}>
                           <div style={{ fontSize:9,color:'#aaa',marginBottom:4 }}>Confidence</div>
