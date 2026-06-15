@@ -2762,7 +2762,7 @@ export default function VegasVaultApp() {
         };
 
         const models = [
-          { ic:'MLB', cls:'mlb', name:'MLB Model', stages:'18-step analysis flow', dataSources:'MLB Stats API, The Odds API', slot:'MLB Pattern', ...sportStats('MLB') },
+          { ic:'MLB', cls:'mlb', name:'MLB Model', stages:'4-stage analysis flow', dataSources:'MLB Stats API, The Odds API', slot:'MLB Pattern', ...sportStats('MLB') },
           { ic:'NBA', cls:'nba', name:'NBA Model', stages:'4-stage analysis flow', dataSources:'ESPN', slot:'NBA Pattern', ...sportStats('NBA') },
           { ic:'NFL', cls:'nfl', name:'NFL Model', stages:'4-stage analysis flow', dataSources:'CBS, The Odds API', slot:'NFL Pattern', ...sportStats('NFL') },
           { ic:'ATP', cls:'ten', name:'Tennis Model', stages:'14-step analysis flow', dataSources:'ATP/WTA Live', slot:'N/A', ...sportStats('Tennis') },
