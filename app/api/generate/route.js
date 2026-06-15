@@ -13,14 +13,32 @@ export const maxDuration = 120;
 
 const ai = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-async function runStage(prompt, maxTokens = 800) {
-  const msg = await ai.messages.create({
+async function runStage(prompt, maxTokens = 800, allowSearch = false) {
+  let fullPrompt = prompt;
+  if (allowSearch) {
+    fullPrompt += `\n\nNOTE: If any data above is missing, marked N/A, looks stale, or you need current information not provided here — especially injury status, lineup changes, starting pitcher changes, weather updates, line movement, or recent news that could affect this game — use web search to fill those specific gaps before finalizing your analysis. Do not search for things already provided in the data above. Keep searches focused and minimal.`;
+  }
+
+  const params = {
     model: 'claude-sonnet-4-6',
     max_tokens: maxTokens,
-    messages: [{ role: 'user', content: prompt + '\n\nRespond with a JSON object only. No markdown. No explanation.' }],
-  });
+    messages: [{ role: 'user', content: fullPrompt + '\n\nRespond with a JSON object only. No markdown. No explanation.' }],
+  };
 
-  let raw = (msg.content?.[0]?.text || '').trim();
+  if (allowSearch) {
+    params.tools = [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }];
+  }
+
+  const msg = await ai.messages.create(params);
+
+  // With web search enabled, the response can contain multiple blocks
+  // (text, server_tool_use, web_search_tool_result, text...) — concatenate
+  // all text blocks to get the model's final JSON output.
+  let raw = (msg.content || [])
+    .filter(b => b.type === 'text')
+    .map(b => b.text)
+    .join('')
+    .trim();
 
   // Remove markdown fences character by character approach
   if (raw.startsWith('`')) {
@@ -32,7 +50,8 @@ async function runStage(prompt, maxTokens = 800) {
     if (lastBrace > 0) raw = raw.slice(0, lastBrace + 1);
   }
 
-  // Find JSON boundaries
+  // Find JSON boundaries — use the LAST {...} block in case search-related
+  // commentary produced earlier JSON-like fragments
   const s = raw.indexOf('{');
   const e = raw.lastIndexOf('}');
   if (s === -1 || e === -1 || e <= s) {
@@ -142,7 +161,7 @@ export async function POST(request) {
     };
 
     // ── STAGE 2: Edge Filter ───────────────────────────────────────────────
-    const stage2 = await runStage(stages.s2(game, stage1), 1000);
+    const stage2 = await runStage(stages.s2(game, stage1), 1500, true);
     if (!stage2) return NextResponse.json(passResult('Edge analysis failed — please re-analyze.', slot));
 
     // No edge or weak edge → PASS immediately
@@ -167,7 +186,7 @@ export async function POST(request) {
     if (!stage3?.pick) return NextResponse.json(passResult('Market selection failed — pass.', slot));
 
     // ── STAGE 4: Final Verdict ─────────────────────────────────────────────
-    const stage4 = await runStage(stages.s4(game, stage1, stage2, stage3), 2000);
+    const stage4 = await runStage(stages.s4(game, stage1, stage2, stage3), 2500, true);
 
     // Build complete result — use stage4 if available, fill gaps from earlier stages
     const analysis = stage4?.analysis || {};
