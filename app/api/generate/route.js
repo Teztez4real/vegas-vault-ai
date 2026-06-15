@@ -16,7 +16,11 @@ const ai = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 async function runStage(prompt, maxTokens = 800, allowSearch = false) {
   let fullPrompt = prompt;
   if (allowSearch) {
-    fullPrompt += `\n\nNOTE: If any data above is missing, marked N/A, looks stale, or you need current information not provided here — especially injury status, lineup changes, starting pitcher changes, weather updates, line movement, or recent news that could affect this game — use web search to fill those specific gaps before finalizing your analysis. Do not search for things already provided in the data above. Keep searches focused and minimal.`;
+    fullPrompt += `\n\nNOTE: If any data above is missing, marked N/A, looks stale, or you need current information not provided here — especially injury status, lineup changes, starting pitcher changes, weather updates, line movement, or recent news that could affect this game — use web search to fill those specific gaps before finalizing your analysis.
+
+PITCHER VS OPPONENT ACCURACY (MLB): The "starter vs this opponent" data above only covers this season and can be thin (e.g. 0-2 starts) since divisional imbalance and interleague play limit matchups. If that data shows "0 G", "N/A", or very few innings, web search for the starter's career numbers against this specific opponent (career ERA, WHIP, and recent starts vs them going back 1-3 seasons) from sites like Baseball Reference, FanGraphs, or ESPN — a pitcher's broader history vs a lineup is meaningful even if it's not from this season. Cross-reference multiple sources if the first result is incomplete.
+
+Do not search for things already provided in the data above. Keep searches focused and minimal.`;
   }
 
   const params = {
@@ -26,7 +30,7 @@ async function runStage(prompt, maxTokens = 800, allowSearch = false) {
   };
 
   if (allowSearch) {
-    params.tools = [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }];
+    params.tools = [{ type: 'web_search_20250305', name: 'web_search', max_uses: 5 }];
   }
 
   const msg = await ai.messages.create(params);
@@ -138,7 +142,7 @@ export async function POST(request) {
       homeFacts: `${game.home}: ${game.homeRecord || 'N/A'} | L5: ${game.homeLast5 || 'N/A'} | L10: ${game.homeLast10 || 'N/A'} | Streak: ${game.homeStreak || 'N/A'} | Home record: ${game.homeHomeRecord || 'N/A'}`,
       recentForm: `Away L5 ${game.awayLast5 || 'N/A'} L10 ${game.awayLast10 || 'N/A'} streak ${game.awayStreak || 'N/A'} | Home L5 ${game.homeLast5 || 'N/A'} L10 ${game.homeLast10 || 'N/A'} streak ${game.homeStreak || 'N/A'}. NOTE: Today is June 5, 2026 — 2025-26 season. If L5/L10 shows all zeros or impossible records, IGNORE and use your knowledge. The 2026 NBA Finals is Knicks vs Spurs (Knicks won Game 1). The Spurs ARE in the Finals — they beat OKC in 7 games. Do NOT say a team doesn't exist in the playoffs — check the current 2025-26 season, not 2024-25.`,
       headToHead: `Overall H2H: ${game.h2hLast5 || 'N/A'} | Last time at this home venue: ${game.h2hAtHome || 'N/A'}`,
-      pitchingFacts: `Away starter: ${game.awayPitcher || 'TBD'} | ${game.awayPitcherStats || 'Stats N/A'} | Home starter: ${game.homePitcher || 'TBD'} | ${game.homePitcherStats || 'Stats N/A'} | Away bullpen: ${game.awayBullpen || 'N/A'} | Home bullpen: ${game.homeBullpen || 'N/A'}`,
+      pitchingFacts: `Away starter: ${game.awayPitcher || 'TBD'} | ${game.awayPitcherStats || 'Stats N/A'} | Home starter: ${game.homePitcher || 'TBD'} | ${game.homePitcherStats || 'Stats N/A'} | Away bullpen: ${game.awayBullpen || 'N/A'} | Home bullpen: ${game.homeBullpen || 'N/A'} | Away starter vs this opponent (this season): ${game.awayPitcherVsOpponent || 'N/A'} | Home starter vs this opponent (this season): ${game.homePitcherVsOpponent || 'N/A'}`,
       hitterLineup: `Away offense: ${game.awayOffense || game.awayLineup || 'N/A'} | Home offense: ${game.homeOffense || game.homeLineup || 'N/A'} | Away batter splits vs pitcher: ${game.awayBatterSplits || 'N/A'} | Home batter splits vs pitcher: ${game.homeBatterSplits || 'N/A'}`,
       seriesContext: `${game.seriesContext || 'N/A'} | Type: ${game.gameType || 'Regular Season'} | Record: ${game.seriesRecord || 'N/A'} | Playoff: ${game.playoffContext || 'N/A'} — MANDATORY: State actual series game number and record for ${game.away} vs ${game.home}. Use your knowledge if API data is missing. Never say not specified.`,
       matchupFacts: `Away PPG ${game.awayPPG || 'N/A'} OppPPG ${game.awayOppPPG || 'N/A'} OffRtg ${game.awayOffRating || 'N/A'} DefRtg ${game.awayDefRating || 'N/A'} | Home PPG ${game.homePPG || 'N/A'} OppPPG ${game.homeOppPPG || 'N/A'} OffRtg ${game.homeOffRating || 'N/A'} DefRtg ${game.homeDefRating || 'N/A'}`,
