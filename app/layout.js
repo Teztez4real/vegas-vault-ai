@@ -1,7 +1,15 @@
 export const metadata = {
   title: 'Vegas Vault AI',
   description: 'Professional sports betting intelligence',
-  icons: { icon: '/favicon.ico' },
+  manifest: '/manifest.json',
+  icons: {
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/icon.png', type: 'image/png', sizes: '512x512' },
+    ],
+    apple: '/apple-icon.png',
+  },
+  themeColor: '#f6f9f6',
 };
 export default function RootLayout({ children }) {
   return (
