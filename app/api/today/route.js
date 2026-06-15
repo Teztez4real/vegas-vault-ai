@@ -54,66 +54,134 @@ async function fetchNFLGames(dateParam) {
     const month = new Date().getMonth() + 1; // 1-12
     if (month >= 3 && month <= 8) return []; // March-August = offseason, no games
 
-    const oddsResult = await fetchOdds('americanfootball_nfl', dateParam);
-    const oddsMap = oddsResult.oddsMap || oddsResult;
-    if (Object.keys(oddsMap).length === 0) return [];
+    const ODDS_KEY = process.env.ODDS_API_KEY;
+    if (!ODDS_KEY) return [];
 
-    const games = (await Promise.all(Object.entries(oddsMap)
-      .filter(([key]) => !key.startsWith('_'))
-      .map(async ([key, odds], i) => {
-        const [away, home] = key.split('|');
-        // Only include games on the selected date
-        const gameDate = odds.commenceTime?.split('T')[0];
-        if (gameDate && gameDate !== dateParam) return null;
-        const ABBR = {
-          "Arizona Cardinals":"ARI","Atlanta Falcons":"ATL","Baltimore Ravens":"BAL",
-          "Buffalo Bills":"BUF","Carolina Panthers":"CAR","Chicago Bears":"CHI",
-          "Cincinnati Bengals":"CIN","Cleveland Browns":"CLE","Dallas Cowboys":"DAL",
-          "Denver Broncos":"DEN","Detroit Lions":"DET","Green Bay Packers":"GB",
-          "Houston Texans":"HOU","Indianapolis Colts":"IND","Jacksonville Jaguars":"JAX",
-          "Kansas City Chiefs":"KC","Las Vegas Raiders":"LV","Los Angeles Chargers":"LAC",
-          "Los Angeles Rams":"LAR","Miami Dolphins":"MIA","Minnesota Vikings":"MIN",
-          "New England Patriots":"NE","New Orleans Saints":"NO","New York Giants":"NYG",
-          "New York Jets":"NYJ","Philadelphia Eagles":"PHI","Pittsburgh Steelers":"PIT",
-          "San Francisco 49ers":"SF","Seattle Seahawks":"SEA","Tampa Bay Buccaneers":"TB",
-          "Tennessee Titans":"TEN","Washington Commanders":"WSH",
-        };
-        return {
-          id: 2000 + i, sport: 'NFL',
-          rawTime: odds.commenceTime,
-          time: formatTime(odds.commenceTime),
-          date: gameDate || dateParam,
-          away, home,
-          awayCity: away.split(' ').slice(0,-1).join(' ').toUpperCase(),
-          homeCity: home.split(' ').slice(0,-1).join(' ').toUpperCase(),
-          awayAbbr: ABBR[away] || away.split(' ').pop().slice(0,3).toUpperCase(),
-          homeAbbr: ABBR[home] || home.split(' ').pop().slice(0,3).toUpperCase(),
-          awayRecord: 'See NFL standings', homeRecord: 'See NFL standings',
-          awayAwayRecord: 'N/A', homeHomeRecord: 'N/A',
-          awayLast5: 'N/A', homeLast5: 'N/A', awayLast10: 'N/A', homeLast10: 'N/A',
-          awayStreak: 'N/A', homeStreak: 'N/A',
-          awayML: odds.awayML || 'N/A', homeML: odds.homeML || 'N/A',
-          openingAwayML: odds.openingAwayML || 'N/A',
-          openingHomeML: odds.openingHomeML || 'N/A',
-          spread: odds.spread || 'N/A',
-          total: odds.total || 'N/A',
-          lineMovement: odds.lineMovement || 'N/A',
-          betPercentage: 'Available with paid tier',
-          moneyPercentage: 'Available with paid tier',
-          awayQB: 'Check depth chart', homeQB: 'Check depth chart',
-          awayQBStats: 'N/A', homeQBStats: 'N/A',
-          awayOffense: 'Check NFL stats', homeOffense: 'Check NFL stats',
-          awayDefense: 'Check NFL stats', homeDefense: 'Check NFL stats',
-          h2hLast5: nflH2HMap[key] || 'Check NFL H2H history',
-          injuries: 'Check rotowire.com/football/nfl/injury-report.php',
-          weather: 'Check game time weather',
-          cbsPreview: await fetchGameNarrative(away, home, 'NFL'),
-          gameStatus: 'Scheduled',
-          week: 'N/A', gameType: 'Regular Season',
-          slot: null,
-        };
-      })
-    )).filter(Boolean);
+    const BOOKS = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'bet365'];
+    const res = await fetch(
+      `https://api.the-odds-api.com/v4/sports/americanfootball_nfl/odds/?apiKey=${ODDS_KEY}&regions=us&markets=h2h,spreads,totals&oddsFormat=american&bookmakers=${BOOKS.join(',')}`,
+      { cache: 'no-store' }
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+
+    // Filter to only games on the requested date (CT timezone), same as NBA/MLB
+    const targetDate = dateParam || todayStr();
+    const filtered = data.filter(game => {
+      if (!game.commence_time) return false;
+      const gameDate = new Date(game.commence_time);
+      const ct = new Date(gameDate.getTime() - 5 * 60 * 60 * 1000);
+      return ct.toISOString().split('T')[0] === targetDate;
+    });
+    if (filtered.length === 0) return [];
+
+    const ABBR = {
+      "Arizona Cardinals":"ARI","Atlanta Falcons":"ATL","Baltimore Ravens":"BAL",
+      "Buffalo Bills":"BUF","Carolina Panthers":"CAR","Chicago Bears":"CHI",
+      "Cincinnati Bengals":"CIN","Cleveland Browns":"CLE","Dallas Cowboys":"DAL",
+      "Denver Broncos":"DEN","Detroit Lions":"DET","Green Bay Packers":"GB",
+      "Houston Texans":"HOU","Indianapolis Colts":"IND","Jacksonville Jaguars":"JAX",
+      "Kansas City Chiefs":"KC","Las Vegas Raiders":"LV","Los Angeles Chargers":"LAC",
+      "Los Angeles Rams":"LAR","Miami Dolphins":"MIA","Minnesota Vikings":"MIN",
+      "New England Patriots":"NE","New Orleans Saints":"NO","New York Giants":"NYG",
+      "New York Jets":"NYJ","Philadelphia Eagles":"PHI","Pittsburgh Steelers":"PIT",
+      "San Francisco 49ers":"SF","Seattle Seahawks":"SEA","Tampa Bay Buccaneers":"TB",
+      "Tennessee Titans":"TEN","Washington Commanders":"WSH",
+    };
+
+    const games = (await Promise.all(filtered.map(async (game, i) => {
+      const away = (game.away_team || '').trim();
+      const home = (game.home_team || '').trim();
+
+      let awayML = 'N/A', homeML = 'N/A', spread = 'N/A', total = 'N/A';
+      let awaySpreadPrice = null, homeSpreadPrice = null, overPrice = null, underPrice = null;
+      const bookPrices = {};
+      const _raw = {};
+
+      const PRIORITY = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'bet365'];
+      const books = (game.bookmakers || []).sort((a,b) => PRIORITY.indexOf(a.key) - PRIORITY.indexOf(b.key));
+
+      books.forEach(bm => {
+        const label = bm.key === 'draftkings' ? 'DK' : bm.key === 'fanduel' ? 'FD' : bm.key === 'betmgm' ? 'MGM' : bm.key === 'caesars' ? 'CZR' : 'B365';
+        bm.markets?.forEach(mkt => {
+          if (mkt.key === 'h2h') mkt.outcomes?.forEach(o => {
+            if (o.name === away && awayML === 'N/A') awayML = fmt(o.price);
+            if (o.name === home && homeML === 'N/A') homeML = fmt(o.price);
+            bookPrices[label] = bookPrices[label] || {};
+            _raw[bm.key] = _raw[bm.key] || {};
+            if (o.name === away) { bookPrices[label].away = fmt(o.price); _raw[bm.key].away = o.price; }
+            if (o.name === home) { bookPrices[label].home = fmt(o.price); _raw[bm.key].home = o.price; }
+          });
+          if (mkt.key === 'spreads') mkt.outcomes?.forEach(o => {
+            if (o.name === home && spread === 'N/A') {
+              spread = o.point > 0 ? `+${o.point}` : `${o.point}`;
+              homeSpreadPrice = fmt(o.price);
+            }
+            if (o.name === away && !awaySpreadPrice) {
+              awaySpreadPrice = fmt(o.price);
+            }
+          });
+          if (mkt.key === 'totals') mkt.outcomes?.forEach(o => {
+            if (o.name === 'Over' && total === 'N/A') total = o.point;
+            if (o.name === 'Over' && !overPrice) overPrice = fmt(o.price);
+            if (o.name === 'Under' && !underPrice) underPrice = fmt(o.price);
+          });
+        });
+      });
+
+      const pricingStr = Object.entries(bookPrices).map(([l,v]) => `${l}: ${v.away||'N/A'}/${v.home||'N/A'}`).join(' | ');
+
+      // Line movement: Bet365 (sharp) vs FD/DK
+      const b365 = _raw['bet365']?.away;
+      const fd = _raw['fanduel']?.away;
+      const dk = _raw['draftkings']?.away;
+      const signals = [];
+      if (b365 && fd && Math.abs(b365-fd) >= 10) signals.push(`B365 ${fmt(b365)} vs FD ${fmt(fd)} — sharp on ${b365<fd?away.split(' ').pop():home.split(' ').pop()}`);
+      if (b365 && dk && Math.abs(b365-dk) >= 10) signals.push(`B365 ${fmt(b365)} vs DK ${fmt(dk)} — sharp on ${b365<dk?away.split(' ').pop():home.split(' ').pop()}`);
+      if (fd && dk && Math.abs(fd-dk) >= 8) signals.push(`FD ${fmt(fd)} vs DK ${fmt(dk)} — divergence on ${fd<dk?away.split(' ').pop():home.split(' ').pop()}`);
+
+      const gameDate = new Date(game.commence_time).toISOString().split('T')[0];
+      const key = `${away}@${home}`;
+
+      return {
+        id: 2000 + i, sport: 'NFL',
+        rawTime: game.commence_time,
+        time: formatTime(game.commence_time),
+        date: gameDate,
+        away, home,
+        awayCity: away.split(' ').slice(0,-1).join(' ').toUpperCase(),
+        homeCity: home.split(' ').slice(0,-1).join(' ').toUpperCase(),
+        awayAbbr: ABBR[away] || away.split(' ').pop().slice(0,3).toUpperCase(),
+        homeAbbr: ABBR[home] || home.split(' ').pop().slice(0,3).toUpperCase(),
+        awayRecord: 'See NFL standings', homeRecord: 'See NFL standings',
+        awayAwayRecord: 'N/A', homeHomeRecord: 'N/A',
+        awayLast5: 'N/A', homeLast5: 'N/A', awayLast10: 'N/A', homeLast10: 'N/A',
+        awayStreak: 'N/A', homeStreak: 'N/A',
+        awayML, homeML,
+        openingAwayML: pricingStr || 'N/A',
+        openingHomeML: pricingStr || 'N/A',
+        spread, total,
+        awaySpreadPrice: awaySpreadPrice || '-110',
+        homeSpreadPrice: homeSpreadPrice || '-110',
+        overPrice: overPrice || '-110',
+        underPrice: underPrice || '-110',
+        lineMovement: signals.join(' | ') || 'No significant movement',
+        sharpSignal: signals.join(' | ') || 'None',
+        betPercentage: 'Available with paid tier',
+        moneyPercentage: 'Available with paid tier',
+        awayQB: 'Check depth chart', homeQB: 'Check depth chart',
+        awayQBStats: 'N/A', homeQBStats: 'N/A',
+        awayOffense: 'Check NFL stats', homeOffense: 'Check NFL stats',
+        awayDefense: 'Check NFL stats', homeDefense: 'Check NFL stats',
+        h2hLast5: 'Check NFL H2H history',
+        injuries: 'Check rotowire.com/football/nfl/injury-report.php',
+        weather: 'Check game time weather',
+        cbsPreview: await fetchGameNarrative(away, home, 'NFL'),
+        gameStatus: 'Scheduled',
+        week: 'N/A', gameType: 'Regular Season',
+        slot: null,
+      };
+    }))).filter(Boolean);
 
     return games; // slots applied externally
   } catch (err) {
