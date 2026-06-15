@@ -3067,7 +3067,13 @@ export default function VegasVaultApp() {
         const conf = CONF_STYLES[summary.confidence] || CONF_STYLES.MEDIUM;
         const tierStyle = TIER_STYLES[summary.tier] || TIER_STYLES["3"];
         const ringCirc = 2 * Math.PI * 26;
-        const ringOffset = ringCirc * (1 - conf.ring);
+        // Use the AI's actual confidence percentage when available (any value
+        // 0-100, not snapped to fixed brackets); fall back to the bucket
+        // default for older cached results that don't have it.
+        const confPct = (typeof summary.confidencePercent === 'number' && summary.confidencePercent >= 0 && summary.confidencePercent <= 100)
+          ? summary.confidencePercent
+          : Math.round(conf.ring * 100);
+        const ringOffset = ringCirc * (1 - confPct / 100);
 
         // Reasoning bullets pulled from real analysis fields (no invented stats)
         const reasoningOrder = ['matchupFoundation','pitching','hitterLineup','recentForm','headToHead','situational','sharpMoney','propaganda','gameScript'];
@@ -3204,7 +3210,7 @@ export default function VegasVaultApp() {
                               <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(57,255,20,0.13)" strokeWidth="6"/>
                               <circle cx="32" cy="32" r="26" fill="none" stroke={conf.color} strokeWidth="6" strokeDasharray={ringCirc} strokeDashoffset={ringOffset} strokeLinecap="round" transform="rotate(-90 32 32)"/>
                             </svg>
-                            <div style={{ position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',fontSize:15,fontWeight:800,color:'#111' }}>{Math.round(conf.ring*100)}%</div>
+                            <div style={{ position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',fontSize:15,fontWeight:800,color:'#111' }}>{confPct}%</div>
                           </div>
                           <div style={{ fontSize:8,fontWeight:800,color:conf.color,marginTop:4,letterSpacing:'0.5px' }}>{conf.text}</div>
                         </div>
