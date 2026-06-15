@@ -206,10 +206,22 @@ const CONF_STYLES = {
 // star-rated (the model itself says there's no edge), so they return 0.
 function starRating(summary) {
   const tier = summary?.tier;
+  if (tier === '3' || !tier) return 0; // Tier 3 / PASS — not star-rated
+
+  const pct = summary?.confidencePercent;
+  if (typeof pct === 'number' && pct >= 0 && pct <= 100) {
+    if (pct >= 90) return 5;
+    if (pct >= 75) return 4;
+    if (pct >= 60) return 3;
+    if (pct >= 45) return 2;
+    return 1;
+  }
+
+  // Fallback for older cached results without confidencePercent
   const conf = summary?.confidence;
   if (tier === '1') return conf === 'HIGH' ? 5 : conf === 'MEDIUM' ? 4 : 3;
   if (tier === '2') return conf === 'HIGH' ? 4 : conf === 'MEDIUM' ? 3 : 2;
-  return 0; // Tier 3 / PASS
+  return 0;
 }
 
 const NAV_ITEMS = [
