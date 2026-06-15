@@ -724,10 +724,14 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
             <i className="ti ti-refresh" style={{ fontSize:12 }}/> Re-analyze
           </button>
         </div>
+      ):hasSlotPattern?(
+        <div style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:'10px 0',background:'rgba(57,255,20,0.06)',border:'1px solid rgba(57,255,20,0.2)',borderRadius:10 }}>
+          <div style={{ width:12,height:12,borderRadius:'50%',border:'2px solid rgba(57,255,20,0.3)',borderTop:'2px solid #39FF14',animation:'spin 0.8s linear infinite' }}/>
+          <span style={{ fontSize:10,fontWeight:700,color:'#33aa00' }}>QUEUED FOR ANALYSIS…</span>
+        </div>
       ):(
-        <div onClick={()=>onGenerate(game,game.slot)} style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'10px 0',background:'rgba(248,255,248,0.7)',border:'1px solid rgba(195,240,195,0.5)',borderRadius:10,cursor:'pointer' }}>
-          <i className="ti ti-sparkles" style={{ fontSize:13,color:'#33aa00' }}/>
-          <span style={{ fontSize:10,fontWeight:700,color:'#33aa00',letterSpacing:'0.06em' }}>ANALYZE</span>
+        <div style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'10px 0',background:'rgba(0,0,0,0.03)',border:'1px solid rgba(0,0,0,0.06)',borderRadius:10 }}>
+          <span style={{ fontSize:10,fontWeight:700,color:'#aaa',letterSpacing:'0.06em' }}>AWAITING SLOT PATTERN</span>
         </div>
       )}
     </div>
