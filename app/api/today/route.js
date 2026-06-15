@@ -54,7 +54,7 @@ async function fetchNFLGames(dateParam) {
     const month = new Date().getMonth() + 1; // 1-12
     if (month >= 3 && month <= 8) return []; // March-August = offseason, no games
 
-    const oddsResult = await fetchOdds('americanfootball_nfl');
+    const oddsResult = await fetchOdds('americanfootball_nfl', dateParam);
     const oddsMap = oddsResult.oddsMap || oddsResult;
     if (Object.keys(oddsMap).length === 0) return [];
 
@@ -136,7 +136,7 @@ async function fetchMLBSchedule(date) {
   return dateEntry?.games || [];
 }
 
-async function fetchOdds(sport) {
+async function fetchOdds(sport, dateParam) {
   try {
     const ODDS_KEY = process.env.ODDS_API_KEY;
     if (!ODDS_KEY) return { oddsMap: {}, bookmakerCount: 0 };
@@ -148,8 +148,22 @@ async function fetchOdds(sport) {
     );
     if (!res.ok) { console.error('Odds API error:', res.status); return { oddsMap: {}, bookmakerCount: 0 }; }
 
-    const data = await res.json();
+    let data = await res.json();
     console.log('Odds API games:', data.length, 'first game markets:', data[0]?.bookmakers?.[0]?.markets?.map(m=>m.key));
+
+    // Filter to only games on the requested date — The Odds API returns
+    // upcoming games across multiple days, and if the same two teams play
+    // a multi-game series, an unfiltered key match could pick up tomorrow's
+    // (or yesterday's) odds for "today's" game.
+    if (dateParam) {
+      data = data.filter(game => {
+        if (!game.commence_time) return true; // keep if we can't tell — better than dropping
+        const gameDate = new Date(game.commence_time);
+        const ct = new Date(gameDate.getTime() - 5 * 60 * 60 * 1000); // CT offset, matches NBA/NFL filtering
+        return ct.toISOString().split('T')[0] === dateParam;
+      });
+    }
+
     const oddsMap = {};
 
     data.forEach(game => {
@@ -1502,7 +1516,7 @@ export async function GET(request) {
 
     const [scheduleGames, mlbOddsResult, nbaGamesRaw, nflGamesRaw] = await Promise.all([
       fetchMLBSchedule(dateParam),
-      isPast ? Promise.resolve({ oddsMap: {}, bookmakerCount: 0 }) : fetchOdds('baseball_mlb'),
+      isPast ? Promise.resolve({ oddsMap: {}, bookmakerCount: 0 }) : fetchOdds('baseball_mlb', dateParam),
       isPast ? Promise.resolve([]) : fetchNBAGames(dateParam),
       isPast ? Promise.resolve([]) : fetchNFLGames(dateParam),
     ]);
