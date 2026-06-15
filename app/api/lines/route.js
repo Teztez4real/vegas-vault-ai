@@ -17,7 +17,13 @@ import { NextResponse } from 'next/server';
 import { trackLines, purgeOld } from '@/lib/lineTracker';
 
 function todayStr() {
-  return new Date().toISOString().split('T')[0];
+  // Use US Central time, not UTC — matches /api/today's convention and
+  // avoids the date rolling over to "tomorrow" during US evening hours.
+  const ctNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+  const y = ctNow.getFullYear();
+  const m = String(ctNow.getMonth() + 1).padStart(2, '0');
+  const d = String(ctNow.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 function fmt(price) {
@@ -27,7 +33,7 @@ function fmt(price) {
 
 // ── FETCH ALL BOOKS (to compare sharp vs public) ──────────────────────────────
 
-async function fetchAllBooks(sportKey) {
+async function fetchAllBooks(sportKey, dateParam) {
   const sharpKey = process.env.SHARPAPI_KEY;
   const games = {};
 
@@ -43,7 +49,21 @@ async function fetchAllBooks(sportKey) {
         { cache: 'no-store' }
       );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
+      let data = await res.json();
+
+      // Filter to only games on the requested date — without this, a
+      // multi-game series (same two teams, different days) collides on the
+      // `${away}|${home}` key below and the LAST entry in the API response
+      // (which may be tomorrow's or another day's game) silently overwrites
+      // today's odds, causing the 90-second poller to push wrong-day lines
+      // into the UI.
+      if (dateParam) {
+        data = data.filter(game => {
+          if (!game.commence_time) return true;
+          const ct = new Date(new Date(game.commence_time).getTime() - 5 * 60 * 60 * 1000);
+          return ct.toISOString().split('T')[0] === dateParam;
+        });
+      }
 
       for (const game of data) {
         const away = game.away_team;
@@ -179,7 +199,7 @@ export async function GET(request) {
     await purgeOld(dateParam);
 
     // Fetch all books
-    const gamesMap = await fetchAllBooks(sportKey);
+    const gamesMap = await fetchAllBooks(sportKey, dateParam);
     if (!Object.keys(gamesMap).length) {
       return NextResponse.json({ movements: {}, summary: { sharp: 0, moving: 0, stable: 0, total: 0 }, fetchedAt: new Date().toISOString() });
     }
