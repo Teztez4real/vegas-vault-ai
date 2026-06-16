@@ -995,6 +995,20 @@ export default function VegasVaultApp() {
       if (url) window.location.href = url;
     } catch(e) {}
   }
+  const [showSubModal, setShowSubModal] = useState(false);
+  const [subModalLoading, setSubModalLoading] = useState(null);
+  const [portalLoading, setPortalLoading] = useState(false);
+  async function doManageSubscription() {
+    setPortalLoading(true);
+    try {
+      const sb = getSB();
+      const session = sb ? (await sb.auth.getSession()).data?.session : null;
+      const res = await fetch('/api/stripe/portal', { method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+(session?.access_token||'')} });
+      const { url } = await res.json();
+      if (url) window.location.href = url;
+    } catch(e) {}
+    setPortalLoading(false);
+  }
   const [bookmakerCount, setBookmakerCount] = useState(12);
   const [winRate, setWinRate] = useState(null);
   const [pickHistory, setPickHistory] = useState(() => {
@@ -1982,6 +1996,7 @@ export default function VegasVaultApp() {
     <NewLookShell
       activeSection={shellSection}
       onNavigate={shellNavigate}
+      onProfileClick={()=>setShowSubModal(true)}
       userName={shellUserName}
       isAdmin={shellIsAdmin}
       hasNotification={Object.keys(betReadyAlerts).length > 0}
@@ -3202,7 +3217,78 @@ export default function VegasVaultApp() {
         );
       })()}
 
-      {/* ── GAME DETAIL MODAL ── */}
+      {/* ── SUBSCRIPTION MODAL ── */}
+      {showSubModal && (
+        <div style={{ position:'fixed',inset:0,zIndex:9500,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(8px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}
+             onClick={()=>setShowSubModal(false)}>
+          <div onClick={e=>e.stopPropagation()} style={{ background:'#fff',borderRadius:20,maxWidth:520,width:'100%',maxHeight:'88vh',overflowY:'auto',boxShadow:'0 20px 60px rgba(0,0,0,0.3)' }}>
+            <div style={{ padding:'18px 22px',borderBottom:'1px solid rgba(0,0,0,0.06)',display:'flex',alignItems:'center',justifyContent:'space-between' }}>
+              <div style={{ display:'flex',alignItems:'center',gap:8 }}>
+                <i className="ti ti-credit-card" style={{ fontSize:15,color:'#39FF14' }} />
+                <span style={{ fontSize:14,fontWeight:800,color:'#111' }}>Subscription</span>
+              </div>
+              <i className="ti ti-x" style={{ fontSize:18,color:'#999',cursor:'pointer' }} onClick={()=>setShowSubModal(false)} />
+            </div>
+
+            <div style={{ padding:'16px 22px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+              <div>
+                <div style={{ fontSize:13, fontWeight:700, color:'#111', marginBottom:2 }}>Current Plan</div>
+                <div style={{ fontSize:11, color:'#999' }}>Full AI analysis on every game</div>
+              </div>
+              <div style={{ fontSize:9, fontWeight:800, color: isSubscribed?'#33aa00':'#dd4444', background: isSubscribed?'rgba(57,255,20,0.1)':'rgba(255,80,80,0.08)', border: isSubscribed?'1px solid rgba(57,200,20,0.3)':'1px solid rgba(255,80,80,0.2)', borderRadius:6, padding:'4px 11px', letterSpacing:'0.5px' }}>
+                {isSubscribed ? 'ACTIVE' : 'FREE'}
+              </div>
+            </div>
+
+            <div style={{ padding:'4px 22px 18px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+              {[
+                { id:'weekly', label:'Weekly', price:'$19.99', period:'/week', features:['Full AI model','All games','Auto plays','Trell Rule alerts'], highlight:false },
+                { id:'monthly', label:'Monthly', price:'$49.99', period:'/month', features:['Everything in weekly','Priority generation','Model updates','Early access'], highlight:true, badge:'Best Value' },
+              ].map(plan => (
+                <div key={plan.id} style={{
+                  background: plan.highlight ? 'rgba(255,255,255,0.9)' : 'rgba(246,249,246,0.6)',
+                  border: plan.highlight ? '2px solid #39FF14' : '1px solid rgba(0,0,0,0.07)',
+                  borderRadius:14, padding:'16px 14px', position:'relative',
+                  boxShadow: plan.highlight ? '0 0 24px rgba(57,255,20,0.15)' : 'none',
+                }}>
+                  {plan.badge && <div style={{ position:'absolute', top:-9, left:'50%', transform:'translateX(-50%)', background:'#39FF14', color:'#111', fontSize:8, fontWeight:800, padding:'3px 10px', borderRadius:8, whiteSpace:'nowrap', letterSpacing:0.5 }}>{plan.badge}</div>}
+                  <div style={{ fontSize:11, fontWeight:700, color: plan.highlight?'#33aa00':'#aaa', letterSpacing:'0.6px', marginTop:6, marginBottom:8, textTransform:'uppercase' }}>{plan.label}</div>
+                  <div style={{ display:'flex', alignItems:'baseline', gap:4, marginBottom:12 }}>
+                    <span style={{ fontSize:22, fontWeight:900, color:'#111' }}>{plan.price}</span>
+                    <span style={{ fontSize:10, color:'#bbb' }}>{plan.period}</span>
+                  </div>
+                  <ul style={{ listStyle:'none', marginBottom:14, padding:0 }}>
+                    {plan.features.map((f,i) => <li key={i} style={{ fontSize:10, color:'#777', marginBottom:5, display:'flex', gap:6, alignItems:'flex-start' }}>
+                      <i className="ti ti-check" style={{ fontSize:12, color:'#33aa00', marginTop:1 }} />{f}
+                    </li>)}
+                  </ul>
+                  <button onClick={() => { setSubModalLoading(plan.id); doSubscribe(plan.id); }} disabled={!!subModalLoading} style={{
+                    width:'100%', padding:'10px',
+                    background: plan.highlight ? 'linear-gradient(135deg,#39FF14,#22cc00)' : 'rgba(255,255,255,0.7)',
+                    border: plan.highlight ? 'none' : '1px solid rgba(0,0,0,0.08)',
+                    borderRadius:9, fontSize:11, fontWeight:800,
+                    color: plan.highlight ? '#111' : '#666', cursor:'pointer', fontFamily:'inherit', letterSpacing:'0.06em',
+                    boxShadow: plan.highlight ? '0 2px 10px rgba(57,255,20,0.3)' : 'none',
+                  }}>
+                    {subModalLoading === plan.id ? 'Loading...' : 'Subscribe'}
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ padding:'14px 22px 20px', borderTop:'1px solid rgba(0,0,0,0.05)' }}>
+              <button onClick={doManageSubscription} disabled={portalLoading} style={{
+                width:'100%', padding:11, display:'flex', alignItems:'center', justifyContent:'center', gap:6,
+                background:'rgba(246,249,246,0.8)', border:'1px solid rgba(0,0,0,0.08)', borderRadius:9,
+                fontSize:11, fontWeight:800, color:'#444', cursor:'pointer', fontFamily:'inherit',
+              }}>
+                {portalLoading ? 'Loading...' : 'Manage Existing Subscription'}
+                {!portalLoading && <i className="ti ti-arrow-right" style={{ fontSize:12 }} />}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── GAME DETAIL MODAL ── */}
       {activeGame && activeResult && (() => {

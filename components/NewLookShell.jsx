@@ -153,6 +153,7 @@ export default function NewLookShell({
   children,
   activeSection = "dashboard",
   onNavigate,
+  onProfileClick,
   userName,
   isAdmin,
   hasNotification = false,
@@ -193,7 +194,7 @@ export default function NewLookShell({
         <SidebarBrand />
         <SidebarNav activeSection={activeSection} onNavigate={handleNavigate} />
         <SidebarStatus />
-        <SidebarUser userName={userName} isAdmin={isAdmin} onClick={() => handleNavigate('settings')} />
+        <SidebarUser userName={userName} isAdmin={isAdmin} onClick={() => { if (onProfileClick) { onProfileClick(); closeDrawer(); } else { handleNavigate('settings'); } }} />
       </div>
 
       {/* Body */}
@@ -203,7 +204,7 @@ export default function NewLookShell({
           <SidebarBrand />
           <SidebarNav activeSection={activeSection} onNavigate={handleNavigate} />
           <SidebarStatus />
-          <SidebarUser userName={userName} isAdmin={isAdmin} onClick={() => handleNavigate('settings')} />
+          <SidebarUser userName={userName} isAdmin={isAdmin} onClick={() => { if (onProfileClick) { onProfileClick(); closeDrawer(); } else { handleNavigate('settings'); } }} />
         </div>
 
         {/* Page content */}
