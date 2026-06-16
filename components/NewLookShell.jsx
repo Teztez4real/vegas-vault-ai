@@ -38,9 +38,9 @@ function SidebarBrand() {
 }
 
 // ── SIDEBAR USER CARD ─────────────────────────────────────────────────────────
-function SidebarUser({ userName, isAdmin }) {
+function SidebarUser({ userName, isAdmin, onClick }) {
   return (
-    <div className="vv-sb-user">
+    <div className="vv-sb-user" onClick={onClick} style={{ cursor: onClick ? 'pointer' : 'default' }}>
       <div className="vv-sb-av"><i className="ti ti-user" /></div>
       <div>
         <div className="vv-sb-uname">{userName || "Member"}</div>
@@ -193,7 +193,7 @@ export default function NewLookShell({
         <SidebarBrand />
         <SidebarNav activeSection={activeSection} onNavigate={handleNavigate} />
         <SidebarStatus />
-        <SidebarUser userName={userName} isAdmin={isAdmin} />
+        <SidebarUser userName={userName} isAdmin={isAdmin} onClick={() => handleNavigate('settings')} />
       </div>
 
       {/* Body */}
@@ -203,7 +203,7 @@ export default function NewLookShell({
           <SidebarBrand />
           <SidebarNav activeSection={activeSection} onNavigate={handleNavigate} />
           <SidebarStatus />
-          <SidebarUser userName={userName} isAdmin={isAdmin} />
+          <SidebarUser userName={userName} isAdmin={isAdmin} onClick={() => handleNavigate('settings')} />
         </div>
 
         {/* Page content */}
