@@ -1228,6 +1228,10 @@ export default function VegasVaultApp() {
           const historyEntry = {
             key, slot, game: `${game.away} @ ${game.home}`,
             pick: pickTeam, betType, result,
+            tier: pick.summary?.tier || null,
+            confidence: pick.summary?.confidence || null,
+            confidencePercent: pick.summary?.confidencePercent || null,
+            sport: game.sport || null,
             score: `${game.awayAbbr} ${awayScore} - ${homeScore} ${game.homeAbbr}`,
             resolvedAt: new Date().toISOString(),
             date: game.date,
