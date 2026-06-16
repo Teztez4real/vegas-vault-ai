@@ -193,6 +193,20 @@ const CONF_STYLES = {
 
 // Derive a 1-5 star rating from tier + confidence. Tier 3/PASS plays are not
 // star-rated (the model itself says there's no edge), so they return 0.
+// Looks up a game's analysis result. Tries the exact id-slot key first
+// (the normal case), then falls back to matching by game.id alone against
+// any key in `results` — this protects against a game's slot reassigning
+// between when it was analyzed and when it's viewed again (e.g. a
+// postponement or schedule change shifting the positional slot pattern),
+// which would otherwise make an already-analyzed game look unanalyzed.
+function lookupResult(results, game) {
+  const exactKey = `${game.id}-${game.slot}`;
+  if (results[exactKey]) return results[exactKey];
+  const prefix = `${game.id}-`;
+  const fallbackKey = Object.keys(results).find(k => k.startsWith(prefix));
+  return fallbackKey ? results[fallbackKey] : null;
+}
+
 function starRating(summary) {
   const tier = summary?.tier;
   if (tier === '3' || !tier) return 0; // Tier 3 / PASS — not star-rated
@@ -2634,7 +2648,7 @@ export default function VegasVaultApp() {
               <div style={{ textAlign:'center',padding:'30px 0',color:'#ccc',fontSize:11 }}>No games</div>
             ) : games.filter(g=>filter==='ALL'||g.sport===filter).map(game=>{
               const key = `${game.id}-${game.slot}`;
-              const result = results[key];
+              const result = lookupResult(results, game);
               const summary = result?.summary;
               const tier = summary ? (TIER_STYLES[summary.tier]||TIER_STYLES["3"]) : null;
               const isPass = tier?.label === 'PASS' || tier?.label === 'TIER 3';
