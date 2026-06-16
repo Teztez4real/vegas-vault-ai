@@ -1338,14 +1338,36 @@ export default function VegasVaultApp() {
   }, [selectedDate]);
 
   // ── SERVICE WORKER + PUSH NOTIFICATIONS ──────────────────────────────────────
+  // Register service worker immediately (needed for PWA install + push).
   useEffect(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
-    navigator.serviceWorker.register('/sw.js').then(async (reg) => {
-      // Subscribe to Web Push for background notifications (app closed)
-      if (!('PushManager' in window)) return;
-      const VAPID_PUBLIC = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-      if (!VAPID_PUBLIC) return;
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  }, []);
+
+  // Subscribe to Web Push only AFTER the user is logged in, so we can
+  // correctly associate this device's subscription with their userId/email.
+  // Runs whenever authUser changes (login/logout).
+  useEffect(() => {
+    if (!authUser?.id) return;
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+    const VAPID_PUBLIC = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+    if (!VAPID_PUBLIC) return;
+
+    const subscribePush = async () => {
       try {
+        const reg = await navigator.serviceWorker.ready;
+        if (!('PushManager' in window)) return;
+
+        // Check/request notification permission
+        let permission = Notification.permission;
+        if (permission === 'default') {
+          // Request permission — must be triggered in context of a user
+          // session, not a cold page load, for best mobile acceptance rate.
+          permission = await Notification.requestPermission();
+        }
+        if (permission !== 'granted') return;
+
+        // Get or create push subscription for this device
         let sub = await reg.pushManager.getSubscription();
         if (!sub) {
           sub = await reg.pushManager.subscribe({
@@ -1353,20 +1375,26 @@ export default function VegasVaultApp() {
             applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC),
           });
         }
-        // Save subscription to server
-        const user = (await sb.auth.getUser())?.data?.user;
+
+        // Always re-save on login to keep userId/email current and
+        // re-register any subscription that may have expired.
         await fetch('/api/push/subscribe', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             subscription: sub.toJSON(),
-            userId: user?.id || null,
-            email: user?.email || null,
+            userId: authUser.id,
+            email: authUser.email || null,
           }),
         });
-      } catch {}
-    }).catch(() => {});
-  }, []);
+      } catch (err) {
+        // Silently fail — push is a best-effort enhancement
+        console.warn('Push subscription failed:', err.message);
+      }
+    };
+
+    subscribePush();
+  }, [authUser?.id]);
 
   function urlBase64ToUint8Array(base64String) {
     const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -1386,14 +1414,23 @@ export default function VegasVaultApp() {
   }
 
   async function testNotification() {
+    // iOS requires the app to be installed (Add to Home Screen) for push.
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
+    if (isIOS && !isStandalone) {
+      alert('📱 iOS Setup Required:\n\n1. Tap the Share button (box with arrow) at the bottom of Safari\n2. Tap "Add to Home Screen"\n3. Open the app from your home screen\n4. Notifications will work automatically after that.\n\nThis step is required for notifications on iPhone/iPad.');
+      return;
+    }
+
     const granted = await requestNotificationPermission();
     if (!granted) {
-      alert('Notifications are blocked. On iOS: go to Settings > Safari > [this site] > Notifications and allow. On Android: tap the lock icon in the address bar and allow notifications.');
+      alert('Notifications are blocked.\n\n• iPhone/iPad: Open Settings → Safari → [this site] → Notifications → Allow\n• Android: Tap the lock icon in the address bar → Notifications → Allow\n• Desktop: Click the lock icon in the address bar and allow notifications.');
       return;
     }
     await sendNotification(
       '🔒 Vegas Vault AI — Test',
-      'Notifications are working! You will receive alerts for your watchlisted games.'
+      'Notifications are working! You will receive alerts for your plays.'
     );
   }
 
@@ -1424,7 +1461,7 @@ export default function VegasVaultApp() {
     fetch('/api/push/notify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, body, tag: 'vv-play' }),
+      body: JSON.stringify({ title, body, tag: 'vv-play', url: '/dashboard' }),
     }).catch(() => {});
 
     await requestNotificationPermission();
