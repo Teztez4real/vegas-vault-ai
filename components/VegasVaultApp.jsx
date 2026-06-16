@@ -968,6 +968,20 @@ export default function VegasVaultApp() {
   }
 
   async function doSignOut() {
+    // Flush all user data to Supabase FIRST — before clearing state —
+    // so nothing is lost on manual logout or inactivity sign-out.
+    // This covers any in-flight changes that haven't synced yet.
+    try {
+      const uid = authUser?.id;
+      if (uid) {
+        await Promise.allSettled([
+          syncSave(uid, 'results',      results),
+          syncSave(uid, 'finalized',    finalized),
+          syncSave(uid, 'watchlist',    watchlist),
+          syncSave(uid, 'pick_history', pickHistory),
+        ]);
+      }
+    } catch(e) {}
     try { const sb = getSB(); if (sb) await sb.auth.signOut({ scope: 'global' }); } catch(e) {}
     setAuthUser(null); localStorage.removeItem('vv_admin'); localStorage.removeItem('vv_subscribed'); localStorage.removeItem('vv_results'); localStorage.removeItem('vv_finalized'); localStorage.removeItem('vv_watchlist'); setIsSubscribed(false); setResults({}); setFinalized({}); setWatchlist([]); setPickHistory([]);
   }
@@ -1541,7 +1555,51 @@ export default function VegasVaultApp() {
     if (authUser?.id) syncSave(authUser.id, 'pick_history', pickHistory); // user-scoped
   }, [pickHistory]);
 
-  // ── WIN RATE & AI CONFIDENCE ──────────────────────────────────────────────────
+  // ── CROSS-DEVICE SYNC: poll for pick_history updates from other devices ─────
+  useEffect(() => {
+    if (!authUser?.id) return;
+    const poll = async () => {
+      const remote = await syncLoad(authUser.id, 'pick_history');
+      if (remote) {
+        setPickHistory(prev => {
+          const merged = [...prev];
+          for (const entry of remote) {
+            if (!merged.find(e => e.key === entry.key && e.resolvedAt === entry.resolvedAt)) {
+              merged.push(entry);
+            }
+          }
+          if (JSON.stringify(merged) !== JSON.stringify(prev)) return merged;
+          return prev;
+        });
+      }
+    };
+    const interval = setInterval(poll, 30 * 1000);
+    return () => clearInterval(interval);
+  }, [authUser?.id]);
+
+  // Persist watchlist — safety net on top of per-toggle saves
+  useEffect(() => {
+    if (authUser?.id && watchlist.length >= 0) syncSave(authUser.id, 'watchlist', watchlist);
+  }, [watchlist]);
+
+  // ── CROSS-DEVICE SYNC: poll for watchlist updates from other devices ─────────
+  useEffect(() => {
+    if (!authUser?.id) return;
+    const poll = async () => {
+      const remote = await syncLoad(authUser.id, 'watchlist');
+      if (remote && Array.isArray(remote)) {
+        setWatchlist(prev => {
+          const merged = [...new Set([...prev, ...remote])];
+          if (JSON.stringify(merged) !== JSON.stringify(prev)) return merged;
+          return prev;
+        });
+      }
+    };
+    const interval = setInterval(poll, 30 * 1000);
+    return () => clearInterval(interval);
+  }, [authUser?.id]);
+
+
   useEffect(() => {
     const allResults = Object.values(results);
     if (allResults.length === 0) { setAiConfidence(null); return; }
