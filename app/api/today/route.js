@@ -151,7 +151,7 @@ async function fetchNFLGames(dateParam) {
       const key = `${away}@${home}`;
 
       return {
-        id: 2000 + i, sport: 'NFL',
+        id: `nfl-${gameDate}-${i}`, sport: 'NFL',
         rawTime: game.commence_time,
         time: formatTime(game.commence_time),
         date: gameDate,
@@ -823,7 +823,8 @@ async function fetchNBAGames(date) {
       ]);
 
       return {
-        id: 3000 + i, sport: 'NBA',
+        id: `nba-${(game.commence_time||'').split('T')[0]}-${i}`, sport: 'NBA',
+        date: (game.commence_time||'').split('T')[0],
         away, home,
         awayAbbr: nbaAbbrMap[away] || away.split(' ').pop().slice(0,3).toUpperCase(),
         homeAbbr: nbaAbbrMap[home] || home.split(' ').pop().slice(0,3).toUpperCase(),
@@ -1084,7 +1085,8 @@ async function fetchWNBAGames(date) {
       const wnbaAbbrMap = {'Atlanta Dream':'Dream','Chicago Sky':'Sky','Connecticut Sun':'Sun','Dallas Wings':'Wings','Indiana Fever':'Fever','Las Vegas Aces':'Aces','Los Angeles Sparks':'Sparks','Minnesota Lynx':'Lynx','New York Liberty':'Liberty','Phoenix Mercury':'Mercury','Seattle Storm':'Storm','Washington Mystics':'Mystics','Toronto Tempo':'Tempo'};
 
       return {
-        id: 5000 + i, sport: 'WNBA',
+        id: `wnba-${(game.commence_time||'').split('T')[0]}-${i}`, sport: 'WNBA',
+        date: (game.commence_time||'').split('T')[0],
         away, home,
         awayAbbr: wnbaAbbrMap[away] || away.split(' ').pop().slice(0,3).toUpperCase(),
         homeAbbr: wnbaAbbrMap[home] || home.split(' ').pop().slice(0,3).toUpperCase(),
