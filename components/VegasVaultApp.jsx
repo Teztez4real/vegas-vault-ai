@@ -2505,11 +2505,11 @@ export default function VegasVaultApp() {
               </div>
 
               <div className="vv-glass vv-icon-dock">
-                <div className="vv-dock-i" onClick={()=>shellNavigate('analyzer')}><i className="ti ti-target" /></div>
+                <div className="vv-dock-i" onClick={()=>shellNavigate('slate')}><i className="ti ti-target" /></div>
                 <div className="vv-dock-i" onClick={()=>shellNavigate('vault')}><i className="ti ti-lock" /></div>
-                <div className="vv-dock-i on"><i className="ti ti-hexagon" /></div>
-                <div className="vv-dock-i" onClick={()=>shellNavigate('sharp')}><i className="ti ti-currency-dollar" /></div>
-                <div className="vv-dock-i" onClick={()=>shellNavigate('props')}><i className="ti ti-diamond" /></div>
+                <div className="vv-dock-i on" onClick={()=>shellNavigate('dashboard')}><i className="ti ti-hexagon" /></div>
+                <div className="vv-dock-i" onClick={()=>shellNavigate('slate')}><i className="ti ti-currency-dollar" /></div>
+                <div className="vv-dock-i" style={{ opacity:0.5, cursor:'default' }}><i className="ti ti-diamond" /></div>
               </div>
 
               <div className="vv-glass vv-pad">
