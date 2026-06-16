@@ -255,26 +255,27 @@ const INSIGHTS = [
 
 // All 30 MLB teams — ESPN CDN slugs
 const MLB_SLUGS = {
-  "ARI":"ari","ATL":"atl","BAL":"bal","BOS":"bos",
-  "CHC":"chc","CHW":"chw","CIN":"cin","CLE":"cle",
-  "COL":"col","DET":"det","HOU":"hou","KC":"kc",
+  "ARI":"ari","AZ":"ari","ATL":"atl","BAL":"bal","BOS":"bos",
+  "CHC":"chc","CHW":"chw","CWS":"chw","CIN":"cin","CLE":"cle",
+  "COL":"col","DET":"det","HOU":"hou","KC":"kc","KCR":"kc",
   "LAA":"laa","LAD":"lad","MIA":"mia","MIL":"mil",
-  "MIN":"min","NYM":"nym","NYY":"nyy","OAK":"oak",
-  "PHI":"phi","PIT":"pit","SD":"sd","SEA":"sea",
-  "SF":"sf","STL":"stl","TB":"tb","TEX":"tex",
-  "TOR":"tor","WSH":"wsh",
+  "MIN":"min","NYM":"nym","NYY":"nyy",
+  "OAK":"ath","ATH":"ath", // Athletics — ESPN's CDN slug changed from "oak" to "ath" after the 2025 relocation
+  "PHI":"phi","PIT":"pit","SD":"sd","SDP":"sd","SEA":"sea",
+  "SF":"sf","SFG":"sf","STL":"stl","TB":"tb","TBR":"tb","TEX":"tex",
+  "TOR":"tor","WSH":"wsh","WAS":"wsh",
 };
 
 // Fallback brand colors for each team
 const MLB_COLORS = {
-  "ARI":"#A71930","ATL":"#CE1141","BAL":"#DF4601","BOS":"#BD3039",
-  "CHC":"#0E3386","CHW":"#27251F","CIN":"#C6011F","CLE":"#0C2340",
-  "COL":"#33006F","DET":"#0C2C56","HOU":"#002D62","KC":"#004687",
+  "ARI":"#A71930","AZ":"#A71930","ATL":"#CE1141","BAL":"#DF4601","BOS":"#BD3039",
+  "CHC":"#0E3386","CHW":"#27251F","CWS":"#27251F","CIN":"#C6011F","CLE":"#0C2340",
+  "COL":"#33006F","DET":"#0C2C56","HOU":"#002D62","KC":"#004687","KCR":"#004687",
   "LAA":"#BA0021","LAD":"#005A9C","MIA":"#00A3E0","MIL":"#FFC52F",
-  "MIN":"#002B5C","NYM":"#002D72","NYY":"#003087","OAK":"#003831",
-  "PHI":"#E81828","PIT":"#FDB827","SD":"#2F241D","SEA":"#0C2C56",
-  "SF":"#FD5A1E","STL":"#C41E3A","TB":"#092C5C","TEX":"#003278",
-  "TOR":"#134A8E","WSH":"#AB0003",
+  "MIN":"#002B5C","NYM":"#002D72","NYY":"#003087","OAK":"#003831","ATH":"#003831",
+  "PHI":"#E81828","PIT":"#FDB827","SD":"#2F241D","SDP":"#2F241D","SEA":"#0C2C56",
+  "SF":"#FD5A1E","SFG":"#FD5A1E","STL":"#C41E3A","TB":"#092C5C","TBR":"#092C5C","TEX":"#003278",
+  "TOR":"#134A8E","WSH":"#AB0003","WAS":"#AB0003",
 };
 
 // NBA team slugs for ESPN CDN
@@ -307,18 +308,19 @@ const WNBA_SLUGS = {
 
 function TeamLogo({ abbr, size=44, sport="MLB" }) {
   const [err, setErr] = useState(false);
-  
+  const abbrUpper = (abbr || '').toUpperCase();
+
   let slug = null;
   let espnSport = null;
-  
+
   if (sport === "MLB") {
-    slug = MLB_SLUGS[abbr];
+    slug = MLB_SLUGS[abbrUpper];
     espnSport = "mlb";
   } else if (sport === "NBA") {
-    slug = NBA_SLUGS[abbr];
+    slug = NBA_SLUGS[abbrUpper];
     espnSport = "nba";
   } else if (sport === "WNBA") {
-    slug = WNBA_SLUGS[abbr];
+    slug = WNBA_SLUGS[abbrUpper];
     espnSport = "wnba";
   }
 
@@ -334,7 +336,7 @@ function TeamLogo({ abbr, size=44, sport="MLB" }) {
     );
   }
   // Fallback colored box with initials
-  const col = MLB_COLORS[abbr] || "#1e3a5f";
+  const col = MLB_COLORS[abbrUpper] || "#1e3a5f";
   return (
     <div style={{ width:size, height:size, borderRadius:8, background:`${col}22`, border:`1.5px solid ${col}66`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:size*0.3, fontWeight:900, color:col, flexShrink:0 }}>
       {abbr.slice(0,2)}
