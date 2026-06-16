@@ -991,9 +991,17 @@ export default function VegasVaultApp() {
       const sb = getSB();
       const session = sb ? (await sb.auth.getSession()).data?.session : null;
       const res = await fetch('/api/stripe/checkout', { method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+(session?.access_token||'')}, body:JSON.stringify({plan}) });
-      const { url } = await res.json();
-      if (url) window.location.href = url;
-    } catch(e) {}
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+        return true; // navigating away — loading state won't matter
+      }
+      alert(data.error ? `Couldn't start checkout: ${data.error}` : "Couldn't start checkout. Please try again.");
+      return false;
+    } catch(e) {
+      alert("Couldn't start checkout — check your connection and try again.");
+      return false;
+    }
   }
   const [showSubModal, setShowSubModal] = useState(false);
   const [subModalLoading, setSubModalLoading] = useState(null);
@@ -1004,9 +1012,20 @@ export default function VegasVaultApp() {
       const sb = getSB();
       const session = sb ? (await sb.auth.getSession()).data?.session : null;
       const res = await fetch('/api/stripe/portal', { method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+(session?.access_token||'')} });
-      const { url } = await res.json();
-      if (url) window.location.href = url;
-    } catch(e) {}
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+        setPortalLoading(false);
+        return;
+      }
+      if (res.status === 404) {
+        alert("You don't have an active paid subscription to manage. Subscribe to a plan above first.");
+      } else {
+        alert(data.error ? `Couldn't open subscription management: ${data.error}` : "Couldn't open subscription management. Please try again.");
+      }
+    } catch(e) {
+      alert("Couldn't open subscription management — check your connection and try again.");
+    }
     setPortalLoading(false);
   }
   const [bookmakerCount, setBookmakerCount] = useState(12);
@@ -3262,7 +3281,7 @@ export default function VegasVaultApp() {
                       <i className="ti ti-check" style={{ fontSize:12, color:'#33aa00', marginTop:1 }} />{f}
                     </li>)}
                   </ul>
-                  <button onClick={() => { setSubModalLoading(plan.id); doSubscribe(plan.id); }} disabled={!!subModalLoading} style={{
+                  <button onClick={async () => { setSubModalLoading(plan.id); const ok = await doSubscribe(plan.id); if (!ok) setSubModalLoading(null); }} disabled={!!subModalLoading} style={{
                     width:'100%', padding:'10px',
                     background: plan.highlight ? 'linear-gradient(135deg,#39FF14,#22cc00)' : 'rgba(255,255,255,0.7)',
                     border: plan.highlight ? 'none' : '1px solid rgba(0,0,0,0.08)',
