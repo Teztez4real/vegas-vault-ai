@@ -595,7 +595,7 @@ function ConfidenceChart({ history }) {
 }
 
 // ── GAME CARD (new glass design) ──────────────────────────────────────────────
-function GameCard({ game, onGenerate, results, generating, onCardClick, liveScores, isSubscribed, finalized, isQueued, betReady, onShowAuth, watchlist, onToggleWatch, pickHistory, hasSlotPattern }) {
+function GameCard({ game, onGenerate, results, generating, onCardClick, liveScores, isSubscribed, finalized, isQueued, betReady, onShowAuth, watchlist, onToggleWatch, pickHistory, hasSlotPattern, isTopPlay }) {
   const resultVegas  = results[`${game.id}-VEGAS`];
   const resultPublic = results[`${game.id}-PUBLIC`];
   const slotResult   = results[`${game.id}-${game.slot}`];
@@ -640,6 +640,11 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
       {/* Row 1: slot tag + status + time + watchlist */}
       <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10 }}>
         <div style={{ display:'flex',alignItems:'center',gap:6,flexWrap:'wrap' }}>
+          {isTopPlay && (
+            <span style={{ fontSize:9,fontWeight:800,padding:'3px 9px',borderRadius:6,letterSpacing:'0.5px',background:'linear-gradient(135deg,#39FF14,#22cc00)',color:'#111',display:'flex',alignItems:'center',gap:4,boxShadow:'0 2px 8px rgba(57,255,20,0.35)' }}>
+              ⭐ TOP PLAY
+            </span>
+          )}
           {hasSlotPattern && (
             <span style={{ fontSize:9,fontWeight:800,padding:'3px 9px',borderRadius:6,letterSpacing:'0.5px',background:isVegas?'rgba(57,255,20,0.1)':'rgba(80,140,255,0.08)',color:isVegas?'#2aa800':'#5588ee',border:isVegas?'1px solid rgba(57,255,20,0.25)':'1px solid rgba(80,140,255,0.2)' }}>
               {isVegas?'VEGAS SLOT':'PUBLIC SLOT'}
@@ -2660,6 +2665,7 @@ export default function VegasVaultApp() {
                   <div className="vv-gr-a">
                     <span className="vv-gr-t">
                       <img className="vv-gr-lg" src={`https://a.espncdn.com/i/teamlogos/${game.sport==='NBA'?'nba':game.sport==='NFL'?'nfl':'mlb'}/500/${(game.awayAbbr||'').toLowerCase()}.png`} alt="" onError={e=>e.target.style.display='none'} />
+                      {topPlay && topPlay.id === game.id && <span title="Top Play of the Day" style={{ fontSize:11 }}>⭐</span>}
                       {game.awayAbbr} @ {game.homeAbbr}
                     </span>
                     <span className="vv-gr-time">{game.time}</span>
@@ -2775,6 +2781,7 @@ export default function VegasVaultApp() {
                     onToggleWatch={(id)=>setWatchlist(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id])}
                     pickHistory={pickHistory}
                     hasSlotPattern={hasSlotPattern}
+                    isTopPlay={topPlay && topPlay.id === game.id}
                   />
                 );
               })}
@@ -2824,6 +2831,7 @@ export default function VegasVaultApp() {
                     onToggleWatch={(id)=>setWatchlist(p=>{const u=p.includes(id)?p.filter(x=>x!==id):[...p,id];if(authUser?.id)syncSave(authUser.id,'watchlist',u);return u;})}
                     pickHistory={pickHistory}
                     hasSlotPattern={hasSlotPattern}
+                    isTopPlay={topPlay && topPlay.id === game.id}
                   />
                 );
               })}
