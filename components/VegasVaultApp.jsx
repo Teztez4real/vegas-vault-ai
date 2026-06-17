@@ -8,15 +8,23 @@ import '@/app/new-look.css';
 // ── SUPABASE CROSS-DEVICE SYNC ────────────────────────────────────────────────
 async function syncLoad(userId, key) {
   try {
-    const { data } = await _supabase.from('user_data').select('value').eq('user_id', userId).eq('key', key).single();
+    const { data, error } = await _supabase.from('user_data').select('value').eq('user_id', userId).eq('key', key).maybeSingle();
+    if (error) {
+      console.error(`syncLoad failed for key "${key}":`, error.message, error.code);
+      return null;
+    }
     return data?.value ? JSON.parse(data.value) : null;
-  } catch { return null; }
+  } catch (e) {
+    console.error(`syncLoad threw for key "${key}":`, e.message);
+    return null;
+  }
 }
 
 async function syncSave(userId, key, value) {
   try {
-    await _supabase.from('user_data').upsert({ user_id: userId, key, value: JSON.stringify(value), updated_at: new Date().toISOString() }, { onConflict: 'user_id,key' });
-  } catch(e) { console.warn('sync save failed:', e.message); }
+    const { error } = await _supabase.from('user_data').upsert({ user_id: userId, key, value: JSON.stringify(value), updated_at: new Date().toISOString() }, { onConflict: 'user_id,key' });
+    if (error) console.error(`syncSave failed for key "${key}":`, error.message, error.code);
+  } catch(e) { console.error(`syncSave threw for key "${key}":`, e.message); }
 }
 
 async function syncDelete(userId, key) {
@@ -930,6 +938,8 @@ export default function VegasVaultApp() {
   const [liveScores, setLiveScores]   = useState({});
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [authUser, setAuthUser]         = useState(null);
+  const authUserIdRef = useRef(null);
+  useEffect(() => { authUserIdRef.current = authUser?.id || null; }, [authUser]);
   const [showAuth, setShowAuth]         = useState(false);
   const [authMode, setAuthMode]         = useState('login');
   const [authEmail, setAuthEmail]       = useState('');
@@ -979,6 +989,7 @@ export default function VegasVaultApp() {
       });
       const { data: { subscription } } = sb.auth.onAuthStateChange(async (_e, session) => {
         if (session?.user) {
+          const isNewUser = authUserIdRef.current !== session.user.id;
           setAuthUser(session.user);
           setAuthMode(prev => prev === 'confirm' ? 'login' : prev);
           if (session.user.email === ADMIN_EMAIL) { localStorage.setItem('vv_admin','1'); setIsSubscribed(true); }
@@ -995,6 +1006,28 @@ export default function VegasVaultApp() {
               const sub = typeof window !== 'undefined' && localStorage.getItem('vv_subscribed');
               if (sub) setIsSubscribed(true);
             }
+          }
+
+          // Reload all synced data when a different user logs in (covers
+          // signing back in after a sign-out, or switching accounts) — this
+          // was previously only done once on initial page mount via
+          // getSession(), so signing out and back in left the UI showing
+          // empty results/finalized/watchlist/pickHistory even though the
+          // real data was safely sitting in Supabase the whole time.
+          if (isNewUser) {
+            const uid = session.user.id;
+            const [wl, res, fin, hist, chat] = await Promise.all([
+              syncLoad(uid, 'watchlist'),
+              syncLoad(uid, 'results'),
+              syncLoad(uid, 'finalized'),
+              syncLoad(uid, 'pick_history'),
+              syncLoad(uid, 'chat_history'),
+            ]);
+            if (chat && Array.isArray(chat)) setChatMessages(chat);
+            setWatchlist(wl || []);
+            setResults(res || {});
+            setFinalized(fin || {});
+            setPickHistory(hist || []);
           }
         } else {
           setAuthUser(null);
