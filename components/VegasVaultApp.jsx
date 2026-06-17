@@ -3526,13 +3526,13 @@ export default function VegasVaultApp() {
                             <div style={{ fontSize:8,color:'#aaa',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:3 }}>{game.away}</div>
                             <div style={{ fontSize:13,fontWeight:800,color:'#111' }}>{game.awayPitcher || 'TBD'}</div>
                             {game.awayPitcherStats && <div style={{ fontSize:10,color:'#777',marginTop:4,lineHeight:1.6 }}>{game.awayPitcherStats}</div>}
-                            {game.awayPitcherVsOpponent && game.awayPitcherVsOpponent!=='N/A' && <div style={{ fontSize:10,color:'#999',marginTop:4 }}>vs {game.home}: {game.awayPitcherVsOpponent}</div>}
+                            {game.awayPitcherVsOpponent && game.awayPitcherVsOpponent!=='N/A' && <div style={{ fontSize:10,color:'#999',marginTop:4 }}>{game.awayPitcherVsOpponent}</div>}
                           </div>
                           <div style={{ padding:'10px 12px',background:'rgba(246,249,246,0.7)',border:'1px solid rgba(195,240,195,0.5)',borderRadius:10 }}>
                             <div style={{ fontSize:8,color:'#aaa',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:3 }}>{game.home}</div>
                             <div style={{ fontSize:13,fontWeight:800,color:'#111' }}>{game.homePitcher || 'TBD'}</div>
                             {game.homePitcherStats && <div style={{ fontSize:10,color:'#777',marginTop:4,lineHeight:1.6 }}>{game.homePitcherStats}</div>}
-                            {game.homePitcherVsOpponent && game.homePitcherVsOpponent!=='N/A' && <div style={{ fontSize:10,color:'#999',marginTop:4 }}>vs {game.away}: {game.homePitcherVsOpponent}</div>}
+                            {game.homePitcherVsOpponent && game.homePitcherVsOpponent!=='N/A' && <div style={{ fontSize:10,color:'#999',marginTop:4 }}>{game.homePitcherVsOpponent}</div>}
                           </div>
                         </div>
                         {analysis.pitching && <div style={{ marginTop:10,fontSize:11,color:'#444',lineHeight:1.6 }}>{analysis.pitching}</div>}
