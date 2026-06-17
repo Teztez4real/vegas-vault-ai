@@ -234,6 +234,8 @@ function trackRecordSummary(pickHistory) {
     byTier: breakdown(p => p.tier ? `Tier ${p.tier}` : null),
     bySlot: breakdown(p => p.slot || null),
     bySport: breakdown(p => p.sport || null),
+    byScamLayer: breakdown(p => p.scamLayer ? `Scam:${p.scamLayer}` : null),
+    byBetCategory: breakdown(p => p.betCategory || null),
   };
 }
 
@@ -248,8 +250,12 @@ function trackRecordPromptText(summary) {
   const sigBreakdown = (rows, label) => rows.filter(r => r.n >= 10).map(r => `${label} ${r.label}: ${r.wins}-${r.losses} (${r.pct}%, n=${r.n})`);
   const tierLines = sigBreakdown(summary.byTier, '');
   const slotLines = sigBreakdown(summary.bySlot, '');
+  const scamLines = sigBreakdown(summary.byScamLayer, '');
+  const betCatLines = sigBreakdown(summary.byBetCategory, '');
   if (tierLines.length) lines.push(`By tier — ${tierLines.join(' | ')}`);
   if (slotLines.length) lines.push(`By slot — ${slotLines.join(' | ')}`);
+  if (scamLines.length) lines.push(`By scam type (Vegas-slot only) — ${scamLines.join(' | ')}`);
+  if (betCatLines.length) lines.push(`By bet category — ${betCatLines.join(' | ')}`);
   return lines.join(' ');
 }
 
@@ -1333,12 +1339,19 @@ export default function VegasVaultApp() {
         }
 
         if (result) {
+          // Derive a simple bet category from betType text for breakdown purposes
+          const btUpper = (betType || '').toUpperCase();
+          const betCategory = btUpper.includes('OVER') || btUpper.includes('UNDER') ? 'TOTAL'
+            : /^[+-]\d/.test(btUpper.trim()) ? 'SPREAD'
+            : 'ML';
+
           const historyEntry = {
             key, slot, game: `${game.away} @ ${game.home}`,
-            pick: pickTeam, betType, result,
+            pick: pickTeam, betType, betCategory, result,
             tier: pick.summary?.tier || null,
             confidence: pick.summary?.confidence || null,
             confidencePercent: pick.summary?.confidencePercent || null,
+            scamLayer: (pick.summary?.scamLayer && pick.summary.scamLayer !== 'N/A') ? pick.summary.scamLayer : null,
             sport: game.sport || null,
             score: `${game.awayAbbr} ${awayScore} - ${homeScore} ${game.homeAbbr}`,
             resolvedAt: new Date().toISOString(),
@@ -3130,10 +3143,10 @@ export default function VegasVaultApp() {
                     <div style={{ fontSize:9, color:'#aaa' }}>Last {tr.recent.n} picks</div>
                   </div>
                 </div>
-                {[...tr.byTier, ...tr.bySlot, ...tr.bySport].filter(r => r.n >= 10).length > 0 && (
+                {[...tr.byTier, ...tr.bySlot, ...tr.bySport, ...tr.byScamLayer, ...tr.byBetCategory].filter(r => r.n >= 10).length > 0 && (
                   <div style={{ display:'flex', flexDirection:'column', gap:6, paddingTop:8, borderTop:'1px solid rgba(0,0,0,0.06)' }}>
                     <div style={{ fontSize:9, fontWeight:800, color:'#999', letterSpacing:'0.5px' }}>STATISTICALLY MEANINGFUL BREAKDOWNS (n≥10)</div>
-                    {[...tr.byTier, ...tr.bySlot, ...tr.bySport].filter(r => r.n >= 10).map((r, i) => (
+                    {[...tr.byTier, ...tr.bySlot, ...tr.bySport, ...tr.byScamLayer, ...tr.byBetCategory].filter(r => r.n >= 10).map((r, i) => (
                       <div key={i} style={{ display:'flex', justifyContent:'space-between', fontSize:11 }}>
                         <span style={{ color:'#555' }}>{r.label}</span>
                         <span style={{ fontWeight:700, color:'#111' }}>{r.wins}-{r.losses} ({r.pct}%, n={r.n})</span>
@@ -3141,7 +3154,7 @@ export default function VegasVaultApp() {
                     ))}
                   </div>
                 )}
-                {[...tr.byTier, ...tr.bySlot, ...tr.bySport].filter(r => r.n < 10 && r.n > 0).length > 0 && (
+                {[...tr.byTier, ...tr.bySlot, ...tr.bySport, ...tr.byScamLayer, ...tr.byBetCategory].filter(r => r.n < 10 && r.n > 0).length > 0 && (
                   <div style={{ fontSize:9, color:'#bbb', paddingTop:4 }}>
                     Smaller samples (n&lt;10) exist but aren't shown to the AI as patterns — too small to be reliable signal yet.
                   </div>
