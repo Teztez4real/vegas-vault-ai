@@ -168,10 +168,10 @@ const ADMIN_EMAIL = 'battlecortez@gmail.com';
 
 // ── GENERATE ──────────────────────────────────────────────────────────────────
 
-async function generatePlay(game) {
+async function generatePlay(game, trackRecord) {
   const response = await fetch("/api/generate", {
     method:"POST", headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({ game }),
+    body: JSON.stringify({ game, trackRecord }),
   });
   if (!response.ok) throw new Error("Generate failed");
   return response.json();
@@ -199,6 +199,60 @@ const CONF_STYLES = {
 // between when it was analyzed and when it's viewed again (e.g. a
 // postponement or schedule change shifting the positional slot pattern),
 // which would otherwise make an already-analyzed game look unanalyzed.
+// Aggregates pickHistory into a compact track-record summary: win rate by
+// tier, by slot, and by sport, each annotated with sample size so the AI
+// (and the Memory page) can judge how much weight a given number deserves.
+// Returns null if there's not enough resolved history yet to say anything
+// meaningful.
+function trackRecordSummary(pickHistory) {
+  const resolved = (pickHistory || []).filter(p => p.result === 'win' || p.result === 'loss');
+  if (resolved.length < 5) return null;
+
+  const breakdown = (groupFn) => {
+    const groups = {};
+    resolved.forEach(p => {
+      const k = groupFn(p);
+      if (!k) return;
+      groups[k] = groups[k] || { w: 0, l: 0 };
+      if (p.result === 'win') groups[k].w++; else groups[k].l++;
+    });
+    return Object.entries(groups).map(([k, v]) => {
+      const n = v.w + v.l;
+      const pct = Math.round((v.w / n) * 100);
+      return { label: k, wins: v.w, losses: v.l, n, pct };
+    }).sort((a, b) => b.n - a.n);
+  };
+
+  const last20 = resolved.slice(-20);
+  const last20W = last20.filter(p => p.result === 'win').length;
+
+  return {
+    totalResolved: resolved.length,
+    overallWins: resolved.filter(p => p.result === 'win').length,
+    overallLosses: resolved.filter(p => p.result === 'loss').length,
+    recent: { n: last20.length, wins: last20W, pct: Math.round((last20W / last20.length) * 100) },
+    byTier: breakdown(p => p.tier ? `Tier ${p.tier}` : null),
+    bySlot: breakdown(p => p.slot || null),
+    bySport: breakdown(p => p.sport || null),
+  };
+}
+
+// Renders the track record into a short, plain-language string for the AI
+// prompt — only includes a breakdown line if its sample size is large
+// enough to mean anything, explicitly stating the sample size so the model
+// can calibrate how much to trust it rather than overfitting to small runs.
+function trackRecordPromptText(summary) {
+  if (!summary) return 'No resolved history yet — analyze this game purely on its own merits.';
+  const lines = [];
+  lines.push(`Overall: ${summary.overallWins}-${summary.overallLosses} (${summary.totalResolved} resolved picks). Last 20: ${summary.recent.wins}-${summary.recent.n - summary.recent.wins} (${summary.recent.pct}%).`);
+  const sigBreakdown = (rows, label) => rows.filter(r => r.n >= 10).map(r => `${label} ${r.label}: ${r.wins}-${r.losses} (${r.pct}%, n=${r.n})`);
+  const tierLines = sigBreakdown(summary.byTier, '');
+  const slotLines = sigBreakdown(summary.bySlot, '');
+  if (tierLines.length) lines.push(`By tier — ${tierLines.join(' | ')}`);
+  if (slotLines.length) lines.push(`By slot — ${slotLines.join(' | ')}`);
+  return lines.join(' ');
+}
+
 function lookupResult(results, game) {
   const exactKey = `${game.id}-${game.slot}`;
   if (results[exactKey]) return results[exactKey];
@@ -1339,7 +1393,7 @@ export default function VegasVaultApp() {
           const key = `${game.id}-${slot}`;
           if (!results[key]?.summary) continue;
           try {
-            const fresh = await generatePlay({ ...game, slot });
+            const fresh = await generatePlay({ ...game, slot }, trackRecordPromptText(trackRecordSummary(pickHistory)));
             if (fresh?.summary) {
               setResults(prev => ({ ...prev, [key]: fresh }));
               if (fresh.summary.readyToFinalize === true) {
@@ -1569,7 +1623,7 @@ export default function VegasVaultApp() {
             if (!isNaN(current) && !isNaN(last) && Math.abs(current - last) >= 5) {
               // Significant line movement — re-analyze and finalize
               try {
-                const fresh = await generatePlay({ ...game, slot });
+                const fresh = await generatePlay({ ...game, slot }, trackRecordPromptText(trackRecordSummary(pickHistory)));
                 if (fresh?.summary) {
                   // Let AI decide finalization via readyToFinalize
                   const shouldFinalize = fresh.summary.readyToFinalize === true;
@@ -1781,7 +1835,7 @@ export default function VegasVaultApp() {
     console.log('Analyzing:', next.game.away, '@', next.game.home, next.slot);
     setPreAnalyzing(true);
 
-    generatePlay({ ...next.game, slot: next.slot })
+    generatePlay({ ...next.game, slot: next.slot }, trackRecordPromptText(trackRecordSummary(pickHistory)))
       .then(result => {
         if (!result?.summary) {
           result = { ...result, summary:{ tier:'3', tierLabel:'Tier 3', pick:'No Pick', betType:'N/A', confidence:'LOW', verdict:'Analysis incomplete.', isScamPlay:false, slot:next.slot } };
@@ -1937,7 +1991,7 @@ export default function VegasVaultApp() {
     const key=`${game.id}-${slot}`;
     setGenerating(key); setError(null);
     try{
-      const result=await generatePlay({...game,slot});
+      const result=await generatePlay({...game,slot}, trackRecordPromptText(trackRecordSummary(pickHistory)));
       // Ensure result always has a valid summary before storing
       if (!result.summary) {
         result.summary = {
@@ -3022,6 +3076,7 @@ export default function VegasVaultApp() {
         const trackedEntities = games.length * 12 + pickHistory.length;
         const activeRules = 12;
         const recentCorrections = pickHistory.filter(p => p.result === 'loss').length;
+        const tr = trackRecordSummary(pickHistory);
 
         const memItems = [
           { icon:'ti-alert-triangle', tag:'TRELL RULE', title:'Trell Rule — monitoring active injury reports',
@@ -3056,6 +3111,43 @@ export default function VegasVaultApp() {
             <div className="vv-glass-g vv-sc"><div className="vv-sc-ey">Active Rules</div><div className="vv-sc-val g">{activeRules}</div><div className="vv-sc-sub">Trell Rule, slot patterns, etc</div></div>
             <div className="vv-glass vv-sc"><div className="vv-sc-ey">Recent Corrections</div><div className="vv-sc-val">{recentCorrections}</div><div className="vv-sc-sub">Losses informing model refinement</div></div>
             <div className="vv-glass vv-sc"><div className="vv-sc-ey">Context Window</div><div className="vv-sc-val">256K</div><div className="vv-sc-sub">Tokens per analysis</div></div>
+          </div>
+
+          <div className="vv-glass vv-pad">
+            <div className="vv-card-ey">Track Record Fed to the AI</div>
+            <div className="vv-card-t" style={{ marginBottom:8 }}>The exact performance summary the AI sees before every new analysis — breakdowns only count once there's enough sample size (n≥10) to mean anything</div>
+            {!tr ? (
+              <div style={{ fontSize:11, color:'#999', padding:'8px 0' }}>Not enough resolved picks yet (need 5+) for a track record. Every game is currently analyzed purely on its own merits.</div>
+            ) : (
+              <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                <div style={{ display:'flex', gap:16, flexWrap:'wrap' }}>
+                  <div>
+                    <div style={{ fontSize:18, fontWeight:800, color:'#111' }}>{tr.overallWins}-{tr.overallLosses}</div>
+                    <div style={{ fontSize:9, color:'#aaa' }}>All-time ({tr.totalResolved} resolved)</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize:18, fontWeight:800, color:'#111' }}>{tr.recent.pct}%</div>
+                    <div style={{ fontSize:9, color:'#aaa' }}>Last {tr.recent.n} picks</div>
+                  </div>
+                </div>
+                {[...tr.byTier, ...tr.bySlot, ...tr.bySport].filter(r => r.n >= 10).length > 0 && (
+                  <div style={{ display:'flex', flexDirection:'column', gap:6, paddingTop:8, borderTop:'1px solid rgba(0,0,0,0.06)' }}>
+                    <div style={{ fontSize:9, fontWeight:800, color:'#999', letterSpacing:'0.5px' }}>STATISTICALLY MEANINGFUL BREAKDOWNS (n≥10)</div>
+                    {[...tr.byTier, ...tr.bySlot, ...tr.bySport].filter(r => r.n >= 10).map((r, i) => (
+                      <div key={i} style={{ display:'flex', justifyContent:'space-between', fontSize:11 }}>
+                        <span style={{ color:'#555' }}>{r.label}</span>
+                        <span style={{ fontWeight:700, color:'#111' }}>{r.wins}-{r.losses} ({r.pct}%, n={r.n})</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {[...tr.byTier, ...tr.bySlot, ...tr.bySport].filter(r => r.n < 10 && r.n > 0).length > 0 && (
+                  <div style={{ fontSize:9, color:'#bbb', paddingTop:4 }}>
+                    Smaller samples (n&lt;10) exist but aren't shown to the AI as patterns — too small to be reliable signal yet.
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="vv-glass vv-pad">

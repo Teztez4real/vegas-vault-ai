@@ -13,8 +13,15 @@ export const maxDuration = 120;
 
 const ai = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-async function runStage(prompt, maxTokens = 800, allowSearch = false) {
+async function runStage(prompt, maxTokens = 800, allowSearch = false, trackRecord = null) {
   let fullPrompt = prompt;
+
+  if (trackRecord) {
+    fullPrompt += `\n\nYOUR TRACK RECORD SO FAR: ${trackRecord}
+
+HOW TO USE THIS: You are a professional sports bettor, not a model running the same fixed script forever. Treat this track record as real signal to learn from — but only when the sample size actually supports a conclusion. A breakdown is only meaningful once it's labeled with n=10 or higher; anything smaller is noise, not a pattern, and should not change how you analyze this game. Do not chase a hot or cold streak in the overall record or "last 20" number — short-term variance is normal and is not evidence the underlying method is wrong. If a specific tier or slot breakdown with a real sample size shows a sustained, structural problem (not just a bad week), let that inform your confidence calibration for this game — for example, lean appropriately if Tier 1 locks are running well below what Tier 1 should mean. Never let this track record override the core analysis framework, the data in front of you, or cause you to invent a reason to deviate from sound logic just because of recent results. Consistency and discipline matter more than chasing the last few outcomes.`;
+  }
+
   if (allowSearch) {
     fullPrompt += `\n\nNOTE: If any data above is missing, marked N/A, looks stale, or you need current information not provided here — especially injury status, lineup changes, starting pitcher changes, weather updates, line movement, or recent news that could affect this game — use web search to fill those specific gaps before finalizing your analysis.
 
@@ -131,7 +138,7 @@ function passResult(reason, slot) {
 
 export async function POST(request) {
   try {
-    const { game } = await request.json();
+    const { game, trackRecord } = await request.json();
     const slot = game.slot || 'PUBLIC';
     const sport = game.sport || 'MLB';
     const stages = getStages(sport);
@@ -165,7 +172,7 @@ export async function POST(request) {
     };
 
     // ── STAGE 2: Edge Filter ───────────────────────────────────────────────
-    const stage2 = await runStage(stages.s2(game, stage1), 1500, true);
+    const stage2 = await runStage(stages.s2(game, stage1), 1500, true, trackRecord);
     if (!stage2) return NextResponse.json(passResult('Edge analysis failed — please re-analyze.', slot));
 
     // No edge or weak edge → PASS immediately
@@ -190,7 +197,7 @@ export async function POST(request) {
     if (!stage3?.pick) return NextResponse.json(passResult('Market selection failed — pass.', slot));
 
     // ── STAGE 4: Final Verdict ─────────────────────────────────────────────
-    const stage4 = await runStage(stages.s4(game, stage1, stage2, stage3), 2500, true);
+    const stage4 = await runStage(stages.s4(game, stage1, stage2, stage3), 2500, true, trackRecord);
 
     // Build complete result — use stage4 if available, fill gaps from earlier stages
     const analysis = stage4?.analysis || {};
