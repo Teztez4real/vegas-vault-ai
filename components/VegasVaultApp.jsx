@@ -2126,7 +2126,7 @@ export default function VegasVaultApp() {
     }
   }
 
-  async function handleGenerate(game,slot){
+  async function handleGenerate(game,slot,attempt=1){
     if (!isSubscribed) { setShowAuth(true); setAuthMode('login'); setAuthError(''); return; }
     // Lock play once game has started — no changing plays during a game
     const liveEntry = liveScores?.[game.id];
@@ -2158,11 +2158,19 @@ export default function VegasVaultApp() {
         setActiveResult(result); setActiveGame({...game,slot});
       }
     }catch(e){
+      // Retry transient failures (timeout, network blip) up to 2 times
+      // before giving up — matches the auto-analyze queue's resilience.
+      if (attempt < 3) {
+        console.warn(`Analysis attempt ${attempt} failed for ${key}, retrying:`, e.message);
+        setGenerating(null);
+        return handleGenerate(game, slot, attempt + 1);
+      }
       setError(`Generation failed: ${e.message}`);
-      // Store an error result so the card shows something
+      // Store an error result so the card shows something — with the
+      // actual reason, not just a bare "Failed" with no explanation.
       const errResult = {
-        summary:{ tier:'3', tierLabel:'Tier 3', pick:'Failed', betType:'N/A', confidence:'LOW',
-          verdict:`Analysis failed: ${e.message}. Tap to re-analyze.`, isScamPlay:false, slot },
+        summary:{ tier:'3', tierLabel:'Tier 3', pick:'Analysis Failed', betType:'N/A', confidence:'LOW',
+          verdict:`Analysis failed after ${attempt} attempts: ${e.message}. Tap Re-analyze to try again.`, isScamPlay:false, slot },
         error: e.message,
       };
       setResults(prev=>({...prev,[key]:errResult}));
