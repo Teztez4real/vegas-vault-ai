@@ -197,20 +197,25 @@ export async function POST(request) {
     if (!stage3?.pick) return NextResponse.json(passResult('Market selection failed — pass.', slot));
 
     // ── STAGE 4: Final Verdict ─────────────────────────────────────────────
-    let stage4 = await runStage(stages.s4(game, stage1, stage2, stage3), 2500, false, trackRecord);
+    let stage4 = await runStage(stages.s4(game, stage1, stage2, stage3), 4000, false, trackRecord);
 
-    // Validate confidencePercent for any actual pick (not PASS) — retry
-    // once if missing/invalid before giving up, since this is usually a
-    // formatting hiccup rather than a genuine inability to analyze the
-    // game. The frontend must never invent a default percentage, so the
-    // server has to either get a real one or honestly report failure.
+    // Validate the response is actually complete — retry once before
+    // giving up if either: (a) Stage 4 failed to parse at all (likely
+    // truncated JSON from running out of tokens), (b) it has a real pick
+    // but no confidencePercent, or (c) it has a real pick but an empty
+    // analysis object (also a truncation symptom — the model filled in
+    // summary first, then ran out of budget before completing analysis,
+    // which would otherwise silently fall back to raw stage1 data dumps
+    // instead of the AI's actual reasoning).
     const isRealPick4 = s => s?.summary?.tier === '1' || s?.summary?.tier === '2';
     const hasValidPct4 = s => typeof s?.summary?.confidencePercent === 'number' && s.summary.confidencePercent >= 0 && s.summary.confidencePercent <= 100;
-    if (isRealPick4(stage4) && !hasValidPct4(stage4)) {
-      stage4 = await runStage(stages.s4(game, stage1, stage2, stage3), 2500, false, trackRecord);
+    const hasAnalysis4 = s => s?.analysis && Object.keys(s.analysis).length >= 5;
+    const needsRetry4 = s => !s || (isRealPick4(s) && (!hasValidPct4(s) || !hasAnalysis4(s)));
+    if (needsRetry4(stage4)) {
+      stage4 = await runStage(stages.s4(game, stage1, stage2, stage3), 4000, false, trackRecord);
     }
-    if (isRealPick4(stage4) && !hasValidPct4(stage4)) {
-      return NextResponse.json(passResult('Analysis incomplete — the model did not return a valid confidence percentage after retry. Tap Re-analyze to try again.', slot));
+    if (needsRetry4(stage4)) {
+      return NextResponse.json(passResult('Analysis incomplete — the model did not return a complete response after retry. Tap Re-analyze to try again.', slot));
     }
 
     // Build complete result — use stage4 if available, fill gaps from earlier stages
