@@ -1093,11 +1093,21 @@ export default function VegasVaultApp() {
               syncLoad(uid, 'alt_picks'),
             ]);
             if (chat && Array.isArray(chat)) setChatMessages(chat);
-            setWatchlist(wl || []);
-            setResults(res || {});
-            setFinalized(fin || {});
-            setPickHistory(hist || []);
-            setAltPicks(alt || {});
+            // Merge Supabase snapshot with localStorage write-through cache —
+            // local wins on conflicts, same as the initial page-load path.
+            // Without this, signing back in after idle timeout overwrites state
+            // with whatever Supabase last confirmed, losing any changes that
+            // were in-flight when the idle timer fired.
+            setWatchlist(wl?.length ? [...new Set([...wl, ...(localLoad('vv_watchlist') || [])])] : (localLoad('vv_watchlist') || []));
+            setResults({ ...(res || {}), ...(localLoad('vv_results') || {}) });
+            setFinalized({ ...(fin || {}), ...(localLoad('vv_finalized') || {}) });
+            const localHist2 = localLoad('vv_pick_history') || [];
+            const mergedHist2 = [...(hist || [])];
+            for (const entry of localHist2) {
+              if (!mergedHist2.find(e => e.key === entry.key && e.resolvedAt === entry.resolvedAt)) mergedHist2.push(entry);
+            }
+            setPickHistory(mergedHist2);
+            setAltPicks({ ...(alt || {}), ...(localLoad('vv_alt_picks') || {}) });
             setSyncedDataReady(true);
           }
         } else {
