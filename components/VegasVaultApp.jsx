@@ -1257,9 +1257,11 @@ export default function VegasVaultApp() {
   useEffect(() => {
     if (!activeGame) return;
     const altKey = `${activeGame.id}-${activeGame.slot}`;
-    // Auto-expand if user already has an alt pick for this game
+    // Auto-expand if user already has an alt pick for this game.
+    // altPicks is in the dep array so this re-fires when data loads
+    // from Supabase/localStorage after auth — not just when the game changes.
     setShowOtherMarkets(!!altPicks[altKey]);
-  }, [activeGame?.id, activeGame?.slot]);
+  }, [activeGame?.id, activeGame?.slot, altPicks]);
   const [activeDetailTab, setActiveDetailTab] = useState('AI Reasoning');
   const [filter, setFilter]           = useState("ALL");
   const [error, setError]             = useState(null);
@@ -4121,7 +4123,9 @@ export default function VegasVaultApp() {
                               <span style={{ fontSize:10, fontWeight:700, color:'#777' }}>View other markets for this game</span>
                               <i className={`ti ti-chevron-${showOtherMarkets?'up':'down'}`} style={{ fontSize:12, color:'#999' }} />
                             </button>
-                            {showOtherMarkets && (
+                            {/* Force-expand if there's an active alt pick — state timing
+                                should handle this but this is a belt-and-suspenders guard */}
+                            {(showOtherMarkets || !!currentAlt) && (
                               <div style={{ marginTop:8, padding:'10px 12px', background:'rgba(246,249,246,0.6)', border:'1px solid rgba(0,0,0,0.05)', borderRadius:8 }}>
                                 <div style={{ fontSize:9, color:'#999', marginBottom:10, lineHeight:1.5 }}>
                                   These are live odds for the other markets on this game — not separate AI picks. {analysis.marketLogic ? <>The AI's reasoning for choosing {summary.betType} instead: "{analysis.marketLogic}"</> : `The AI specifically chose ${summary.betType} as the strongest expression of its edge.`} Tracking one here saves it as your own pick — separate from the AI's official record — and grades it the same way once the game finishes.
