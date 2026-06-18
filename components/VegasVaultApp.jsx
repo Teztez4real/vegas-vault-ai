@@ -1480,6 +1480,56 @@ export default function VegasVaultApp() {
     return () => clearInterval(interval);
   }, [games]);
 
+  // ── PRE-GAME FRESHNESS PASS ──────────────────────────────────────────────
+  // As a game approaches first pitch/tipoff, do one final automatic
+  // re-analysis even if no specific lineup/injury change was detected —
+  // catches late line movement, last-minute scratches, or weather updates
+  // that may have happened between polling intervals. Only runs once per
+  // game (tracked via preGameRefreshRef) and skips already-finalized picks.
+  const preGameRefreshRef = useRef({});
+  useEffect(() => {
+    if (!games || games.length === 0) return;
+
+    const checkPreGameFreshness = async () => {
+      const now = Date.now();
+      for (const game of games) {
+        if (!game.rawTime) continue;
+        const minsUntil = (new Date(game.rawTime).getTime() - now) / 60000;
+        // Window: 45 minutes to 15 minutes before start — late enough to
+        // catch last-minute news, early enough to still be useful before
+        // the betting window closes.
+        if (minsUntil > 45 || minsUntil < 15) continue;
+
+        const slots = game.sport === 'WNBA' ? ['WNBA'] : ['PUBLIC', 'VEGAS'];
+        for (const slot of slots) {
+          const key = `${game.id}-${slot}`;
+          if (preGameRefreshRef.current[key]) continue; // already did this game's pre-game pass
+          if (finalized[key]) continue; // already finalized, leave it locked
+          const existing = results[key];
+          if (!existing?.summary) continue; // hasn't been analyzed yet — the normal queue will handle it
+
+          preGameRefreshRef.current[key] = true;
+          console.log(`Pre-game freshness re-analysis: ${game.away} @ ${game.home} (${slot}), ${Math.round(minsUntil)}min to start`);
+          try {
+            const fresh = await generatePlay({ ...game, slot }, trackRecordPromptText(trackRecordSummary(pickHistory)));
+            if (fresh?.summary) {
+              setResults(prev => ({ ...prev, [key]: fresh }));
+              if (fresh.summary.readyToFinalize === true) {
+                setFinalized(prev => ({ ...prev, [key]: true }));
+              }
+            }
+          } catch (e) {
+            console.error('Pre-game freshness re-analysis failed:', e.message);
+          }
+        }
+      }
+    };
+
+    checkPreGameFreshness();
+    const interval = setInterval(checkPreGameFreshness, 5 * 60 * 1000); // check every 5 minutes
+    return () => clearInterval(interval);
+  }, [games]);
+
   // ── FINALIZATION: re-analyze when lines move, mark FINAL ─────────────────────
   const lastLineRef = useRef({});
   const lastLineupRef = useRef({});  // tracks lineup state per game
