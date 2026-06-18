@@ -939,6 +939,11 @@ export default function VegasVaultApp() {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [authUser, setAuthUser]         = useState(null);
   const authUserIdRef = useRef(null);
+  // True only once results/finalized/watchlist/pickHistory have actually
+  // finished loading from Supabase for the current session — used to gate
+  // the auto-analyze queue so it never mistakes "still loading" for
+  // "never analyzed" and re-queues already-analyzed games after login.
+  const [syncedDataReady, setSyncedDataReady] = useState(false);
   useEffect(() => { authUserIdRef.current = authUser?.id || null; }, [authUser]);
   const [showAuth, setShowAuth]         = useState(false);
   const [authMode, setAuthMode]         = useState('login');
@@ -986,6 +991,7 @@ export default function VegasVaultApp() {
           if (fin) setFinalized(fin);
           if (hist) setPickHistory(hist);
         }
+        setSyncedDataReady(true);
       });
       const { data: { subscription } } = sb.auth.onAuthStateChange(async (_e, session) => {
         if (session?.user) {
@@ -1015,6 +1021,8 @@ export default function VegasVaultApp() {
           // empty results/finalized/watchlist/pickHistory even though the
           // real data was safely sitting in Supabase the whole time.
           if (isNewUser) {
+            setSyncedDataReady(false); // pause auto-analyze queueing until reload finishes
+            queuedDateRef.current = null; // allow the queue effect to re-evaluate once data is back
             const uid = session.user.id;
             const [wl, res, fin, hist, chat] = await Promise.all([
               syncLoad(uid, 'watchlist'),
@@ -1028,6 +1036,7 @@ export default function VegasVaultApp() {
             setResults(res || {});
             setFinalized(fin || {});
             setPickHistory(hist || []);
+            setSyncedDataReady(true);
           }
         } else {
           setAuthUser(null);
@@ -1821,6 +1830,13 @@ export default function VegasVaultApp() {
 
   useEffect(() => {
     if (!games || games.length === 0) return;
+    // Critical: don't evaluate which games need analysis until the synced
+    // results/finalized data has actually finished loading. Without this,
+    // a fresh login (or re-login after sign-out) could see `results` still
+    // as {} for a brief moment while the Supabase load is in flight, treat
+    // every already-analyzed game as unanalyzed, and queue them all for
+    // re-analysis — silently overwriting/duplicating real history.
+    if (!syncedDataReady) return;
     // Only queue once per date — don't re-queue just because liveScores updated
     if (queuedDateRef.current === selectedDate) return;
     // Wait for slots to be assigned
@@ -1844,7 +1860,7 @@ export default function VegasVaultApp() {
       queuedDateRef.current = selectedDate;
       setPreAnalyzeQueue(toAnalyze);
     }
-  }, [games, selectedDate]);
+  }, [games, selectedDate, syncedDataReady]);
 
   // Track whether analysis-complete notification has been sent today
   const analysisDoneNotifKey = `vv_analysis_notif_${selectedDate}`;
