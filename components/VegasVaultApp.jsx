@@ -2180,6 +2180,10 @@ export default function VegasVaultApp() {
               total:         mv.total  || (game.total  !== 'N/A' ? game.total  : null),
               publicBettingPct: mv.publicBettingPct ?? game.publicBettingPct,
               sharpMoneyPct:    mv.sharpMoneyPct    ?? game.sharpMoneyPct,
+              spreadMovement: mv.spreadMovement || game.spreadMovement,
+              totalMovement:  mv.totalMovement  || game.totalMovement,
+              spreadMoveSignificant: mv.spreadMoveSignificant ?? game.spreadMoveSignificant,
+              totalMoveSignificant:  mv.totalMoveSignificant  ?? game.totalMoveSignificant,
             };
           }));
         })

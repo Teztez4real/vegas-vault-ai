@@ -167,7 +167,9 @@ export async function POST(request) {
         const up  = game.underPrice || '-110';
         const tot = game.total || game.dkTotal || 'N/A';
         const open = (game.openingAwayML || game.pricingStr) ? ('Opening: Away ' + (game.openingAwayML||'N/A') + ' Home ' + (game.openingHomeML||'N/A') + ' | ') : '';
-        return open + 'ML: Away ' + (game.awayML||'N/A') + ' / Home ' + (game.homeML||'N/A') + ' | Spread: Away ' + awaySpread + ' ' + asp + ' / Home ' + (hs||'N/A') + ' ' + hsp + ' | Total: ' + tot + ' (Over ' + op + ' / Under ' + up + ') | Movement: ' + (game.lineMovement||'None') + ' | Sharp: ' + (game.sharpSignal||'None');
+        const spreadMove = game.spreadMovement ? ' | Spread movement: ' + game.spreadMovement : '';
+        const totalMove = game.totalMovement ? ' | Total movement: ' + game.totalMovement : '';
+        return open + 'ML: Away ' + (game.awayML||'N/A') + ' / Home ' + (game.homeML||'N/A') + ' | Spread: Away ' + awaySpread + ' ' + asp + ' / Home ' + (hs||'N/A') + ' ' + hsp + ' | Total: ' + tot + ' (Over ' + op + ' / Under ' + up + ') | ML Movement: ' + (game.lineMovement||'None') + spreadMove + totalMove + ' | Sharp: ' + (game.sharpSignal||'None');
       })(),
     };
 
