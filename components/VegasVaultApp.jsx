@@ -4076,8 +4076,8 @@ export default function VegasVaultApp() {
                             { sideLabel: `Under ${totalVal}`, pick: 'UNDER', betType: `UNDER ${totalVal} ${underPrice||'-110'}` },
                           ]});
                         }
-                        if (markets.length === 0) return null;
-
+                        // Compute altKey/currentAlt BEFORE the markets.length gate —
+                        // the badge must render even if odds haven't loaded yet.
                         const altKey = `${game.id}-${game.slot}`;
                         const currentAlt = altPicks[altKey];
 
@@ -4098,78 +4098,78 @@ export default function VegasVaultApp() {
                           });
                         };
 
+                        // If no odds data AND no saved alt pick → nothing to show
+                        if (markets.length === 0 && !currentAlt) return null;
+
+                        const liveMarket = markets.find(m => m.market === currentAlt?.market);
+                        const liveSide = liveMarket?.sides.find(s => s.pick === currentAlt?.pick);
+                        const liveBetType = (!isGameLive && liveSide?.betType) ? liveSide.betType : currentAlt?.betType;
+
                         return (
                           <div style={{ marginTop:10 }}>
-                            {currentAlt && (() => {
-                              const liveMarket = markets.find(m => m.market === currentAlt.market);
-                              const liveSide = liveMarket?.sides.find(s => s.pick === currentAlt.pick);
-                              const liveBetType = (!isGameLive && liveSide?.betType) ? liveSide.betType : currentAlt.betType;
-                              return (
-                                <div style={{ marginBottom:8, padding:'8px 12px', background:'rgba(57,255,20,0.08)', border:'1px solid rgba(57,255,20,0.3)', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                                  <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                                    <i className="ti ti-shield-check" style={{ fontSize:13, color:'#33aa00' }} />
-                                    <div>
-                                      <div style={{ fontSize:10, fontWeight:800, color:'#33aa00' }}>Your Alt Pick: {currentAlt.pick}</div>
-                                      <div style={{ fontSize:9, color:'#666', marginTop:1 }}>{liveBetType}</div>
-                                    </div>
+                            {/* Persistent badge — always visible when a pick is saved,
+                                even if odds haven't loaded yet (markets.length may be 0) */}
+                            {currentAlt && (
+                              <div style={{ marginBottom:8, padding:'8px 12px', background:'rgba(57,255,20,0.08)', border:'1px solid rgba(57,255,20,0.3)', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                                <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                                  <i className="ti ti-shield-check" style={{ fontSize:13, color:'#33aa00' }} />
+                                  <div>
+                                    <div style={{ fontSize:10, fontWeight:800, color:'#33aa00' }}>Your Alt Pick: {currentAlt.pick}</div>
+                                    <div style={{ fontSize:9, color:'#666', marginTop:1 }}>{liveBetType}</div>
                                   </div>
-                                  <button onClick={clearAlt} style={{ background:'none', border:'none', cursor:'pointer', color:'#aaa', fontSize:13, padding:2 }}>
-                                    <i className="ti ti-x" />
-                                  </button>
                                 </div>
-                              );
-                            })()}
-                            <button onClick={()=>setShowOtherMarkets(p=>!p)} style={{ width:'100%', padding:'8px 12px', display:'flex', alignItems:'center', justifyContent:'space-between', background:'rgba(255,255,255,0.5)', border:'1px solid rgba(0,0,0,0.06)', borderRadius:8, cursor:'pointer', fontFamily:'inherit' }}>
-                              <span style={{ fontSize:10, fontWeight:700, color:'#777' }}>View other markets for this game</span>
-                              <i className={`ti ti-chevron-${showOtherMarkets?'up':'down'}`} style={{ fontSize:12, color:'#999' }} />
-                            </button>
-                            {/* Force-expand if there's an active alt pick — state timing
-                                should handle this but this is a belt-and-suspenders guard */}
-                            {(showOtherMarkets || !!currentAlt) && (
-                              <div style={{ marginTop:8, padding:'10px 12px', background:'rgba(246,249,246,0.6)', border:'1px solid rgba(0,0,0,0.05)', borderRadius:8 }}>
-                                <div style={{ fontSize:9, color:'#999', marginBottom:10, lineHeight:1.5 }}>
-                                  These are live odds for the other markets on this game — not separate AI picks. {analysis.marketLogic ? <>The AI's reasoning for choosing {summary.betType} instead: "{analysis.marketLogic}"</> : `The AI specifically chose ${summary.betType} as the strongest expression of its edge.`} Tracking one here saves it as your own pick — separate from the AI's official record — and grades it the same way once the game finishes.
-                                </div>
-                                {markets.map((m, i) => (
-                                  <div key={i} style={{ marginTop: i>0 ? 10 : 0, paddingTop: i>0 ? 10 : 0, borderTop: i>0 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}>
-                                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
-                                      <div style={{ fontSize:9, fontWeight:800, color:'#999', textTransform:'uppercase', letterSpacing:'0.4px' }}>{m.label}</div>
-                                      {m.movement && (
-                                        <div style={{ display:'flex', alignItems:'center', gap:3 }}>
-                                          <i className="ti ti-arrows-left-right" style={{ fontSize:10, color: m.moveSignificant ? '#39FF14' : '#ccc' }} />
-                                          <span style={{ fontSize:8, fontWeight:700, color: m.moveSignificant ? '#33aa00' : '#bbb' }}>{m.moveSignificant ? 'Line moved' : 'Stable'}</span>
+                                <button onClick={clearAlt} style={{ background:'none', border:'none', cursor:'pointer', color:'#aaa', fontSize:13, padding:2 }}>
+                                  <i className="ti ti-x" />
+                                </button>
+                              </div>
+                            )}
+                            {/* Toggle + market tiles — only when odds data is available */}
+                            {markets.length > 0 && (
+                              <div>
+                                <button onClick={()=>setShowOtherMarkets(p=>!p)} style={{ width:'100%', padding:'8px 12px', display:'flex', alignItems:'center', justifyContent:'space-between', background:'rgba(255,255,255,0.5)', border:'1px solid rgba(0,0,0,0.06)', borderRadius:8, cursor:'pointer', fontFamily:'inherit' }}>
+                                  <span style={{ fontSize:10, fontWeight:700, color:'#777' }}>View other markets for this game</span>
+                                  <i className={`ti ti-chevron-${showOtherMarkets?'up':'down'}`} style={{ fontSize:12, color:'#999' }} />
+                                </button>
+                                {(showOtherMarkets || !!currentAlt) && (
+                                  <div style={{ marginTop:8, padding:'10px 12px', background:'rgba(246,249,246,0.6)', border:'1px solid rgba(0,0,0,0.05)', borderRadius:8 }}>
+                                    <div style={{ fontSize:9, color:'#999', marginBottom:10, lineHeight:1.5 }}>
+                                      These are live odds for the other markets on this game — not separate AI picks. {analysis.marketLogic ? <>The AI's reasoning for choosing {summary.betType} instead: "{analysis.marketLogic}"</> : `The AI specifically chose ${summary.betType} as the strongest expression of its edge.`} Tracking one here saves it as your own pick — separate from the AI's official record — and grades it the same way once the game finishes.
+                                    </div>
+                                    {markets.map((m, i) => (
+                                      <div key={i} style={{ marginTop: i>0 ? 10 : 0, paddingTop: i>0 ? 10 : 0, borderTop: i>0 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}>
+                                        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
+                                          <div style={{ fontSize:9, fontWeight:800, color:'#999', textTransform:'uppercase', letterSpacing:'0.4px' }}>{m.label}</div>
+                                          {m.movement && (
+                                            <div style={{ display:'flex', alignItems:'center', gap:3 }}>
+                                              <i className="ti ti-arrows-left-right" style={{ fontSize:10, color: m.moveSignificant ? '#39FF14' : '#ccc' }} />
+                                              <span style={{ fontSize:8, fontWeight:700, color: m.moveSignificant ? '#33aa00' : '#bbb' }}>{m.moveSignificant ? 'Line moved' : 'Stable'}</span>
+                                            </div>
+                                          )}
                                         </div>
-                                      )}
-                                    </div>
-                                    {m.movement && m.moveSignificant && (
-                                      <div style={{ fontSize:9, color:'#777', marginBottom:6, lineHeight:1.4 }}>{m.movement}</div>
-                                    )}
-                                    <div style={{ display:'flex', gap:6 }}>
-                                      {m.sides.map((s, j) => {
-                                        // Match on market + pick (team name / OVER / UNDER) — these are
-                                        // stable identifiers that don't change when the line moves.
-                                        // Matching on betType would break as soon as the price ticks,
-                                        // making the selected button appear deselected mid-session.
-                                        const isSelected = currentAlt?.market === m.market && currentAlt?.pick === s.pick;
-                                        return (
-                                          <button key={j} onClick={()=> isSelected ? clearAlt() : selectAlt(m.market, s)} style={{
-                                            flex:1, padding:'7px 8px', borderRadius:7, cursor:'pointer', fontFamily:'inherit', fontSize:10, fontWeight:700,
-                                            border: isSelected ? '1px solid rgba(57,255,20,0.4)' : '1px solid rgba(0,0,0,0.07)',
-                                            background: isSelected ? 'rgba(57,255,20,0.12)' : 'rgba(255,255,255,0.7)',
-                                            color: isSelected ? '#22aa00' : '#555',
-                                            display:'flex', flexDirection:'column', alignItems:'center', gap:2,
-                                          }}>
-                                            {isSelected && <i className="ti ti-check" style={{ fontSize:11 }} />}
-                                            <span>{s.sideLabel}</span>
-                                          </button>
-                                        );
-                                      })}
-                                    </div>
+                                        {m.movement && m.moveSignificant && (
+                                          <div style={{ fontSize:9, color:'#777', marginBottom:6, lineHeight:1.4 }}>{m.movement}</div>
+                                        )}
+                                        <div style={{ display:'flex', gap:6 }}>
+                                          {m.sides.map((s, j) => {
+                                            const isSelected = currentAlt?.market === m.market && currentAlt?.pick === s.pick;
+                                            return (
+                                              <button key={j} onClick={()=> isSelected ? clearAlt() : selectAlt(m.market, s)} style={{
+                                                flex:1, padding:'7px 8px', borderRadius:7, cursor:'pointer', fontFamily:'inherit', fontSize:10, fontWeight:700,
+                                                border: isSelected ? '1px solid rgba(57,255,20,0.4)' : '1px solid rgba(0,0,0,0.07)',
+                                                background: isSelected ? 'rgba(57,255,20,0.12)' : 'rgba(255,255,255,0.7)',
+                                                color: isSelected ? '#22aa00' : '#555',
+                                                display:'flex', flexDirection:'column', alignItems:'center', gap:2,
+                                              }}>
+                                                {isSelected && <i className="ti ti-check" style={{ fontSize:11 }} />}
+                                                <span>{s.sideLabel}</span>
+                                              </button>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    ))}
                                   </div>
-                                ))}
-                                {currentAlt && (() => {
-                                  return null; // tracking indicator now shown persistently above the toggle
-                                })()}
+                                )}
                               </div>
                             )}
                           </div>
