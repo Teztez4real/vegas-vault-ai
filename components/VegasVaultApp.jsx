@@ -2871,19 +2871,61 @@ export default function VegasVaultApp() {
 
               <div className="vv-glass vv-pad" style={{ flex:1, minHeight:0, display:'flex', flexDirection:'column' }}>
                 <div style={{ display:'flex',alignItems:'center',gap:6,marginBottom:2 }}><i className="ti ti-lock" style={{ fontSize:13,color:'#39FF14' }} /><span style={{ fontSize:11,fontWeight:800,color:'#111' }}>Vault Locks</span></div>
-                <div style={{ fontSize:8,color:'#bbb',marginBottom:7,display:'flex',justifyContent:'space-between' }}><span>Tier 1 AI Lock Picks</span><span style={{ fontWeight:600,color:'#555' }}>{pickHistory.filter(p=>p.tier==='1').length} tracked</span></div>
-                <div style={{ flex:1, minHeight:0, overflowY:'auto' }}>
-                  {pickHistory.filter(p=>p.tier==='1').slice(-4).reverse().map((p,i)=>(
-                    <div key={i} className="vv-vf-r">
-                      <div className={`vv-vf-ic ${p.result==='win'?'g':p.result==='loss'?'r':'y'}`}>
-                        <i className={`ti ${p.result==='win'?'ti-check':p.result==='loss'?'ti-x':'ti-clock'}`} style={{ color:p.result==='win'?'#2aa800':p.result==='loss'?'#e55':'#aa8800',fontSize:11 }} />
+                {(() => {
+                  // Build today's Tier 1 locks live from the slate —
+                  // show every generated pick with tier==='1', graded
+                  // once the game resolves. Falls back to pickHistory
+                  // for picks from prior dates still visible in history.
+                  const todayLocks = games
+                    .map(g => {
+                      const key = `${g.id}-${g.slot}`;
+                      const r = results[key];
+                      if (!r?.summary || r.summary.tier !== '1') return null;
+                      // Graded result from pickHistory if already resolved
+                      const hist = pickHistory.find(p => p.key === key);
+                      // Live status from liveScores
+                      const le = liveScores?.[g.id]
+                        || liveScores?.[`${g.away}|${g.home}`]
+                        || liveScores?.[`${g.awayAbbr}|${g.homeAbbr}`];
+                      const isLive = le?.status === 'Live' || le?.detailedState === 'In Progress';
+                      const isFinal = le?.isFinal || le?.detailedState === 'Final' || le?.detailedState === 'Game Over';
+                      const result = hist?.result || (isFinal ? 'pending' : null);
+                      return { key, g, r, result, isLive, hist };
+                    })
+                    .filter(Boolean);
+                  const totalLocks = todayLocks.length;
+                  return (
+                    <>
+                      <div style={{ fontSize:8,color:'#bbb',marginBottom:7,display:'flex',justifyContent:'space-between' }}>
+                        <span>Tier 1 AI Lock Picks — Today's Slate</span>
+                        <span style={{ fontWeight:600,color:'#555' }}>{totalLocks} generated</span>
                       </div>
-                      <div className="vv-vf-nm">{p.pick}</div>
-                      <div className="vv-vf-tm">{p.result==='win'?'WIN':p.result==='loss'?'LOSS':'—'}</div>
-                    </div>
-                  ))}
-                  {pickHistory.filter(p=>p.tier==='1').length===0 && <div style={{ fontSize:10,color:'#ccc',textAlign:'center',padding:'8px 0' }}>No locks tracked yet</div>}
-                </div>
+                      <div style={{ flex:1, minHeight:0, overflowY:'auto' }}>
+                        {todayLocks.map(({ key, g, r, result, isLive }, i) => (
+                          <div key={key} className="vv-vf-r" style={{ cursor:'pointer' }}
+                            onClick={() => { setActiveGame(g); setActiveResult(r); setActiveDetailTab('AI Reasoning'); setShellView('games'); }}>
+                            <div className={`vv-vf-ic ${result==='win'?'g':result==='loss'?'r':isLive?'g':'y'}`}>
+                              <i className={`ti ${result==='win'?'ti-check':result==='loss'?'ti-x':isLive?'ti-live':'ti-clock'}`}
+                                style={{ color:result==='win'?'#2aa800':result==='loss'?'#e55':isLive?'#39FF14':'#aa8800', fontSize:11 }} />
+                            </div>
+                            <div style={{ flex:1, minWidth:0 }}>
+                              <div className="vv-vf-nm" style={{ fontSize:10 }}>{r.summary.pick}</div>
+                              <div style={{ fontSize:8,color:'#999',marginTop:1 }}>{g.awayAbbr} @ {g.homeAbbr} · {r.summary.betType}</div>
+                            </div>
+                            <div className="vv-vf-tm" style={{ color: result==='win'?'#2aa800':result==='loss'?'#e55':isLive?'#39FF14':'#aaa' }}>
+                              {result==='win'?'WIN':result==='loss'?'LOSS':isLive?'LIVE':'—'}
+                            </div>
+                          </div>
+                        ))}
+                        {totalLocks === 0 && (
+                          <div style={{ fontSize:10,color:'#ccc',textAlign:'center',padding:'8px 0' }}>
+                            No Tier 1 locks generated yet today
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  );
+                })()}
                 <div className="vv-vf-va" onClick={()=>setShellView('analytics')}>View all locks →</div>
               </div>
             </div>
