@@ -177,12 +177,27 @@ const ADMIN_EMAIL = 'battlecortez@gmail.com';
 // ── GENERATE ──────────────────────────────────────────────────────────────────
 
 async function generatePlay(game, trackRecord) {
-  const response = await fetch("/api/generate", {
-    method:"POST", headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({ game, trackRecord }),
-  });
-  if (!response.ok) throw new Error("Generate failed");
-  return response.json();
+  // Hard timeout so a single hung request (network stall, an unusually
+  // long search loop, etc.) can't freeze the entire auto-analyze queue
+  // forever — without this, every game queued behind the stuck one would
+  // also show "QUEUED FOR ANALYSIS..." indefinitely since preAnalyzing
+  // never clears.
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 90000); // 90s
+  try {
+    const response = await fetch("/api/generate", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ game, trackRecord }),
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new Error(`Generate failed (${response.status})`);
+    return await response.json();
+  } catch (err) {
+    if (err.name === 'AbortError') throw new Error('Analysis timed out after 90s');
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 // ── CONSTANTS ─────────────────────────────────────────────────────────────────
@@ -1911,8 +1926,26 @@ export default function VegasVaultApp() {
       })
       .catch(err => {
         console.error('Analysis failed for', next.key, err?.message);
-        // Remove from queue so we don't get stuck
-        setPreAnalyzeQueue(q => q.filter(item => item.key !== next.key));
+        const attempts = (next.attempts || 0) + 1;
+        if (attempts <= 2) {
+          // Retry transient failures (timeout, network blip) up to 2 times
+          // before giving up — re-queue at the back so other games aren't
+          // blocked behind a repeatedly-failing one.
+          setPreAnalyzeQueue(q => [
+            ...q.filter(item => item.key !== next.key),
+            { ...next, attempts },
+          ]);
+        } else {
+          // Give up after 3 total attempts — store a real, visible failure
+          // result instead of silently dropping the game, which previously
+          // left it stuck showing "QUEUED FOR ANALYSIS..." forever even
+          // though it was no longer actually in the queue.
+          setResults(prev => ({ ...prev, [next.key]: {
+            summary: { tier:'3', tierLabel:'PASS', pick:'Analysis Failed', betType:'N/A', confidence:'LOW', verdict:`Analysis failed after ${attempts} attempts: ${err?.message || 'unknown error'}. Tap Re-analyze to try again.`, isScamPlay:false, slot:next.slot },
+            analysis: {},
+          }}));
+          setPreAnalyzeQueue(q => q.filter(item => item.key !== next.key));
+        }
       })
       .finally(() => {
         setPreAnalyzing(false);
