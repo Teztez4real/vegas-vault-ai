@@ -987,6 +987,7 @@ export default function VegasVaultApp() {
   const [liveScores, setLiveScores]   = useState({});
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [authUser, setAuthUser]         = useState(null);
+  const [isSessionLocked, setIsSessionLocked] = useState(false);
   const authUserIdRef = useRef(null);
   // True only once results/finalized/watchlist/pickHistory have actually
   // finished loading from Supabase for the current session — used to gate
@@ -1162,20 +1163,15 @@ export default function VegasVaultApp() {
     setAuthLoading(false);
   }
 
-  // Idle sign-out — only ends the auth session, deliberately does NOT
-  // clear data state or localStorage. All results/picks/history stay
-  // in memory and in the localStorage write-through cache so they're
-  // immediately available when the user logs back in on the same device.
-  // The full data wipe only happens on explicit manual sign-out below.
-  async function doIdleSignOut() {
-    try { const sb = getSB(); if (sb) await sb.auth.signOut({ scope: 'local' }); } catch(e) {}
-    // Only clear the auth-specific keys, not the data cache
-    setAuthUser(null);
-    setIsSubscribed(false);
-    localStorage.removeItem('vv_admin');
-    localStorage.removeItem('vv_subscribed');
-    // results / finalized / watchlist / pickHistory / altPicks are intentionally
-    // left in state and localStorage so sign-back-in restores them instantly
+  // Idle lock — show a lock screen but keep the Supabase session alive.
+  // Killing the session on idle was the root cause of data loss: once the
+  // session ends, every syncSave call silently fails RLS, then a mobile
+  // browser tab-kill wipes the in-memory state, and sign-back-in loads
+  // stale Supabase data with nothing to merge from localStorage.
+  // Keeping the session alive means writes always succeed, and no data
+  // can be lost just because the user walked away for 30 minutes.
+  function doIdleSignOut() {
+    setIsSessionLocked(true);
   }
 
   async function doSignOut() {
@@ -2742,6 +2738,21 @@ export default function VegasVaultApp() {
           .vv-mem-stats{grid-template-columns:1fr !important}
         }
       `}</style>
+
+      {/* ── IDLE LOCK SCREEN — session stays alive, zero data loss ── */}
+      {isSessionLocked && authUser && (
+        <div onClick={() => setIsSessionLocked(false)}
+          style={{ position:'fixed',inset:0,zIndex:10000,background:'rgba(10,20,10,0.96)',backdropFilter:'blur(20px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,cursor:'pointer' }}>
+          <div style={{ textAlign:'center' }}>
+            <div style={{ width:70,height:70,margin:'0 auto 18px',background:'linear-gradient(145deg,rgba(255,255,255,0.08),rgba(57,255,20,0.06))',border:'1px solid rgba(57,255,20,0.3)',borderRadius:18,display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 0 30px rgba(57,255,20,0.15)' }}>
+              <i className="ti ti-lock" style={{ fontSize:30,color:'#39FF14' }} />
+            </div>
+            <div style={{ fontSize:18,fontWeight:800,color:'#fff',marginBottom:8 }}>Session Locked</div>
+            <div style={{ fontSize:12,color:'rgba(255,255,255,0.5)',marginBottom:28 }}>Tap anywhere to continue</div>
+            <div style={{ fontSize:10,color:'rgba(57,255,20,0.5)',letterSpacing:'1px',textTransform:'uppercase' }}>Your plays and data are safe</div>
+          </div>
+        </div>
+      )}
 
       {/* ── AUTH GATE ── */}
       {!authUser && (
