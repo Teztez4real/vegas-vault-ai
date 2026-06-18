@@ -32,6 +32,22 @@ async function syncDelete(userId, key) {
 }
 function getSB() { return _supabase; }
 
+// ── LOCAL WRITE-THROUGH CACHE ──────────────────────────────────────────────
+// syncSave to Supabase is fire-and-forget on every state change. If the page
+// is refreshed right after a change (e.g. right after Re-analyze finishes),
+// the network write can still be in flight when the page reloads — the
+// reload's syncLoad then pulls whatever was last *confirmed* saved, which
+// can be older than what was on screen a second ago, making it look like
+// plays "reverted." localStorage writes are synchronous and instant, so
+// writing through to it on every change and merging it (local wins) on
+// load closes that gap without waiting on the network.
+function localSave(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+}
+function localLoad(key) {
+  try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : null; } catch { return null; }
+}
+
 // ── PROMPT ENGINE ─────────────────────────────────────────────────────────────
 
 function buildBaseballPrompt(gameData) {
@@ -1007,8 +1023,9 @@ export default function VegasVaultApp() {
             syncLoad(uid, 'alt_picks'),
           ]);
           if (chat && Array.isArray(chat)) setChatMessages(chat);
-          if (alt && typeof alt === 'object') setAltPicks(alt);
-          if (wl) setWatchlist(wl);
+          if (alt && typeof alt === 'object') setAltPicks({ ...alt, ...(localLoad('vv_alt_picks') || {}) });
+          else if (localLoad('vv_alt_picks')) setAltPicks(localLoad('vv_alt_picks'));
+          if (wl) setWatchlist([...new Set([...wl, ...(localLoad('vv_watchlist') || [])])]);
           else {
             // Check Supabase for active subscription
             try {
@@ -1022,9 +1039,17 @@ export default function VegasVaultApp() {
               }
             } catch {}
           }
-          if (res) setResults(res);
-          if (fin) setFinalized(fin);
-          if (hist) setPickHistory(hist);
+          // Local write-through wins on key conflicts — it's always at
+          // least as fresh as Supabase since it's written synchronously
+          // on every change, with no network round-trip to lag behind.
+          setResults({ ...(res || {}), ...(localLoad('vv_results') || {}) });
+          setFinalized({ ...(fin || {}), ...(localLoad('vv_finalized') || {}) });
+          const localHist = localLoad('vv_pick_history') || [];
+          const mergedHist = [...(hist || [])];
+          for (const entry of localHist) {
+            if (!mergedHist.find(e => e.key === entry.key && e.resolvedAt === entry.resolvedAt)) mergedHist.push(entry);
+          }
+          setPickHistory(mergedHist);
         }
         setSyncedDataReady(true);
       });
@@ -1144,7 +1169,7 @@ export default function VegasVaultApp() {
       }
     } catch(e) {}
     try { const sb = getSB(); if (sb) await sb.auth.signOut({ scope: 'global' }); } catch(e) {}
-    setAuthUser(null); localStorage.removeItem('vv_admin'); localStorage.removeItem('vv_subscribed'); localStorage.removeItem('vv_results'); localStorage.removeItem('vv_finalized'); localStorage.removeItem('vv_watchlist'); setIsSubscribed(false); setResults({}); setFinalized({}); setWatchlist([]); setPickHistory([]);
+    setAuthUser(null); localStorage.removeItem('vv_admin'); localStorage.removeItem('vv_subscribed'); localStorage.removeItem('vv_results'); localStorage.removeItem('vv_finalized'); localStorage.removeItem('vv_watchlist'); localStorage.removeItem('vv_pick_history'); localStorage.removeItem('vv_alt_picks'); setIsSubscribed(false); setResults({}); setFinalized({}); setWatchlist([]); setPickHistory([]);
   }
 
   async function doSubscribe(plan) {
@@ -1866,6 +1891,7 @@ export default function VegasVaultApp() {
 
   // ── PERSIST RESULTS TO LOCALSTORAGE ──────────────────────────────────────────
   useEffect(() => {
+    localSave('vv_results', results);
     if (authUser?.id) syncSave(authUser.id, 'results', results); // scoped to this user only — all dates
   }, [results]);
 
@@ -1889,6 +1915,7 @@ export default function VegasVaultApp() {
   }, [authUser?.id]);
 
   useEffect(() => {
+    localSave('vv_finalized', finalized);
     if (authUser?.id) syncSave(authUser.id, 'finalized', finalized);
   }, [finalized]);
 
@@ -1911,6 +1938,7 @@ export default function VegasVaultApp() {
 
   // Persist pick history
   useEffect(() => {
+    localSave('vv_pick_history', pickHistory);
     if (authUser?.id) syncSave(authUser.id, 'pick_history', pickHistory); // user-scoped
   }, [pickHistory]);
 
@@ -1938,6 +1966,7 @@ export default function VegasVaultApp() {
 
   // Persist watchlist — safety net on top of per-toggle saves
   useEffect(() => {
+    localSave('vv_watchlist', watchlist);
     if (authUser?.id && watchlist.length >= 0) syncSave(authUser.id, 'watchlist', watchlist);
   }, [watchlist]);
 
@@ -1960,6 +1989,7 @@ export default function VegasVaultApp() {
 
   // Persist altPicks (user-selected alternate markets)
   useEffect(() => {
+    localSave('vv_alt_picks', altPicks);
     if (authUser?.id) syncSave(authUser.id, 'alt_picks', altPicks);
   }, [altPicks]);
 
