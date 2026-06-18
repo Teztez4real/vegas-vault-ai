@@ -1116,7 +1116,7 @@ export default function VegasVaultApp() {
   // All user data (watchlist, results, chat history, pick history, etc.) is
   // continuously synced to Supabase as it changes, so signing out here never
   // loses anything — it's all already saved server-side.
-  useIdleSignOut(getSB(), !!authUser, doSignOut, 30);
+  useIdleSignOut(getSB(), !!authUser, doIdleSignOut, 30);
 
   async function doAuth() {
     setAuthLoading(true); setAuthError('');
@@ -1150,6 +1150,22 @@ export default function VegasVaultApp() {
       }
     } catch(e) { setAuthError('Something went wrong. Try again.'); }
     setAuthLoading(false);
+  }
+
+  // Idle sign-out — only ends the auth session, deliberately does NOT
+  // clear data state or localStorage. All results/picks/history stay
+  // in memory and in the localStorage write-through cache so they're
+  // immediately available when the user logs back in on the same device.
+  // The full data wipe only happens on explicit manual sign-out below.
+  async function doIdleSignOut() {
+    try { const sb = getSB(); if (sb) await sb.auth.signOut({ scope: 'local' }); } catch(e) {}
+    // Only clear the auth-specific keys, not the data cache
+    setAuthUser(null);
+    setIsSubscribed(false);
+    localStorage.removeItem('vv_admin');
+    localStorage.removeItem('vv_subscribed');
+    // results / finalized / watchlist / pickHistory / altPicks are intentionally
+    // left in state and localStorage so sign-back-in restores them instantly
   }
 
   async function doSignOut() {
