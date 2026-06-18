@@ -4027,7 +4027,11 @@ export default function VegasVaultApp() {
                                     )}
                                     <div style={{ display:'flex', gap:6 }}>
                                       {m.sides.map((s, j) => {
-                                        const isSelected = currentAlt?.market === m.market && currentAlt?.betType === s.betType;
+                                        // Match on market + pick (team name / OVER / UNDER) — these are
+                                        // stable identifiers that don't change when the line moves.
+                                        // Matching on betType would break as soon as the price ticks,
+                                        // making the selected button appear deselected mid-session.
+                                        const isSelected = currentAlt?.market === m.market && currentAlt?.pick === s.pick;
                                         return (
                                           <button key={j} onClick={()=> isSelected ? clearAlt() : selectAlt(m.market, s)} style={{
                                             flex:1, padding:'7px 8px', borderRadius:7, cursor:'pointer', fontFamily:'inherit', fontSize:10, fontWeight:700,
@@ -4044,12 +4048,19 @@ export default function VegasVaultApp() {
                                     </div>
                                   </div>
                                 ))}
-                                {currentAlt && (
-                                  <div style={{ marginTop:10, paddingTop:10, borderTop:'1px solid rgba(0,0,0,0.05)', fontSize:10, color:'#33aa00', display:'flex', alignItems:'center', gap:6 }}>
-                                    <i className="ti ti-shield-check" style={{ fontSize:12 }} />
-                                    Tracking your pick: {currentAlt.pick} {currentAlt.betType}
-                                  </div>
-                                )}
+                                {currentAlt && (() => {
+                                  // Find the live side matching the saved pick so we display the
+                                  // current price, not the frozen betType captured at selection time.
+                                  const liveMarket = markets.find(m => m.market === currentAlt.market);
+                                  const liveSide = liveMarket?.sides.find(s => s.pick === currentAlt.pick);
+                                  const liveBetType = liveSide?.betType || currentAlt.betType;
+                                  return (
+                                    <div style={{ marginTop:10, paddingTop:10, borderTop:'1px solid rgba(0,0,0,0.05)', fontSize:10, color:'#33aa00', display:'flex', alignItems:'center', gap:6 }}>
+                                      <i className="ti ti-shield-check" style={{ fontSize:12 }} />
+                                      Tracking your pick: {currentAlt.pick} {liveBetType}
+                                    </div>
+                                  );
+                                })()}
                               </div>
                             )}
                           </div>
