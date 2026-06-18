@@ -3856,7 +3856,24 @@ export default function VegasVaultApp() {
                             {summary.pick}
                             {summary.tier==='1' && <span style={{ fontSize:8,fontWeight:800,color:'#111',background:'#39FF14',padding:'2px 8px',borderRadius:6 }}>AI LOCK</span>}
                           </div>
-                          <div style={{ fontSize:13,color:'#aaa',marginTop:2 }}>{summary.betType}</div>
+                          <div style={{ fontSize:13,color:'#aaa',marginTop:2,display:'flex',alignItems:'center',gap:6 }}>
+                            {summary.betType}
+                            {(() => {
+                              const btUpper = (summary.betType || '').toUpperCase();
+                              const cat = btUpper.includes('OVER') || btUpper.includes('UNDER') ? 'TOTAL'
+                                : /^[+-]\d/.test(btUpper.trim()) ? 'SPREAD' : 'ML';
+                              const moved = cat === 'SPREAD' ? game.spreadMoveSignificant
+                                : cat === 'TOTAL' ? game.totalMoveSignificant
+                                : game.moveType && game.moveType !== 'STABLE';
+                              const desc = cat === 'SPREAD' ? game.spreadMovement : cat === 'TOTAL' ? game.totalMovement : game.lineMovement;
+                              if (!moved) return null;
+                              return (
+                                <span title={desc} style={{ fontSize:8,fontWeight:800,color:'#33aa00',background:'rgba(57,255,20,0.1)',border:'1px solid rgba(57,200,20,0.3)',borderRadius:5,padding:'2px 6px',display:'flex',alignItems:'center',gap:3,cursor:'help' }}>
+                                  <i className="ti ti-arrows-left-right" style={{ fontSize:9 }} /> Line moved
+                                </span>
+                              );
+                            })()}
+                          </div>
                         </div>
                         <div style={{ textAlign:'center' }}>
                           <div style={{ fontSize:9,color:'#aaa',marginBottom:4 }}>Confidence</div>
