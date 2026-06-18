@@ -3938,12 +3938,22 @@ export default function VegasVaultApp() {
                           : /^[+-]\d/.test(btUpper.trim()) ? 'SPREAD' : 'ML';
                         const mlAway = fmtOdds(game.dkAwayML) || fmtOdds(game.awayML);
                         const mlHome = fmtOdds(game.dkHomeML) || fmtOdds(game.homeML);
-                        const spreadVal = game.spread;
+                        // Use DK-sourced spread/total as primary — they're what the
+                        // line poller updates most reliably. Fall back to the generic
+                        // field if DK isn't available.
+                        const spreadVal = game.dkSpread || game.spread;
                         const spreadAwayPrice = fmtOdds(game.awaySpreadPrice);
                         const spreadHomePrice = fmtOdds(game.homeSpreadPrice);
-                        const totalVal = game.total;
+                        const totalVal = game.dkTotal || game.total;
                         const overPrice = fmtOdds(game.overPrice);
                         const underPrice = fmtOdds(game.underPrice);
+
+                        // Freeze lines once the game goes live — track whatever
+                        // the line was at game start, not mid-game shifts.
+                        const liveEntry = liveScores?.[game.id]
+                          || liveScores?.[`${game.away}|${game.home}`]
+                          || liveScores?.[`${game.awayAbbr}|${game.homeAbbr}`];
+                        const isGameLive = liveEntry?.status === 'Live' || liveEntry?.detailedState === 'In Progress';
 
                         const markets = [];
                         if (mlAway && mlHome && mlAway !== '—' && mlHome !== '—') {
@@ -3967,13 +3977,14 @@ export default function VegasVaultApp() {
                           const spreadNum = parseFloat(spreadVal);
                           const awaySpreadStr = spreadNum > 0 ? `+${spreadNum}` : `${spreadNum}`;
                           const homeSpreadStr = spreadNum > 0 ? `-${spreadNum}` : `+${Math.abs(spreadNum)}`;
-                          markets.push({ label: 'Spread', market: 'SPREAD', movement: game.spreadMovement || null, moveSignificant: !!game.spreadMoveSignificant, sides: [
+                          // Suppress movement indicators once game is live — line is locked
+                          markets.push({ label: 'Spread', market: 'SPREAD', movement: !isGameLive ? (game.spreadMovement || null) : null, moveSignificant: !isGameLive && !!game.spreadMoveSignificant, sides: [
                             { sideLabel: `${game.awayAbbr} ${awaySpreadStr}`, pick: game.away, betType: `${awaySpreadStr} ${spreadAwayPrice||'-110'}` },
                             { sideLabel: `${game.homeAbbr} ${homeSpreadStr}`, pick: game.home, betType: `${homeSpreadStr} ${spreadHomePrice||'-110'}` },
                           ]});
                         }
                         if (primaryCategory !== 'TOTAL' && totalVal && totalVal !== 'N/A') {
-                          markets.push({ label: 'Total', market: 'TOTAL', movement: game.totalMovement || null, moveSignificant: !!game.totalMoveSignificant, sides: [
+                          markets.push({ label: 'Total', market: 'TOTAL', movement: !isGameLive ? (game.totalMovement || null) : null, moveSignificant: !isGameLive && !!game.totalMoveSignificant, sides: [
                             { sideLabel: `Over ${totalVal}`, pick: 'OVER', betType: `OVER ${totalVal} ${overPrice||'-110'}` },
                             { sideLabel: `Under ${totalVal}`, pick: 'UNDER', betType: `UNDER ${totalVal} ${underPrice||'-110'}` },
                           ]});
@@ -4049,11 +4060,11 @@ export default function VegasVaultApp() {
                                   </div>
                                 ))}
                                 {currentAlt && (() => {
-                                  // Find the live side matching the saved pick so we display the
-                                  // current price, not the frozen betType captured at selection time.
+                                  // Once the game is live, freeze the displayed line to whatever
+                                  // was saved at selection time — no live updates mid-game.
                                   const liveMarket = markets.find(m => m.market === currentAlt.market);
                                   const liveSide = liveMarket?.sides.find(s => s.pick === currentAlt.pick);
-                                  const liveBetType = liveSide?.betType || currentAlt.betType;
+                                  const liveBetType = (!isGameLive && liveSide?.betType) ? liveSide.betType : currentAlt.betType;
                                   return (
                                     <div style={{ marginTop:10, paddingTop:10, borderTop:'1px solid rgba(0,0,0,0.05)', fontSize:10, color:'#33aa00', display:'flex', alignItems:'center', gap:6 }}>
                                       <i className="ti ti-shield-check" style={{ fontSize:12 }} />
