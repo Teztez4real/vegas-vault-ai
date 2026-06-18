@@ -3834,7 +3834,27 @@ export default function VegasVaultApp() {
         // on activeGame, not on the live games array, so it's preserved
         // from the snapshot rather than overwritten.
         const liveGame = games.find(g => g.id === activeGame.id);
-        const game = liveGame ? { ...activeGame, ...liveGame, slot: activeGame.slot } : activeGame;
+        // Merge live game data over the snapshot, but never replace a real odds
+        // value with null/N/A — the snapshot captured valid odds at click time;
+        // the poller may not have data for every game on every tick.
+        const keep = (live, snap) => (live != null && live !== 'N/A' && live !== 'null') ? live : snap;
+        const game = liveGame ? {
+          ...activeGame,
+          ...liveGame,
+          slot:            activeGame.slot,
+          awayML:          keep(liveGame.awayML,          activeGame.awayML),
+          homeML:          keep(liveGame.homeML,          activeGame.homeML),
+          dkAwayML:        keep(liveGame.dkAwayML,        activeGame.dkAwayML),
+          dkHomeML:        keep(liveGame.dkHomeML,        activeGame.dkHomeML),
+          spread:          keep(liveGame.spread,          activeGame.spread),
+          total:           keep(liveGame.total,           activeGame.total),
+          dkSpread:        keep(liveGame.dkSpread,        activeGame.dkSpread),
+          dkTotal:         keep(liveGame.dkTotal,         activeGame.dkTotal),
+          awaySpreadPrice: keep(liveGame.awaySpreadPrice, activeGame.awaySpreadPrice),
+          homeSpreadPrice: keep(liveGame.homeSpreadPrice, activeGame.homeSpreadPrice),
+          overPrice:       keep(liveGame.overPrice,       activeGame.overPrice),
+          underPrice:      keep(liveGame.underPrice,      activeGame.underPrice),
+        } : activeGame;
         const result = activeResult;
         const summary = result?.summary || {};
         const analysis = result?.analysis || {};
