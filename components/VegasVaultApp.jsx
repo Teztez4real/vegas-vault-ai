@@ -3742,7 +3742,8 @@ export default function VegasVaultApp() {
         const spreadVal = game.dkSpread || game.spread || '—';
         const totalVal  = game.dkTotal  || game.total  || '—';
         const awaySpread = (() => { if(spreadVal==='—') return '—'; const n=parseFloat(spreadVal); if(isNaN(n)) return spreadVal; return n>0?`-${n.toFixed(1)}`:`+${Math.abs(n).toFixed(1)}`; })();
-        const hasMovement = game.lineMovement && !['No significant movement','N/A','No significant movement detected'].includes(game.lineMovement);
+        const hasMlMovement = game.lineMovement && !['No significant movement','N/A','No significant movement detected'].includes(game.lineMovement);
+        const hasMovement = hasMlMovement || game.spreadMoveSignificant || game.totalMoveSignificant;
 
         const TABS = ['AI Reasoning','Matchup & Stats','Odds & Sharp Money','Injury & Weather','Scam Play','Line Movement','Series Context'];
         const activeTab = activeDetailTab || 'AI Reasoning';
@@ -3900,13 +3901,13 @@ export default function VegasVaultApp() {
                           const spreadNum = parseFloat(spreadVal);
                           const awaySpreadStr = spreadNum > 0 ? `+${spreadNum}` : `${spreadNum}`;
                           const homeSpreadStr = spreadNum > 0 ? `-${spreadNum}` : `+${Math.abs(spreadNum)}`;
-                          markets.push({ label: 'Spread', market: 'SPREAD', sides: [
+                          markets.push({ label: 'Spread', market: 'SPREAD', movement: game.spreadMovement || null, moveSignificant: !!game.spreadMoveSignificant, sides: [
                             { sideLabel: `${game.awayAbbr} ${awaySpreadStr}`, pick: game.away, betType: `${awaySpreadStr} ${spreadAwayPrice||'-110'}` },
                             { sideLabel: `${game.homeAbbr} ${homeSpreadStr}`, pick: game.home, betType: `${homeSpreadStr} ${spreadHomePrice||'-110'}` },
                           ]});
                         }
                         if (primaryCategory !== 'TOTAL' && totalVal && totalVal !== 'N/A') {
-                          markets.push({ label: 'Total', market: 'TOTAL', sides: [
+                          markets.push({ label: 'Total', market: 'TOTAL', movement: game.totalMovement || null, moveSignificant: !!game.totalMoveSignificant, sides: [
                             { sideLabel: `Over ${totalVal}`, pick: 'OVER', betType: `OVER ${totalVal} ${overPrice||'-110'}` },
                             { sideLabel: `Under ${totalVal}`, pick: 'UNDER', betType: `UNDER ${totalVal} ${underPrice||'-110'}` },
                           ]});
@@ -3946,7 +3947,18 @@ export default function VegasVaultApp() {
                                 </div>
                                 {markets.map((m, i) => (
                                   <div key={i} style={{ marginTop: i>0 ? 10 : 0, paddingTop: i>0 ? 10 : 0, borderTop: i>0 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}>
-                                    <div style={{ fontSize:9, fontWeight:800, color:'#999', marginBottom:6, textTransform:'uppercase', letterSpacing:'0.4px' }}>{m.label}</div>
+                                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
+                                      <div style={{ fontSize:9, fontWeight:800, color:'#999', textTransform:'uppercase', letterSpacing:'0.4px' }}>{m.label}</div>
+                                      {m.movement && (
+                                        <div style={{ display:'flex', alignItems:'center', gap:3 }}>
+                                          <i className="ti ti-arrows-left-right" style={{ fontSize:10, color: m.moveSignificant ? '#39FF14' : '#ccc' }} />
+                                          <span style={{ fontSize:8, fontWeight:700, color: m.moveSignificant ? '#33aa00' : '#bbb' }}>{m.moveSignificant ? 'Line moved' : 'Stable'}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                    {m.movement && m.moveSignificant && (
+                                      <div style={{ fontSize:9, color:'#777', marginBottom:6, lineHeight:1.4 }}>{m.movement}</div>
+                                    )}
                                     <div style={{ display:'flex', gap:6 }}>
                                       {m.sides.map((s, j) => {
                                         const isSelected = currentAlt?.market === m.market && currentAlt?.betType === s.betType;
@@ -4199,13 +4211,42 @@ export default function VegasVaultApp() {
                 {activeTab === 'Line Movement' && (
                   <div style={{ background:'rgba(255,255,255,0.7)',border:'1px solid rgba(255,255,255,0.93)',borderRadius:14,padding:'14px 16px' }}>
                     <div style={{ fontSize:11,fontWeight:800,color:'#111',marginBottom:10 }}>Line Movement</div>
+
+                    <div style={{ fontSize:9,fontWeight:800,color:'#999',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:4 }}>Moneyline</div>
                     {game.lineMovement && !['No significant movement','N/A','No significant movement detected'].includes(game.lineMovement) ? (
-                      <div style={{ fontSize:12,color:'#444',lineHeight:1.7,background:'rgba(246,249,246,0.7)',border:'1px solid rgba(195,240,195,0.5)',borderRadius:10,padding:'12px 14px' }}>
+                      <div style={{ fontSize:12,color:'#444',lineHeight:1.7,background:'rgba(246,249,246,0.7)',border:'1px solid rgba(195,240,195,0.5)',borderRadius:10,padding:'12px 14px',marginBottom:12 }}>
                         <i className="ti ti-bolt" style={{ fontSize:13,color:'#39FF14',marginRight:6 }} />{game.lineMovement}
                       </div>
                     ) : (
-                      <div style={{ fontSize:11,color:'#bbb' }}>No significant line movement detected.</div>
+                      <div style={{ fontSize:11,color:'#bbb',marginBottom:12 }}>No significant moneyline movement detected.</div>
                     )}
+
+                    <div style={{ fontSize:9,fontWeight:800,color:'#999',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:4 }}>Spread / Run Line</div>
+                    {game.spreadMovement ? (
+                      <div style={{
+                        fontSize:12,color:'#444',lineHeight:1.7,borderRadius:10,padding:'12px 14px',marginBottom:12,
+                        background: game.spreadMoveSignificant ? 'rgba(246,249,246,0.7)' : 'rgba(250,250,250,0.6)',
+                        border: game.spreadMoveSignificant ? '1px solid rgba(195,240,195,0.5)' : '1px solid rgba(0,0,0,0.05)',
+                      }}>
+                        <i className="ti ti-arrows-left-right" style={{ fontSize:13,color: game.spreadMoveSignificant ? '#39FF14' : '#bbb',marginRight:6 }} />{game.spreadMovement}
+                      </div>
+                    ) : (
+                      <div style={{ fontSize:11,color:'#bbb',marginBottom:12 }}>No spread movement data yet — check back as the line gets polled.</div>
+                    )}
+
+                    <div style={{ fontSize:9,fontWeight:800,color:'#999',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:4 }}>Total</div>
+                    {game.totalMovement ? (
+                      <div style={{
+                        fontSize:12,color:'#444',lineHeight:1.7,borderRadius:10,padding:'12px 14px',marginBottom:4,
+                        background: game.totalMoveSignificant ? 'rgba(246,249,246,0.7)' : 'rgba(250,250,250,0.6)',
+                        border: game.totalMoveSignificant ? '1px solid rgba(195,240,195,0.5)' : '1px solid rgba(0,0,0,0.05)',
+                      }}>
+                        <i className="ti ti-arrows-left-right" style={{ fontSize:13,color: game.totalMoveSignificant ? '#39FF14' : '#bbb',marginRight:6 }} />{game.totalMovement}
+                      </div>
+                    ) : (
+                      <div style={{ fontSize:11,color:'#bbb' }}>No total movement data yet — check back as the line gets polled.</div>
+                    )}
+
                     {analysis.priceVsDataAudit && (
                       <div style={{ marginTop:12 }}>
                         <div style={{ fontSize:9,fontWeight:800,color:'#33aa00',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:4 }}>Price vs Data</div>
