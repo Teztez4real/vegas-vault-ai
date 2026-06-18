@@ -3712,7 +3712,15 @@ export default function VegasVaultApp() {
 
       {/* ── GAME DETAIL MODAL ── */}
       {activeGame && activeResult && (() => {
-        const game = activeGame;
+        // Merge in the live-polled game (odds/lines update every 90s via
+        // the /api/lines poller) so the modal — including the alternate
+        // markets tiles — tracks current odds instead of staying frozen
+        // at whatever the line was when the modal was opened. `slot` is
+        // a UI-level concept (Public/Vegas toggle) that's set explicitly
+        // on activeGame, not on the live games array, so it's preserved
+        // from the snapshot rather than overwritten.
+        const liveGame = games.find(g => g.id === activeGame.id);
+        const game = liveGame ? { ...activeGame, ...liveGame, slot: activeGame.slot } : activeGame;
         const result = activeResult;
         const summary = result?.summary || {};
         const analysis = result?.analysis || {};
