@@ -1254,7 +1254,12 @@ export default function VegasVaultApp() {
   const [generating, setGenerating]   = useState(null);
   const [activeResult, setActiveResult] = useState(null);
   const [activeGame, setActiveGame]   = useState(null);
-  useEffect(() => { setShowOtherMarkets(false); }, [activeGame?.id, activeGame?.slot]);
+  useEffect(() => {
+    if (!activeGame) return;
+    const altKey = `${activeGame.id}-${activeGame.slot}`;
+    // Auto-expand if user already has an alt pick for this game
+    setShowOtherMarkets(!!altPicks[altKey]);
+  }, [activeGame?.id, activeGame?.slot]);
   const [activeDetailTab, setActiveDetailTab] = useState('AI Reasoning');
   const [filter, setFilter]           = useState("ALL");
   const [error, setError]             = useState(null);
@@ -4093,6 +4098,25 @@ export default function VegasVaultApp() {
 
                         return (
                           <div style={{ marginTop:10 }}>
+                            {currentAlt && (() => {
+                              const liveMarket = markets.find(m => m.market === currentAlt.market);
+                              const liveSide = liveMarket?.sides.find(s => s.pick === currentAlt.pick);
+                              const liveBetType = (!isGameLive && liveSide?.betType) ? liveSide.betType : currentAlt.betType;
+                              return (
+                                <div style={{ marginBottom:8, padding:'8px 12px', background:'rgba(57,255,20,0.08)', border:'1px solid rgba(57,255,20,0.3)', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                                  <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                                    <i className="ti ti-shield-check" style={{ fontSize:13, color:'#33aa00' }} />
+                                    <div>
+                                      <div style={{ fontSize:10, fontWeight:800, color:'#33aa00' }}>Your Alt Pick: {currentAlt.pick}</div>
+                                      <div style={{ fontSize:9, color:'#666', marginTop:1 }}>{liveBetType}</div>
+                                    </div>
+                                  </div>
+                                  <button onClick={clearAlt} style={{ background:'none', border:'none', cursor:'pointer', color:'#aaa', fontSize:13, padding:2 }}>
+                                    <i className="ti ti-x" />
+                                  </button>
+                                </div>
+                              );
+                            })()}
                             <button onClick={()=>setShowOtherMarkets(p=>!p)} style={{ width:'100%', padding:'8px 12px', display:'flex', alignItems:'center', justifyContent:'space-between', background:'rgba(255,255,255,0.5)', border:'1px solid rgba(0,0,0,0.06)', borderRadius:8, cursor:'pointer', fontFamily:'inherit' }}>
                               <span style={{ fontSize:10, fontWeight:700, color:'#777' }}>View other markets for this game</span>
                               <i className={`ti ti-chevron-${showOtherMarkets?'up':'down'}`} style={{ fontSize:12, color:'#999' }} />
@@ -4140,17 +4164,7 @@ export default function VegasVaultApp() {
                                   </div>
                                 ))}
                                 {currentAlt && (() => {
-                                  // Once the game is live, freeze the displayed line to whatever
-                                  // was saved at selection time — no live updates mid-game.
-                                  const liveMarket = markets.find(m => m.market === currentAlt.market);
-                                  const liveSide = liveMarket?.sides.find(s => s.pick === currentAlt.pick);
-                                  const liveBetType = (!isGameLive && liveSide?.betType) ? liveSide.betType : currentAlt.betType;
-                                  return (
-                                    <div style={{ marginTop:10, paddingTop:10, borderTop:'1px solid rgba(0,0,0,0.05)', fontSize:10, color:'#33aa00', display:'flex', alignItems:'center', gap:6 }}>
-                                      <i className="ti ti-shield-check" style={{ fontSize:12 }} />
-                                      Tracking your pick: {currentAlt.pick} {liveBetType}
-                                    </div>
-                                  );
+                                  return null; // tracking indicator now shown persistently above the toggle
                                 })()}
                               </div>
                             )}
