@@ -197,7 +197,7 @@ export async function POST(request) {
     if (!stage3?.pick) return NextResponse.json(passResult('Market selection failed — pass.', slot));
 
     // ── STAGE 4: Final Verdict ─────────────────────────────────────────────
-    const stage4 = await runStage(stages.s4(game, stage1, stage2, stage3), 2500, true, trackRecord);
+    const stage4 = await runStage(stages.s4(game, stage1, stage2, stage3), 2500, false, trackRecord);
 
     // Build complete result — use stage4 if available, fill gaps from earlier stages
     const analysis = stage4?.analysis || {};
