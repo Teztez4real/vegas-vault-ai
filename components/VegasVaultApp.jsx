@@ -228,7 +228,10 @@ const CONF_STYLES = {
 // Returns null if there's not enough resolved history yet to say anything
 // meaningful.
 function trackRecordSummary(pickHistory) {
-  const resolved = (pickHistory || []).filter(p => p.result === 'win' || p.result === 'loss');
+  // Exclude user-selected alternate-market picks — those are the user's
+  // own choices, not the AI's, and would corrupt the AI's view of its own
+  // actual performance if mixed in.
+  const resolved = (pickHistory || []).filter(p => (p.result === 'win' || p.result === 'loss') && !p.isUserAlt);
   if (resolved.length < 5) return null;
 
   const breakdown = (groupFn) => {
@@ -678,7 +681,7 @@ function ConfidenceChart({ history }) {
 }
 
 // ── GAME CARD (new glass design) ──────────────────────────────────────────────
-function GameCard({ game, onGenerate, results, generating, onCardClick, liveScores, isSubscribed, finalized, isQueued, betReady, onShowAuth, watchlist, onToggleWatch, pickHistory, hasSlotPattern, isTopPlay }) {
+function GameCard({ game, onGenerate, results, generating, onCardClick, liveScores, isSubscribed, finalized, isQueued, betReady, onShowAuth, watchlist, onToggleWatch, pickHistory, hasSlotPattern, isTopPlay, altPick }) {
   const resultVegas  = results[`${game.id}-VEGAS`];
   const resultPublic = results[`${game.id}-PUBLIC`];
   const slotResult   = results[`${game.id}-${game.slot}`];
@@ -810,6 +813,16 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
               {pickResult==='loss'&&<div style={{ fontSize:11,fontWeight:800,color:'#dd4444' }}>❌ LOSS</div>}
             </div>
           </div>
+          {altPick && (
+            <div style={{ marginTop:8, paddingTop:8, borderTop:'1px solid rgba(0,0,0,0.06)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+              <div>
+                <div style={{ fontSize:7,fontWeight:800,color:'#33aa00',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:2 }}>YOUR PICK</div>
+                <div style={{ fontSize:11,fontWeight:700,color:'#222' }}>{altPick.pick} {altPick.betType}</div>
+              </div>
+              {altPick.result==='win'&&<div style={{ fontSize:10,fontWeight:800,color:'#33aa00' }}>✅ WIN</div>}
+              {altPick.result==='loss'&&<div style={{ fontSize:10,fontWeight:800,color:'#dd4444' }}>❌ LOSS</div>}
+            </div>
+          )}
         </div>
       )}
 
@@ -948,6 +961,11 @@ export default function VegasVaultApp() {
   const [activeNav, setActiveNav] = useState('DASHBOARD');
   const [activeTab, setActiveTab] = useState('DASHBOARD');
   const [watchlist, setWatchlist] = useState([]);
+  // User-selected alternate markets (e.g. chose the spread instead of the
+  // AI's ML pick) — keyed by `${game.id}-${slot}`. Tracked, graded, and
+  // counted in pickHistory as the user's own pick, separate from the AI's
+  // original recommendation for that same game/slot.
+  const [altPicks, setAltPicks] = useState({});
   const [betReadyAlerts, setBetReadyAlerts] = useState({});
   const [preAnalyzeQueue, setPreAnalyzeQueue] = useState([]);
   const [liveScores, setLiveScores]   = useState({});
@@ -980,14 +998,16 @@ export default function VegasVaultApp() {
           if (session.user.email === ADMIN_EMAIL) { localStorage.setItem('vv_admin','1'); setIsSubscribed(true); }
           // Load synced data from Supabase
           const uid = session.user.id;
-          const [wl, res, fin, hist, chat] = await Promise.all([
+          const [wl, res, fin, hist, chat, alt] = await Promise.all([
             syncLoad(uid, 'watchlist'),
             syncLoad(uid, 'results'),
             syncLoad(uid, 'finalized'),
             syncLoad(uid, 'pick_history'),
             syncLoad(uid, 'chat_history'),
+            syncLoad(uid, 'alt_picks'),
           ]);
           if (chat && Array.isArray(chat)) setChatMessages(chat);
+          if (alt && typeof alt === 'object') setAltPicks(alt);
           if (wl) setWatchlist(wl);
           else {
             // Check Supabase for active subscription
@@ -1039,18 +1059,20 @@ export default function VegasVaultApp() {
             setSyncedDataReady(false); // pause auto-analyze queueing until reload finishes
             queuedDateRef.current = null; // allow the queue effect to re-evaluate once data is back
             const uid = session.user.id;
-            const [wl, res, fin, hist, chat] = await Promise.all([
+            const [wl, res, fin, hist, chat, alt] = await Promise.all([
               syncLoad(uid, 'watchlist'),
               syncLoad(uid, 'results'),
               syncLoad(uid, 'finalized'),
               syncLoad(uid, 'pick_history'),
               syncLoad(uid, 'chat_history'),
+              syncLoad(uid, 'alt_picks'),
             ]);
             if (chat && Array.isArray(chat)) setChatMessages(chat);
             setWatchlist(wl || []);
             setResults(res || {});
             setFinalized(fin || {});
             setPickHistory(hist || []);
+            setAltPicks(alt || {});
             setSyncedDataReady(true);
           }
         } else {
@@ -1117,6 +1139,7 @@ export default function VegasVaultApp() {
           syncSave(uid, 'finalized',    finalized),
           syncSave(uid, 'watchlist',    watchlist),
           syncSave(uid, 'pick_history', pickHistory),
+          syncSave(uid, 'alt_picks',    altPicks),
         ]);
       }
     } catch(e) {}
@@ -1423,6 +1446,71 @@ export default function VegasVaultApp() {
           sendNotification(
             `${emoji} ${result.toUpperCase()} — ${game.away} @ ${game.home}`,
             `${slot} pick: ${pickTeam} ${betType} | Final: ${game.awayAbbr} ${awayScore}-${homeScore} ${game.homeAbbr}`
+          );
+        }
+      }
+
+      // ── Grade any user-selected alternate market for this game ───────────
+      // Same win/loss logic as the AI's own pick, but stored under a
+      // distinct key and flagged isUserAlt so it never overwrites or gets
+      // confused with the AI's official record for this game.
+      for (const slot of ['PUBLIC', 'VEGAS']) {
+        const baseKey = `${game.id}-${slot}`;
+        const alt = altPicks[baseKey];
+        if (!alt) continue;
+        const altKey = `${baseKey}-ALT`;
+        const alreadyResolvedAlt = pickHistory.some(p => p.key === altKey);
+        if (alreadyResolvedAlt) continue;
+
+        const awayScore = live.awayScore;
+        const homeScore = live.homeScore;
+        if (awayScore === null || homeScore === null) continue;
+
+        const awayTeamWon = awayScore > homeScore;
+        const homeTeamWon = homeScore > awayScore;
+        const margin = Math.abs(homeScore - awayScore);
+        const pickTeam = alt.pick;
+        const betType = alt.betType || '';
+        const pickIsAway = pickTeam === game.away || game.away?.includes(pickTeam) || pickTeam?.includes(game.away?.split(' ').pop());
+        const pickIsHome = !pickIsAway && pickTeam !== 'OVER' && pickTeam !== 'UNDER';
+
+        let altResult = null;
+        if (alt.market === 'ML') {
+          altResult = (pickIsAway && awayTeamWon) || (pickIsHome && homeTeamWon) ? 'win' : 'loss';
+        } else if (alt.market === 'SPREAD') {
+          const spreadNum = Math.abs(parseFloat(betType));
+          const favoredAway = betType.trim().startsWith('-') && pickIsAway;
+          const favoredHome = betType.trim().startsWith('-') && pickIsHome;
+          if (favoredAway) altResult = (awayTeamWon && margin > spreadNum) ? 'win' : 'loss';
+          else if (favoredHome) altResult = (homeTeamWon && margin > spreadNum) ? 'win' : 'loss';
+          else if (pickIsAway) altResult = (awayTeamWon || margin < spreadNum) ? 'win' : 'loss';
+          else altResult = (homeTeamWon || margin < spreadNum) ? 'win' : 'loss';
+        } else if (alt.market === 'TOTAL') {
+          const total = parseFloat(betType.replace(/[^0-9.]/g, ''));
+          if (pickTeam === 'OVER') altResult = (awayScore + homeScore) > total ? 'win' : 'loss';
+          else altResult = (awayScore + homeScore) < total ? 'win' : 'loss';
+        }
+
+        if (altResult) {
+          const aiPick = results[baseKey];
+          const historyEntry = {
+            key: altKey, slot, game: `${game.away} @ ${game.home}`,
+            pick: pickTeam, betType, betCategory: alt.market, result: altResult,
+            tier: null, confidence: null, confidencePercent: null, scamLayer: null,
+            sport: game.sport || null,
+            score: `${game.awayAbbr} ${awayScore} - ${homeScore} ${game.homeAbbr}`,
+            resolvedAt: new Date().toISOString(),
+            date: game.date,
+            isUserAlt: true,
+            aiPick: aiPick?.summary?.pick || null,
+            aiBetType: aiPick?.summary?.betType || null,
+          };
+          setPickHistory(prev => [...prev, historyEntry]);
+
+          const emoji = altResult === 'win' ? '✅' : '❌';
+          sendNotification(
+            `${emoji} ${altResult.toUpperCase()} (your pick) — ${game.away} @ ${game.home}`,
+            `Your tracked pick: ${pickTeam} ${betType} | Final: ${game.awayAbbr} ${awayScore}-${homeScore} ${game.homeAbbr}`
           );
         }
       }
@@ -1870,6 +1958,28 @@ export default function VegasVaultApp() {
     return () => clearInterval(interval);
   }, [authUser?.id]);
 
+  // Persist altPicks (user-selected alternate markets)
+  useEffect(() => {
+    if (authUser?.id) syncSave(authUser.id, 'alt_picks', altPicks);
+  }, [altPicks]);
+
+  // ── CROSS-DEVICE SYNC: poll for altPicks updates from other devices ──────────
+  useEffect(() => {
+    if (!authUser?.id) return;
+    const poll = async () => {
+      const remote = await syncLoad(authUser.id, 'alt_picks');
+      if (remote && typeof remote === 'object') {
+        setAltPicks(prev => {
+          const merged = { ...prev, ...remote };
+          if (JSON.stringify(merged) !== JSON.stringify(prev)) return merged;
+          return prev;
+        });
+      }
+    };
+    const interval = setInterval(poll, 30 * 1000);
+    return () => clearInterval(interval);
+  }, [authUser?.id]);
+
 
   useEffect(() => {
     const allResults = Object.values(results);
@@ -1882,10 +1992,12 @@ export default function VegasVaultApp() {
     setConfHistory(prev => [...prev.slice(-14), confPct]);
   }, [results]);
 
-  // Win rate = real results from pick history (last 7 days)
+  // Win rate = real results from pick history (last 7 days) — excludes
+  // user-selected alternate-market picks, which are the user's own choices
+  // and shouldn't be blended into the AI's reported performance.
   useEffect(() => {
     const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    const recent = pickHistory.filter(p => p.resolvedAt && new Date(p.resolvedAt).getTime() > sevenDaysAgo);
+    const recent = pickHistory.filter(p => p.resolvedAt && new Date(p.resolvedAt).getTime() > sevenDaysAgo && !p.isUserAlt);
     if (recent.length === 0) { setWinRate(null); return; }
     const wins = recent.filter(p => p.result === 'win').length;
     setWinRate(Math.round((wins / recent.length) * 100));
@@ -2836,8 +2948,8 @@ export default function VegasVaultApp() {
                 <div className="vv-an-mets">
                   <div className="vv-anm"><div className="vv-anm-l">Total Picks</div><div className="vv-anm-v">{pickHistory.length}</div></div>
                   <div className="vv-anm"><div className="vv-anm-l">Win Rate</div><div className="vv-anm-v">{winRate!=null?`${winRate}%`:'—'}</div></div>
-                  <div className="vv-anm"><div className="vv-anm-l">Wins</div><div className="vv-anm-v">{pickHistory.filter(p=>p.result==='win').length}</div></div>
-                  <div className="vv-anm"><div className="vv-anm-l">Losses</div><div className="vv-anm-v">{pickHistory.filter(p=>p.result==='loss').length}</div></div>
+                  <div className="vv-anm"><div className="vv-anm-l">Wins</div><div className="vv-anm-v">{pickHistory.filter(p=>p.result==='win'&&!p.isUserAlt).length}</div></div>
+                  <div className="vv-anm"><div className="vv-anm-l">Losses</div><div className="vv-anm-v">{pickHistory.filter(p=>p.result==='loss'&&!p.isUserAlt).length}</div></div>
                 </div>
               </div>
             </div>
@@ -2991,6 +3103,13 @@ export default function VegasVaultApp() {
                     pickHistory={pickHistory}
                     hasSlotPattern={hasSlotPattern}
                     isTopPlay={topPlay && topPlay.id === game.id}
+                    altPick={(() => {
+                      const k = `${game.id}-${game.slot}`;
+                      const resolved = pickHistory.find(p => p.key === `${k}-ALT`);
+                      if (resolved) return resolved;
+                      const pending = altPicks[k];
+                      return pending ? { ...pending, result: null } : null;
+                    })()}
                   />
                 );
               })}
@@ -3041,6 +3160,13 @@ export default function VegasVaultApp() {
                     pickHistory={pickHistory}
                     hasSlotPattern={hasSlotPattern}
                     isTopPlay={topPlay && topPlay.id === game.id}
+                    altPick={(() => {
+                      const k = `${game.id}-${game.slot}`;
+                      const resolved = pickHistory.find(p => p.key === `${k}-ALT`);
+                      if (resolved) return resolved;
+                      const pending = altPicks[k];
+                      return pending ? { ...pending, result: null } : null;
+                    })()}
                   />
                 );
               })}
@@ -3162,8 +3288,8 @@ export default function VegasVaultApp() {
 
       {/* ── MODELS — sport-specific AI analysis engines ── */}
       {authUser && isSubscribed && shellView === 'models' && (() => {
-        const overallWins = pickHistory.filter(p=>p.result==='win').length;
-        const overallLosses = pickHistory.filter(p=>p.result==='loss').length;
+        const overallWins = pickHistory.filter(p=>p.result==='win'&&!p.isUserAlt).length;
+        const overallLosses = pickHistory.filter(p=>p.result==='loss'&&!p.isUserAlt).length;
         const overallTotal = overallWins + overallLosses;
         const overallRate = overallTotal > 0 ? Math.round((overallWins/overallTotal)*100) : null;
 
@@ -3230,7 +3356,7 @@ export default function VegasVaultApp() {
       {authUser && isSubscribed && shellView === 'memory' && (() => {
         const trackedEntities = games.length * 12 + pickHistory.length;
         const activeRules = 12;
-        const recentCorrections = pickHistory.filter(p => p.result === 'loss').length;
+        const recentCorrections = pickHistory.filter(p => p.result === 'loss' && !p.isUserAlt).length;
         const tr = trackRecordSummary(pickHistory);
 
         const memItems = [
@@ -3330,9 +3456,9 @@ export default function VegasVaultApp() {
           const r = results[`${g.id}-${g.slot}`];
           return r?.summary?.tier === '1';
         }).length;
-        const pendingCount = pickHistory.filter(p => p.result !== 'win' && p.result !== 'loss').length;
-        const wins = pickHistory.filter(p=>p.result==='win').length;
-        const losses = pickHistory.filter(p=>p.result==='loss').length;
+        const pendingCount = pickHistory.filter(p => p.result !== 'win' && p.result !== 'loss' && !p.isUserAlt).length;
+        const wins = pickHistory.filter(p=>p.result==='win'&&!p.isUserAlt).length;
+        const losses = pickHistory.filter(p=>p.result==='loss'&&!p.isUserAlt).length;
         const seasonTotal = wins + losses;
         const seasonRate = seasonTotal > 0 ? Math.round((wins/seasonTotal)*100) : null;
         const sentToday = topPlay ? 1 : 0;
@@ -3388,8 +3514,8 @@ export default function VegasVaultApp() {
 
       {/* ── ANALYTICS — pick history & performance (V7) ── */}
       {authUser && isSubscribed && shellView === 'analytics' && (() => {
-        const wins = pickHistory.filter(p=>p.result==='win').length;
-        const losses = pickHistory.filter(p=>p.result==='loss').length;
+        const wins = pickHistory.filter(p=>p.result==='win'&&!p.isUserAlt).length;
+        const losses = pickHistory.filter(p=>p.result==='loss'&&!p.isUserAlt).length;
         const total = wins + losses;
         const rate = total > 0 ? Math.round((wins/total)*100) : 0;
 
@@ -3761,15 +3887,47 @@ export default function VegasVaultApp() {
 
                         const markets = [];
                         if (primaryCategory !== 'ML' && mlAway && mlHome && mlAway !== '—' && mlHome !== '—') {
-                          markets.push({ label: 'Moneyline', value: `${game.awayAbbr} ${mlAway} / ${game.homeAbbr} ${mlHome}` });
+                          markets.push({ label: 'Moneyline', market: 'ML', sides: [
+                            { sideLabel: game.awayAbbr, pick: game.away, betType: `ML ${mlAway}` },
+                            { sideLabel: game.homeAbbr, pick: game.home, betType: `ML ${mlHome}` },
+                          ]});
                         }
                         if (primaryCategory !== 'SPREAD' && spreadVal && spreadVal !== 'N/A') {
-                          markets.push({ label: 'Spread', value: `${spreadVal} (${game.awayAbbr} ${spreadAwayPrice||'-110'} / ${game.homeAbbr} ${spreadHomePrice||'-110'})` });
+                          const spreadNum = parseFloat(spreadVal);
+                          const awaySpreadStr = spreadNum > 0 ? `+${spreadNum}` : `${spreadNum}`;
+                          const homeSpreadStr = spreadNum > 0 ? `-${spreadNum}` : `+${Math.abs(spreadNum)}`;
+                          markets.push({ label: 'Spread', market: 'SPREAD', sides: [
+                            { sideLabel: `${game.awayAbbr} ${awaySpreadStr}`, pick: game.away, betType: `${awaySpreadStr} ${spreadAwayPrice||'-110'}` },
+                            { sideLabel: `${game.homeAbbr} ${homeSpreadStr}`, pick: game.home, betType: `${homeSpreadStr} ${spreadHomePrice||'-110'}` },
+                          ]});
                         }
                         if (primaryCategory !== 'TOTAL' && totalVal && totalVal !== 'N/A') {
-                          markets.push({ label: 'Total', value: `O${totalVal} ${overPrice||'-110'} / U${totalVal} ${underPrice||'-110'}` });
+                          markets.push({ label: 'Total', market: 'TOTAL', sides: [
+                            { sideLabel: `Over ${totalVal}`, pick: 'OVER', betType: `OVER ${totalVal} ${overPrice||'-110'}` },
+                            { sideLabel: `Under ${totalVal}`, pick: 'UNDER', betType: `UNDER ${totalVal} ${underPrice||'-110'}` },
+                          ]});
                         }
                         if (markets.length === 0) return null;
+
+                        const altKey = `${game.id}-${game.slot}`;
+                        const currentAlt = altPicks[altKey];
+
+                        const selectAlt = (market, side) => {
+                          const newAlt = { market, pick: side.pick, betType: side.betType, selectedAt: new Date().toISOString() };
+                          setAltPicks(prev => {
+                            const updated = { ...prev, [altKey]: newAlt };
+                            if (authUser?.id) syncSave(authUser.id, 'alt_picks', updated);
+                            return updated;
+                          });
+                        };
+                        const clearAlt = () => {
+                          setAltPicks(prev => {
+                            const updated = { ...prev };
+                            delete updated[altKey];
+                            if (authUser?.id) syncSave(authUser.id, 'alt_picks', updated);
+                            return updated;
+                          });
+                        };
 
                         return (
                           <div style={{ marginTop:10 }}>
@@ -3779,15 +3937,37 @@ export default function VegasVaultApp() {
                             </button>
                             {showOtherMarkets && (
                               <div style={{ marginTop:8, padding:'10px 12px', background:'rgba(246,249,246,0.6)', border:'1px solid rgba(0,0,0,0.05)', borderRadius:8 }}>
-                                <div style={{ fontSize:9, color:'#999', marginBottom:8, lineHeight:1.5 }}>
-                                  These are live odds for the other markets on this game — not separate AI picks. {analysis.marketLogic ? <>The AI's reasoning for choosing {summary.betType} instead: "{analysis.marketLogic}"</> : `The AI specifically chose ${summary.betType} as the strongest expression of its edge.`}
+                                <div style={{ fontSize:9, color:'#999', marginBottom:10, lineHeight:1.5 }}>
+                                  These are live odds for the other markets on this game — not separate AI picks. {analysis.marketLogic ? <>The AI's reasoning for choosing {summary.betType} instead: "{analysis.marketLogic}"</> : `The AI specifically chose ${summary.betType} as the strongest expression of its edge.`} Tracking one here saves it as your own pick — separate from the AI's official record — and grades it the same way once the game finishes.
                                 </div>
                                 {markets.map((m, i) => (
-                                  <div key={i} style={{ display:'flex', justifyContent:'space-between', fontSize:11, padding:'5px 0', borderTop: i>0 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}>
-                                    <span style={{ color:'#777', fontWeight:700 }}>{m.label}</span>
-                                    <span style={{ color:'#333', fontWeight:600 }}>{m.value}</span>
+                                  <div key={i} style={{ marginTop: i>0 ? 10 : 0, paddingTop: i>0 ? 10 : 0, borderTop: i>0 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}>
+                                    <div style={{ fontSize:9, fontWeight:800, color:'#999', marginBottom:6, textTransform:'uppercase', letterSpacing:'0.4px' }}>{m.label}</div>
+                                    <div style={{ display:'flex', gap:6 }}>
+                                      {m.sides.map((s, j) => {
+                                        const isSelected = currentAlt?.market === m.market && currentAlt?.betType === s.betType;
+                                        return (
+                                          <button key={j} onClick={()=> isSelected ? clearAlt() : selectAlt(m.market, s)} style={{
+                                            flex:1, padding:'7px 8px', borderRadius:7, cursor:'pointer', fontFamily:'inherit', fontSize:10, fontWeight:700,
+                                            border: isSelected ? '1px solid rgba(57,255,20,0.4)' : '1px solid rgba(0,0,0,0.07)',
+                                            background: isSelected ? 'rgba(57,255,20,0.12)' : 'rgba(255,255,255,0.7)',
+                                            color: isSelected ? '#22aa00' : '#555',
+                                            display:'flex', flexDirection:'column', alignItems:'center', gap:2,
+                                          }}>
+                                            {isSelected && <i className="ti ti-check" style={{ fontSize:11 }} />}
+                                            <span>{s.sideLabel}</span>
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
                                   </div>
                                 ))}
+                                {currentAlt && (
+                                  <div style={{ marginTop:10, paddingTop:10, borderTop:'1px solid rgba(0,0,0,0.05)', fontSize:10, color:'#33aa00', display:'flex', alignItems:'center', gap:6 }}>
+                                    <i className="ti ti-shield-check" style={{ fontSize:12 }} />
+                                    Tracking your pick: {currentAlt.pick} {currentAlt.betType}
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>
