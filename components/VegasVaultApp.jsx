@@ -2183,6 +2183,13 @@ export default function VegasVaultApp() {
             const normKey = `${normT(game.away)}|${normT(game.home)}`;
             const mv = data.movements[key] || Object.values(data.movements).find(m => `${normT(m.away)}|${normT(m.home)}` === normKey);
             if (!mv) return game;
+
+            // Once a game has passed its scheduled start time, stop updating
+            // spread/total/prices — whatever the line was at game time stays.
+            // ML is still updated because sportsbooks keep in-game ML live,
+            // but spread and total are pre-game markets only.
+            const gameStarted = game.rawTime && new Date() >= new Date(game.rawTime);
+
             // Build formatted opening ML strings
             const fmtN = (n) => n == null ? null : (n > 0 ? `+${n}` : `${n}`);
             return {
@@ -2197,23 +2204,25 @@ export default function VegasVaultApp() {
               pinHomeML:     mv.pinHomeML     || game.pinHomeML,
               dkAwayML:      mv.dkAwayML || game.dkAwayML || null,
               dkHomeML:      mv.dkHomeML || game.dkHomeML || null,
-              dkSpread: mv.dkSpread || (game.dkSpread && game.dkSpread !== 'N/A' ? game.dkSpread : null),
-              dkTotal:  mv.dkTotal  || (game.dkTotal  && game.dkTotal  !== 'N/A' ? game.dkTotal  : null),
-              awaySpreadPrice: mv.awaySpreadPrice || game.awaySpreadPrice || '-110',
-              homeSpreadPrice: mv.homeSpreadPrice || game.homeSpreadPrice || '-110',
-              overPrice:  mv.overPrice  || game.overPrice  || '-110',
-              underPrice: mv.underPrice || game.underPrice || '-110',
+              // Freeze spread/total fields once game has started
+              dkSpread: gameStarted ? game.dkSpread : (mv.dkSpread || (game.dkSpread && game.dkSpread !== 'N/A' ? game.dkSpread : null)),
+              dkTotal:  gameStarted ? game.dkTotal  : (mv.dkTotal  || (game.dkTotal  && game.dkTotal  !== 'N/A' ? game.dkTotal  : null)),
+              awaySpreadPrice: gameStarted ? game.awaySpreadPrice : (mv.awaySpreadPrice || game.awaySpreadPrice || '-110'),
+              homeSpreadPrice: gameStarted ? game.homeSpreadPrice : (mv.homeSpreadPrice || game.homeSpreadPrice || '-110'),
+              overPrice:  gameStarted ? game.overPrice  : (mv.overPrice  || game.overPrice  || '-110'),
+              underPrice: gameStarted ? game.underPrice : (mv.underPrice || game.underPrice || '-110'),
               // Live price updates from Sharp API
               awayML:        fmtN(mv.currentAwayML) || mv.awayML || (game.awayML !== 'N/A' ? game.awayML : null),
               homeML:        fmtN(mv.currentHomeML) || mv.homeML || (game.homeML !== 'N/A' ? game.homeML : null),
-              spread:        mv.spread || (game.spread !== 'N/A' ? game.spread : null),
-              total:         mv.total  || (game.total  !== 'N/A' ? game.total  : null),
+              spread: gameStarted ? game.spread : (mv.spread || (game.spread !== 'N/A' ? game.spread : null)),
+              total:  gameStarted ? game.total  : (mv.total  || (game.total  !== 'N/A' ? game.total  : null)),
               publicBettingPct: mv.publicBettingPct ?? game.publicBettingPct,
               sharpMoneyPct:    mv.sharpMoneyPct    ?? game.sharpMoneyPct,
-              spreadMovement: mv.spreadMovement || game.spreadMovement,
-              totalMovement:  mv.totalMovement  || game.totalMovement,
-              spreadMoveSignificant: mv.spreadMoveSignificant ?? game.spreadMoveSignificant,
-              totalMoveSignificant:  mv.totalMoveSignificant  ?? game.totalMoveSignificant,
+              // Freeze movement metadata too — no new movement signals mid-game
+              spreadMovement: gameStarted ? game.spreadMovement : (mv.spreadMovement || game.spreadMovement),
+              totalMovement:  gameStarted ? game.totalMovement  : (mv.totalMovement  || game.totalMovement),
+              spreadMoveSignificant: gameStarted ? game.spreadMoveSignificant : (mv.spreadMoveSignificant ?? game.spreadMoveSignificant),
+              totalMoveSignificant:  gameStarted ? game.totalMoveSignificant  : (mv.totalMoveSignificant  ?? game.totalMoveSignificant),
             };
           }));
         })
@@ -3950,10 +3959,13 @@ export default function VegasVaultApp() {
 
                         // Freeze lines once the game goes live — track whatever
                         // the line was at game start, not mid-game shifts.
+                        // liveScores covers MLB; rawTime is the universal fallback
+                        // for NBA, NFL, WNBA, and any other sport not in liveScores.
                         const liveEntry = liveScores?.[game.id]
                           || liveScores?.[`${game.away}|${game.home}`]
                           || liveScores?.[`${game.awayAbbr}|${game.homeAbbr}`];
-                        const isGameLive = liveEntry?.status === 'Live' || liveEntry?.detailedState === 'In Progress';
+                        const isGameLive = liveEntry?.status === 'Live' || liveEntry?.detailedState === 'In Progress'
+                          || (game.rawTime && new Date() >= new Date(game.rawTime));
 
                         const markets = [];
                         if (mlAway && mlHome && mlAway !== '—' && mlHome !== '—') {
