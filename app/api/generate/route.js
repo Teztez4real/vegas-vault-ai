@@ -197,7 +197,21 @@ export async function POST(request) {
     if (!stage3?.pick) return NextResponse.json(passResult('Market selection failed — pass.', slot));
 
     // ── STAGE 4: Final Verdict ─────────────────────────────────────────────
-    const stage4 = await runStage(stages.s4(game, stage1, stage2, stage3), 2500, false, trackRecord);
+    let stage4 = await runStage(stages.s4(game, stage1, stage2, stage3), 2500, false, trackRecord);
+
+    // Validate confidencePercent for any actual pick (not PASS) — retry
+    // once if missing/invalid before giving up, since this is usually a
+    // formatting hiccup rather than a genuine inability to analyze the
+    // game. The frontend must never invent a default percentage, so the
+    // server has to either get a real one or honestly report failure.
+    const isRealPick4 = s => s?.summary?.tier === '1' || s?.summary?.tier === '2';
+    const hasValidPct4 = s => typeof s?.summary?.confidencePercent === 'number' && s.summary.confidencePercent >= 0 && s.summary.confidencePercent <= 100;
+    if (isRealPick4(stage4) && !hasValidPct4(stage4)) {
+      stage4 = await runStage(stages.s4(game, stage1, stage2, stage3), 2500, false, trackRecord);
+    }
+    if (isRealPick4(stage4) && !hasValidPct4(stage4)) {
+      return NextResponse.json(passResult('Analysis incomplete — the model did not return a valid confidence percentage after retry. Tap Re-analyze to try again.', slot));
+    }
 
     // Build complete result — use stage4 if available, fill gaps from earlier stages
     const analysis = stage4?.analysis || {};
