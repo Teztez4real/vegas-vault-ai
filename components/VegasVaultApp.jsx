@@ -1142,6 +1142,7 @@ export default function VegasVaultApp() {
     }
   }
   const [showSubModal, setShowSubModal] = useState(false);
+  const [showOtherMarkets, setShowOtherMarkets] = useState(false);
   const [subModalLoading, setSubModalLoading] = useState(null);
   const [portalLoading, setPortalLoading] = useState(false);
   async function doManageSubscription() {
@@ -1179,6 +1180,7 @@ export default function VegasVaultApp() {
   const [generating, setGenerating]   = useState(null);
   const [activeResult, setActiveResult] = useState(null);
   const [activeGame, setActiveGame]   = useState(null);
+  useEffect(() => { setShowOtherMarkets(false); }, [activeGame?.id, activeGame?.slot]);
   const [activeDetailTab, setActiveDetailTab] = useState('AI Reasoning');
   const [filter, setFilter]           = useState("ALL");
   const [error, setError]             = useState(null);
@@ -3742,6 +3744,55 @@ export default function VegasVaultApp() {
                           <i className="ti ti-bolt" style={{ fontSize:12,color:'#39FF14',marginRight:5 }} />{summary.signalCount} signals point to this pick
                         </div>
                       )}
+
+                      {/* Other Markets — alternates to the AI's chosen pick, not equally endorsed */}
+                      {(() => {
+                        const btUpper = (summary.betType || '').toUpperCase();
+                        const primaryCategory = btUpper.includes('OVER') || btUpper.includes('UNDER') ? 'TOTAL'
+                          : /^[+-]\d/.test(btUpper.trim()) ? 'SPREAD' : 'ML';
+                        const mlAway = fmtOdds(game.dkAwayML) || fmtOdds(game.awayML);
+                        const mlHome = fmtOdds(game.dkHomeML) || fmtOdds(game.homeML);
+                        const spreadVal = game.spread;
+                        const spreadAwayPrice = fmtOdds(game.awaySpreadPrice);
+                        const spreadHomePrice = fmtOdds(game.homeSpreadPrice);
+                        const totalVal = game.total;
+                        const overPrice = fmtOdds(game.overPrice);
+                        const underPrice = fmtOdds(game.underPrice);
+
+                        const markets = [];
+                        if (primaryCategory !== 'ML' && mlAway && mlHome && mlAway !== '—' && mlHome !== '—') {
+                          markets.push({ label: 'Moneyline', value: `${game.awayAbbr} ${mlAway} / ${game.homeAbbr} ${mlHome}` });
+                        }
+                        if (primaryCategory !== 'SPREAD' && spreadVal && spreadVal !== 'N/A') {
+                          markets.push({ label: 'Spread', value: `${spreadVal} (${game.awayAbbr} ${spreadAwayPrice||'-110'} / ${game.homeAbbr} ${spreadHomePrice||'-110'})` });
+                        }
+                        if (primaryCategory !== 'TOTAL' && totalVal && totalVal !== 'N/A') {
+                          markets.push({ label: 'Total', value: `O${totalVal} ${overPrice||'-110'} / U${totalVal} ${underPrice||'-110'}` });
+                        }
+                        if (markets.length === 0) return null;
+
+                        return (
+                          <div style={{ marginTop:10 }}>
+                            <button onClick={()=>setShowOtherMarkets(p=>!p)} style={{ width:'100%', padding:'8px 12px', display:'flex', alignItems:'center', justifyContent:'space-between', background:'rgba(255,255,255,0.5)', border:'1px solid rgba(0,0,0,0.06)', borderRadius:8, cursor:'pointer', fontFamily:'inherit' }}>
+                              <span style={{ fontSize:10, fontWeight:700, color:'#777' }}>View other markets for this game</span>
+                              <i className={`ti ti-chevron-${showOtherMarkets?'up':'down'}`} style={{ fontSize:12, color:'#999' }} />
+                            </button>
+                            {showOtherMarkets && (
+                              <div style={{ marginTop:8, padding:'10px 12px', background:'rgba(246,249,246,0.6)', border:'1px solid rgba(0,0,0,0.05)', borderRadius:8 }}>
+                                <div style={{ fontSize:9, color:'#999', marginBottom:8, lineHeight:1.5 }}>
+                                  These are live odds for the other markets on this game — not separate AI picks. {analysis.marketLogic ? <>The AI's reasoning for choosing {summary.betType} instead: "{analysis.marketLogic}"</> : `The AI specifically chose ${summary.betType} as the strongest expression of its edge.`}
+                                </div>
+                                {markets.map((m, i) => (
+                                  <div key={i} style={{ display:'flex', justifyContent:'space-between', fontSize:11, padding:'5px 0', borderTop: i>0 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}>
+                                    <span style={{ color:'#777', fontWeight:700 }}>{m.label}</span>
+                                    <span style={{ color:'#333', fontWeight:600 }}>{m.value}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                       <div style={{ display:'flex',gap:8,marginTop:12 }}>
                         <button onClick={()=>{handleGenerate(game,game.slot);setActiveGame(null);}} style={{ flex:1,padding:'10px',borderRadius:9,border:'1px solid rgba(57,255,20,0.25)',background:'rgba(57,255,20,0.07)',color:'#33aa00',fontSize:11,fontWeight:700,cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',justifyContent:'center',gap:6 }}>
                           <i className="ti ti-refresh" style={{ fontSize:13 }} /> Re-analyze
