@@ -183,7 +183,7 @@ async function generatePlay(game, trackRecord) {
   // also show "QUEUED FOR ANALYSIS..." indefinitely since preAnalyzing
   // never clears.
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 90000); // 90s
+  const timeoutId = setTimeout(() => controller.abort(), 190000); // 190s — just above the server's 180s maxDuration so we always hear back from the server (success or its own timeout) rather than giving up early
   try {
     const response = await fetch("/api/generate", {
       method:"POST", headers:{"Content-Type":"application/json"},
