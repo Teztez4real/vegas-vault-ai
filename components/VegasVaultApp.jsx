@@ -3916,11 +3916,22 @@ export default function VegasVaultApp() {
                         const underPrice = fmtOdds(game.underPrice);
 
                         const markets = [];
-                        if (primaryCategory !== 'ML' && mlAway && mlHome && mlAway !== '—' && mlHome !== '—') {
-                          markets.push({ label: 'Moneyline', market: 'ML', sides: [
-                            { sideLabel: game.awayAbbr, pick: game.away, betType: `ML ${mlAway}` },
-                            { sideLabel: game.homeAbbr, pick: game.home, betType: `ML ${mlHome}` },
-                          ]});
+                        if (mlAway && mlHome && mlAway !== '—' && mlHome !== '—') {
+                          if (primaryCategory === 'ML') {
+                            // AI's pick is already a team ML — don't hide the market
+                            // entirely, just exclude the side the AI already picked so
+                            // the opposing team's ML is still selectable as an alt pick.
+                            const pickIsAway = summary.pick === game.away || game.away?.includes(summary.pick) || summary.pick?.includes(game.away?.split(' ').pop());
+                            const oppositeSide = pickIsAway
+                              ? { sideLabel: game.homeAbbr, pick: game.home, betType: `ML ${mlHome}` }
+                              : { sideLabel: game.awayAbbr, pick: game.away, betType: `ML ${mlAway}` };
+                            markets.push({ label: 'Moneyline', market: 'ML', sides: [oppositeSide] });
+                          } else {
+                            markets.push({ label: 'Moneyline', market: 'ML', sides: [
+                              { sideLabel: game.awayAbbr, pick: game.away, betType: `ML ${mlAway}` },
+                              { sideLabel: game.homeAbbr, pick: game.home, betType: `ML ${mlHome}` },
+                            ]});
+                          }
                         }
                         if (primaryCategory !== 'SPREAD' && spreadVal && spreadVal !== 'N/A') {
                           const spreadNum = parseFloat(spreadVal);
