@@ -48,7 +48,49 @@ function localLoad(key) {
   try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : null; } catch { return null; }
 }
 
-// ── PROMPT ENGINE ─────────────────────────────────────────────────────────────
+// ── SERVER-SIDE SAVE (service role — bypasses RLS, always works) ───────────
+// Client-side syncSave uses the anon Supabase client which silently fails when
+// the session expires (RLS rejects unauthenticated writes). This hits a
+// server-side endpoint that uses the service role key, so it succeeds regardless
+// of client session state. keepalive:true means it survives page refresh/close.
+async function serverSave(userId, saves) {
+  if (!userId || !saves?.length) return;
+  try {
+    await fetch('/api/user/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, saves }),
+      keepalive: true,
+    });
+  } catch(e) {}
+}
+
+// Triple-layer flush: localStorage (instant) + Supabase client + Supabase server
+async function flushAll(userId, state) {
+  if (!userId) return;
+  const { results, finalized, watchlist, pickHistory, altPicks } = state;
+  localSave('vv_results',      results);
+  localSave('vv_finalized',    finalized);
+  localSave('vv_watchlist',    watchlist);
+  localSave('vv_pick_history', pickHistory);
+  localSave('vv_alt_picks',    altPicks);
+  await Promise.allSettled([
+    syncSave(userId, 'results',      results),
+    syncSave(userId, 'finalized',    finalized),
+    syncSave(userId, 'watchlist',    watchlist),
+    syncSave(userId, 'pick_history', pickHistory),
+    syncSave(userId, 'alt_picks',    altPicks),
+  ]);
+  serverSave(userId, [
+    { key: 'results',      value: results      },
+    { key: 'finalized',    value: finalized    },
+    { key: 'watchlist',    value: watchlist    },
+    { key: 'pick_history', value: pickHistory  },
+    { key: 'alt_picks',    value: altPicks     },
+  ]);
+}
+
+
 
 function buildBaseballPrompt(gameData) {
   return `You are the Vegas Vault AI Model — a professional sports betting analysis system. Your job is to identify when market pricing misrepresents reality and find the edge.
@@ -1207,10 +1249,47 @@ export default function VegasVaultApp() {
   }, []);
 
   // ── AUTO SIGN-OUT AFTER INACTIVITY ──────────────────────────────────────
-  // All user data (watchlist, results, chat history, pick history, etc.) is
-  // continuously synced to Supabase as it changes, so signing out here never
-  // loses anything — it's all already saved server-side.
   useIdleSignOut(getSB(), !!authUser, doIdleSignOut, 30);
+
+  // ── HEARTBEAT SAVE — every 2 minutes ─────────────────────────────────────
+  // Ensures data is always in Supabase even if a state-change save was missed.
+  // Uses flushAll (triple-layer: localStorage + Supabase client + server-side
+  // service role) so it works regardless of session state.
+  useEffect(() => {
+    if (!authUser?.id) return;
+    const id = setInterval(() => {
+      flushAll(authUser.id, { results, finalized, watchlist, pickHistory, altPicks });
+    }, 2 * 60 * 1000);
+    return () => clearInterval(id);
+  }, [authUser?.id, results, finalized, watchlist, pickHistory, altPicks]);
+
+  // ── BEFORE-UNLOAD SAVE — fires on page close/refresh ─────────────────────
+  // keepalive:true in serverSave ensures the request completes even after the
+  // page starts unloading. localStorage writes are synchronous so they always
+  // complete before the page closes.
+  useEffect(() => {
+    if (!authUser?.id) return;
+    const handler = () => {
+      localSave('vv_results',      results);
+      localSave('vv_finalized',    finalized);
+      localSave('vv_watchlist',    watchlist);
+      localSave('vv_pick_history', pickHistory);
+      localSave('vv_alt_picks',    altPicks);
+      serverSave(authUser.id, [
+        { key: 'results',      value: results      },
+        { key: 'finalized',    value: finalized    },
+        { key: 'watchlist',    value: watchlist    },
+        { key: 'pick_history', value: pickHistory  },
+        { key: 'alt_picks',    value: altPicks     },
+      ]);
+    };
+    window.addEventListener('beforeunload', handler);
+    window.addEventListener('pagehide',     handler); // iOS Safari fires pagehide not beforeunload
+    return () => {
+      window.removeEventListener('beforeunload', handler);
+      window.removeEventListener('pagehide',     handler);
+    };
+  }, [authUser?.id, results, finalized, watchlist, pickHistory, altPicks]);
 
   async function doAuth() {
     setAuthLoading(true); setAuthError('');
@@ -1258,23 +1337,17 @@ export default function VegasVaultApp() {
   }
 
   async function doSignOut() {
-    // Flush all user data to Supabase FIRST — before clearing state —
-    // so nothing is lost on manual logout or inactivity sign-out.
-    // This covers any in-flight changes that haven't synced yet.
     try {
       const uid = authUser?.id;
-      if (uid) {
-        await Promise.allSettled([
-          syncSave(uid, 'results',      results),
-          syncSave(uid, 'finalized',    finalized),
-          syncSave(uid, 'watchlist',    watchlist),
-          syncSave(uid, 'pick_history', pickHistory),
-          syncSave(uid, 'alt_picks',    altPicks),
-        ]);
-      }
+      if (uid) await flushAll(uid, { results, finalized, watchlist, pickHistory, altPicks });
     } catch(e) {}
     try { const sb = getSB(); if (sb) await sb.auth.signOut({ scope: 'global' }); } catch(e) {}
-    setAuthUser(null); localStorage.removeItem('vv_admin'); localStorage.removeItem('vv_subscribed'); localStorage.removeItem('vv_results'); localStorage.removeItem('vv_finalized'); localStorage.removeItem('vv_watchlist'); localStorage.removeItem('vv_pick_history'); localStorage.removeItem('vv_alt_picks'); setIsSubscribed(false); setResults({}); setFinalized({}); setWatchlist([]); setPickHistory([]);
+    setAuthUser(null);
+    localStorage.removeItem('vv_admin'); localStorage.removeItem('vv_subscribed');
+    localStorage.removeItem('vv_results'); localStorage.removeItem('vv_finalized');
+    localStorage.removeItem('vv_watchlist'); localStorage.removeItem('vv_pick_history');
+    localStorage.removeItem('vv_alt_picks');
+    setIsSubscribed(false); setResults({}); setFinalized({}); setWatchlist([]); setPickHistory([]);
   }
 
   async function doSubscribe(plan) {
@@ -2004,7 +2077,10 @@ export default function VegasVaultApp() {
   // ── PERSIST RESULTS TO LOCALSTORAGE ──────────────────────────────────────────
   useEffect(() => {
     localSave('vv_results', results);
-    if (authUser?.id) syncSave(authUser.id, 'results', results); // scoped to this user only — all dates
+    if (authUser?.id) {
+      syncSave(authUser.id, 'results', results);
+      serverSave(authUser.id, [{ key: 'results', value: results }]);
+    }
   }, [results]);
 
   // ── CROSS-DEVICE SYNC: poll for results updated from other devices ──────────
@@ -2028,7 +2104,10 @@ export default function VegasVaultApp() {
 
   useEffect(() => {
     localSave('vv_finalized', finalized);
-    if (authUser?.id) syncSave(authUser.id, 'finalized', finalized);
+    if (authUser?.id) {
+      syncSave(authUser.id, 'finalized', finalized);
+      serverSave(authUser.id, [{ key: 'finalized', value: finalized }]);
+    }
   }, [finalized]);
 
   // ── CROSS-DEVICE SYNC: poll for finalized updates from other devices ────────
@@ -2051,7 +2130,10 @@ export default function VegasVaultApp() {
   // Persist pick history
   useEffect(() => {
     localSave('vv_pick_history', pickHistory);
-    if (authUser?.id) syncSave(authUser.id, 'pick_history', pickHistory); // user-scoped
+    if (authUser?.id) {
+      syncSave(authUser.id, 'pick_history', pickHistory);
+      serverSave(authUser.id, [{ key: 'pick_history', value: pickHistory }]);
+    }
   }, [pickHistory]);
 
   // ── CROSS-DEVICE SYNC: poll for pick_history updates from other devices ─────
@@ -2076,10 +2158,13 @@ export default function VegasVaultApp() {
     return () => clearInterval(interval);
   }, [authUser?.id]);
 
-  // Persist watchlist — safety net on top of per-toggle saves
+  // Persist watchlist
   useEffect(() => {
     localSave('vv_watchlist', watchlist);
-    if (authUser?.id && watchlist.length >= 0) syncSave(authUser.id, 'watchlist', watchlist);
+    if (authUser?.id && watchlist.length >= 0) {
+      syncSave(authUser.id, 'watchlist', watchlist);
+      serverSave(authUser.id, [{ key: 'watchlist', value: watchlist }]);
+    }
   }, [watchlist]);
 
   // ── CROSS-DEVICE SYNC: poll for watchlist updates from other devices ─────────
@@ -2099,10 +2184,13 @@ export default function VegasVaultApp() {
     return () => clearInterval(interval);
   }, [authUser?.id]);
 
-  // Persist altPicks (user-selected alternate markets)
+  // Persist altPicks
   useEffect(() => {
     localSave('vv_alt_picks', altPicks);
-    if (authUser?.id) syncSave(authUser.id, 'alt_picks', altPicks);
+    if (authUser?.id) {
+      syncSave(authUser.id, 'alt_picks', altPicks);
+      serverSave(authUser.id, [{ key: 'alt_picks', value: altPicks }]);
+    }
   }, [altPicks]);
 
   // ── CROSS-DEVICE SYNC: poll for altPicks updates from other devices ──────────
@@ -2223,7 +2311,18 @@ export default function VegasVaultApp() {
         if (!result?.summary) {
           result = { ...result, summary:{ tier:'3', tierLabel:'Tier 3', pick:'No Pick', betType:'N/A', confidence:'LOW', verdict:'Analysis incomplete.', isScamPlay:false, slot:next.slot } };
         }
-        setResults(prev => ({ ...prev, [next.key]: result }));
+        setResults(prev => {
+          const updated = { ...prev, [next.key]: result };
+          // Immediate triple-layer save — don't wait for the useEffect cycle.
+          // This is the most critical save point: a fresh analysis result.
+          const uid = authUserIdRef.current;
+          if (uid) {
+            localSave('vv_results', updated);
+            syncSave(uid, 'results', updated);
+            serverSave(uid, [{ key: 'results', value: updated }]);
+          }
+          return updated;
+        });
         // AI decides when to finalize
         if (result?.summary?.readyToFinalize === true) {
           setFinalized(prev => ({ ...prev, [next.key]: true }));
@@ -2415,7 +2514,16 @@ export default function VegasVaultApp() {
           isScamPlay:false, slot,
         };
       }
-      setResults(prev=>({...prev,[key]:result}));
+      setResults(prev => {
+        const updated = { ...prev, [key]: result };
+        const uid = authUserIdRef.current;
+        if (uid) {
+          localSave('vv_results', updated);
+          syncSave(uid, 'results', updated);
+          serverSave(uid, [{ key: 'results', value: updated }]);
+        }
+        return updated;
+      });
       // AI decides when to finalize — only finalize if AI signals readiness
       if (result?.summary?.readyToFinalize === true && !result.error) {
         const finalResult = { ...result, finalized: true, finalizedAt: new Date().toISOString() };
