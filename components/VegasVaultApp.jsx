@@ -90,6 +90,14 @@ async function flushAll(userId, state) {
   ]);
 }
 
+// Convenience: save a single key through all three layers immediately
+async function saveKey(userId, key, value) {
+  if (!userId) return;
+  localSave(`vv_${key}`, value);
+  syncSave(userId, key, value);
+  serverSave(userId, [{ key, value }]);
+}
+
 
 
 function buildBaseballPrompt(gameData) {
@@ -1250,7 +1258,22 @@ export default function VegasVaultApp() {
   // ── AUTO SIGN-OUT AFTER INACTIVITY ──────────────────────────────────────
   useIdleSignOut(getSB(), !!authUser, doIdleSignOut, 30);
 
-  // ── HEARTBEAT SAVE — every 2 minutes ─────────────────────────────────────
+  // ── SESSION KEEPALIVE — refresh token every 10 minutes ───────────────────
+  // Supabase auto-refreshes sessions but only when the SDK is actively used.
+  // This guarantees the session never expires for any user (admin or client)
+  // during a long active session, keeping syncSave writes valid.
+  useEffect(() => {
+    if (!authUser?.id) return;
+    const id = setInterval(async () => {
+      try {
+        const sb = getSB();
+        if (sb) await sb.auth.refreshSession();
+      } catch(e) {}
+    }, 10 * 60 * 1000);
+    return () => clearInterval(id);
+  }, [authUser?.id]);
+
+
   // saveStateRef always has the latest state so dep array is just [authUser?.id]
   useEffect(() => {
     if (!authUser?.id) return;
@@ -1646,7 +1669,12 @@ export default function VegasVaultApp() {
             resolvedAt: new Date().toISOString(),
             date: game.date,
           };
-          setPickHistory(prev => [...prev, historyEntry]);
+          setPickHistory(prev => {
+            const updated = [...prev, historyEntry];
+            const uid = authUserIdRef.current;
+            if (uid) saveKey(uid, 'pick_history', updated);
+            return updated;
+          });
 
           // Notification
           const emoji = result === 'win' ? '✅' : '❌';
@@ -1712,7 +1740,12 @@ export default function VegasVaultApp() {
             aiPick: aiPick?.summary?.pick || null,
             aiBetType: aiPick?.summary?.betType || null,
           };
-          setPickHistory(prev => [...prev, historyEntry]);
+          setPickHistory(prev => {
+            const updated = [...prev, historyEntry];
+            const uid = authUserIdRef.current;
+            if (uid) saveKey(uid, 'pick_history', updated);
+            return updated;
+          });
 
           const emoji = altResult === 'win' ? '✅' : '❌';
           sendNotification(
@@ -3473,7 +3506,7 @@ export default function VegasVaultApp() {
                     betReady={!!betReadyAlerts[key]}
                     onShowAuth={()=>setShowAuth(true)}
                     watchlist={watchlist}
-                    onToggleWatch={(id)=>setWatchlist(p=>{const u=p.includes(id)?p.filter(x=>x!==id):[...p,id];if(authUser?.id)syncSave(authUser.id,'watchlist',u);return u;})}
+                    onToggleWatch={(id)=>setWatchlist(p=>{const u=p.includes(id)?p.filter(x=>x!==id):[...p,id];if(authUser?.id)saveKey(authUser.id,'watchlist',u);return u;})}
                     pickHistory={pickHistory}
                     hasSlotPattern={hasSlotPattern}
                     isTopPlay={topPlay && topPlay.id === game.id}
@@ -4104,7 +4137,7 @@ export default function VegasVaultApp() {
                     <i className="ti ti-arrow-left" style={{ fontSize:13 }} /> Back to Games Slate
                   </div>
                   <div style={{ display:'flex',alignItems:'center',gap:8 }}>
-                    <div onClick={()=>setWatchlist(p=>{const u=p.includes(game.id)?p.filter(x=>x!==game.id):[...p,game.id];if(authUser?.id)syncSave(authUser.id,'watchlist',u);return u;})} style={{ fontSize:10,fontWeight:700,cursor:'pointer',
+                    <div onClick={()=>setWatchlist(p=>{const u=p.includes(game.id)?p.filter(x=>x!==game.id):[...p,game.id];if(authUser?.id)saveKey(authUser.id,'watchlist',u);return u;})} style={{ fontSize:10,fontWeight:700,cursor:'pointer',
                       color: watchlist?.includes(game.id) ? '#2aa800' : '#666',
                       background: watchlist?.includes(game.id) ? 'rgba(57,255,20,0.1)' : 'rgba(0,0,0,0.04)',
                       border: watchlist?.includes(game.id) ? '1px solid rgba(57,255,20,0.25)' : '1px solid rgba(0,0,0,0.07)',
@@ -4246,14 +4279,14 @@ export default function VegasVaultApp() {
                           const newAlt = { market, pick: side.pick, betType: side.betType, selectedAt: new Date().toISOString() };
                           setAltPicks(prev => {
                             const updated = { ...prev, [altKey]: newAlt };
-                            if (authUser?.id) syncSave(authUser.id, 'alt_picks', updated);
+                            if (authUser?.id) saveKey(authUser.id, 'alt_picks', updated);
                             return updated;
                           });
                         };
                         const clearAlt = () => {
                           setAltPicks(prev => {
                             const u = { ...prev }; delete u[altKey];
-                            if (authUser?.id) syncSave(authUser.id, 'alt_picks', u);
+                            if (authUser?.id) saveKey(authUser.id, 'alt_picks', u);
                             return u;
                           });
                         };
@@ -4379,7 +4412,7 @@ export default function VegasVaultApp() {
                         <button onClick={()=>{handleGenerate(game,game.slot);setActiveGame(null);}} style={{ flex:1,padding:'10px',borderRadius:9,border:'1px solid rgba(57,255,20,0.25)',background:'rgba(57,255,20,0.07)',color:'#33aa00',fontSize:11,fontWeight:700,cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',justifyContent:'center',gap:6 }}>
                           <i className="ti ti-refresh" style={{ fontSize:13 }} /> Re-analyze
                         </button>
-                        <button onClick={()=>setWatchlist(p=>{const u=p.includes(game.id)?p.filter(x=>x!==game.id):[...p,game.id];if(authUser?.id)syncSave(authUser.id,'watchlist',u);return u;})} style={{ flex:1,padding:'10px',borderRadius:9,fontSize:11,fontWeight:700,cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',justifyContent:'center',gap:6,
+                        <button onClick={()=>setWatchlist(p=>{const u=p.includes(game.id)?p.filter(x=>x!==game.id):[...p,game.id];if(authUser?.id)saveKey(authUser.id,'watchlist',u);return u;})} style={{ flex:1,padding:'10px',borderRadius:9,fontSize:11,fontWeight:700,cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',justifyContent:'center',gap:6,
                           border: watchlist?.includes(game.id) ? '1px solid rgba(57,255,20,0.25)' : '1px solid rgba(0,0,0,0.07)',
                           background: watchlist?.includes(game.id) ? 'rgba(57,255,20,0.07)' : 'rgba(255,255,255,0.7)',
                           color: watchlist?.includes(game.id) ? '#2aa800' : '#555' }}>
