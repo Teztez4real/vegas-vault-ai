@@ -118,8 +118,10 @@ ${gameData.away}: ${gameData.awayRecord} overall | ${gameData.awayAwayRecord} aw
 ${gameData.home}: ${gameData.homeRecord} overall | ${gameData.homeHomeRecord} home | Last 5: ${gameData.homeLast5} | Last 10: ${gameData.homeLast10}
 
 PITCHING:
-${gameData.awayPitcher}: ${gameData.awayPitcherStats}
-${gameData.homePitcher}: ${gameData.homePitcherStats}
+${gameData.awayPitcher} vs ${gameData.home} (career): ${gameData.awayPitcherVsOpponent || 'No career data vs this opponent'}
+${gameData.awayPitcher} 2025 season: ${gameData.awayPitcherStats}
+${gameData.homePitcher} vs ${gameData.away} (career): ${gameData.homePitcherVsOpponent || 'No career data vs this opponent'}
+${gameData.homePitcher} 2025 season: ${gameData.homePitcherStats}
 Bullpens: ${gameData.away} pen ERA: ${gameData.awayBullpenERA} | ${gameData.home} pen ERA: ${gameData.homeBullpenERA}
 
 LINEUP & OFFENSE:
@@ -4448,14 +4450,24 @@ export default function VegasVaultApp() {
                           <div style={{ padding:'10px 12px',background:'rgba(246,249,246,0.7)',border:'1px solid rgba(195,240,195,0.5)',borderRadius:10 }}>
                             <div style={{ fontSize:8,color:'#aaa',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:3 }}>{game.away}</div>
                             <div style={{ fontSize:13,fontWeight:800,color:'#111' }}>{game.awayPitcher || 'TBD'}</div>
-                            {game.awayPitcherStats && <div style={{ fontSize:10,color:'#777',marginTop:4,lineHeight:1.6 }}>{game.awayPitcherStats}</div>}
-                            {game.awayPitcherVsOpponent && game.awayPitcherVsOpponent!=='N/A' && <div style={{ fontSize:10,color:'#999',marginTop:4 }}>{game.awayPitcherVsOpponent}</div>}
+                            {/* Primary: career vs this opponent */}
+                            {game.awayPitcherVsOpponent && game.awayPitcherVsOpponent !== 'N/A'
+                              ? <div style={{ fontSize:10,color:'#444',marginTop:4,lineHeight:1.6,fontWeight:500 }}>{game.awayPitcherVsOpponent}</div>
+                              : <div style={{ fontSize:10,color:'#bbb',marginTop:4,fontStyle:'italic' }}>No career stats vs this opponent</div>
+                            }
+                            {/* Secondary: current season stats for context */}
+                            {game.awayPitcherStats && <div style={{ fontSize:9,color:'#aaa',marginTop:5,lineHeight:1.5,borderTop:'1px solid rgba(0,0,0,0.05)',paddingTop:5 }}>2025 season: {game.awayPitcherStats}</div>}
                           </div>
                           <div style={{ padding:'10px 12px',background:'rgba(246,249,246,0.7)',border:'1px solid rgba(195,240,195,0.5)',borderRadius:10 }}>
                             <div style={{ fontSize:8,color:'#aaa',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:3 }}>{game.home}</div>
                             <div style={{ fontSize:13,fontWeight:800,color:'#111' }}>{game.homePitcher || 'TBD'}</div>
-                            {game.homePitcherStats && <div style={{ fontSize:10,color:'#777',marginTop:4,lineHeight:1.6 }}>{game.homePitcherStats}</div>}
-                            {game.homePitcherVsOpponent && game.homePitcherVsOpponent!=='N/A' && <div style={{ fontSize:10,color:'#999',marginTop:4 }}>{game.homePitcherVsOpponent}</div>}
+                            {/* Primary: career vs this opponent */}
+                            {game.homePitcherVsOpponent && game.homePitcherVsOpponent !== 'N/A'
+                              ? <div style={{ fontSize:10,color:'#444',marginTop:4,lineHeight:1.6,fontWeight:500 }}>{game.homePitcherVsOpponent}</div>
+                              : <div style={{ fontSize:10,color:'#bbb',marginTop:4,fontStyle:'italic' }}>No career stats vs this opponent</div>
+                            }
+                            {/* Secondary: current season stats for context */}
+                            {game.homePitcherStats && <div style={{ fontSize:9,color:'#aaa',marginTop:5,lineHeight:1.5,borderTop:'1px solid rgba(0,0,0,0.05)',paddingTop:5 }}>2025 season: {game.homePitcherStats}</div>}
                           </div>
                         </div>
                         {analysis.pitching && <div style={{ marginTop:10,fontSize:11,color:'#444',lineHeight:1.6 }}>{analysis.pitching}</div>}
