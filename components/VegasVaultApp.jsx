@@ -4299,11 +4299,13 @@ export default function VegasVaultApp() {
                         const mlAway = fmtOdds(game.dkAwayML) || fmtOdds(game.awayML) || '';
                         const mlHome = fmtOdds(game.dkHomeML) || fmtOdds(game.homeML) || '';
 
-                        // Spread — use game data, MLB run line default is ±1.5
+                        // Spread — game.spread is captured from the HOME team's outcome
+                        // in the Odds API (o.name === home), so home gets the direct
+                        // value and away gets the mirror.
                         const rawSpread = game.dkSpread || game.spread;
-                        const spreadNum = (rawSpread && rawSpread !== 'N/A') ? parseFloat(rawSpread) : (game.sport !== 'Tennis' ? -1.5 : null);
-                        const awaySpreadStr = spreadNum != null ? (spreadNum > 0 ? `+${spreadNum}` : `${spreadNum}`) : null;
-                        const homeSpreadStr = spreadNum != null ? (spreadNum > 0 ? `-${spreadNum}` : `+${Math.abs(spreadNum)}`) : null;
+                        const spreadNum = (rawSpread && rawSpread !== 'N/A') ? parseFloat(rawSpread) : (game.sport !== 'Tennis' ? null : null);
+                        const homeSpreadStr = spreadNum != null ? (spreadNum > 0 ? `+${spreadNum}` : `${spreadNum}`) : null;
+                        const awaySpreadStr = spreadNum != null ? (spreadNum > 0 ? `-${spreadNum}` : `+${Math.abs(spreadNum)}`) : null;
                         const awaySpreadPrice = fmtOdds(game.awaySpreadPrice) || '-110';
                         const homeSpreadPrice = fmtOdds(game.homeSpreadPrice) || '-110';
 
