@@ -4596,35 +4596,59 @@ export default function VegasVaultApp() {
                 )}
 
                 {/* Scam Play tab */}
-                {activeTab === 'Scam Play' && (
-                  <div style={{ background:'rgba(255,250,235,0.5)',border:'1px solid rgba(255,150,0,0.35)',borderRadius:14,padding:'14px 16px' }}>
-                    <div style={{ fontSize:11,fontWeight:800,color:'#bb6600',marginBottom:10,display:'flex',alignItems:'center',gap:6 }}>
-                      <i className="ti ti-alert-triangle" style={{ fontSize:14 }} /> Scam Play Alert
-                      {hasSlotPattern && (
-                        <span style={{ fontSize:8,fontWeight:700,color:'#cc7700',border:'1px solid rgba(255,150,0,0.3)',padding:'2px 7px',borderRadius:5,background:'rgba(255,150,0,0.05)',marginLeft:'auto' }}>
-                          {isVegas ? 'Vegas Slot' : 'Public Slot'}
-                        </span>
+                {activeTab === 'Scam Play' && (() => {
+                  // scamPlay can be a string OR an object { active, whyItLooksWrong, whyItsActuallyCorrect }
+                  // depending on which prompt/sport generated it. Normalize before rendering.
+                  const raw = analysis.scamPlay;
+                  const isObj = raw && typeof raw === 'object';
+                  const hasContent = raw && raw !== 'N/A';
+                  return (
+                    <div style={{ background:'rgba(255,250,235,0.5)',border:'1px solid rgba(255,150,0,0.35)',borderRadius:14,padding:'14px 16px' }}>
+                      <div style={{ fontSize:11,fontWeight:800,color:'#bb6600',marginBottom:10,display:'flex',alignItems:'center',gap:6 }}>
+                        <i className="ti ti-alert-triangle" style={{ fontSize:14 }} /> Scam Play Alert
+                        {hasSlotPattern && (
+                          <span style={{ fontSize:8,fontWeight:700,color:'#cc7700',border:'1px solid rgba(255,150,0,0.3)',padding:'2px 7px',borderRadius:5,background:'rgba(255,150,0,0.05)',marginLeft:'auto' }}>
+                            {isVegas ? 'Vegas Slot' : 'Public Slot'}
+                          </span>
+                        )}
+                      </div>
+
+                      {hasContent ? (
+                        isObj ? (
+                          <>
+                            {raw.whyItLooksWrong && (
+                              <div style={{ marginBottom:10 }}>
+                                <div style={{ fontSize:9,fontWeight:800,color:'#cc6600',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:4 }}>❌ Why It Looks Wrong</div>
+                                <div style={{ fontSize:12,color:'#664400',lineHeight:1.7 }}>{raw.whyItLooksWrong}</div>
+                              </div>
+                            )}
+                            {raw.whyItsActuallyCorrect && (
+                              <div>
+                                <div style={{ fontSize:9,fontWeight:800,color:'#33aa00',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:4 }}>✅ Why It's Actually Correct</div>
+                                <div style={{ fontSize:12,color:'#664400',lineHeight:1.7 }}>{raw.whyItsActuallyCorrect}</div>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div style={{ fontSize:12,color:'#664400',lineHeight:1.7 }}>{String(raw)}</div>
+                        )
+                      ) : (
+                        <div style={{ fontSize:11,color:'#bbb' }}>
+                          {isVegas
+                            ? 'No scam play identified for this game.'
+                            : 'This is a Public Slot — scams are still possible but the expected outcome is more likely here.'}
+                        </div>
+                      )}
+
+                      {analysis.propaganda && (
+                        <div style={{ marginTop:12,paddingTop:12,borderTop:'1px solid rgba(255,150,0,0.2)' }}>
+                          <div style={{ fontSize:9,fontWeight:800,color:'#bb6600',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:4 }}>Propaganda Check</div>
+                          <div style={{ fontSize:11,color:'#664400',lineHeight:1.6 }}>{analysis.propaganda}</div>
+                        </div>
                       )}
                     </div>
-                    {isVegas ? (
-                      analysis.scamPlay && analysis.scamPlay !== 'N/A' ? (
-                        <div style={{ fontSize:12,color:'#664400',lineHeight:1.7 }}>{analysis.scamPlay}</div>
-                      ) : (
-                        <div style={{ fontSize:11,color:'#bbb' }}>No scam play identified for this game.</div>
-                      )
-                    ) : (
-                      <div style={{ fontSize:11,color:'#888',lineHeight:1.6 }}>
-                        This is a Public Slot — scams are still possible but the expected outcome is more likely here. {analysis.scamPlay && analysis.scamPlay !== 'N/A' ? analysis.scamPlay : ''}
-                      </div>
-                    )}
-                    {analysis.propaganda && (
-                      <div style={{ marginTop:12,paddingTop:12,borderTop:'1px solid rgba(255,150,0,0.2)' }}>
-                        <div style={{ fontSize:9,fontWeight:800,color:'#bb6600',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:4 }}>Propaganda Check</div>
-                        <div style={{ fontSize:11,color:'#664400',lineHeight:1.6 }}>{analysis.propaganda}</div>
-                      </div>
-                    )}
-                  </div>
-                )}
+                  );
+                })()}
 
                 {/* Line Movement tab */}
                 {activeTab === 'Line Movement' && (
