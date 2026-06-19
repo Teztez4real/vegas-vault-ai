@@ -4132,69 +4132,8 @@ export default function VegasVaultApp() {
                         </div>
                       )}
 
-                      {/* Other Markets — alternates to the AI's chosen pick, not equally endorsed */}
+                      {/* Other Markets */}
                       {(() => {
-                        const btUpper = (summary.betType || '').toUpperCase();
-                        const primaryCategory = btUpper.includes('OVER') || btUpper.includes('UNDER') ? 'TOTAL'
-                          : /^[+-]\d/.test(btUpper.trim()) ? 'SPREAD' : 'ML';
-                        const mlAway = fmtOdds(game.dkAwayML) || fmtOdds(game.awayML);
-                        const mlHome = fmtOdds(game.dkHomeML) || fmtOdds(game.homeML);
-                        // Use DK-sourced spread/total as primary — they're what the
-                        // line poller updates most reliably. Fall back to the generic
-                        // field if DK isn't available.
-                        const spreadVal = game.dkSpread || game.spread;
-                        const spreadAwayPrice = fmtOdds(game.awaySpreadPrice);
-                        const spreadHomePrice = fmtOdds(game.homeSpreadPrice);
-                        const totalVal = game.dkTotal || game.total;
-                        const overPrice = fmtOdds(game.overPrice);
-                        const underPrice = fmtOdds(game.underPrice);
-
-                        // Freeze lines once the game goes live — track whatever
-                        // the line was at game start, not mid-game shifts.
-                        // liveScores covers MLB; rawTime is the universal fallback
-                        // for NBA, NFL, WNBA, and any other sport not in liveScores.
-                        const liveEntry = liveScores?.[game.id]
-                          || liveScores?.[`${game.away}|${game.home}`]
-                          || liveScores?.[`${game.awayAbbr}|${game.homeAbbr}`];
-                        const isGameLive = liveEntry?.status === 'Live' || liveEntry?.detailedState === 'In Progress'
-                          || (game.rawTime && new Date() >= new Date(game.rawTime));
-
-                        const markets = [];
-                        if (mlAway && mlHome && mlAway !== '—' && mlHome !== '—') {
-                          if (primaryCategory === 'ML') {
-                            // AI's pick is already a team ML — don't hide the market
-                            // entirely, just exclude the side the AI already picked so
-                            // the opposing team's ML is still selectable as an alt pick.
-                            const pickIsAway = summary.pick === game.away || game.away?.includes(summary.pick) || summary.pick?.includes(game.away?.split(' ').pop());
-                            const oppositeSide = pickIsAway
-                              ? { sideLabel: game.homeAbbr, pick: game.home, betType: `ML ${mlHome}` }
-                              : { sideLabel: game.awayAbbr, pick: game.away, betType: `ML ${mlAway}` };
-                            markets.push({ label: 'Moneyline', market: 'ML', sides: [oppositeSide] });
-                          } else {
-                            markets.push({ label: 'Moneyline', market: 'ML', sides: [
-                              { sideLabel: game.awayAbbr, pick: game.away, betType: `ML ${mlAway}` },
-                              { sideLabel: game.homeAbbr, pick: game.home, betType: `ML ${mlHome}` },
-                            ]});
-                          }
-                        }
-                        if (primaryCategory !== 'SPREAD' && spreadVal && spreadVal !== 'N/A') {
-                          const spreadNum = parseFloat(spreadVal);
-                          const awaySpreadStr = spreadNum > 0 ? `+${spreadNum}` : `${spreadNum}`;
-                          const homeSpreadStr = spreadNum > 0 ? `-${spreadNum}` : `+${Math.abs(spreadNum)}`;
-                          // Suppress movement indicators once game is live — line is locked
-                          markets.push({ label: 'Spread', market: 'SPREAD', movement: !isGameLive ? (game.spreadMovement || null) : null, moveSignificant: !isGameLive && !!game.spreadMoveSignificant, sides: [
-                            { sideLabel: `${game.awayAbbr} ${awaySpreadStr}`, pick: game.away, betType: `${awaySpreadStr} ${spreadAwayPrice||'-110'}` },
-                            { sideLabel: `${game.homeAbbr} ${homeSpreadStr}`, pick: game.home, betType: `${homeSpreadStr} ${spreadHomePrice||'-110'}` },
-                          ]});
-                        }
-                        if (primaryCategory !== 'TOTAL' && totalVal && totalVal !== 'N/A') {
-                          markets.push({ label: 'Total', market: 'TOTAL', movement: !isGameLive ? (game.totalMovement || null) : null, moveSignificant: !isGameLive && !!game.totalMoveSignificant, sides: [
-                            { sideLabel: `Over ${totalVal}`, pick: 'OVER', betType: `OVER ${totalVal} ${overPrice||'-110'}` },
-                            { sideLabel: `Under ${totalVal}`, pick: 'UNDER', betType: `UNDER ${totalVal} ${underPrice||'-110'}` },
-                          ]});
-                        }
-                        // Compute altKey/currentAlt BEFORE the markets.length gate —
-                        // the badge must render even if odds haven't loaded yet.
                         const altKey = `${game.id}-${game.slot}`;
                         const currentAlt = altPicks[altKey];
 
@@ -4208,31 +4147,82 @@ export default function VegasVaultApp() {
                         };
                         const clearAlt = () => {
                           setAltPicks(prev => {
-                            const updated = { ...prev };
-                            delete updated[altKey];
-                            if (authUser?.id) syncSave(authUser.id, 'alt_picks', updated);
-                            return updated;
+                            const u = { ...prev }; delete u[altKey];
+                            if (authUser?.id) syncSave(authUser.id, 'alt_picks', u);
+                            return u;
                           });
                         };
 
-                        // If no odds data AND no saved alt pick → nothing to show
-                        if (markets.length === 0 && !currentAlt) return null;
+                        const btUpper = (summary.betType || '').toUpperCase();
+                        const primaryCat = btUpper.includes('OVER') || btUpper.includes('UNDER') ? 'TOTAL'
+                          : /^[+-]\d/.test(btUpper.trim()) ? 'SPREAD' : 'ML';
 
-                        const liveMarket = markets.find(m => m.market === currentAlt?.market);
-                        const liveSide = liveMarket?.sides.find(s => s.pick === currentAlt?.pick);
-                        const liveBetType = (!isGameLive && liveSide?.betType) ? liveSide.betType : currentAlt?.betType;
+                        // ML prices — use whatever's available
+                        const mlAway = fmtOdds(game.dkAwayML) || fmtOdds(game.awayML) || '';
+                        const mlHome = fmtOdds(game.dkHomeML) || fmtOdds(game.homeML) || '';
+
+                        // Spread — use game data, MLB run line default is ±1.5
+                        const rawSpread = game.dkSpread || game.spread;
+                        const spreadNum = (rawSpread && rawSpread !== 'N/A') ? parseFloat(rawSpread) : (game.sport !== 'Tennis' ? -1.5 : null);
+                        const awaySpreadStr = spreadNum != null ? (spreadNum > 0 ? `+${spreadNum}` : `${spreadNum}`) : null;
+                        const homeSpreadStr = spreadNum != null ? (spreadNum > 0 ? `-${spreadNum}` : `+${Math.abs(spreadNum)}`) : null;
+                        const awaySpreadPrice = fmtOdds(game.awaySpreadPrice) || '-110';
+                        const homeSpreadPrice = fmtOdds(game.homeSpreadPrice) || '-110';
+
+                        // Total
+                        const rawTotal = game.dkTotal || game.total;
+                        const totalVal = (rawTotal && rawTotal !== 'N/A') ? rawTotal : null;
+                        const overPrice  = fmtOdds(game.overPrice)  || '-110';
+                        const underPrice = fmtOdds(game.underPrice) || '-110';
+
+                        const markets = [];
+
+                        // ML market
+                        if (primaryCat === 'ML') {
+                          // Show only the opposing team's ML
+                          const pickIsAway = summary.pick === game.away || game.away?.includes(summary.pick) || summary.pick?.includes(game.away?.split(' ').pop());
+                          if (pickIsAway) {
+                            markets.push({ label: 'Moneyline', market: 'ML', sides: [
+                              { sideLabel: `${game.homeAbbr}${mlHome ? ' '+mlHome : ''}`, pick: game.home, betType: `ML ${mlHome||''}`.trim() },
+                            ]});
+                          } else {
+                            markets.push({ label: 'Moneyline', market: 'ML', sides: [
+                              { sideLabel: `${game.awayAbbr}${mlAway ? ' '+mlAway : ''}`, pick: game.away, betType: `ML ${mlAway||''}`.trim() },
+                            ]});
+                          }
+                        } else {
+                          markets.push({ label: 'Moneyline', market: 'ML', sides: [
+                            { sideLabel: `${game.awayAbbr}${mlAway ? ' '+mlAway : ''}`, pick: game.away, betType: `ML ${mlAway||''}`.trim() },
+                            { sideLabel: `${game.homeAbbr}${mlHome ? ' '+mlHome : ''}`, pick: game.home, betType: `ML ${mlHome||''}`.trim() },
+                          ]});
+                        }
+
+                        // Spread market (skip if primary is spread or no spread number)
+                        if (primaryCat !== 'SPREAD' && awaySpreadStr && game.sport !== 'Tennis') {
+                          markets.push({ label: 'Spread', market: 'SPREAD', sides: [
+                            { sideLabel: `${game.awayAbbr} ${awaySpreadStr}`, pick: game.away, betType: `${awaySpreadStr} ${awaySpreadPrice}` },
+                            { sideLabel: `${game.homeAbbr} ${homeSpreadStr}`, pick: game.home, betType: `${homeSpreadStr} ${homeSpreadPrice}` },
+                          ]});
+                        }
+
+                        // Total market (skip if primary is total or no total)
+                        if (primaryCat !== 'TOTAL' && totalVal) {
+                          markets.push({ label: 'Total', market: 'TOTAL', sides: [
+                            { sideLabel: `Over ${totalVal}`, pick: 'OVER', betType: `OVER ${totalVal} ${overPrice}` },
+                            { sideLabel: `Under ${totalVal}`, pick: 'UNDER', betType: `UNDER ${totalVal} ${underPrice}` },
+                          ]});
+                        }
 
                         return (
                           <div style={{ marginTop:10 }}>
-                            {/* Persistent badge — always visible when a pick is saved,
-                                even if odds haven't loaded yet (markets.length may be 0) */}
+                            {/* Active alt pick badge */}
                             {currentAlt && (
                               <div style={{ marginBottom:8, padding:'8px 12px', background:'rgba(57,255,20,0.08)', border:'1px solid rgba(57,255,20,0.3)', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                                 <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                                   <i className="ti ti-shield-check" style={{ fontSize:13, color:'#33aa00' }} />
                                   <div>
                                     <div style={{ fontSize:10, fontWeight:800, color:'#33aa00' }}>Your Alt Pick: {currentAlt.pick}</div>
-                                    <div style={{ fontSize:9, color:'#666', marginTop:1 }}>{liveBetType}</div>
+                                    <div style={{ fontSize:9, color:'#666', marginTop:1 }}>{currentAlt.betType}</div>
                                   </div>
                                 </div>
                                 <button onClick={clearAlt} style={{ background:'none', border:'none', cursor:'pointer', color:'#aaa', fontSize:13, padding:2 }}>
@@ -4240,53 +4230,41 @@ export default function VegasVaultApp() {
                                 </button>
                               </div>
                             )}
-                            {/* Toggle + market tiles — only when odds data is available */}
-                            {markets.length > 0 && (
-                              <div>
-                                <button onClick={()=>setShowOtherMarkets(p=>!p)} style={{ width:'100%', padding:'8px 12px', display:'flex', alignItems:'center', justifyContent:'space-between', background:'rgba(255,255,255,0.5)', border:'1px solid rgba(0,0,0,0.06)', borderRadius:8, cursor:'pointer', fontFamily:'inherit' }}>
-                                  <span style={{ fontSize:10, fontWeight:700, color:'#777' }}>View other markets for this game</span>
-                                  <i className={`ti ti-chevron-${showOtherMarkets?'up':'down'}`} style={{ fontSize:12, color:'#999' }} />
-                                </button>
-                                {(showOtherMarkets || !!currentAlt) && (
-                                  <div style={{ marginTop:8, padding:'10px 12px', background:'rgba(246,249,246,0.6)', border:'1px solid rgba(0,0,0,0.05)', borderRadius:8 }}>
-                                    <div style={{ fontSize:9, color:'#999', marginBottom:10, lineHeight:1.5 }}>
-                                      These are live odds for the other markets on this game — not separate AI picks. {analysis.marketLogic ? <>The AI's reasoning for choosing {summary.betType} instead: "{analysis.marketLogic}"</> : `The AI specifically chose ${summary.betType} as the strongest expression of its edge.`} Tracking one here saves it as your own pick — separate from the AI's official record — and grades it the same way once the game finishes.
+
+                            {/* Toggle button */}
+                            <button onClick={()=>setShowOtherMarkets(p=>!p)} style={{ width:'100%', padding:'8px 12px', display:'flex', alignItems:'center', justifyContent:'space-between', background:'rgba(255,255,255,0.5)', border:'1px solid rgba(0,0,0,0.06)', borderRadius:8, cursor:'pointer', fontFamily:'inherit' }}>
+                              <span style={{ fontSize:10, fontWeight:700, color:'#777' }}>View other markets for this game</span>
+                              <i className={`ti ti-chevron-${(showOtherMarkets || !!currentAlt) ? 'up' : 'down'}`} style={{ fontSize:12, color:'#999' }} />
+                            </button>
+
+                            {/* Market tiles */}
+                            {(showOtherMarkets || !!currentAlt) && (
+                              <div style={{ marginTop:8, padding:'10px 12px', background:'rgba(246,249,246,0.6)', border:'1px solid rgba(0,0,0,0.05)', borderRadius:8 }}>
+                                <div style={{ fontSize:9, color:'#999', marginBottom:10, lineHeight:1.5 }}>
+                                  These are live odds for the other markets on this game — not separate AI picks. Tracking one saves it as your own pick and grades it automatically once the game finishes.
+                                </div>
+                                {markets.map((m, i) => (
+                                  <div key={i} style={{ marginTop: i>0?10:0, paddingTop: i>0?10:0, borderTop: i>0?'1px solid rgba(0,0,0,0.04)':'none' }}>
+                                    <div style={{ fontSize:9, fontWeight:800, color:'#999', textTransform:'uppercase', letterSpacing:'0.4px', marginBottom:6 }}>{m.label}</div>
+                                    <div style={{ display:'flex', gap:6 }}>
+                                      {m.sides.map((s, j) => {
+                                        const isSelected = currentAlt?.market === m.market && currentAlt?.pick === s.pick;
+                                        return (
+                                          <button key={j} onClick={()=> isSelected ? clearAlt() : selectAlt(m.market, s)} style={{
+                                            flex:1, padding:'9px 8px', borderRadius:8, cursor:'pointer', fontFamily:'inherit', fontSize:11, fontWeight:700,
+                                            border: isSelected ? '1px solid rgba(57,255,20,0.4)' : '1px solid rgba(0,0,0,0.07)',
+                                            background: isSelected ? 'rgba(57,255,20,0.12)' : 'rgba(255,255,255,0.7)',
+                                            color: isSelected ? '#22aa00' : '#555',
+                                            display:'flex', alignItems:'center', justifyContent:'center', gap:4,
+                                          }}>
+                                            {isSelected && <i className="ti ti-check" style={{ fontSize:11 }} />}
+                                            {s.sideLabel}
+                                          </button>
+                                        );
+                                      })}
                                     </div>
-                                    {markets.map((m, i) => (
-                                      <div key={i} style={{ marginTop: i>0 ? 10 : 0, paddingTop: i>0 ? 10 : 0, borderTop: i>0 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}>
-                                        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
-                                          <div style={{ fontSize:9, fontWeight:800, color:'#999', textTransform:'uppercase', letterSpacing:'0.4px' }}>{m.label}</div>
-                                          {m.movement && (
-                                            <div style={{ display:'flex', alignItems:'center', gap:3 }}>
-                                              <i className="ti ti-arrows-left-right" style={{ fontSize:10, color: m.moveSignificant ? '#39FF14' : '#ccc' }} />
-                                              <span style={{ fontSize:8, fontWeight:700, color: m.moveSignificant ? '#33aa00' : '#bbb' }}>{m.moveSignificant ? 'Line moved' : 'Stable'}</span>
-                                            </div>
-                                          )}
-                                        </div>
-                                        {m.movement && m.moveSignificant && (
-                                          <div style={{ fontSize:9, color:'#777', marginBottom:6, lineHeight:1.4 }}>{m.movement}</div>
-                                        )}
-                                        <div style={{ display:'flex', gap:6 }}>
-                                          {m.sides.map((s, j) => {
-                                            const isSelected = currentAlt?.market === m.market && currentAlt?.pick === s.pick;
-                                            return (
-                                              <button key={j} onClick={()=> isSelected ? clearAlt() : selectAlt(m.market, s)} style={{
-                                                flex:1, padding:'7px 8px', borderRadius:7, cursor:'pointer', fontFamily:'inherit', fontSize:10, fontWeight:700,
-                                                border: isSelected ? '1px solid rgba(57,255,20,0.4)' : '1px solid rgba(0,0,0,0.07)',
-                                                background: isSelected ? 'rgba(57,255,20,0.12)' : 'rgba(255,255,255,0.7)',
-                                                color: isSelected ? '#22aa00' : '#555',
-                                                display:'flex', flexDirection:'column', alignItems:'center', gap:2,
-                                              }}>
-                                                {isSelected && <i className="ti ti-check" style={{ fontSize:11 }} />}
-                                                <span>{s.sideLabel}</span>
-                                              </button>
-                                            );
-                                          })}
-                                        </div>
-                                      </div>
-                                    ))}
                                   </div>
-                                )}
+                                ))}
                               </div>
                             )}
                           </div>
