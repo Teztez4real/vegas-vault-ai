@@ -1618,6 +1618,11 @@ export default function VegasVaultApp() {
         const alreadyResolved = pickHistory.some(p => p.key === key);
         if (alreadyResolved) continue;
 
+        // If the user selected an alternate pick for this game, skip the AI pick —
+        // only the user's chosen pick should be tracked, not both.
+        const hasAltPick = !!altPicks[key];
+        if (hasAltPick) continue;
+
         // Determine win/loss based on pick vs final score
         const pickTeam = pick.summary.pick;
         const betType = pick.summary.betType || 'ML';
@@ -1729,9 +1734,14 @@ export default function VegasVaultApp() {
         if (altResult) {
           const aiPick = results[baseKey];
           const historyEntry = {
-            key: altKey, slot, game: `${game.away} @ ${game.home}`,
+            key: baseKey, // use base key — this IS the game's tracked pick now
+            slot, game: `${game.away} @ ${game.home}`,
             pick: pickTeam, betType, betCategory: alt.market, result: altResult,
-            tier: null, confidence: null, confidencePercent: null, scamLayer: null,
+            // carry AI tier/confidence so it counts in the track record
+            tier: aiPick?.summary?.tier || null,
+            confidence: aiPick?.summary?.confidence || null,
+            confidencePercent: aiPick?.summary?.confidencePercent || null,
+            scamLayer: aiPick?.summary?.scamLayer || null,
             sport: game.sport || null,
             score: `${game.awayAbbr} ${awayScore} - ${homeScore} ${game.homeAbbr}`,
             resolvedAt: new Date().toISOString(),
