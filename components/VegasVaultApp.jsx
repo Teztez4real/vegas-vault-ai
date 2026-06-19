@@ -4304,8 +4304,12 @@ export default function VegasVaultApp() {
                         };
 
                         const btUpper = (summary.betType || '').toUpperCase();
-                        const primaryCat = btUpper.includes('OVER') || btUpper.includes('UNDER') ? 'TOTAL'
-                          : /^[+-]\d/.test(btUpper.trim()) ? 'SPREAD' : 'ML';
+                        // Spread bets almost always contain .5 (1.5, 2.5 etc).
+                        // ML odds are whole numbers (+105, -130). This catches
+                        // "Team -1.5 -115", "-1.5", "+1.5 -105", etc.
+                        const isTotalBet  = btUpper.includes('OVER') || btUpper.includes('UNDER');
+                        const isSpreadBet = !isTotalBet && (/[+-]\d+\.5/.test(btUpper) || /^[+-]\d/.test(btUpper.trim()));
+                        const primaryCat  = isTotalBet ? 'TOTAL' : isSpreadBet ? 'SPREAD' : 'ML';
 
                         // ML prices — use whatever's available
                         const mlAway = fmtOdds(game.dkAwayML) || fmtOdds(game.awayML) || '';
@@ -4315,7 +4319,7 @@ export default function VegasVaultApp() {
                         // in the Odds API (o.name === home), so home gets the direct
                         // value and away gets the mirror.
                         const rawSpread = game.dkSpread || game.spread;
-                        const spreadNum = (rawSpread && rawSpread !== 'N/A') ? parseFloat(rawSpread) : (game.sport !== 'Tennis' ? null : null);
+                        const spreadNum = (rawSpread && rawSpread !== 'N/A') ? parseFloat(rawSpread) : null;
                         const homeSpreadStr = spreadNum != null ? (spreadNum > 0 ? `+${spreadNum}` : `${spreadNum}`) : null;
                         const awaySpreadStr = spreadNum != null ? (spreadNum > 0 ? `-${spreadNum}` : `+${Math.abs(spreadNum)}`) : null;
                         const awaySpreadPrice = fmtOdds(game.awaySpreadPrice) || '-110';
@@ -4327,22 +4331,25 @@ export default function VegasVaultApp() {
                         const overPrice  = fmtOdds(game.overPrice)  || '-110';
                         const underPrice = fmtOdds(game.underPrice) || '-110';
 
+                        // Determine which team the AI picked (for same-team ML option)
+                        const pickIsAway = summary.pick === game.away
+                          || game.away?.includes(summary.pick)
+                          || summary.pick?.includes(game.away?.split(' ').pop());
+
                         const markets = [];
 
                         // ML market
                         if (primaryCat === 'ML') {
-                          // Show only the opposing team's ML
-                          const pickIsAway = summary.pick === game.away || game.away?.includes(summary.pick) || summary.pick?.includes(game.away?.split(' ').pop());
-                          if (pickIsAway) {
-                            markets.push({ label: 'Moneyline', market: 'ML', sides: [
-                              { sideLabel: `${game.homeAbbr}${mlHome ? ' '+mlHome : ''}`, pick: game.home, betType: `ML ${mlHome||''}`.trim() },
-                            ]});
-                          } else {
-                            markets.push({ label: 'Moneyline', market: 'ML', sides: [
-                              { sideLabel: `${game.awayAbbr}${mlAway ? ' '+mlAway : ''}`, pick: game.away, betType: `ML ${mlAway||''}`.trim() },
-                            ]});
-                          }
+                          // AI picked a team ML — only show the opposing team's ML
+                          markets.push({ label: 'Moneyline', market: 'ML', sides: [
+                            pickIsAway
+                              ? { sideLabel: `${game.homeAbbr}${mlHome ? ' '+mlHome : ''}`, pick: game.home, betType: `ML ${mlHome||''}`.trim() }
+                              : { sideLabel: `${game.awayAbbr}${mlAway ? ' '+mlAway : ''}`, pick: game.away, betType: `ML ${mlAway||''}`.trim() },
+                          ]});
                         } else {
+                          // AI picked spread or total — show BOTH MLs so user can
+                          // take either team's ML (including the same team at ML
+                          // instead of the recommended spread)
                           markets.push({ label: 'Moneyline', market: 'ML', sides: [
                             { sideLabel: `${game.awayAbbr}${mlAway ? ' '+mlAway : ''}`, pick: game.away, betType: `ML ${mlAway||''}`.trim() },
                             { sideLabel: `${game.homeAbbr}${mlHome ? ' '+mlHome : ''}`, pick: game.home, betType: `ML ${mlHome||''}`.trim() },
