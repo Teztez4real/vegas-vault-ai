@@ -3516,6 +3516,89 @@ export default function VegasVaultApp() {
             <div style={{ fontSize:11, color:'#aaa', marginTop:2 }}>What Vegas Vault AI remembers across analyses</div>
           </div>
 
+          {/* ── DATA RECOVERY ── */}
+          {shellIsAdmin && (() => {
+            const [recovering, setRecovering] = React.useState(false);
+            const [recoveryMsg, setRecoveryMsg] = React.useState('');
+            const runRecovery = async () => {
+              setRecovering(true);
+              setRecoveryMsg('Pulling data from Supabase...');
+              try {
+                const uid = authUser?.id;
+                if (!uid) { setRecoveryMsg('Not signed in.'); setRecovering(false); return; }
+                const [wl, res, fin, hist, alt] = await Promise.all([
+                  syncLoad(uid, 'watchlist'),
+                  syncLoad(uid, 'results'),
+                  syncLoad(uid, 'finalized'),
+                  syncLoad(uid, 'pick_history'),
+                  syncLoad(uid, 'alt_picks'),
+                ]);
+                setRecoveryMsg('Merging with local cache...');
+                const localRes  = localLoad('vv_results')       || {};
+                const localFin  = localLoad('vv_finalized')     || {};
+                const localWl   = localLoad('vv_watchlist')     || [];
+                const localHist = localLoad('vv_pick_history')  || [];
+                const localAlt  = localLoad('vv_alt_picks')     || {};
+
+                const mergedRes = { ...(res||{}), ...localRes };
+                const mergedFin = { ...(fin||{}), ...localFin };
+                const mergedWl  = [...new Set([...(wl||[]), ...localWl])];
+                const mergedAlt = { ...(alt||{}), ...localAlt };
+                const mergedHist = [...(hist||[])];
+                for (const e of localHist) {
+                  if (!mergedHist.find(h => h.key === e.key && h.resolvedAt === e.resolvedAt)) mergedHist.push(e);
+                }
+
+                setResults(mergedRes);
+                setFinalized(mergedFin);
+                setWatchlist(mergedWl);
+                setPickHistory(mergedHist);
+                setAltPicks(mergedAlt);
+
+                // Re-save merged data back to both stores
+                localSave('vv_results', mergedRes);
+                localSave('vv_finalized', mergedFin);
+                localSave('vv_watchlist', mergedWl);
+                localSave('vv_pick_history', mergedHist);
+                localSave('vv_alt_picks', mergedAlt);
+                await Promise.allSettled([
+                  syncSave(uid, 'results', mergedRes),
+                  syncSave(uid, 'finalized', mergedFin),
+                  syncSave(uid, 'watchlist', mergedWl),
+                  syncSave(uid, 'pick_history', mergedHist),
+                  syncSave(uid, 'alt_picks', mergedAlt),
+                ]);
+
+                const resCount  = Object.keys(mergedRes).length;
+                const histCount = mergedHist.length;
+                setRecoveryMsg(`✅ Restored — ${resCount} analyses, ${histCount} history entries, ${mergedWl.length} watchlist items`);
+              } catch(e) {
+                setRecoveryMsg(`❌ Error: ${e.message}`);
+              }
+              setRecovering(false);
+            };
+            return (
+              <div className="vv-glass vv-pad" style={{ border:'1px solid rgba(57,255,20,0.2)' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
+                  <i className="ti ti-database-import" style={{ fontSize:15, color:'#39FF14' }} />
+                  <span style={{ fontSize:13, fontWeight:800, color:'#111' }}>Data Recovery</span>
+                </div>
+                <div style={{ fontSize:11, color:'#777', marginBottom:12, lineHeight:1.5 }}>
+                  Force-pulls all your data from Supabase and merges it with your local cache — use this to restore plays, history, picks, and watchlist after any data loss event.
+                </div>
+                {recoveryMsg && (
+                  <div style={{ fontSize:11, color: recoveryMsg.startsWith('✅') ? '#33aa00' : recoveryMsg.startsWith('❌') ? '#dd4444' : '#888', marginBottom:10, padding:'8px 12px', background:'rgba(0,0,0,0.03)', borderRadius:8, lineHeight:1.5 }}>
+                    {recoveryMsg}
+                  </div>
+                )}
+                <button onClick={runRecovery} disabled={recovering} style={{ width:'100%', padding:'11px', borderRadius:10, border:'1px solid rgba(57,255,20,0.35)', background: recovering ? 'rgba(0,0,0,0.04)' : 'rgba(57,255,20,0.08)', color: recovering ? '#aaa' : '#33aa00', fontSize:12, fontWeight:800, cursor: recovering ? 'not-allowed' : 'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+                  <i className={`ti ${recovering ? 'ti-loader-2' : 'ti-database-import'}`} style={{ fontSize:14 }} />
+                  {recovering ? 'Recovering...' : 'Restore All Data Now'}
+                </button>
+              </div>
+            );
+          })()}
+
           <div className="vv-mem-stats">
             <div className="vv-glass vv-sc"><div className="vv-sc-ey">Tracked Entities</div><div className="vv-sc-val">{trackedEntities}</div><div className="vv-sc-sub">Players, teams, trends</div></div>
             <div className="vv-glass-g vv-sc"><div className="vv-sc-ey">Active Rules</div><div className="vv-sc-val g">{activeRules}</div><div className="vv-sc-sub">Trell Rule, slot patterns, etc</div></div>
