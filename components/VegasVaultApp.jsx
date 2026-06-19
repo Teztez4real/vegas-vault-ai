@@ -1114,12 +1114,11 @@ export default function VegasVaultApp() {
   const [authUser, setAuthUser]         = useState(null);
   const [isSessionLocked, setIsSessionLocked] = useState(false);
   const authUserIdRef = useRef(null);
-  // True only once results/finalized/watchlist/pickHistory have actually
-  // finished loading from Supabase for the current session — used to gate
-  // the auto-analyze queue so it never mistakes "still loading" for
-  // "never analyzed" and re-queues already-analyzed games after login.
+  const saveStateRef  = useRef({}); // always-fresh state snapshot for heartbeat/beforeunload
   const [syncedDataReady, setSyncedDataReady] = useState(false);
   useEffect(() => { authUserIdRef.current = authUser?.id || null; }, [authUser]);
+  // Keep saveStateRef current on every render — no dep array needed, runs every render cheaply
+  useEffect(() => { saveStateRef.current = { results, finalized, watchlist, pickHistory, altPicks }; });
   const [showAuth, setShowAuth]         = useState(false);
   const [authMode, setAuthMode]         = useState('login');
   const [authEmail, setAuthEmail]       = useState('');
@@ -1252,44 +1251,42 @@ export default function VegasVaultApp() {
   useIdleSignOut(getSB(), !!authUser, doIdleSignOut, 30);
 
   // ── HEARTBEAT SAVE — every 2 minutes ─────────────────────────────────────
-  // Ensures data is always in Supabase even if a state-change save was missed.
-  // Uses flushAll (triple-layer: localStorage + Supabase client + server-side
-  // service role) so it works regardless of session state.
+  // saveStateRef always has the latest state so dep array is just [authUser?.id]
   useEffect(() => {
     if (!authUser?.id) return;
+    const uid = authUser.id;
     const id = setInterval(() => {
-      flushAll(authUser.id, { results, finalized, watchlist, pickHistory, altPicks });
+      flushAll(uid, saveStateRef.current);
     }, 2 * 60 * 1000);
     return () => clearInterval(id);
-  }, [authUser?.id, results, finalized, watchlist, pickHistory, altPicks]);
+  }, [authUser?.id]);
 
-  // ── BEFORE-UNLOAD SAVE — fires on page close/refresh ─────────────────────
-  // keepalive:true in serverSave ensures the request completes even after the
-  // page starts unloading. localStorage writes are synchronous so they always
-  // complete before the page closes.
+  // ── BEFORE-UNLOAD SAVE — fires on page close/refresh/iOS background-kill ──
   useEffect(() => {
     if (!authUser?.id) return;
+    const uid = authUser.id;
     const handler = () => {
-      localSave('vv_results',      results);
-      localSave('vv_finalized',    finalized);
-      localSave('vv_watchlist',    watchlist);
-      localSave('vv_pick_history', pickHistory);
-      localSave('vv_alt_picks',    altPicks);
-      serverSave(authUser.id, [
-        { key: 'results',      value: results      },
-        { key: 'finalized',    value: finalized    },
-        { key: 'watchlist',    value: watchlist    },
-        { key: 'pick_history', value: pickHistory  },
-        { key: 'alt_picks',    value: altPicks     },
+      const s = saveStateRef.current;
+      localSave('vv_results',      s.results);
+      localSave('vv_finalized',    s.finalized);
+      localSave('vv_watchlist',    s.watchlist);
+      localSave('vv_pick_history', s.pickHistory);
+      localSave('vv_alt_picks',    s.altPicks);
+      serverSave(uid, [
+        { key: 'results',      value: s.results      },
+        { key: 'finalized',    value: s.finalized    },
+        { key: 'watchlist',    value: s.watchlist    },
+        { key: 'pick_history', value: s.pickHistory  },
+        { key: 'alt_picks',    value: s.altPicks     },
       ]);
     };
     window.addEventListener('beforeunload', handler);
-    window.addEventListener('pagehide',     handler); // iOS Safari fires pagehide not beforeunload
+    window.addEventListener('pagehide',     handler);
     return () => {
       window.removeEventListener('beforeunload', handler);
       window.removeEventListener('pagehide',     handler);
     };
-  }, [authUser?.id, results, finalized, watchlist, pickHistory, altPicks]);
+  }, [authUser?.id]);
 
   async function doAuth() {
     setAuthLoading(true); setAuthError('');
