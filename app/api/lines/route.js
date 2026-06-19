@@ -45,7 +45,7 @@ async function fetchAllBooks(sportKey, dateParam) {
       const apiSport = leagueMap[sportKey] || 'baseball_mlb';
       const BOOKS = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'bet365'];
       const res = await fetch(
-        `https://api.the-odds-api.com/v4/sports/${apiSport}/odds/?apiKey=${oddsKey}&regions=us&markets=h2h&oddsFormat=american&bookmakers=${BOOKS.join(',')}`,
+        `https://api.the-odds-api.com/v4/sports/${apiSport}/odds/?apiKey=${oddsKey}&regions=us&markets=h2h,spreads,totals&oddsFormat=american&bookmakers=${BOOKS.join(',')}`,
         { cache: 'no-store' }
       );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
