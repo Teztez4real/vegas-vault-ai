@@ -1153,7 +1153,6 @@ export default function VegasVaultApp() {
   const [preAnalyzeQueue, setPreAnalyzeQueue] = useState([]);
   // Shared results from server-side auto-update cron — merged over user results
   const [sharedResults, setSharedResults]     = useState({});
-  const [autoUpdatedKeys, setAutoUpdatedKeys] = useState(new Set());
   const [liveScores, setLiveScores]   = useState({});
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [authUser, setAuthUser]         = useState(null);
@@ -1309,28 +1308,30 @@ export default function VegasVaultApp() {
       try {
         const res = await fetch(`/api/auto-analyze?date=${selectedDate}`, { cache: 'no-store' });
         if (!res.ok) return;
-        const { analyses } = await res.json();
+        const data = await res.json();
+        const analyses = data?.analyses;
         if (!analyses || !Object.keys(analyses).length) return;
-        const newUpdatedKeys = new Set();
+
+        // Compute the merged update outside of any state setter
+        let hasChanges = false;
+        const toMerge = {};
+        // We read current results via the functional updater below
         setResults(prev => {
-          const updated = { ...prev };
-          let changed = false;
           for (const [key, shared] of Object.entries(analyses)) {
             const userResult = prev[key];
             const sharedTime = new Date(shared?.updatedAt || 0).getTime();
             const userTime   = new Date(userResult?.updatedAt || 0).getTime();
             if (!userResult || sharedTime > userTime) {
-              updated[key] = { ...shared, _autoUpdated: true };
-              newUpdatedKeys.add(key);
-              changed = true;
+              toMerge[key] = { ...shared, _autoUpdated: true };
+              hasChanges = true;
             }
           }
-          if (changed) {
-            setAutoUpdatedKeys(newUpdatedKeys);
-            setTimeout(() => setAutoUpdatedKeys(new Set()), 30000);
-          }
-          return changed ? updated : prev;
+          if (!hasChanges) return prev;
+          return { ...prev, ...toMerge };
         });
+
+        // Update sharedResults separately — safe to call outside updater
+        if (hasChanges) setSharedResults(prev => ({ ...prev, ...analyses }));
       } catch {}
     };
     poll();
