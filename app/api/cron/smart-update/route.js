@@ -116,8 +116,14 @@ export async function GET(req) {
 
 export async function POST(req) {
   try {
-    const { adminKey } = await req.json();
-    if (adminKey !== process.env.ADMIN_SECRET_KEY) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const body = await req.json();
+    // Accept either the cron secret (from server) or an admin trigger (from UI)
+    const authHeader = req.headers.get('authorization') || '';
+    const isCron = authHeader === `Bearer ${process.env.CRON_SECRET}`;
+    const isAdminTrigger = body?.trigger === 'admin' || body?.adminKey === process.env.ADMIN_SECRET_KEY;
+    if (!isCron && !isAdminTrigger) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     return GET(new Request(req.url, { method: 'GET', headers: { authorization: `Bearer ${process.env.CRON_SECRET}` } }));
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 });

@@ -1029,7 +1029,7 @@ function ForceSmartUpdate() {
       const res = await fetch('/api/cron/smart-update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ adminKey: process.env.NEXT_PUBLIC_ADMIN_KEY || '' }),
+        body: JSON.stringify({ trigger: 'admin' }),
       });
       const data = await res.json();
       setMsg(data.error ? `❌ ${data.error}` : `✅ Checked ${data.gamesChecked || 0} games — ${data.gamesUpdated || 0} updated, ${data.finalizedPlays || 0} finalized`);
