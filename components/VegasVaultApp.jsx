@@ -1019,6 +1019,37 @@ function DataRecoveryCard({ authUser, setResults, setFinalized, setWatchlist, se
   );
 }
 
+// ── FORCE SMART UPDATE (admin only) ───────────────────────────────────────────
+function ForceSmartUpdate() {
+  const [updating, setUpdating] = useState(false);
+  const [msg, setMsg] = useState('');
+  const run = async () => {
+    setUpdating(true); setMsg('');
+    try {
+      const res = await fetch('/api/cron/smart-update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminKey: process.env.NEXT_PUBLIC_ADMIN_KEY || '' }),
+      });
+      const data = await res.json();
+      setMsg(data.error ? `❌ ${data.error}` : `✅ Checked ${data.gamesChecked || 0} games — ${data.gamesUpdated || 0} updated, ${data.finalizedPlays || 0} finalized`);
+    } catch(e) { setMsg(`❌ ${e.message}`); }
+    setUpdating(false);
+  };
+  return (
+    <div style={{ background:'rgba(0,102,255,0.04)', border:'1px solid rgba(0,102,255,0.15)', borderRadius:12, padding:'10px 14px', display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+      <i className="ti ti-refresh" style={{ fontSize:14, color:'#0066ff' }} />
+      <span style={{ fontSize:11, fontWeight:600, color:'#555', flex:1 }}>
+        {msg || 'Force AI Smart Update — detects lineup/injury/line changes and re-analyzes'}
+      </span>
+      <button onClick={run} disabled={updating} style={{ fontSize:10, fontWeight:700, padding:'6px 12px', borderRadius:8, background: updating ? 'rgba(0,0,0,0.04)' : 'rgba(0,102,255,0.1)', border:'1px solid rgba(0,102,255,0.2)', color: updating ? '#aaa' : '#0066ff', cursor: updating ? 'not-allowed' : 'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', gap:5 }}>
+        <i className={`ti ${updating ? 'ti-loader-2' : 'ti-refresh'}`} style={{ fontSize:12 }} />
+        {updating ? 'Checking...' : 'Run Now'}
+      </button>
+    </div>
+  );
+}
+
 // ── TOP PLAY BANNER ───────────────────────────────────────────────────────────
 function TopPlayBanner({ topPlay, loading, results, pickHistory, isSubscribed, isAdmin, watchlist, onToggleWatch, onForceRefresh }) {
   const result = topPlay && (results[`${topPlay.id}-${topPlay.slot}`]||results[`${topPlay.id}-PUBLIC`]||results[`${topPlay.id}-VEGAS`]);
@@ -3494,36 +3525,8 @@ export default function VegasVaultApp() {
             </div>
           )}
 
-          {/* Admin: Force Smart Update — manually trigger the change-detection cron */}
-          {shellIsAdmin && (() => {
-            const [updating, setUpdating] = useState(false);
-            const [updateMsg, setUpdateMsg] = useState('');
-            const runSmartUpdate = async () => {
-              setUpdating(true); setUpdateMsg('');
-              try {
-                const res = await fetch('/api/cron/smart-update', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ adminKey: process.env.NEXT_PUBLIC_ADMIN_KEY || '' }),
-                });
-                const data = await res.json();
-                setUpdateMsg(data.error ? `❌ ${data.error}` : `✅ Checked ${data.gamesChecked} games — ${data.gamesUpdated} updated, ${data.finalizedPlays} finalized`);
-              } catch(e) { setUpdateMsg(`❌ ${e.message}`); }
-              setUpdating(false);
-            };
-            return (
-              <div style={{ background:'rgba(0,102,255,0.04)', border:'1px solid rgba(0,102,255,0.15)', borderRadius:12, padding:'10px 14px', display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
-                <i className="ti ti-refresh" style={{ fontSize:14, color:'#0066ff' }} />
-                <span style={{ fontSize:11, fontWeight:600, color:'#555', flex:1 }}>
-                  {updateMsg || 'Force AI Smart Update — detects lineup/injury/line changes and re-analyzes'}
-                </span>
-                <button onClick={runSmartUpdate} disabled={updating} style={{ fontSize:10, fontWeight:700, padding:'6px 12px', borderRadius:8, background: updating ? 'rgba(0,0,0,0.04)' : 'rgba(0,102,255,0.1)', border:'1px solid rgba(0,102,255,0.2)', color: updating ? '#aaa' : '#0066ff', cursor: updating ? 'not-allowed' : 'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', gap:5 }}>
-                  <i className={`ti ${updating ? 'ti-loader-2' : 'ti-refresh'}`} style={{ fontSize:12 }} />
-                  {updating ? 'Checking...' : 'Run Now'}
-                </button>
-              </div>
-            );
-          })()}
+          {/* Admin: Force Smart Update */}
+          {shellIsAdmin && <ForceSmartUpdate />}
 
           {loading ? (
             <div style={{ textAlign:'center', padding:'60px 0', color:'#aaa', fontSize:13 }}>
