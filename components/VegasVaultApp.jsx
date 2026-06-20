@@ -1125,6 +1125,7 @@ export default function VegasVaultApp() {
   const [isSessionLocked, setIsSessionLocked] = useState(false);
   const authUserIdRef = useRef(null);
   const saveStateRef  = useRef({}); // always-fresh state snapshot for heartbeat/beforeunload
+  const gradedKeysRef = useRef(new Set()); // tracks keys graded this session to prevent duplicates from stale closure
   const [syncedDataReady, setSyncedDataReady] = useState(false);
   useEffect(() => { authUserIdRef.current = authUser?.id || null; }, [authUser]);
   // Keep saveStateRef current on every render — no dep array needed, runs every render cheaply
@@ -1180,11 +1181,12 @@ export default function VegasVaultApp() {
           setResults({ ...(res || {}), ...(localLoad('vv_results') || {}) });
           setFinalized({ ...(fin || {}), ...(localLoad('vv_finalized') || {}) });
           const localHist = localLoad('vv_pick_history') || [];
-          const mergedHist = [...(hist || [])];
+          const rawHist = [...(hist || [])];
           for (const entry of localHist) {
-            if (!mergedHist.find(e => e.key === entry.key && e.resolvedAt === entry.resolvedAt)) mergedHist.push(entry);
+            if (!rawHist.find(e => e.key === entry.key)) rawHist.push(entry);
           }
-          setPickHistory(mergedHist);
+          const seenKeys = new Set();
+          setPickHistory(rawHist.filter(e => { if (seenKeys.has(e.key)) return false; seenKeys.add(e.key); return true; }));
         }
         setSyncedDataReady(true);
       });
@@ -1237,11 +1239,13 @@ export default function VegasVaultApp() {
             setResults({ ...(res || {}), ...(localLoad('vv_results') || {}) });
             setFinalized({ ...(fin || {}), ...(localLoad('vv_finalized') || {}) });
             const localHist2 = localLoad('vv_pick_history') || [];
-            const mergedHist2 = [...(hist || [])];
+            const rawHist2 = [...(hist || [])];
             for (const entry of localHist2) {
-              if (!mergedHist2.find(e => e.key === entry.key && e.resolvedAt === entry.resolvedAt)) mergedHist2.push(entry);
+              if (!rawHist2.find(e => e.key === entry.key)) rawHist2.push(entry);
             }
-            setPickHistory(mergedHist2);
+            // Deduplicate by key — keep the earliest entry per key
+            const seenKeys2 = new Set();
+            setPickHistory(rawHist2.filter(e => { if (seenKeys2.has(e.key)) return false; seenKeys2.add(e.key); return true; }));
             setAltPicks({ ...(alt || {}), ...(localLoad('vv_alt_picks') || {}) });
             setSyncedDataReady(true);
           }
@@ -1616,14 +1620,13 @@ export default function VegasVaultApp() {
         const pick = results[key];
         if (!pick?.summary?.pick) continue;
 
-        // Check if already resolved
+        // Guard against duplicate grading — pickHistory in the closure
+        // can be stale across poll intervals, so we use a ref that persists
+        // across renders as the primary guard, and double-check inside the
+        // state updater as a belt-and-suspenders safety net.
+        if (gradedKeysRef.current.has(key)) continue;
         const alreadyResolved = pickHistory.some(p => p.key === key);
-        if (alreadyResolved) continue;
-
-        // If the user selected an alternate pick for this game, skip the AI pick —
-        // only the user's chosen pick should be tracked, not both.
-        const hasAltPick = !!altPicks[key];
-        if (hasAltPick) continue;
+        if (alreadyResolved) { gradedKeysRef.current.add(key); continue; }
 
         // Determine win/loss based on pick vs final score
         const pickTeam = pick.summary.pick;
@@ -1658,7 +1661,13 @@ export default function VegasVaultApp() {
         }
 
         if (result) {
-          // Derive a simple bet category from betType text for breakdown purposes
+          // Skip AI pick if user chose an alternate for this game
+          const hasAltPick = !!altPicks[key];
+          if (hasAltPick) continue;
+
+          // Mark graded in ref BEFORE state update so concurrent poll ticks can't slip through
+          gradedKeysRef.current.add(key);
+
           const btUpper = (betType || '').toUpperCase();
           const betCategory = btUpper.includes('OVER') || btUpper.includes('UNDER') ? 'TOTAL'
             : /^[+-]\d/.test(btUpper.trim()) ? 'SPREAD'
@@ -1677,6 +1686,8 @@ export default function VegasVaultApp() {
             date: game.date,
           };
           setPickHistory(prev => {
+            // Belt-and-suspenders dedup inside the updater
+            if (prev.some(p => p.key === key)) return prev;
             const updated = [...prev, historyEntry];
             const uid = authUserIdRef.current;
             if (uid) saveKey(uid, 'pick_history', updated);
@@ -1700,9 +1711,11 @@ export default function VegasVaultApp() {
         const baseKey = `${game.id}-${slot}`;
         const alt = altPicks[baseKey];
         if (!alt) continue;
-        const altKey = `${baseKey}-ALT`;
-        const alreadyResolvedAlt = pickHistory.some(p => p.key === altKey);
-        if (alreadyResolvedAlt) continue;
+
+        // Use baseKey for dedup (alt picks replaced AI picks as the game's tracked entry)
+        if (gradedKeysRef.current.has(baseKey)) continue;
+        const alreadyResolvedAlt = pickHistory.some(p => p.key === baseKey);
+        if (alreadyResolvedAlt) { gradedKeysRef.current.add(baseKey); continue; }
 
         const awayScore = live.awayScore;
         const homeScore = live.homeScore;
@@ -1734,12 +1747,12 @@ export default function VegasVaultApp() {
         }
 
         if (altResult) {
+          gradedKeysRef.current.add(baseKey);
           const aiPick = results[baseKey];
           const historyEntry = {
-            key: baseKey, // use base key — this IS the game's tracked pick now
+            key: baseKey,
             slot, game: `${game.away} @ ${game.home}`,
             pick: pickTeam, betType, betCategory: alt.market, result: altResult,
-            // carry AI tier/confidence so it counts in the track record
             tier: aiPick?.summary?.tier || null,
             confidence: aiPick?.summary?.confidence || null,
             confidencePercent: aiPick?.summary?.confidencePercent || null,
@@ -1753,6 +1766,7 @@ export default function VegasVaultApp() {
             aiBetType: aiPick?.summary?.betType || null,
           };
           setPickHistory(prev => {
+            if (prev.some(p => p.key === baseKey)) return prev;
             const updated = [...prev, historyEntry];
             const uid = authUserIdRef.current;
             if (uid) saveKey(uid, 'pick_history', updated);
