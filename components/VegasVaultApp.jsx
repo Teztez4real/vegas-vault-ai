@@ -1,7 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import { supabase as _supabase } from '@/lib/supabaseClient';
-import { useIdleSignOut } from '@/lib/useIdleSignOut'; // kept for potential future use
 import NewLookShell from '@/components/NewLookShell';
 import '@/app/new-look.css';
 
