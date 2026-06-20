@@ -402,6 +402,228 @@ async function fetchGameNarrative(away, home, sport) {
   }
 }
 
+// ── MLB PARK FACTORS (2024 season, run-scoring index: 1.0 = neutral) ──────────
+// Updated annually — values above 1.0 favor offense, below 1.0 favor pitching.
+const MLB_PARK_FACTORS = {
+  'Colorado Rockies':       { factor: 1.38, note: 'Coors Field — extreme hitter\'s park, altitude inflates offense significantly, unders often misleading here' },
+  'Cincinnati Reds':        { factor: 1.15, note: 'Great American Ball Park — hitter\'s park, home run friendly, totals skew over' },
+  'Texas Rangers':          { factor: 1.12, note: 'Globe Life Field — retractable roof, warm humid air, hitter-friendly dimensions' },
+  'Boston Red Sox':         { factor: 1.11, note: 'Fenway Park — Green Monster inflates doubles, tight foul territory, offense-friendly' },
+  'New York Yankees':       { factor: 1.09, note: 'Yankee Stadium — short porch in right, HR-friendly for LHH, slight hitter advantage' },
+  'Philadelphia Phillies':  { factor: 1.07, note: 'Citizens Bank Park — consistently offense-friendly, HR park' },
+  'Chicago Cubs':           { factor: 1.05, note: 'Wrigley Field — wind-dependent, out-to-left = major over push, in-from-lake = pitcher\'s park' },
+  'Baltimore Orioles':      { factor: 1.04, note: 'Camden Yards — slight hitter\'s lean, good hitting backgrounds' },
+  'Toronto Blue Jays':      { factor: 1.02, note: 'Rogers Centre — dome, neutral environment, slight hitter edge' },
+  'Washington Nationals':   { factor: 0.99, note: 'Nationals Park — near neutral, slight pitcher lean in recent years' },
+  'Los Angeles Dodgers':    { factor: 0.97, note: 'Dodger Stadium — traditionally pitcher-friendly, large foul territory, marine layer suppresses offense' },
+  'Minnesota Twins':        { factor: 0.96, note: 'Target Field — cold weather early season, slight pitcher lean' },
+  'Cleveland Guardians':    { factor: 0.96, note: 'Progressive Field — pitcher-friendly dimensions, suppresses power' },
+  'Kansas City Royals':     { factor: 0.95, note: 'Kauffman Stadium — large outfield, suppresses HR, slight pitcher advantage' },
+  'Tampa Bay Rays':         { factor: 0.94, note: 'Tropicana Field — dome, artificial turf, historically pitcher-friendly environment' },
+  'Detroit Tigers':         { factor: 0.93, note: 'Comerica Park — very large outfield, suppresses HR significantly, pitcher\'s park' },
+  'Oakland Athletics':      { factor: 0.93, note: 'Sutter Health Park (Sacramento) — standard dimensions' },
+  'Chicago White Sox':      { factor: 0.93, note: 'Guaranteed Rate Field — large dimensions after renovation, pitcher lean' },
+  'New York Mets':          { factor: 0.92, note: 'Citi Field — pitcher-friendly since dimensions reduced, marine air suppresses offense' },
+  'Miami Marlins':          { factor: 0.92, note: 'loanDepot park — retractable roof, pitcher-friendly dimensions' },
+  'Pittsburgh Pirates':     { factor: 0.92, note: 'PNC Park — beautiful park, pitcher-friendly, Clemente Wall suppresses RHH HR' },
+  'San Francisco Giants':   { factor: 0.90, note: 'Oracle Park — marine layer and bay wind consistently suppress scoring, strong pitcher lean' },
+  'San Diego Padres':       { factor: 0.88, note: 'Petco Park — marine layer from Pacific, one of the most pitcher-friendly parks in baseball' },
+  'Seattle Mariners':       { factor: 0.88, note: 'T-Mobile Park — marine air from Puget Sound, consistently one of the best pitcher parks' },
+  'Atlanta Braves':         { factor: 1.01, note: 'Truist Park — near neutral, slight offensive lean' },
+  'Arizona Diamondbacks':   { factor: 1.03, note: 'Chase Field — retractable roof, heat and altitude give slight offensive boost' },
+  'Los Angeles Angels':     { factor: 1.00, note: 'Angel Stadium — near neutral park factor' },
+  'Houston Astros':         { factor: 1.00, note: 'Minute Maid Park — retractable roof, near neutral, Tal\'s Hill removed' },
+  'Milwaukee Brewers':      { factor: 1.00, note: 'American Family Field — near neutral, retractable roof eliminates weather factor' },
+  'St. Louis Cardinals':    { factor: 1.00, note: 'Busch Stadium — neutral, open air, standard dimensions' },
+};
+
+// ── FETCH PITCHER ADVANCED STATS (FanGraphs — free, no auth required) ─────────
+// Returns xFIP and SIERA — far better ERA predictors because they remove
+// defense and luck. A pitcher with ERA 4.50 but xFIP 3.20 is outperforming
+// his defense; a pitcher with ERA 2.80 but xFIP 4.10 is due for regression.
+async function fetchPitcherAdvancedStats(pitcherId, pitcherName) {
+  if (!pitcherId || !pitcherName || pitcherName === 'TBD') return null;
+  try {
+    const season = new Date().getFullYear();
+    // FanGraphs leaderboard — free public endpoint, no API key required
+    const url = `https://www.fangraphs.com/api/leaders/major-league/data?age=0&pos=all&stats=pit&lg=all&qual=0&type=1&season=${season}&month=0&season1=${season}&ind=0&team=0&rost=0&players=0&startdate=&enddate=&page=1_500`;
+    const res = await fetch(url, {
+      cache: 'no-store',
+      headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const rows = data?.data || [];
+    // Match by name (FanGraphs uses full name)
+    const lastName = pitcherName.split(' ').slice(1).join(' ').toLowerCase();
+    const row = rows.find(r => {
+      const fg = (r.PlayerName || r.Name || '').toLowerCase();
+      return fg === pitcherName.toLowerCase() || fg.endsWith(lastName);
+    });
+    if (!row) return null;
+    const xfip  = row.xFIP  != null ? parseFloat(row.xFIP).toFixed(2)  : null;
+    const siera = row.SIERA != null ? parseFloat(row.SIERA).toFixed(2)  : null;
+    const fip   = row.FIP   != null ? parseFloat(row.FIP).toFixed(2)    : null;
+    const kpct  = row['K%'] != null ? (parseFloat(row['K%']) * 100).toFixed(1) + '%' : null;
+    const bbpct = row['BB%'] != null ? (parseFloat(row['BB%']) * 100).toFixed(1) + '%' : null;
+    const hrfb  = row['HR/FB'] != null ? (parseFloat(row['HR/FB']) * 100).toFixed(1) + '%' : null;
+    if (!xfip && !siera) return null;
+    return { xfip, siera, fip, kPct: kpct, bbPct: bbpct, hrFBRate: hrfb };
+  } catch { return null; }
+}
+
+// ── FETCH PITCHER PITCH MIX (Baseball Savant — free, MLB-owned) ────────────────
+// Returns pitch type percentages, avg velocity, whiff rate by pitch.
+// Fly-ball pitchers in hitter parks, GB pitchers vs contact lineups — this
+// is matchup intelligence that ERA alone never captures.
+async function fetchPitcherPitchMix(pitcherName) {
+  if (!pitcherName || pitcherName === 'TBD') return null;
+  try {
+    const season = new Date().getFullYear();
+    const url = `https://baseballsavant.mlb.com/leaderboard/pitch-arsenal-stats?type=pitcher&pitchType=&year=${season}&team=&min=10&csv=true`;
+    const res = await fetch(url, { cache: 'no-store', headers: { 'User-Agent': 'Mozilla/5.0' } });
+    if (!res.ok) return null;
+    const text = await res.text();
+    const lines = text.trim().split('\n');
+    if (lines.length < 2) return null;
+    const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+    const lastName = pitcherName.split(' ').slice(1).join(' ').toLowerCase();
+    const pitcherRows = lines.slice(1).filter(line => {
+      const cols = line.split(',');
+      const name = (cols[headers.indexOf('last_name, first_name')] || cols[0] || '').toLowerCase().replace(/"/g, '');
+      return name.includes(lastName) || name === pitcherName.toLowerCase();
+    });
+    if (!pitcherRows.length) return null;
+    // Aggregate pitch types across rows for this pitcher
+    const pitchTypes = [];
+    for (const row of pitcherRows) {
+      const cols = row.split(',').map(c => c.trim().replace(/"/g, ''));
+      const pitchType = cols[headers.indexOf('pitch_type')] || cols[headers.indexOf('pitch_name')] || '';
+      const pct = parseFloat(cols[headers.indexOf('pitch_usage')] || cols[headers.indexOf('pitch_percent')] || '0');
+      const velo = parseFloat(cols[headers.indexOf('mph')] || cols[headers.indexOf('release_speed')] || '0');
+      const whiff = parseFloat(cols[headers.indexOf('whiff_percent')] || '0');
+      if (pitchType && pct > 0) pitchTypes.push({ pitch: pitchType, pct: pct.toFixed(1) + '%', velo: velo.toFixed(1), whiff: whiff.toFixed(1) + '%' });
+    }
+    if (!pitchTypes.length) return null;
+    return pitchTypes.map(p => `${p.pitch} ${p.pct} @ ${p.velo}mph (${p.whiff} whiff%)`).join(' | ');
+  } catch { return null; }
+}
+
+// ── FETCH BULLPEN USAGE LAST 3 DAYS (MLB Stats API) ───────────────────────────
+// Returns which relievers pitched in the last 3 games so Stage 2 knows
+// who is actually available tonight — the most important bullpen signal.
+async function fetchBullpenUsage(teamId, teamName) {
+  if (!teamId) return null;
+  try {
+    const now = new Date();
+    const endDate = new Date(now);
+    endDate.setDate(endDate.getDate() - 1);
+    const startDate = new Date(now);
+    startDate.setDate(startDate.getDate() - 4);
+    const fmt = d => d.toISOString().split('T')[0];
+    const schedRes = await fetch(
+      `https://statsapi.mlb.com/api/v1/schedule?sportId=1&teamId=${teamId}&startDate=${fmt(startDate)}&endDate=${fmt(endDate)}&hydrate=boxscore&gameType=R`,
+      { cache: 'no-store' }
+    );
+    if (!schedRes.ok) return null;
+    const schedData = await schedRes.json();
+    const recentGames = (schedData.dates || []).flatMap(d => d.games || []).slice(-3);
+    if (!recentGames.length) return null;
+
+    const usedPitchers = {}; // name -> [{date, daysAgo, batsFaced}]
+    for (const g of recentGames) {
+      const gameDateStr = g.gameDate?.split('T')[0] || '';
+      const gameDate = new Date(gameDateStr);
+      const daysAgo = Math.round((now - gameDate) / (1000 * 60 * 60 * 24));
+      const boxscore = g.liveData?.boxscore || g.gameData?.boxscore;
+      if (!boxscore) continue;
+      const isHome = g.teams?.home?.team?.id === parseInt(teamId);
+      const teamBox = isHome ? boxscore.teams?.home : boxscore.teams?.away;
+      const pitchers = teamBox?.pitchers || [];
+      const playerInfo = teamBox?.players || {};
+      for (const pitcherId of pitchers) {
+        const p = playerInfo[`ID${pitcherId}`];
+        if (!p) continue;
+        const isStarter = p.gameStatus?.isCurrentPitcher === false && p.stats?.pitching?.gamesStarted > 0;
+        if (p.stats?.pitching?.gamesStarted) continue; // skip starters
+        const name = p.person?.fullName || '';
+        const bf = p.stats?.pitching?.battersFaced || 0;
+        if (name && bf > 0) {
+          if (!usedPitchers[name]) usedPitchers[name] = [];
+          usedPitchers[name].push({ daysAgo, bf });
+        }
+      }
+    }
+
+    const entries = Object.entries(usedPitchers);
+    if (!entries.length) return `${teamName} bullpen: no recent usage data`;
+
+    // Sort by most recent use
+    const lines = entries
+      .sort((a, b) => Math.min(...a[1].map(x => x.daysAgo)) - Math.min(...b[1].map(x => x.daysAgo)))
+      .map(([name, uses]) => {
+        const mostRecent = Math.min(...uses.map(u => u.daysAgo));
+        const totalBF = uses.reduce((s, u) => s + u.bf, 0);
+        const tag = mostRecent === 1 ? 'YESTERDAY' : mostRecent === 2 ? '2 days ago' : '3+ days ago';
+        return `${name} (${tag}, ${totalBF} BF last 3G)`;
+      });
+
+    return `${teamName} bullpen usage last 3 games: ${lines.slice(0, 6).join(' | ')}`;
+  } catch { return null; }
+}
+
+// ── FETCH FIRST 5 INNINGS LINES (The Odds API — same subscription) ─────────────
+// F5 isolates the starting pitcher edge and removes bullpen variance.
+// When the edge is clearly in the starters, F5 is the cleaner play.
+async function fetchF5Lines(away, home) {
+  try {
+    const ODDS_KEY = process.env.ODDS_API_KEY;
+    if (!ODDS_KEY) return null;
+    const BOOKS = ['draftkings', 'fanduel', 'betmgm', 'caesars'];
+    const res = await fetch(
+      `https://api.the-odds-api.com/v4/sports/baseball_mlb/odds/?apiKey=${ODDS_KEY}&regions=us&markets=h2h_h1,totals_h1&oddsFormat=american&bookmakers=${BOOKS.join(',')}`,
+      { cache: 'no-store' }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const awayLast = away.split(' ').pop().toLowerCase();
+    const homeLast = home.split(' ').pop().toLowerCase();
+    const event = data.find(e => {
+      const a = (e.away_team || '').toLowerCase();
+      const h = (e.home_team || '').toLowerCase();
+      return (a.includes(awayLast) || awayLast.includes(a.split(' ').pop())) &&
+             (h.includes(homeLast) || homeLast.includes(h.split(' ').pop()));
+    });
+    if (!event) return null;
+
+    let f5AwayML = null, f5HomeML = null, f5Total = null, f5OverPrice = null, f5UnderPrice = null;
+
+    for (const bookmaker of (event.bookmakers || [])) {
+      for (const market of (bookmaker.markets || [])) {
+        if (market.key === 'h2h_h1' && !f5AwayML) {
+          for (const outcome of market.outcomes || []) {
+            const n = (outcome.name || '').toLowerCase();
+            if (n.includes(awayLast)) f5AwayML = outcome.price > 0 ? `+${outcome.price}` : `${outcome.price}`;
+            else if (n.includes(homeLast)) f5HomeML = outcome.price > 0 ? `+${outcome.price}` : `${outcome.price}`;
+          }
+        }
+        if (market.key === 'totals_h1' && !f5Total) {
+          for (const outcome of market.outcomes || []) {
+            const n = (outcome.name || '').toLowerCase();
+            const price = outcome.price > 0 ? `+${outcome.price}` : `${outcome.price}`;
+            if (n === 'over') { f5Total = outcome.point; f5OverPrice = price; }
+            else if (n === 'under') f5UnderPrice = price;
+          }
+        }
+      }
+      if (f5AwayML && f5HomeML && f5Total) break;
+    }
+
+    if (!f5AwayML && !f5Total) return null;
+    return { f5AwayML, f5HomeML, f5Total: f5Total ? String(f5Total) : null, f5OverPrice, f5UnderPrice };
+  } catch { return null; }
+}
+
 async function assembleMLBGame(game, oddsMap) {
   try {
     const away = (game.teams?.away?.team?.name || 'Away').trim();
@@ -487,6 +709,20 @@ async function assembleMLBGame(game, oddsMap) {
       fetchGameNarrative(away, home, 'MLB'),
     ]);
 
+    // ── NEW: Advanced stats fetch (separate Promise.all — doesn't touch existing destructuring) ──
+    const [awayAdvanced, homeAdvanced, awayPitchMix, homePitchMix, awayBullpenUsage, homeBullpenUsage, f5Lines] = await Promise.all([
+      awayPitcherId ? fetchPitcherAdvancedStats(awayPitcherId, awayPitcher) : Promise.resolve(null),
+      homePitcherId ? fetchPitcherAdvancedStats(homePitcherId, homePitcher) : Promise.resolve(null),
+      fetchPitcherPitchMix(awayPitcher),
+      fetchPitcherPitchMix(homePitcher),
+      awayTeamId ? fetchBullpenUsage(awayTeamId, away) : Promise.resolve(null),
+      homeTeamId ? fetchBullpenUsage(homeTeamId, home) : Promise.resolve(null),
+      fetchF5Lines(away, home),
+    ]);
+
+    // Park factor for home team's ballpark
+    const parkData = MLB_PARK_FACTORS[home] || { factor: 1.00, note: 'Neutral park — standard run environment' };
+
     return {
       id: game.gamePk,
       sport: 'MLB',
@@ -560,6 +796,35 @@ async function assembleMLBGame(game, oddsMap) {
       gameNumber: finalSeriesGame,
       gamesInSeries: finalSeriesLength,
       slot: null,
+      // ── ADVANCED STATS (new) ────────────────────────────────────────────────
+      // xFIP/SIERA from FanGraphs — better ERA predictors (defense/luck-neutral)
+      awayPitcherXFIP:  awayAdvanced?.xfip  || null,
+      awayPitcherSIERA: awayAdvanced?.siera || null,
+      awayPitcherFIP:   awayAdvanced?.fip   || null,
+      awayPitcherKPct:  awayAdvanced?.kPct  || null,
+      awayPitcherBBPct: awayAdvanced?.bbPct || null,
+      awayPitcherHRFB:  awayAdvanced?.hrFBRate || null,
+      homePitcherXFIP:  homeAdvanced?.xfip  || null,
+      homePitcherSIERA: homeAdvanced?.siera || null,
+      homePitcherFIP:   homeAdvanced?.fip   || null,
+      homePitcherKPct:  homeAdvanced?.kPct  || null,
+      homePitcherBBPct: homeAdvanced?.bbPct || null,
+      homePitcherHRFB:  homeAdvanced?.hrFBRate || null,
+      // Pitch mix from Baseball Savant
+      awayPitchMix: awayPitchMix || null,
+      homePitchMix: homePitchMix || null,
+      // Bullpen usage last 3 days
+      awayBullpenUsage: awayBullpenUsage || null,
+      homeBullpenUsage: homeBullpenUsage || null,
+      // First 5 innings lines
+      f5AwayML:    f5Lines?.f5AwayML    || null,
+      f5HomeML:    f5Lines?.f5HomeML    || null,
+      f5Total:     f5Lines?.f5Total     || null,
+      f5OverPrice: f5Lines?.f5OverPrice || null,
+      f5UnderPrice:f5Lines?.f5UnderPrice|| null,
+      // Park factor
+      parkFactor:     parkData.factor,
+      parkFactorNote: parkData.note,
     };
   } catch { return null; }
 }
