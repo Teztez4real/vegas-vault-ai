@@ -1293,9 +1293,7 @@ export default function VegasVaultApp() {
   }, []);
 
   // ── CROSS-DEVICE SYNC — re-fetch on visibility change ────────────────────
-  // When you switch from desktop to mobile (or vice versa) and return to the
-  // app, this pulls the latest Supabase data so both devices stay in sync.
-  // Analyses done on desktop appear on mobile and vice versa.
+  // When you return to the app on any device, pull latest Supabase data.
   useEffect(() => {
     if (!authUser?.id) return;
     const uid = authUser.id;
@@ -1309,14 +1307,15 @@ export default function VegasVaultApp() {
           syncLoad(uid, 'pick_history'),
           syncLoad(uid, 'alt_picks'),
         ]);
-        if (res)  setResults(prev  => ({ ...res,  ...prev  })); // local wins on conflict
-        if (fin)  setFinalized(prev => ({ ...fin,  ...prev  }));
-        if (wl)   setWatchlist(prev  => [...new Set([...wl, ...prev])]);
-        if (alt)  setAltPicks(prev   => ({ ...alt,  ...prev  }));
-        if (hist) setPickHistory(prev => {
-          const merged = [...hist];
-          for (const e of prev) if (!merged.find(h => h.key === e.key)) merged.push(e);
-          const seen = new Set(); return merged.filter(e => { if (seen.has(e.key)) return false; seen.add(e.key); return true; });
+        // Merge: local state wins on key conflicts (local is always at least as fresh)
+        if (res  && typeof res === 'object')  setResults(prev  => ({ ...res,  ...prev }));
+        if (fin  && typeof fin === 'object')  setFinalized(prev => ({ ...fin,  ...prev }));
+        if (alt  && typeof alt === 'object')  setAltPicks(prev  => ({ ...alt,  ...prev }));
+        if (Array.isArray(wl))  setWatchlist(prev  => [...new Set([...wl,  ...prev])]);
+        if (Array.isArray(hist)) setPickHistory(prev => {
+          const seen = new Set(prev.map(e => e.key));
+          const fresh = hist.filter(e => e.key && !seen.has(e.key));
+          return fresh.length ? [...prev, ...fresh] : prev;
         });
       } catch {}
     };
