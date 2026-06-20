@@ -809,7 +809,6 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
           {isDelayed&&<span style={{ fontSize:9,fontWeight:700,color:'#bb8800',background:'rgba(255,200,0,0.08)',padding:'3px 9px',borderRadius:6 }}>⏸ DELAYED</span>}
           {isPostponed&&<span style={{ fontSize:9,fontWeight:700,color:'#dd4444',background:'rgba(255,80,80,0.08)',padding:'3px 9px',borderRadius:6 }}>⛔ POSTPONED</span>}
           {betReady&&!gameStarted&&isSubscribed&&<span style={{ fontSize:9,fontWeight:800,color:'#111',background:'#39FF14',padding:'3px 9px',borderRadius:6 }}>🎯 BET NOW</span>}
-          {result?._autoUpdated&&!gameStarted&&isSubscribed&&<span style={{ fontSize:9,fontWeight:700,color:'#0066ff',background:'rgba(0,102,255,0.08)',padding:'3px 9px',borderRadius:6,border:'1px solid rgba(0,102,255,0.2)' }}>🔄 AI Updated</span>}
         </div>
         <div style={{ display:'flex',alignItems:'center',gap:8 }}>
           {/* Tier badge */}
@@ -1151,8 +1150,6 @@ export default function VegasVaultApp() {
   const [altPicks, setAltPicks] = useState({});
   const [betReadyAlerts, setBetReadyAlerts] = useState({});
   const [preAnalyzeQueue, setPreAnalyzeQueue] = useState([]);
-  // Shared results from server-side auto-update cron — merged over user results
-  const [sharedResults, setSharedResults]     = useState({});
   const [liveScores, setLiveScores]   = useState({});
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [authUser, setAuthUser]         = useState(null);
@@ -1297,47 +1294,6 @@ export default function VegasVaultApp() {
 
   // ── AUTO SIGN-OUT AFTER INACTIVITY ──────────────────────────────────────
   useIdleSignOut(getSB(), !!authUser, doIdleSignOut, 30);
-
-  // ── SHARED RESULTS POLL — every 5 minutes ────────────────────────────────────
-  // Fetches server-side auto-updated analyses and merges into results state.
-  // When the cron detects a lineup change, injury, Trell Rule, etc. and
-  // re-analyzes a game, all users see the updated pick without clicking Re-analyze.
-  useEffect(() => {
-    if (!authUser?.id) return;
-    const poll = async () => {
-      try {
-        const res = await fetch(`/api/auto-analyze?date=${selectedDate}`, { cache: 'no-store' });
-        if (!res.ok) return;
-        const data = await res.json();
-        const analyses = data?.analyses;
-        if (!analyses || !Object.keys(analyses).length) return;
-
-        // Compute the merged update outside of any state setter
-        let hasChanges = false;
-        const toMerge = {};
-        // We read current results via the functional updater below
-        setResults(prev => {
-          for (const [key, shared] of Object.entries(analyses)) {
-            const userResult = prev[key];
-            const sharedTime = new Date(shared?.updatedAt || 0).getTime();
-            const userTime   = new Date(userResult?.updatedAt || 0).getTime();
-            if (!userResult || sharedTime > userTime) {
-              toMerge[key] = { ...shared, _autoUpdated: true };
-              hasChanges = true;
-            }
-          }
-          if (!hasChanges) return prev;
-          return { ...prev, ...toMerge };
-        });
-
-        // Update sharedResults separately — safe to call outside updater
-        if (hasChanges) setSharedResults(prev => ({ ...prev, ...analyses }));
-      } catch {}
-    };
-    poll();
-    const id = setInterval(poll, 5 * 60 * 1000);
-    return () => clearInterval(id);
-  }, [authUser?.id, selectedDate]);
 
   // ── SESSION KEEPALIVE — refresh token every 10 minutes ───────────────────
   // Supabase auto-refreshes sessions but only when the SDK is actively used.
@@ -3525,9 +3481,6 @@ export default function VegasVaultApp() {
               </button>
             </div>
           )}
-
-          {/* Admin: Force Smart Update */}
-          {shellIsAdmin && <ForceSmartUpdate />}
 
           {loading ? (
             <div style={{ textAlign:'center', padding:'60px 0', color:'#aaa', fontSize:13 }}>
