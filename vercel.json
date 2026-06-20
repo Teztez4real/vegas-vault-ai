@@ -14,6 +14,9 @@
     },
     "app/api/auto-analyze/route.js": {
       "maxDuration": 300
+    },
+    "app/api/cron/smart-update/route.js": {
+      "maxDuration": 300
     }
   },
   "crons": [
@@ -28,6 +31,10 @@
     {
       "path": "/api/auto-analyze",
       "schedule": "0 20 * * *"
+    },
+    {
+      "path": "/api/cron/smart-update",
+      "schedule": "*/30 11-23 * * *"
     }
   ]
 }

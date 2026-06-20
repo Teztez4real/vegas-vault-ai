@@ -809,6 +809,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
           {isDelayed&&<span style={{ fontSize:9,fontWeight:700,color:'#bb8800',background:'rgba(255,200,0,0.08)',padding:'3px 9px',borderRadius:6 }}>⏸ DELAYED</span>}
           {isPostponed&&<span style={{ fontSize:9,fontWeight:700,color:'#dd4444',background:'rgba(255,80,80,0.08)',padding:'3px 9px',borderRadius:6 }}>⛔ POSTPONED</span>}
           {betReady&&!gameStarted&&isSubscribed&&<span style={{ fontSize:9,fontWeight:800,color:'#111',background:'#39FF14',padding:'3px 9px',borderRadius:6 }}>🎯 BET NOW</span>}
+          {result?._autoUpdated&&!gameStarted&&isSubscribed&&<span style={{ fontSize:9,fontWeight:700,color:'#0066ff',background:'rgba(0,102,255,0.08)',padding:'3px 9px',borderRadius:6,border:'1px solid rgba(0,102,255,0.2)' }}>🔄 AI Updated</span>}
         </div>
         <div style={{ display:'flex',alignItems:'center',gap:8 }}>
           {/* Tier badge */}
@@ -1119,6 +1120,9 @@ export default function VegasVaultApp() {
   const [altPicks, setAltPicks] = useState({});
   const [betReadyAlerts, setBetReadyAlerts] = useState({});
   const [preAnalyzeQueue, setPreAnalyzeQueue] = useState([]);
+  // Shared results from server-side auto-update cron — merged over user results
+  const [sharedResults, setSharedResults]     = useState({});
+  const [autoUpdatedKeys, setAutoUpdatedKeys] = useState(new Set());
   const [liveScores, setLiveScores]   = useState({});
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [authUser, setAuthUser]         = useState(null);
@@ -1263,6 +1267,45 @@ export default function VegasVaultApp() {
 
   // ── AUTO SIGN-OUT AFTER INACTIVITY ──────────────────────────────────────
   useIdleSignOut(getSB(), !!authUser, doIdleSignOut, 30);
+
+  // ── SHARED RESULTS POLL — every 5 minutes ────────────────────────────────────
+  // Fetches server-side auto-updated analyses and merges into results state.
+  // When the cron detects a lineup change, injury, Trell Rule, etc. and
+  // re-analyzes a game, all users see the updated pick without clicking Re-analyze.
+  useEffect(() => {
+    if (!authUser?.id) return;
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/auto-analyze?date=${selectedDate}`, { cache: 'no-store' });
+        if (!res.ok) return;
+        const { analyses } = await res.json();
+        if (!analyses || !Object.keys(analyses).length) return;
+        const newUpdatedKeys = new Set();
+        setResults(prev => {
+          const updated = { ...prev };
+          let changed = false;
+          for (const [key, shared] of Object.entries(analyses)) {
+            const userResult = prev[key];
+            const sharedTime = new Date(shared?.updatedAt || 0).getTime();
+            const userTime   = new Date(userResult?.updatedAt || 0).getTime();
+            if (!userResult || sharedTime > userTime) {
+              updated[key] = { ...shared, _autoUpdated: true };
+              newUpdatedKeys.add(key);
+              changed = true;
+            }
+          }
+          if (changed) {
+            setAutoUpdatedKeys(newUpdatedKeys);
+            setTimeout(() => setAutoUpdatedKeys(new Set()), 30000);
+          }
+          return changed ? updated : prev;
+        });
+      } catch {}
+    };
+    poll();
+    const id = setInterval(poll, 5 * 60 * 1000);
+    return () => clearInterval(id);
+  }, [authUser?.id, selectedDate]);
 
   // ── SESSION KEEPALIVE — refresh token every 10 minutes ───────────────────
   // Supabase auto-refreshes sessions but only when the SDK is actively used.
@@ -3450,6 +3493,37 @@ export default function VegasVaultApp() {
               </button>
             </div>
           )}
+
+          {/* Admin: Force Smart Update — manually trigger the change-detection cron */}
+          {shellIsAdmin && (() => {
+            const [updating, setUpdating] = useState(false);
+            const [updateMsg, setUpdateMsg] = useState('');
+            const runSmartUpdate = async () => {
+              setUpdating(true); setUpdateMsg('');
+              try {
+                const res = await fetch('/api/cron/smart-update', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ adminKey: process.env.NEXT_PUBLIC_ADMIN_KEY || '' }),
+                });
+                const data = await res.json();
+                setUpdateMsg(data.error ? `❌ ${data.error}` : `✅ Checked ${data.gamesChecked} games — ${data.gamesUpdated} updated, ${data.finalizedPlays} finalized`);
+              } catch(e) { setUpdateMsg(`❌ ${e.message}`); }
+              setUpdating(false);
+            };
+            return (
+              <div style={{ background:'rgba(0,102,255,0.04)', border:'1px solid rgba(0,102,255,0.15)', borderRadius:12, padding:'10px 14px', display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+                <i className="ti ti-refresh" style={{ fontSize:14, color:'#0066ff' }} />
+                <span style={{ fontSize:11, fontWeight:600, color:'#555', flex:1 }}>
+                  {updateMsg || 'Force AI Smart Update — detects lineup/injury/line changes and re-analyzes'}
+                </span>
+                <button onClick={runSmartUpdate} disabled={updating} style={{ fontSize:10, fontWeight:700, padding:'6px 12px', borderRadius:8, background: updating ? 'rgba(0,0,0,0.04)' : 'rgba(0,102,255,0.1)', border:'1px solid rgba(0,102,255,0.2)', color: updating ? '#aaa' : '#0066ff', cursor: updating ? 'not-allowed' : 'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', gap:5 }}>
+                  <i className={`ti ${updating ? 'ti-loader-2' : 'ti-refresh'}`} style={{ fontSize:12 }} />
+                  {updating ? 'Checking...' : 'Run Now'}
+                </button>
+              </div>
+            );
+          })()}
 
           {loading ? (
             <div style={{ textAlign:'center', padding:'60px 0', color:'#aaa', fontSize:13 }}>
