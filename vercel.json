@@ -26,15 +26,7 @@
     },
     {
       "path": "/api/auto-analyze",
-      "schedule": "0 17 * * *"
-    },
-    {
-      "path": "/api/auto-analyze",
       "schedule": "0 20 * * *"
-    },
-    {
-      "path": "/api/cron/smart-update",
-      "schedule": "*/30 11-23 * * *"
     }
   ]
 }
