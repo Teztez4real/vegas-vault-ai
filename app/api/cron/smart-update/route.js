@@ -44,7 +44,9 @@ export async function GET(req) {
 
   const { createClient } = await import('@supabase/supabase-js');
   const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
-  const base = process.env.NEXT_PUBLIC_APP_URL || '';
+  // Build absolute base URL from the request so relative fetches work server-side
+  const reqUrl = new URL(req.url);
+  const base = process.env.NEXT_PUBLIC_APP_URL || `${reqUrl.protocol}//${reqUrl.host}`;
 
   try {
     const date = new Date().toISOString().split('T')[0];
