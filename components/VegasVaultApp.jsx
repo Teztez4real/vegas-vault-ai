@@ -1292,37 +1292,6 @@ export default function VegasVaultApp() {
     } catch(e) {}
   }, []);
 
-  // ── CROSS-DEVICE SYNC — re-fetch on visibility change ────────────────────
-  // When you return to the app on any device, pull latest Supabase data.
-  useEffect(() => {
-    if (!authUser?.id) return;
-    const uid = authUser.id;
-    const sync = async () => {
-      if (document.visibilityState !== 'visible') return;
-      try {
-        const [wl, res, fin, hist, alt] = await Promise.all([
-          syncLoad(uid, 'watchlist'),
-          syncLoad(uid, 'results'),
-          syncLoad(uid, 'finalized'),
-          syncLoad(uid, 'pick_history'),
-          syncLoad(uid, 'alt_picks'),
-        ]);
-        // Merge: local state wins on key conflicts (local is always at least as fresh)
-        if (res  && typeof res === 'object')  setResults(prev  => ({ ...res,  ...prev }));
-        if (fin  && typeof fin === 'object')  setFinalized(prev => ({ ...fin,  ...prev }));
-        if (alt  && typeof alt === 'object')  setAltPicks(prev  => ({ ...alt,  ...prev }));
-        if (Array.isArray(wl))  setWatchlist(prev  => [...new Set([...wl,  ...prev])]);
-        if (Array.isArray(hist)) setPickHistory(prev => {
-          const seen = new Set(prev.map(e => e.key));
-          const fresh = hist.filter(e => e.key && !seen.has(e.key));
-          return fresh.length ? [...prev, ...fresh] : prev;
-        });
-      } catch {}
-    };
-    document.addEventListener('visibilitychange', sync);
-    return () => document.removeEventListener('visibilitychange', sync);
-  }, [authUser?.id]);
-
   // ── SESSION KEEPALIVE — refresh token every 10 minutes ───────────────────
   // Supabase auto-refreshes sessions but only when the SDK is actively used.
   // This guarantees the session never expires for any user (admin or client)
