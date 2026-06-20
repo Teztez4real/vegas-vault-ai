@@ -809,7 +809,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
           {isDelayed&&<span style={{ fontSize:9,fontWeight:700,color:'#bb8800',background:'rgba(255,200,0,0.08)',padding:'3px 9px',borderRadius:6 }}>⏸ DELAYED</span>}
           {isPostponed&&<span style={{ fontSize:9,fontWeight:700,color:'#dd4444',background:'rgba(255,80,80,0.08)',padding:'3px 9px',borderRadius:6 }}>⛔ POSTPONED</span>}
           {betReady&&!gameStarted&&isSubscribed&&<span style={{ fontSize:9,fontWeight:800,color:'#111',background:'#39FF14',padding:'3px 9px',borderRadius:6 }}>🎯 BET NOW</span>}
-          {result?._autoUpdated&&isSubscribed&&<span style={{ fontSize:9,fontWeight:700,color:'#0066ff',background:'rgba(0,102,255,0.08)',padding:'3px 9px',borderRadius:6,border:'1px solid rgba(0,102,255,0.2)' }}>🔄 AI Updated</span>}
+          {bestResult?._autoUpdated&&isSubscribed&&<span style={{ fontSize:9,fontWeight:700,color:'#0066ff',background:'rgba(0,102,255,0.08)',padding:'3px 9px',borderRadius:6,border:'1px solid rgba(0,102,255,0.2)' }}>🔄 AI Updated</span>}
         </div>
         <div style={{ display:'flex',alignItems:'center',gap:8 }}>
           {/* Tier badge */}
