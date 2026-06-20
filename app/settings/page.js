@@ -21,6 +21,8 @@ export default function SettingsPage() {
   const [slotMsg, setSlotMsg] = useState('');
   const [clearMsg, setClearMsg] = useState('');
   const [testMsg, setTestMsg] = useState('');
+  const [smartUpdateMsg, setSmartUpdateMsg] = useState('');
+  const [smartUpdating, setSmartUpdating] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && 'Notification' in window)
@@ -276,6 +278,33 @@ export default function SettingsPage() {
               </button>
             </div>
             {testMsg && <div style={{ padding:'0 20px 16px', fontSize:11, color: testMsg.startsWith('✅') ? '#33aa00' : '#dd4444', fontWeight:600 }}>{testMsg}</div>}
+          </div>
+        )}
+
+        {/* Admin: Force Smart Update */}
+        {session?.user?.email === ADMIN_EMAIL && (
+          <div style={glass}>
+            <div style={{ padding:'16px 20px 0' }}>
+              <span style={sectionLabel}><i className="ti ti-refresh" style={{ fontSize:12, marginRight:6, color:'#0066ff' }} />AI Auto-Update</span>
+            </div>
+            <div style={{ padding:'12px 20px' }}>
+              <div style={{ fontSize:11, color:'#777', marginBottom:12, lineHeight:1.5 }}>
+                Detect lineup changes, pitcher confirmations, injuries, and line movement — then re-analyze affected games and notify watchlisted users.
+              </div>
+              {smartUpdateMsg && <div style={{ fontSize:11, color: smartUpdateMsg.startsWith('✅') ? '#33aa00' : '#dd4444', fontWeight:600, marginBottom:10 }}>{smartUpdateMsg}</div>}
+              <button disabled={smartUpdating} onClick={async () => {
+                setSmartUpdating(true); setSmartUpdateMsg('');
+                try {
+                  const res = await fetch('/api/cron/smart-update', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ trigger:'admin' }) });
+                  const d = await res.json();
+                  setSmartUpdateMsg(d.error ? `❌ ${d.error}` : `✅ ${d.gamesChecked||0} checked — ${d.gamesUpdated||0} updated, ${d.finalizedPlays||0} finalized`);
+                } catch(e) { setSmartUpdateMsg(`❌ ${e.message}`); }
+                setSmartUpdating(false);
+              }} style={{ ...btnPrimary, opacity: smartUpdating ? 0.6 : 1 }}>
+                <i className={`ti ${smartUpdating ? 'ti-loader-2' : 'ti-refresh'}`} style={{ fontSize:12, marginRight:5 }} />
+                {smartUpdating ? 'Running...' : 'Run Smart Update Now'}
+              </button>
+            </div>
           </div>
         )}
 
