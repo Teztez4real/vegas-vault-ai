@@ -2325,14 +2325,23 @@ export default function VegasVaultApp() {
     // every already-analyzed game as unanalyzed, and queue them all for
     // re-analysis — silently overwriting/duplicating real history.
     if (!syncedDataReady) return;
-    // Only queue once per date — don't re-queue just because liveScores updated
+    // Only queue once per date — don't re-queue just because liveScores updated.
+    // queuedDateRef persists across renders but resets on mount (iOS tab kill).
+    // We also check localStorage so the guard survives mobile tab kills.
     if (queuedDateRef.current === selectedDate) return;
+    if (localLoad('vv_queued_date') === selectedDate) {
+      // We already queued today in a previous session.
+      // Only allow re-queuing if results actually loaded — if results are
+      // empty it means Supabase hasn't responded yet on mobile; wait.
+      const slotted = games.filter(g => g.slot === 'PUBLIC' || g.slot === 'VEGAS');
+      if (slotted.length > 0 && Object.keys(results).length === 0 && Object.keys(finalized).length === 0) return;
+      queuedDateRef.current = selectedDate; // sync the ref so we don't re-enter
+    }
     // Wait for slots to be assigned
     // WNBA always analyzes — no slot pattern required
     const wnbaGames = games.filter(g => g.sport === 'WNBA');
     if (!hasSlotPattern && wnbaGames.length === 0) return;
     if (!hasSlotPattern && wnbaGames.length > 0) {
-      // Only queue WNBA games
       const wnbaQueue = wnbaGames.filter(g => !results[g.id+'-WNBA'] && !finalized[g.id+'-WNBA']).map(g => ({ game: g, slot: 'WNBA', key: g.id+'-WNBA' }));
       if (wnbaQueue.length) setPreAnalyzeQueue(q => [...q, ...wnbaQueue.filter(nq => !q.find(eq => eq.key === nq.key))]);
       return;
@@ -2342,11 +2351,18 @@ export default function VegasVaultApp() {
     for (const game of games) {
       if (!game.slot || (game.slot !== 'PUBLIC' && game.slot !== 'VEGAS')) continue;
       const key = `${game.id}-${game.slot}`;
-      if (!results[key]) toAnalyze.push({ game, slot: game.slot, key });
+      // Check both results AND finalized — finalized means the game ended and
+      // was graded, so we definitely don't need to re-analyze it
+      if (!results[key] && !finalized[key]) toAnalyze.push({ game, slot: game.slot, key });
     }
     if (toAnalyze.length > 0) {
       queuedDateRef.current = selectedDate;
+      localSave('vv_queued_date', selectedDate); // persist so iOS tab-kill doesn't lose this
       setPreAnalyzeQueue(toAnalyze);
+    } else {
+      // All games already have results — still mark as queued so we don't retry
+      queuedDateRef.current = selectedDate;
+      localSave('vv_queued_date', selectedDate);
     }
   }, [games, selectedDate, syncedDataReady]);
 
