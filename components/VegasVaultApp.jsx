@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import { supabase as _supabase } from '@/lib/supabaseClient';
+
 import NewLookShell from '@/components/NewLookShell';
 import '@/app/new-look.css';
 
@@ -1291,6 +1292,8 @@ export default function VegasVaultApp() {
     } catch(e) {}
   }, []);
 
+  // ── AUTO SIGN-OUT AFTER INACTIVITY ──────────────────────────────────────
+
   // ── SESSION KEEPALIVE — refresh token every 10 minutes ───────────────────
   // Supabase auto-refreshes sessions but only when the SDK is actively used.
   // This guarantees the session never expires for any user (admin or client)
@@ -1382,8 +1385,6 @@ export default function VegasVaultApp() {
   // Killing the session on idle was the root cause of data loss: once the
   // session ends, every syncSave call silently fails RLS, then a mobile
   // browser tab-kill wipes the in-memory state, and sign-back-in loads
-  // stale Supabase data with nothing to merge from localStorage.
-  // Keeping the session alive means writes always succeed, and no data
   async function doSignOut() {
     try {
       const uid = authUser?.id;
