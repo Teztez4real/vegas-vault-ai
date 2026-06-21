@@ -304,12 +304,30 @@ async function fetchOdds(sport, dateParam) {
 async function fetchPitcherVsOpponent(pitcherId, opponentTeamId, pitcherName) {
   if (!pitcherId || !opponentTeamId) return 'N/A';
   try {
+    // First try vsTeamTotal — gives career aggregate vs a specific team in one call
+    const careerRes = await fetch(
+      `https://statsapi.mlb.com/api/v1/people/${pitcherId}/stats?stats=vsTeamTotal&opposingTeamId=${opponentTeamId}&group=pitching`,
+      { cache: 'no-store' }
+    ).catch(() => null);
+
+    if (careerRes?.ok) {
+      const careerData = await careerRes.json().catch(() => null);
+      const stats = careerData?.stats?.[0]?.splits?.[0]?.stat;
+      if (stats && (stats.gamesPitched ?? 0) > 0) {
+        const g   = stats.gamesPitched ?? 0;
+        const ip  = parseFloat(stats.inningsPitched || '0');
+        const er  = stats.earnedRuns ?? 0;
+        const h   = stats.hits ?? 0;
+        const bb  = stats.baseOnBalls ?? 0;
+        const so  = stats.strikeOuts ?? 0;
+        const era = ip > 0 ? ((er * 9) / ip).toFixed(2) : 'N/A';
+        return `${pitcherName} career vs this team: ${g} G | ${ip.toFixed(1)} IP | ERA ${era} | ${h} H | ${er} ER | ${bb} BB | ${so} K`;
+      }
+    }
+
+    // Fallback: aggregate season-by-season over the last 10 years
     const currentSeason = new Date().getFullYear();
-    // Query the last 6 seasons (covers a meaningful career span for most
-    // starters, including rookies/young arms with only 1-2 years up) and
-    // aggregate — MLB Stats API's vsTeam split is season-scoped per call,
-    // there's no single "career" vsTeam endpoint, so we sum manually.
-    const seasons = Array.from({ length: 6 }, (_, i) => currentSeason - i);
+    const seasons = Array.from({ length: 10 }, (_, i) => currentSeason - i);
     const results = await Promise.all(seasons.map(season =>
       fetch(
         `https://statsapi.mlb.com/api/v1/people/${pitcherId}/stats?stats=vsTeam&opposingTeamId=${opponentTeamId}&group=pitching&season=${season}`,
@@ -326,18 +344,18 @@ async function fetchPitcherVsOpponent(pitcherId, opponentTeamId, pitcherName) {
       const g = stats.gamesPitched ?? 0;
       if (g === 0) continue;
       hasAnyData = true;
-      totalG += g;
+      totalG  += g;
       totalIP += parseFloat(stats.inningsPitched || '0') || 0;
       totalER += stats.earnedRuns ?? 0;
-      totalH += stats.hits ?? 0;
+      totalH  += stats.hits ?? 0;
       totalBB += stats.baseOnBalls ?? 0;
       totalSO += stats.strikeOuts ?? 0;
     }
 
-    if (!hasAnyData) return `${pitcherName} — no career starts vs this team in the last ${seasons.length} seasons`;
+    if (!hasAnyData) return `${pitcherName} — no career data vs this opponent`;
 
     const careerERA = totalIP > 0 ? ((totalER * 9) / totalIP).toFixed(2) : 'N/A';
-    return `${pitcherName} career vs this team (last ${seasons.length} seasons): ${totalG} G | ${totalIP.toFixed(1)} IP | ERA ${careerERA} | ${totalH} H | ${totalER} ER | ${totalBB} BB | ${totalSO} K`;
+    return `${pitcherName} career vs this team: ${totalG} G | ${totalIP.toFixed(1)} IP | ERA ${careerERA} | ${totalH} H | ${totalER} ER | ${totalBB} BB | ${totalSO} K`;
   } catch {
     return 'N/A';
   }
