@@ -917,10 +917,6 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
       ):hasRes?(
         <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'9px 12px',background:'rgba(248,255,248,0.7)',border:'1px solid rgba(195,240,195,0.5)',borderRadius:10 }}>
           <span style={{ fontSize:10,fontWeight:700,color:'#33aa00' }}>✓ {game.slot} — ANALYZED</span>
-          <button onClick={e=>{e.stopPropagation();onGenerate(game,game.slot);}}
-            style={{ fontSize:10,fontWeight:700,color:'#555',background:'rgba(255,255,255,0.7)',border:'1px solid rgba(0,0,0,0.07)',borderRadius:7,padding:'4px 10px',cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',gap:4 }}>
-            <i className="ti ti-refresh" style={{ fontSize:12 }}/> Re-analyze
-          </button>
         </div>
       ):hasSlotPattern?(
         <div style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:'10px 0',background:'rgba(57,255,20,0.06)',border:'1px solid rgba(57,255,20,0.2)',borderRadius:10 }}>
@@ -1080,11 +1076,6 @@ function TopPlayBanner({ topPlay, loading, results, pickHistory, isSubscribed, i
           <span onClick={()=>onToggleWatch?.(topPlay.id)} style={{ fontSize:16,color:watchlist?.includes(topPlay.id)?'#39FF14':'#ccc',cursor:'pointer' }}>
             {watchlist?.includes(topPlay.id)?'★':'☆'}
           </span>
-          {isAdmin&&onForceRefresh&&(
-            <button onClick={onForceRefresh} style={{ fontSize:10,fontWeight:700,color:'#555',background:'rgba(255,255,255,0.7)',border:'1px solid rgba(0,0,0,0.07)',borderRadius:7,padding:'4px 10px',cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',gap:4 }}>
-              <i className="ti ti-refresh" style={{ fontSize:12 }}/> Re-analyze
-            </button>
-          )}
         </div>
       </div>
       <div style={{ display:'flex',alignItems:'flex-start',gap:14,flexWrap:'wrap' }}>
