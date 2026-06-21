@@ -4169,7 +4169,7 @@ export default function VegasVaultApp() {
         const spreadVal = game.dkSpread || game.spread || '—';
         const totalVal  = game.dkTotal  || game.total  || '—';
         const awaySpread = (() => { if(spreadVal==='—') return '—'; const n=parseFloat(spreadVal); if(isNaN(n)) return spreadVal; return n>0?`-${n.toFixed(1)}`:`+${Math.abs(n).toFixed(1)}`; })();
-        const hasMlMovement = game.lineMovement && !['No significant movement','N/A','No significant movement detected'].includes(game.lineMovement);
+        const hasMlMovement = game.lineMovement && !['No significant movement','N/A','No significant movement detected','No movement detected'].includes(game.lineMovement);
         const hasMovement = hasMlMovement || game.spreadMoveSignificant || game.totalMoveSignificant;
 
         const TABS = ['AI Reasoning','Matchup & Stats','Odds & Sharp Money','Injury & Weather','Scam Play','Line Movement','Series Context'];
@@ -4724,40 +4724,60 @@ export default function VegasVaultApp() {
                   <div style={{ background:'rgba(255,255,255,0.7)',border:'1px solid rgba(255,255,255,0.93)',borderRadius:14,padding:'14px 16px' }}>
                     <div style={{ fontSize:11,fontWeight:800,color:'#111',marginBottom:10 }}>Line Movement</div>
 
+                    {/* MONEYLINE — always show opening + current */}
                     <div style={{ fontSize:9,fontWeight:800,color:'#999',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:4 }}>Moneyline</div>
-                    {game.lineMovement && !['No significant movement','N/A','No significant movement detected'].includes(game.lineMovement) ? (
-                      <div style={{ fontSize:12,color:'#444',lineHeight:1.7,background:'rgba(246,249,246,0.7)',border:'1px solid rgba(195,240,195,0.5)',borderRadius:10,padding:'12px 14px',marginBottom:12 }}>
-                        <i className="ti ti-bolt" style={{ fontSize:13,color:'#39FF14',marginRight:6 }} />{game.lineMovement}
-                      </div>
-                    ) : (
-                      <div style={{ fontSize:11,color:'#bbb',marginBottom:12 }}>No significant moneyline movement detected.</div>
-                    )}
+                    <div style={{
+                      fontSize:12,color:'#444',lineHeight:1.7,borderRadius:10,padding:'12px 14px',marginBottom:12,
+                      background: game.lineMovement && !['No significant movement','N/A','No significant movement detected','No movement detected'].includes(game.lineMovement) ? 'rgba(246,249,246,0.7)' : 'rgba(250,250,250,0.6)',
+                      border: game.lineMovement && !['No significant movement','N/A','No significant movement detected','No movement detected'].includes(game.lineMovement) ? '1px solid rgba(195,240,195,0.5)' : '1px solid rgba(0,0,0,0.05)',
+                    }}>
+                      {game.lineMovement && !['No significant movement','N/A','No significant movement detected','No movement detected'].includes(game.lineMovement) ? (
+                        <>
+                          <i className="ti ti-bolt" style={{ fontSize:13,color:'#39FF14',marginRight:6 }} />
+                          {game.lineMovement}
+                        </>
+                      ) : (
+                        <>
+                          <i className="ti ti-minus" style={{ fontSize:13,color:'#bbb',marginRight:6 }} />
+                          <span>
+                            {game.openingAwayML && game.openingAwayML !== game.awayML
+                              ? `DraftKings opened Away ${game.openingAwayML} / Home ${game.openingHomeML} → now Away ${game.awayML || 'N/A'} / Home ${game.homeML || 'N/A'}`
+                              : `DraftKings Away ${game.awayML || 'N/A'} / Home ${game.homeML || 'N/A'}${game.openingAwayML ? ` (opened Away ${game.openingAwayML} / Home ${game.openingHomeML})` : ' — opening line tracking in progress'}`
+                            }
+                          </span>
+                        </>
+                      )}
+                    </div>
 
+                    {/* SPREAD / RUN LINE — always show */}
                     <div style={{ fontSize:9,fontWeight:800,color:'#999',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:4 }}>Spread / Run Line</div>
-                    {game.spreadMovement ? (
-                      <div style={{
-                        fontSize:12,color:'#444',lineHeight:1.7,borderRadius:10,padding:'12px 14px',marginBottom:12,
-                        background: game.spreadMoveSignificant ? 'rgba(246,249,246,0.7)' : 'rgba(250,250,250,0.6)',
-                        border: game.spreadMoveSignificant ? '1px solid rgba(195,240,195,0.5)' : '1px solid rgba(0,0,0,0.05)',
-                      }}>
-                        <i className="ti ti-arrows-left-right" style={{ fontSize:13,color: game.spreadMoveSignificant ? '#39FF14' : '#bbb',marginRight:6 }} />{game.spreadMovement}
-                      </div>
-                    ) : (
-                      <div style={{ fontSize:11,color:'#bbb',marginBottom:12 }}>No spread movement data yet — check back as the line gets polled.</div>
-                    )}
+                    <div style={{
+                      fontSize:12,color:'#444',lineHeight:1.7,borderRadius:10,padding:'12px 14px',marginBottom:12,
+                      background: game.spreadMoveSignificant ? 'rgba(246,249,246,0.7)' : 'rgba(250,250,250,0.6)',
+                      border: game.spreadMoveSignificant ? '1px solid rgba(195,240,195,0.5)' : '1px solid rgba(0,0,0,0.05)',
+                    }}>
+                      <i className="ti ti-arrows-left-right" style={{ fontSize:13,color: game.spreadMoveSignificant ? '#39FF14' : '#bbb',marginRight:6 }} />
+                      {game.spreadMovement || (
+                        game.spread
+                          ? `DraftKings: Away +${Math.abs(parseFloat(game.spread)||1.5)} ${game.awaySpreadPrice||'-110'} / Home ${game.spread} ${game.homeSpreadPrice||'-110'} — tracking in progress`
+                          : `Run line tracking in progress — Away +1.5 / Home -1.5`
+                      )}
+                    </div>
 
+                    {/* TOTAL — always show */}
                     <div style={{ fontSize:9,fontWeight:800,color:'#999',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:4 }}>Total</div>
-                    {game.totalMovement ? (
-                      <div style={{
-                        fontSize:12,color:'#444',lineHeight:1.7,borderRadius:10,padding:'12px 14px',marginBottom:4,
-                        background: game.totalMoveSignificant ? 'rgba(246,249,246,0.7)' : 'rgba(250,250,250,0.6)',
-                        border: game.totalMoveSignificant ? '1px solid rgba(195,240,195,0.5)' : '1px solid rgba(0,0,0,0.05)',
-                      }}>
-                        <i className="ti ti-arrows-left-right" style={{ fontSize:13,color: game.totalMoveSignificant ? '#39FF14' : '#bbb',marginRight:6 }} />{game.totalMovement}
-                      </div>
-                    ) : (
-                      <div style={{ fontSize:11,color:'#bbb' }}>No total movement data yet — check back as the line gets polled.</div>
-                    )}
+                    <div style={{
+                      fontSize:12,color:'#444',lineHeight:1.7,borderRadius:10,padding:'12px 14px',marginBottom:4,
+                      background: game.totalMoveSignificant ? 'rgba(246,249,246,0.7)' : 'rgba(250,250,250,0.6)',
+                      border: game.totalMoveSignificant ? '1px solid rgba(195,240,195,0.5)' : '1px solid rgba(0,0,0,0.05)',
+                    }}>
+                      <i className="ti ti-arrows-left-right" style={{ fontSize:13,color: game.totalMoveSignificant ? '#39FF14' : '#bbb',marginRight:6 }} />
+                      {game.totalMovement || (
+                        game.total
+                          ? `DraftKings: O/U ${game.total} (Over ${game.overPrice||'-110'} / Under ${game.underPrice||'-110'}) — tracking in progress`
+                          : `Total tracking in progress`
+                      )}
+                    </div>
 
                     {analysis.priceVsDataAudit && (
                       <div style={{ marginTop:12 }}>
