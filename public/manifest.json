@@ -1,13 +1,13 @@
 {
   "name": "Vegas Vault AI",
-  "short_name": "Vegas Vault AI",
+  "short_name": "Vegas Vault",
   "description": "Professional sports betting intelligence",
   "start_url": "/dashboard",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#f6f9f6",
-  "theme_color": "#f6f9f6",
+  "background_color": "#030603",
+  "theme_color": "#030603",
   "icons": [
     {
       "src": "/icon-192.png",
