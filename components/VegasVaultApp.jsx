@@ -1294,6 +1294,48 @@ export default function VegasVaultApp() {
 
   // ── AUTO SIGN-OUT AFTER INACTIVITY ──────────────────────────────────────
 
+  // ── AUTO-UPDATE: fetch shared analyses every 5 minutes ───────────────────
+  // The server crons (14 UTC, 20 UTC) re-analyze games throughout the day.
+  // This effect picks up those server results and applies them to all devices
+  // automatically — no manual Re-analyze clicks needed.
+  //
+  // Rules (matching server-side shouldReanalyze logic):
+  //  • Never overwrite a result that's newer locally (local clock wins ties)
+  //  • Never overwrite finalized/graded plays (game is over)
+  //  • Stops updating once a game starts (server won't produce new results)
+  //  • Works for every sport — purely key-based, no sport-specific logic
+  useEffect(() => {
+    if (!authUser?.id) return;
+    let alive = true;
+    const run = async () => {
+      try {
+        const r = await fetch(`/api/auto-analyze?date=${selectedDate}`, { cache: 'no-store' });
+        if (!r.ok || !alive) return;
+        const data = await r.json().catch(() => null);
+        if (!data?.analyses || !alive) return;
+        const entries = Object.entries(data.analyses);
+        if (!entries.length) return;
+        setResults(prev => {
+          let changed = false;
+          const next = { ...prev };
+          for (const [key, shared] of entries) {
+            if (finalized[key]) continue; // game graded — never overwrite
+            const localTime  = new Date(prev[key]?.updatedAt || 0).getTime();
+            const sharedTime = new Date(shared?.updatedAt   || 0).getTime();
+            if (localTime >= sharedTime) continue; // local is same or newer
+            next[key] = { ...shared, _autoUpdated: true };
+            changed = true;
+          }
+          return changed ? next : prev;
+        });
+      } catch {}
+    };
+    run();
+    const id = setInterval(run, 5 * 60 * 1000);
+    return () => { alive = false; clearInterval(id); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authUser?.id, selectedDate]);
+
   // ── SESSION KEEPALIVE — refresh token every 10 minutes ───────────────────
   // Supabase auto-refreshes sessions but only when the SDK is actively used.
   // This guarantees the session never expires for any user (admin or client)
