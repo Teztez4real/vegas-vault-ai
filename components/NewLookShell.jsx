@@ -27,12 +27,12 @@ export const SPORT_ACCENT = {
 // ── SIDEBAR BRAND ─────────────────────────────────────────────────────────────
 function SidebarBrand() {
   return (
-    <div className="vv-sb-brand">
-      <div className="vv-sb-hex">
-        <span className="vv-sb-ai">AI</span>
-      </div>
-      <div className="vv-sb-name">VEGAS VAULT AI</div>
-      <div className="vv-sb-sub">AI Model OS</div>
+    <div className="vv-sb-brand" style={{ padding:'8px 0 4px' }}>
+      <img
+        src="/vv-logo.svg"
+        alt="Vegas Vault AI"
+        style={{ width:'100%', maxWidth:180, height:'auto', display:'block', margin:'0 auto' }}
+      />
     </div>
   );
 }

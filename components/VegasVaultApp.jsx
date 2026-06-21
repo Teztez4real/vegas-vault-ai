@@ -3030,11 +3030,11 @@ export default function VegasVaultApp() {
         <div style={{ position:'fixed',inset:0,zIndex:9999,background:'rgba(246,249,246,0.97)',backdropFilter:'blur(20px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
           <div style={{ background:'rgba(255,255,255,0.9)',border:'1px solid rgba(57,255,20,0.3)',borderRadius:20,width:'100%',maxWidth:420,padding:'32px 28px',boxShadow:'0 20px 60px rgba(0,0,0,0.1)' }}>
             <div style={{ textAlign:'center',marginBottom:24 }}>
-              <div style={{ width:60,height:60,margin:'0 auto 12px',background:'linear-gradient(145deg,rgba(255,255,255,0.9),rgba(235,255,230,0.8))',border:'2px solid rgba(57,200,20,0.5)',borderRadius:15,display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 0 20px rgba(57,255,20,0.22)' }}>
-                <span style={{ fontSize:17,fontWeight:800,background:'linear-gradient(135deg,#33aa00,#39FF14)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent' }}>AI</span>
-              </div>
-              <div style={{ fontSize:14,fontWeight:800,color:'#111',letterSpacing:0.5 }}>VEGAS VAULT AI</div>
-              <div style={{ fontSize:10,color:'#aaa',letterSpacing:'1.5px',textTransform:'uppercase',marginTop:2 }}>AI Model OS</div>
+              <img
+                src="/vv-logo.svg"
+                alt="Vegas Vault AI"
+                style={{ width:200, height:'auto', margin:'0 auto 8px', display:'block' }}
+              />
             </div>
             {authMode === 'confirm' ? (
               <>
