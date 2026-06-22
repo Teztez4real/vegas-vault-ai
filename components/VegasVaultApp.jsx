@@ -98,6 +98,32 @@ async function saveKey(userId, key, value) {
   serverSave(userId, [{ key, value }]);
 }
 
+// Publish a completed analysis to the SHARED game_analyses table so it's
+// available on every device immediately — independent of which device
+// produced it. This is what makes analysis device-independent: whichever
+// device analyzes a game first publishes it for all others. The server
+// crons remain the always-on backstop.
+async function publishAnalysis(game, slot, result) {
+  try {
+    if (!game?.id || !result) return;
+    await fetch('/api/publish-analysis', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      keepalive: true,
+      body: JSON.stringify({
+        gameKey: `${game.id}-${slot}`,
+        gameId:  game.id,
+        date:    game.date || undefined,
+        slot,
+        sport:   game.sport,
+        away:    game.away,
+        home:    game.home,
+        result,
+      }),
+    });
+  } catch {}
+}
+
 
 
 function buildBaseballPrompt(gameData) {
@@ -2466,6 +2492,8 @@ export default function VegasVaultApp() {
           }
           return updated;
         });
+        // Publish to shared game_analyses so all devices see this analysis
+        publishAnalysis(next.game, next.slot, result);
         // AI decides when to finalize
         if (result?.summary?.readyToFinalize === true) {
           setFinalized(prev => ({ ...prev, [next.key]: true }));
@@ -2667,6 +2695,9 @@ export default function VegasVaultApp() {
         }
         return updated;
       });
+      // Publish to the shared game_analyses table so EVERY device sees this
+      // analysis immediately — independent of which device produced it.
+      publishAnalysis(game, slot, result);
       // AI decides when to finalize — only finalize if AI signals readiness
       if (result?.summary?.readyToFinalize === true && !result.error) {
         const finalResult = { ...result, finalized: true, finalizedAt: new Date().toISOString() };
