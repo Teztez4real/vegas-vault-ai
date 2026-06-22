@@ -1200,7 +1200,19 @@ export default function VegasVaultApp() {
           // Local write-through wins on key conflicts — it's always at
           // least as fresh as Supabase since it's written synchronously
           // on every change, with no network round-trip to lag behind.
-          setResults({ ...(res || {}), ...(localLoad('vv_results') || {}) });
+          // ALSO merge shared game_analyses (server + cross-device analyses)
+          // so a brand-new device immediately sees every already-analyzed game
+          // and never re-queues them. Priority: local > user results > shared.
+          let sharedAnalyses = {};
+          try {
+            const todayCT = todayStrCT();
+            const sr = await fetch(`/api/auto-analyze?date=${todayCT}`, { cache: 'no-store' });
+            if (sr.ok) {
+              const sd = await sr.json();
+              if (sd?.analyses && typeof sd.analyses === 'object') sharedAnalyses = sd.analyses;
+            }
+          } catch {}
+          setResults({ ...sharedAnalyses, ...(res || {}), ...(localLoad('vv_results') || {}) });
           setFinalized({ ...(fin || {}), ...(localLoad('vv_finalized') || {}) });
           const localHist = localLoad('vv_pick_history') || [];
           const rawHist = [...(hist || [])];
@@ -1258,7 +1270,18 @@ export default function VegasVaultApp() {
             // with whatever Supabase last confirmed, losing any changes that
             // were in-flight when the idle timer fired.
             setWatchlist(wl?.length ? [...new Set([...wl, ...(localLoad('vv_watchlist') || [])])] : (localLoad('vv_watchlist') || []));
-            setResults({ ...(res || {}), ...(localLoad('vv_results') || {}) });
+            // Merge shared game_analyses so logging in on a new/returning device
+            // immediately shows every already-analyzed game (no re-analysis).
+            let sharedAnalyses2 = {};
+            try {
+              const todayCT2 = todayStrCT();
+              const sr2 = await fetch(`/api/auto-analyze?date=${todayCT2}`, { cache: 'no-store' });
+              if (sr2.ok) {
+                const sd2 = await sr2.json();
+                if (sd2?.analyses && typeof sd2.analyses === 'object') sharedAnalyses2 = sd2.analyses;
+              }
+            } catch {}
+            setResults({ ...sharedAnalyses2, ...(res || {}), ...(localLoad('vv_results') || {}) });
             setFinalized({ ...(fin || {}), ...(localLoad('vv_finalized') || {}) });
             const localHist2 = localLoad('vv_pick_history') || [];
             const rawHist2 = [...(hist || [])];
@@ -2374,7 +2397,10 @@ export default function VegasVaultApp() {
       if (!game.slot || (game.slot !== 'PUBLIC' && game.slot !== 'VEGAS')) continue;
       const key = `${game.id}-${game.slot}`;
       // Check both results AND finalized — finalized means the game ended and
-      // was graded, so we definitely don't need to re-analyze it
+      // was graded, so we definitely don't need to re-analyze it.
+      // results includes shared game_analyses merged at load, so a game
+      // analyzed on ANY device (or by the server crons) is already covered
+      // here and won't be queued again on this device.
       if (!results[key] && !finalized[key]) toAnalyze.push({ game, slot: game.slot, key });
     }
     if (toAnalyze.length > 0) {
