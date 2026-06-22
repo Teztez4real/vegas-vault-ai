@@ -1285,46 +1285,6 @@ export default function VegasVaultApp() {
 
   // ── AUTO SIGN-OUT AFTER INACTIVITY ──────────────────────────────────────
 
-  // ── AUTO-UPDATE POLL — every 5 minutes ───────────────────────────────────
-  // Picks up server-side analyses (from the 3 daily crons) and applies them
-  // to every device automatically. Rules:
-  //   • Only updates a game if the server result has a NEWER updatedAt timestamp
-  //   • ONLY prev is read inside the setResults updater — no other state
-  //     references (that was the previous crash cause)
-  //   • Server-side shouldReanalyze() already prevents updating started/final games
-  //   • Works for every sport — purely key-based
-  useEffect(() => {
-    if (!authUser?.id) return;
-    let cancelled = false;
-    const poll = async () => {
-      try {
-        const r = await fetch(`/api/auto-analyze?date=${selectedDate}`, { cache: 'no-store' });
-        if (!r.ok || cancelled) return;
-        const payload = await r.json().catch(() => null);
-        if (!payload?.analyses || cancelled) return;
-        // Capture entries before entering the updater — no closures over other state
-        const entries = Object.entries(payload.analyses);
-        if (!entries.length) return;
-        setResults(prev => {
-          const next = { ...prev };
-          let changed = false;
-          for (const [key, shared] of entries) {
-            const sharedTime = new Date(shared?.updatedAt || 0).getTime();
-            const localTime  = new Date(prev[key]?.updatedAt  || 0).getTime();
-            if (sharedTime > localTime) {
-              next[key] = { ...shared, _autoUpdated: true };
-              changed = true;
-            }
-          }
-          return changed ? next : prev;
-        });
-      } catch {}
-    };
-    poll(); // run immediately on load
-    const id = setInterval(poll, 5 * 60 * 1000); // then every 5 min
-    return () => { cancelled = true; clearInterval(id); };
-  }, [authUser?.id, selectedDate]); // eslint-disable-line react-hooks/exhaustive-deps
-
   // ── SESSION KEEPALIVE — refresh token every 10 minutes ───────────────────
   // Supabase auto-refreshes sessions but only when the SDK is actively used.
   // This guarantees the session never expires for any user (admin or client)
@@ -1501,6 +1461,37 @@ export default function VegasVaultApp() {
   const [time, setTime]               = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(todayStrCT());
   const [hasSlotPattern, setHasSlotPattern] = useState(false);
+
+  // ── AUTO-UPDATE POLL — every 5 minutes ───────────────────────────────────
+  // MUST be placed AFTER selectedDate is declared (TDZ safety).
+  // Picks up server analyses from the 3 daily crons and applies to all devices.
+  // Only prev is read inside the setResults updater — no external state refs.
+  useEffect(() => {
+    if (!authUser?.id) return;
+    let live = true;
+    const poll = async () => {
+      try {
+        const r = await fetch(`/api/auto-analyze?date=${selectedDate}`, { cache: 'no-store' });
+        if (!r.ok || !live) return;
+        const data = await r.json().catch(() => null);
+        if (!data?.analyses || !live) return;
+        const incoming = data.analyses;
+        setResults(prev => {
+          const out = { ...prev };
+          let changed = false;
+          Object.keys(incoming).forEach(key => {
+            const st = new Date(incoming[key]?.updatedAt || 0).getTime();
+            const lt = new Date(prev[key]?.updatedAt    || 0).getTime();
+            if (st > lt) { out[key] = { ...incoming[key], _autoUpdated: true }; changed = true; }
+          });
+          return changed ? out : prev;
+        });
+      } catch {}
+    };
+    poll();
+    const t = setInterval(poll, 5 * 60 * 1000);
+    return () => { live = false; clearInterval(t); };
+  }, [authUser?.id, selectedDate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(()=>{
     setLoading(true);
