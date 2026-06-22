@@ -3440,7 +3440,7 @@ export default function VegasVaultApp() {
             <div className="vv-gc-hd"><div className="vv-gc-t">Games Slate</div><i className="ti ti-dots" style={{ color:'#ccc',fontSize:13 }} /></div>
             <div className="vv-gc-sub">{new Date(selectedDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>
             <div className="vv-sp-tabs">
-              {['ALL', ...new Set([...games.map(g=>g.sport).filter(Boolean), 'NFL'])].map(s=>(
+              {['ALL', ...new Set([...games.map(g=>g.sport).filter(Boolean), 'NBA', 'NFL'])].map(s=>(
                 <div key={s} className={`vv-sp${filter===s?' on':''}`} onClick={()=>setFilter(s)}>{s}</div>
               ))}
             </div>
@@ -3534,7 +3534,7 @@ export default function VegasVaultApp() {
                   <i className="ti ti-chevron-right" style={{ fontSize:14 }} />
                 </button>
               </div>
-              {['ALL', ...new Set([...games.map(g=>g.sport).filter(Boolean), 'NFL'])].map(s=>(
+              {['ALL', ...new Set([...games.map(g=>g.sport).filter(Boolean), 'NBA', 'NFL'])].map(s=>(
                 <button key={s} onClick={()=>setFilter(s)}
                   style={{ fontSize:11, fontWeight:700, padding:'6px 14px', borderRadius:14, border:filter===s?'1px solid #39FF14':'1px solid rgba(0,0,0,0.07)', background:filter===s?'#39FF14':'rgba(255,255,255,0.7)', color:filter===s?'#111':'#999', cursor:'pointer', boxShadow:filter===s?'0 0 8px rgba(57,255,20,0.3)':'none' }}>
                   {s}
@@ -3559,14 +3559,14 @@ export default function VegasVaultApp() {
               <div style={{ width:32, height:32, border:'3px solid rgba(57,255,20,0.2)', borderTopColor:'#39FF14', borderRadius:'50%', margin:'0 auto 12px', animation:'spin 0.8s linear infinite' }} />
               Loading today's games...
             </div>
-          ) : (filter === 'NFL' && games.filter(g=>g.sport==='NFL').length === 0) ? (
+          ) : ((filter === 'NFL' || filter === 'NBA') && games.filter(g=>g.sport===filter).length === 0) ? (
             <div className="vv-glass" style={{ padding:'70px 24px', textAlign:'center' }}>
               <div style={{ width:64, height:64, margin:'0 auto 18px', borderRadius:18, background:'linear-gradient(145deg, rgba(57,255,20,0.08), rgba(34,204,0,0.04))', border:'1px solid rgba(57,255,20,0.25)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                <i className="ti ti-ball-football" style={{ fontSize:30, color:'#39FF14' }} />
+                <i className={filter==='NBA' ? "ti ti-ball-basketball" : "ti ti-ball-football"} style={{ fontSize:30, color:'#39FF14' }} />
               </div>
-              <div style={{ fontSize:20, fontWeight:800, color:'#111', letterSpacing:-0.3, marginBottom:8 }}>NFL — Coming Soon</div>
+              <div style={{ fontSize:20, fontWeight:800, color:'#111', letterSpacing:-0.3, marginBottom:8 }}>{filter} — Coming Soon</div>
               <div style={{ fontSize:13, color:'#888', lineHeight:1.6, maxWidth:380, margin:'0 auto' }}>
-                The NFL model is built and ready. Games will appear here automatically once the NFL season kicks off.
+                The {filter} model is built and ready. Games will appear here automatically once the {filter} season starts.
               </div>
               <div style={{ fontSize:10, color:'#bbb', letterSpacing:'1.5px', textTransform:'uppercase', marginTop:18 }}>Full 4-Stage AI Analysis · Slot System · Scam Detection</div>
             </div>
