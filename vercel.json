@@ -19,15 +19,7 @@
   "crons": [
     {
       "path": "/api/auto-analyze",
-      "schedule": "0 14 * * *"
-    },
-    {
-      "path": "/api/auto-analyze",
-      "schedule": "0 17 * * *"
-    },
-    {
-      "path": "/api/auto-analyze",
-      "schedule": "0 20 * * *"
+      "schedule": "*/30 * * * *"
     }
   ]
 }

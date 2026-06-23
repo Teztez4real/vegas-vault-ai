@@ -40,6 +40,39 @@ function shouldReanalyze(game, existing) {
   const lastAnalyzed = new Date(existing.updated_at || existing.created_at || 0);
   const minSince = (Date.now() - lastAnalyzed) / 60000;
 
+  // ── PER-GAME TIME WINDOWING ───────────────────────────────────────────────
+  // Each game refreshes on its OWN schedule based on how close it is to start.
+  // The closer to game time, the more often we refresh — because that's when
+  // lineups, scratches, and sharp money actually move. Far-out games barely
+  // change, so we leave them alone to save API cost.
+  let minsToStart = Infinity;
+  if (game.rawTime) {
+    minsToStart = (new Date(game.rawTime) - Date.now()) / 60000;
+  }
+
+  // FINAL LOCK-IN WINDOW: 25–75 min before start. This is the single most
+  // important update — lineups are confirmed, late scratches are known, and
+  // the closing line is forming. Always refresh once in this window if we
+  // haven't analyzed in the last 20 min.
+  if (minsToStart <= 75 && minsToStart > 20 && minSince >= 20) {
+    return { yes: true, reason: 'Final lock-in window (lineups confirmed, closing line)' };
+  }
+
+  // FAR-OUT GAMES: more than 10 hours away — data barely changes this early.
+  // Skip unless we have no analysis yet (handled above) to save API cost.
+  if (minsToStart > 600 && minSince < 360) {
+    return { yes: false, reason: 'Game far out — minimal change expected' };
+  }
+
+  // Define the refresh cadence based on proximity to game time:
+  //   • 0–2 hrs out:  refresh every 30 min  (high-change window)
+  //   • 2–5 hrs out:  refresh every 60 min  (lineups starting to firm up)
+  //   • 5–10 hrs out: refresh every 120 min (occasional refresh)
+  let cadenceMin = 180; // default 3 hours (matches old behavior for safety)
+  if (minsToStart <= 120) cadenceMin = 30;
+  else if (minsToStart <= 300) cadenceMin = 60;
+  else if (minsToStart <= 600) cadenceMin = 120;
+
   // Analyzed within 30 min — skip unless something changed materially
   const snap = (() => { try { return JSON.parse(existing.game_snapshot || '{}'); } catch { return {}; } })();
   const result = (() => { try { return JSON.parse(existing.result || '{}'); } catch { return {}; } })();
@@ -85,20 +118,21 @@ function shouldReanalyze(game, existing) {
 
   // ── STABILITY CHECKS ─────────────────────────────────────────────────────
 
-  // Analyzed within 30 min with no material changes — stable
-  if (minSince < 30) return { yes: false, reason: 'Recently analyzed — stable' };
+  // Analyzed very recently (within 20 min) — always stable, never thrash
+  if (minSince < 20) return { yes: false, reason: 'Just analyzed — stable' };
 
-  // High confidence Tier 1 with no material changes — keep it
+  // High confidence Tier 1 with no material changes — keep it, but still allow
+  // the final lock-in window (handled above) to refresh it one last time.
   const confPct = summary.confidencePercent || 0;
-  if (summary.tier === '1' && confPct >= 75 && minSince < 180)
+  if (summary.tier === '1' && confPct >= 75 && minSince < Math.max(cadenceMin, 120))
     return { yes: false, reason: 'High-confidence Tier 1 — play confirmed' };
 
-  // Low confidence or Pass — try to improve with fresh data
-  if ((confPct < 60 || summary.tier === '3') && minSince >= 60)
+  // Low confidence or Pass — try to improve with fresh data sooner
+  if ((confPct < 60 || summary.tier === '3') && minSince >= Math.min(cadenceMin, 60))
     return { yes: true, reason: 'Low confidence — refining with updated data' };
 
-  // Periodic refresh (every 3 hours) — keeps data fresh throughout the day
-  if (minSince >= 180) return { yes: true, reason: 'Periodic refresh (3hr)' };
+  // Periodic refresh on the per-game cadence (30/60/120/180 min by proximity)
+  if (minSince >= cadenceMin) return { yes: true, reason: `Periodic refresh (${cadenceMin}min cadence, ${Math.round(minsToStart)}min to start)` };
 
   return { yes: false, reason: 'No material changes' };
 }
