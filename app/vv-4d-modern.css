@@ -1,0 +1,238 @@
+/* ============================================================
+   VEGAS VAULT AI — 4D MODERN ENHANCEMENT LAYER (2026)
+   Branch: 4d-modern-preview
+   ────────────────────────────────────────────────────────
+   PURELY ADDITIVE. Same colors, same layout, same dashboard.
+   This layer only adds DEPTH, POLISH, and MOTION on top of
+   the existing design system. It overrides nothing structural
+   — only shadows, gradients, transitions, and surface quality.
+   ============================================================ */
+
+/* ── REFINED DEPTH TOKENS (layered, multi-stop shadows for true 4D feel) ── */
+:root {
+  /* Multi-layer elevation — soft ambient + tight contact + inner highlight */
+  --vv4d-elev-1:
+    0 1px 2px rgba(16,32,16,0.04),
+    0 2px 6px rgba(16,32,16,0.05),
+    0 8px 24px rgba(16,32,16,0.05),
+    inset 0 1px 0 rgba(255,255,255,0.9);
+  --vv4d-elev-2:
+    0 1px 2px rgba(16,32,16,0.05),
+    0 4px 10px rgba(16,32,16,0.06),
+    0 14px 40px rgba(16,32,16,0.07),
+    inset 0 1px 0 rgba(255,255,255,0.95);
+  --vv4d-elev-green:
+    0 1px 2px rgba(16,32,16,0.05),
+    0 6px 18px rgba(57,255,20,0.10),
+    0 18px 50px rgba(57,255,20,0.07),
+    inset 0 1px 0 rgba(255,255,255,0.95);
+  /* Hover lift — deeper, with a touch more green ambient */
+  --vv4d-elev-hover:
+    0 2px 4px rgba(16,32,16,0.06),
+    0 10px 24px rgba(16,32,16,0.08),
+    0 28px 64px rgba(57,255,20,0.10),
+    inset 0 1px 0 rgba(255,255,255,0.98);
+  --vv4d-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ── GLASS SURFACES: deeper blur, saturated backdrop, refined edges ── */
+.vv-glass,
+.vv-glass-g {
+  backdrop-filter: blur(28px) saturate(1.5) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(1.5) !important;
+  box-shadow: var(--vv4d-elev-2) !important;
+  transition:
+    box-shadow 0.4s var(--vv4d-ease),
+    transform 0.4s var(--vv4d-ease),
+    border-color 0.4s var(--vv4d-ease) !important;
+  position: relative;
+}
+.vv-glass-g {
+  box-shadow: var(--vv4d-elev-green) !important;
+}
+
+/* Crisp top-edge highlight — the "light catching the bevel" that reads as 4D */
+.vv-glass::before,
+.vv-glass-g::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    160deg,
+    rgba(255,255,255,0.95) 0%,
+    rgba(255,255,255,0.25) 22%,
+    rgba(255,255,255,0) 45%,
+    rgba(57,255,20,0.06) 100%
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ── GAME CARDS: lift on hover, deepen elevation ── */
+.vv-glass:hover {
+  box-shadow: var(--vv4d-elev-hover) !important;
+  transform: translateY(-2px);
+}
+
+/* ── TOPBAR: frosted, floating, subtle depth separation ── */
+.vv-topbar {
+  backdrop-filter: blur(24px) saturate(1.6) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(1.6) !important;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.6),
+    0 4px 24px rgba(16,32,16,0.05) !important;
+}
+
+/* ── SIDEBAR: soft inner depth ── */
+.vv-sidebar {
+  box-shadow:
+    inset -1px 0 0 rgba(255,255,255,0.5),
+    2px 0 20px rgba(16,32,16,0.03);
+}
+
+/* ── SPORT TABS / PILL BUTTONS: tactile press + smooth transition ── */
+.vv-sp {
+  transition:
+    background 0.28s var(--vv4d-ease),
+    color 0.28s var(--vv4d-ease),
+    box-shadow 0.28s var(--vv4d-ease),
+    transform 0.18s var(--vv4d-ease) !important;
+}
+.vv-sp:hover {
+  transform: translateY(-1px);
+}
+.vv-sp:active {
+  transform: translateY(0) scale(0.97);
+}
+.vv-sp.on {
+  box-shadow:
+    0 2px 8px rgba(57,255,20,0.35),
+    0 6px 18px rgba(57,255,20,0.18),
+    inset 0 1px 0 rgba(255,255,255,0.6) !important;
+}
+
+/* ── NAV ITEMS: smooth hover glide ── */
+.vv-nav-item,
+.vv-sb-nav-item {
+  transition:
+    background 0.26s var(--vv4d-ease),
+    color 0.26s var(--vv4d-ease),
+    transform 0.2s var(--vv4d-ease) !important;
+}
+.vv-nav-item:hover,
+.vv-sb-nav-item:hover {
+  transform: translateX(2px);
+}
+
+/* ── BADGES & CHIPS: subtle depth so they sit "above" the card ── */
+.vv-tbi {
+  transition: transform 0.22s var(--vv4d-ease), box-shadow 0.22s var(--vv4d-ease) !important;
+}
+.vv-tbi:hover {
+  transform: translateY(-1px) scale(1.04);
+}
+
+/* ── BUTTONS: tactile, modern press feedback (applies to inline-styled buttons too) ── */
+button {
+  transition:
+    transform 0.16s var(--vv4d-ease),
+    box-shadow 0.24s var(--vv4d-ease),
+    filter 0.24s var(--vv4d-ease) !important;
+}
+button:active {
+  transform: scale(0.975);
+}
+
+/* ── AMBIENT BACKGROUND DEPTH: very subtle layered green aura ── */
+.vv-root::after {
+  content: '';
+  position: fixed;
+  top: -20%;
+  right: -10%;
+  width: 50vw;
+  height: 50vw;
+  max-width: 700px;
+  max-height: 700px;
+  background: radial-gradient(circle, rgba(57,255,20,0.045) 0%, rgba(57,255,20,0) 65%);
+  pointer-events: none;
+  z-index: 0;
+  animation: vv4d-aura 14s ease-in-out infinite alternate;
+}
+@keyframes vv4d-aura {
+  0%   { transform: translate(0, 0) scale(1); opacity: 0.7; }
+  100% { transform: translate(-4%, 4%) scale(1.12); opacity: 1; }
+}
+
+/* ── LOGO MARK: gentle floating depth ── */
+.vv-sb-brand img,
+.vv-sb-brand {
+  filter: drop-shadow(0 4px 12px rgba(57,255,20,0.12));
+}
+
+/* ── TIER / STATUS PILLS: crisper inner glow ── */
+[class*="LOCK"], [class*="lock"] {
+  text-rendering: optimizeLegibility;
+}
+
+/* ── SCROLLBARS: slim, modern, on-brand ── */
+*::-webkit-scrollbar { width: 9px; height: 9px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(57,255,20,0.35), rgba(34,204,0,0.25));
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(57,255,20,0.55), rgba(34,204,0,0.4));
+  background-clip: padding-box;
+}
+
+/* ── MODAL / DETAIL OVERLAY: deeper, more cinematic backdrop ── */
+.vv-modal-backdrop,
+[class*="modal-backdrop"] {
+  backdrop-filter: blur(8px) saturate(1.2) !important;
+  -webkit-backdrop-filter: blur(8px) saturate(1.2) !important;
+}
+
+/* ── SMOOTH ENTRANCE for cards (subtle, not flashy) ── */
+@keyframes vv4d-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.vv-game-grid > * {
+  animation: vv4d-rise 0.5s var(--vv4d-ease) both;
+}
+.vv-game-grid > *:nth-child(1)  { animation-delay: 0.02s; }
+.vv-game-grid > *:nth-child(2)  { animation-delay: 0.05s; }
+.vv-game-grid > *:nth-child(3)  { animation-delay: 0.08s; }
+.vv-game-grid > *:nth-child(4)  { animation-delay: 0.11s; }
+.vv-game-grid > *:nth-child(5)  { animation-delay: 0.14s; }
+.vv-game-grid > *:nth-child(6)  { animation-delay: 0.17s; }
+.vv-game-grid > *:nth-child(n+7){ animation-delay: 0.2s; }
+
+/* ── RESPECT REDUCED MOTION ── */
+@media (prefers-reduced-motion: reduce) {
+  .vv-root::after,
+  .vv-game-grid > * {
+    animation: none !important;
+  }
+  .vv-glass,
+  .vv-glass-g,
+  .vv-glass:hover,
+  .vv-sp,
+  .vv-nav-item,
+  .vv-sb-nav-item,
+  .vv-tbi,
+  button {
+    transition: none !important;
+    transform: none !important;
+  }
+}

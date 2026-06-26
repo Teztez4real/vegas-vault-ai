@@ -4,6 +4,7 @@ import { supabase as _supabase } from '@/lib/supabaseClient';
 
 import NewLookShell from '@/components/NewLookShell';
 import '@/app/new-look.css';
+import '@/app/vv-4d-modern.css';
 
 // ── SUPABASE CROSS-DEVICE SYNC ────────────────────────────────────────────────
 async function syncLoad(userId, key) {
