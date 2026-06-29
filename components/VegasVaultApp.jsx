@@ -1170,6 +1170,7 @@ export default function VegasVaultApp() {
   // original recommendation for that same game/slot.
   const [altPicks, setAltPicks] = useState({});
   const [betReadyAlerts, setBetReadyAlerts] = useState({});
+  const [showNotifPanel, setShowNotifPanel] = useState(false);
   const [preAnalyzeQueue, setPreAnalyzeQueue] = useState([]);
   const [liveScores, setLiveScores]   = useState({});
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -2815,6 +2816,7 @@ export default function VegasVaultApp() {
       userName={shellUserName}
       isAdmin={shellIsAdmin}
       hasNotification={Object.keys(betReadyAlerts).length > 0}
+      onBellClick={()=>setShowNotifPanel(true)}
       authed={!!authUser}
     >
       <style>{`
@@ -3130,6 +3132,48 @@ export default function VegasVaultApp() {
       {authChecked && !authUser && (
         <div style={{ position:'fixed',inset:0,zIndex:9999,background:'#030603',display:'flex',alignItems:'center',justifyContent:'center' }}>
           <div style={{ width:34,height:34,border:'3px solid rgba(57,255,20,0.2)',borderTopColor:'#39FF14',borderRadius:'50%',animation:'spin 0.8s linear infinite' }} />
+        </div>
+      )}
+
+      {/* ── NOTIFICATION PANEL (bell) ── */}
+      {showNotifPanel && (
+        <div onClick={e=>e.target===e.currentTarget&&setShowNotifPanel(false)} style={{ position:'fixed',inset:0,zIndex:9997,background:'rgba(0,0,0,0.6)',backdropFilter:'blur(8px)',display:'flex',alignItems:'flex-start',justifyContent:'flex-end',padding:'70px 16px 16px' }}>
+          <div style={{ width:'100%',maxWidth:380,background:'linear-gradient(165deg,rgba(14,26,14,0.98),rgba(6,12,6,0.99))',border:'1px solid rgba(57,255,20,0.18)',borderRadius:18,boxShadow:'0 30px 80px rgba(0,0,0,0.6)',overflow:'hidden',maxHeight:'80vh',display:'flex',flexDirection:'column' }}>
+            <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'16px 18px',borderBottom:'1px solid rgba(57,255,20,0.1)' }}>
+              <div style={{ display:'flex',alignItems:'center',gap:9 }}>
+                <i className="ti ti-bell" style={{ fontSize:17,color:'#39FF14' }} />
+                <span style={{ fontSize:15,fontWeight:800,color:'#fff' }}>Notifications</span>
+              </div>
+              <i className="ti ti-x" onClick={()=>setShowNotifPanel(false)} style={{ fontSize:18,color:'rgba(255,255,255,0.5)',cursor:'pointer' }} />
+            </div>
+            <div style={{ overflowY:'auto',padding:'8px' }}>
+              {Object.keys(betReadyAlerts).length === 0 ? (
+                <div style={{ textAlign:'center',padding:'40px 20px' }}>
+                  <div style={{ width:54,height:54,margin:'0 auto 14px',borderRadius:15,background:'linear-gradient(145deg,rgba(57,255,20,0.1),rgba(34,204,0,0.04))',border:'1px solid rgba(57,255,20,0.2)',display:'flex',alignItems:'center',justifyContent:'center' }}>
+                    <i className="ti ti-bell-check" style={{ fontSize:24,color:'#39FF14' }} />
+                  </div>
+                  <div style={{ fontSize:15,fontWeight:700,color:'#fff',marginBottom:6 }}>You're all caught up</div>
+                  <div style={{ fontSize:13,color:'rgba(255,255,255,0.5)',lineHeight:1.5 }}>BET NOW alerts and lineup updates for your watchlisted games will appear here.</div>
+                </div>
+              ) : (
+                Object.entries(betReadyAlerts).map(([key, alert]) => {
+                  const g = games.find(gm => key.startsWith(String(gm.id)));
+                  const matchup = g ? `${g.away} @ ${g.home}` : (alert?.matchup || 'Game');
+                  return (
+                    <div key={key} onClick={()=>{ if(g){ setActiveGame(g); } setShowNotifPanel(false); }} style={{ display:'flex',gap:11,padding:'13px',borderRadius:12,cursor:'pointer',marginBottom:6,background:'rgba(57,255,20,0.05)',border:'1px solid rgba(57,255,20,0.14)' }}>
+                      <div style={{ width:34,height:34,flexShrink:0,borderRadius:9,background:'rgba(57,255,20,0.12)',display:'flex',alignItems:'center',justifyContent:'center' }}>
+                        <i className="ti ti-lock" style={{ fontSize:16,color:'#39FF14' }} />
+                      </div>
+                      <div style={{ flex:1,minWidth:0 }}>
+                        <div style={{ fontSize:13,fontWeight:800,color:'#fff',marginBottom:2 }}>🔒 BET NOW — {matchup}</div>
+                        <div style={{ fontSize:12,color:'rgba(255,255,255,0.6)' }}>{alert?.pick ? `${alert.pick}` : 'Play is locked — lineups confirmed.'}</div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
         </div>
       )}
 

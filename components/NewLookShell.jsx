@@ -121,7 +121,7 @@ function NeuralBg() {
 }
 
 // ── TOPBAR ────────────────────────────────────────────────────────────────────
-function Topbar({ onMenuToggle, hasNotification }) {
+function Topbar({ onMenuToggle, hasNotification, onBellClick }) {
   return (
     <div className="vv-topbar">
       <div className="vv-menu-toggle" onClick={onMenuToggle} aria-label="Open navigation menu">
@@ -136,7 +136,7 @@ function Topbar({ onMenuToggle, hasNotification }) {
       </div>
       <div className="vv-tb-spacer" />
       <div className="vv-tb-icons">
-        <div className="vv-tbi">
+        <div className="vv-tbi vv-bell" onClick={onBellClick} role="button" aria-label="Notifications" tabIndex={0}>
           <i className="ti ti-bell" />
           {hasNotification && <span className="dot" />}
         </div>
@@ -157,6 +157,7 @@ export default function NewLookShell({
   userName,
   isAdmin,
   hasNotification = false,
+  onBellClick,
   authed = true,
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -185,7 +186,7 @@ export default function NewLookShell({
       <NeuralBg />
 
       {/* Topbar */}
-      <Topbar onMenuToggle={openDrawer} hasNotification={hasNotification} />
+      <Topbar onMenuToggle={openDrawer} hasNotification={hasNotification} onBellClick={onBellClick} />
 
       {/* Mobile scrim + drawer */}
       <div className={`vv-scrim${drawerOpen ? " open" : ""}`} onClick={closeDrawer} />

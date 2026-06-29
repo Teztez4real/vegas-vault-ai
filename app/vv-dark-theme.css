@@ -262,3 +262,40 @@ input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.35) !impor
 
 /* ── 12. SCROLLBARS ─────────────────────────────────────────── */
 *::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); }
+
+/* ── 13. TOPBAR ICONS (hamburger + bell) — dark/green ───────── */
+/* Hamburger menu button */
+.vv-menu-toggle {
+  background: linear-gradient(160deg, rgba(18,32,18,0.8), rgba(8,16,8,0.9)) !important;
+  border: 1px solid rgba(57,255,20,0.18) !important;
+  color: #39FF14 !important;
+  border-radius: 12px !important;
+}
+.vv-menu-toggle i { color: #39FF14 !important; }
+
+/* Bell + sparkles icon buttons */
+.vv-tbi {
+  background: linear-gradient(160deg, rgba(18,32,18,0.8), rgba(8,16,8,0.9)) !important;
+  border: 1px solid rgba(57,255,20,0.18) !important;
+  color: rgba(255,255,255,0.85) !important;
+  cursor: pointer !important;
+}
+.vv-tbi i { color: rgba(255,255,255,0.85) !important; }
+.vv-tbi.vv-bell:hover {
+  border-color: rgba(57,255,20,0.4) !important;
+  background: rgba(57,255,20,0.08) !important;
+}
+.vv-tbi.vv-bell:hover i { color: #39FF14 !important; }
+/* keep the green sparkles button green */
+.vv-tbi.green {
+  background: linear-gradient(135deg, #39FF14, #2ad400) !important;
+  border-color: #39FF14 !important;
+  box-shadow: 0 0 16px rgba(57,255,20,0.4) !important;
+}
+.vv-tbi.green i { color: #031003 !important; }
+
+/* ── 14. HIDE ASSISTANT SEARCH BAR ON MOBILE ONLY ───────────── */
+@media (max-width: 768px) {
+  .vv-tb-search { display: none !important; }
+  .vv-tb-spacer { flex: 1 !important; }
+}
