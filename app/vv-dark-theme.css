@@ -145,22 +145,33 @@ html, body, .vv-root, .vv-body, .vv-main {
 }
 
 /* ── 4b. CLASS-BASED DARK TEXT (from inline <style> blocks) ───
-   The component defines classes like .vv-gc-t, .vv-ss-val with
-   color:#111 inside inline <style> blocks. Override them here. */
-.vv-gc-t, .vv-ss-val, .vv-dc-v, .vv-em-v, .vv-anm-v, .vv-sb-uname,
-.vv-team-name, .vv-score, .vv-matchup-team, .vv-result-pick,
-.vv-tier-label, .vv-section-title, .vv-card-title, .vv-modal-title {
+   COMPLETE list of every class in the component's inline <style>
+   blocks that sets a dark text color. Extracted directly from
+   source so nothing is missed. These are the section titles,
+   stat values, card labels, etc. that stayed dark. */
+/* near-black (#111/#000/#222/#333) class text → white */
+.vv-agent-nm, .vv-ai-nm, .vv-am-v, .vv-anm-v, .vv-card-t, .vv-chat-title,
+.vv-dc-v, .vv-em-v, .vv-engine-badge, .vv-engine-nm, .vv-gc-t, .vv-gr-pick,
+.vv-hc-t, .vv-hc-title, .vv-mc-nm, .vv-mc-pr, .vv-mcr-v, .vv-mem-title,
+.vv-model-nm, .vv-mrv, .vv-mv, .vv-oc-title, .vv-pv, .vv-sc-val, .vv-sys-mv,
+.vv-vf-nm {
   color: #ffffff !important;
 }
-.vv-gc-sub, .vv-ss-label, .vv-ss-sub, .vv-dc-l, .vv-em-l, .vv-anm-l,
-.vv-team-rec, .vv-card-sub, .vv-section-sub {
-  color: rgba(255,255,255,0.5) !important;
+/* muted grey (#666-#ccc) class text → dim white */
+.vv-agent-desc, .vv-agent-role, .vv-am-l, .vv-an-sel, .vv-anm-l, .vv-attach,
+.vv-card-ey, .vv-dc-l, .vv-em-l, .vv-engine-sub, .vv-gc-sub, .vv-gr-odds,
+.vv-gr-t, .vv-hc-divider, .vv-hc-time, .vv-input-hint, .vv-mc-ey2, .vv-mcr-k,
+.vv-mem-desc, .vv-mem-time, .vv-mk, .vv-model-stages, .vv-mrk, .vv-msg-time,
+.vv-oc-ey, .vv-pk, .vv-sc-ey, .vv-sc-sub, .vv-sys-mk, .vv-vf-sz {
+  color: rgba(255,255,255,0.55) !important;
 }
 
 /* ── 3c. STAT CARDS / SCORE BOXES (light → dark) ───────────── */
 .vv-stat, .vv-stat-card, .vv-ss-card, .vv-dc, .vv-em, .vv-anm,
 .vv-score-box, .vv-mini-stat, .vv-metric, .vv-metric-box,
-.vv-sb-stat, .vv-pill-stat {
+.vv-sb-stat, .vv-pill-stat,
+/* exact light-bg classes from the inline style block */
+.vv-an-sel, .vv-dock-i, .vv-msg-card, .vv-sys-m {
   background: rgba(57,255,20,0.05) !important;
   border-color: rgba(57,255,20,0.12) !important;
   color: #fff !important;
