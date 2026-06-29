@@ -58,7 +58,7 @@ export default function LandingPage() {
       {/* ── NAV ── */}
       <nav style={{ position:'relative', zIndex:10, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'20px clamp(16px,4vw,56px)', maxWidth:1400, margin:'0 auto' }}>
         <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-          <img src="/vv-logo.svg" alt="Vegas Vault AI" style={{ height:46, width:'auto' }} />
+          <img src="/vv-logo-horizontal.svg" alt="Vegas Vault AI" style={{ height:54, width:'auto' }} />
         </div>
         <div className="vv-nav-links" style={{ display:'flex', alignItems:'center', gap:'clamp(14px,2vw,30px)' }}>
           {['Pricing','How It Works','Results','FAQ'].map(l => (

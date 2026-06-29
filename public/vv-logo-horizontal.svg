@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="130" viewBox="0 0 560 130">
+  <defs>
+    <!-- battery-green gradient -->
+    <linearGradient id="vvGreen" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8fff6e"/>
+      <stop offset="50%" stop-color="#39FF14"/>
+      <stop offset="100%" stop-color="#22cc00"/>
+    </linearGradient>
+
+    <!-- badge fill: dark glass with green rim glow -->
+    <radialGradient id="vvBadge" cx="38%" cy="32%" r="75%">
+      <stop offset="0%" stop-color="#0f2a0f"/>
+      <stop offset="70%" stop-color="#061206"/>
+      <stop offset="100%" stop-color="#030803"/>
+    </radialGradient>
+
+    <radialGradient id="vvHalo" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#39FF14" stop-opacity="0.45"/>
+      <stop offset="55%" stop-color="#39FF14" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#39FF14" stop-opacity="0"/>
+    </radialGradient>
+
+    <filter id="vvGlow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="3.2" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- ── BADGE ── -->
+  <!-- soft halo behind the badge -->
+  <circle cx="65" cy="65" r="62" fill="url(#vvHalo)"/>
+
+  <!-- badge disc -->
+  <circle cx="65" cy="65" r="46" fill="url(#vvBadge)" stroke="url(#vvGreen)" stroke-width="2"/>
+  <!-- inner hairline ring -->
+  <circle cx="65" cy="65" r="39" fill="none" stroke="#39FF14" stroke-width="0.6" opacity="0.25"/>
+
+  <!-- VV monogram inside badge -->
+  <g filter="url(#vvGlow)">
+    <path d="M44,46 L56,86 L65,46 M65,46 L74,86 L86,46"
+          fill="none" stroke="url(#vvGreen)" stroke-width="7"
+          stroke-linecap="butt" stroke-linejoin="miter"/>
+  </g>
+  <!-- top cap line -->
+  <line x1="44" y1="46" x2="86" y2="46" stroke="#39FF14" stroke-width="2" opacity="0.5"/>
+
+  <!-- ── WORDMARK ── -->
+  <!-- VEGAS (white) VAULT (green gradient) -->
+  <text x="138" y="60"
+        font-family="'Helvetica Neue', Arial, sans-serif"
+        font-size="38" font-weight="800" letter-spacing="1.5">
+    <tspan fill="#ffffff">VEGAS </tspan><tspan fill="url(#vvGreen)">VAULT</tspan>
+  </text>
+
+  <!-- tagline -->
+  <text x="140" y="92"
+        font-family="'Helvetica Neue', Arial, sans-serif"
+        font-size="16" font-weight="700" letter-spacing="6"
+        fill="url(#vvGreen)">A I   ·   B E A T   T H E   L I N E</text>
+</svg>
