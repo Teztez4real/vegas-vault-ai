@@ -1,0 +1,159 @@
+/* ============================================================
+   VEGAS VAULT AI — DASHBOARD DARK THEME (landing-page match)
+   Branch: 4d-modern-v2-preview
+   ────────────────────────────────────────────────────────
+   PURELY ADDITIVE. Loads LAST (after new-look.css,
+   vv-4d-modern.css, vv-4d-modern-v2.css).
+   Converts the dashboard from the light AI-OS surface to the
+   landing page's dark #030603 + battery-green identity.
+   Same layout, same components, same logic — ONLY color.
+   Two mechanisms:
+     1. Re-map the --vv-* CSS variables to dark equivalents
+        (catches everything that flows through the theme).
+     2. Targeted !important overrides for the inline hardcoded
+        light surfaces and dark text in the component, so
+        nothing turns invisible on the dark background.
+   ============================================================ */
+
+/* ── 1. RE-MAP THEME VARIABLES TO DARK ──────────────────────── */
+:root {
+  --vv-bg:           #030603 !important;
+  --vv-glass-bg:     rgba(18,32,18,0.72) !important;
+  --vv-glass-bg2:    rgba(12,24,12,0.66) !important;
+  --vv-glass-border: rgba(57,255,20,0.16) !important;
+  --vv-glass-green:  rgba(57,255,20,0.32) !important;
+  --vv-text:         #ffffff !important;
+  --vv-text-2:       rgba(255,255,255,0.72) !important;
+  --vv-text-3:       rgba(255,255,255,0.5) !important;
+  --vv-text-4:       rgba(255,255,255,0.3) !important;
+  --vv-green-text:   #39FF14 !important;
+  --vv-shadow:
+    0 8px 30px rgba(0,0,0,0.5),
+    0 2px 8px rgba(0,0,0,0.4),
+    inset 0 1px 0 rgba(255,255,255,0.05) !important;
+  --vv-shadow-g:
+    0 10px 36px rgba(57,255,20,0.12),
+    0 3px 10px rgba(0,0,0,0.4),
+    inset 0 1px 0 rgba(57,255,20,0.08) !important;
+}
+
+/* ── 2. BASE SURFACES ───────────────────────────────────────── */
+html, body, .vv-root, .vv-body, .vv-main {
+  background: #030603 !important;
+  color: #fff !important;
+}
+
+/* dotted/grid ambient texture behind everything, like the landing page */
+.vv-root::before {
+  background-image:
+    linear-gradient(rgba(57,255,20,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(57,255,20,0.025) 1px, transparent 1px) !important;
+  background-size: 48px 48px !important;
+  opacity: 1 !important;
+}
+
+/* ── 3. GLASS / CARD SURFACES (inline white → dark glass) ─────
+   The component sets inline rgba(255,255,255,*) backgrounds in
+   many places. Convert those frosted-white surfaces to the
+   dark green glass without touching layout. */
+[style*="rgba(255,255,255,0.7)"],
+[style*="rgba(255,255,255,0.72)"],
+[style*="rgba(255,255,255,0.62)"],
+[style*="rgba(255,255,255,0.6)"],
+[style*="rgba(255,255,255,0.55)"],
+[style*="rgba(255,255,255,0.88)"],
+[style*="rgba(255,255,255,0.85)"],
+[style*="rgba(255,255,255,0.9)"],
+[style*="rgba(255,255,255,0.92)"],
+[style*="rgba(255,255,255,0.95)"],
+[style*="background:#fff"],
+[style*="background: #fff"],
+[style*="background:'#fff'"],
+[style*="background:white"] {
+  background: linear-gradient(160deg, rgba(18,32,18,0.72), rgba(8,16,8,0.82)) !important;
+  border-color: rgba(57,255,20,0.14) !important;
+}
+
+/* glass utility classes */
+.vv-glass, .vv-glass-g, .vv-card, .vv-panel, .vv-tb-search, .vv-nb, .vv-sb-user {
+  background: linear-gradient(160deg, rgba(18,32,18,0.72), rgba(8,16,8,0.82)) !important;
+  border-color: rgba(57,255,20,0.14) !important;
+}
+
+/* ── 4. TEXT COLORS (inline dark text → light) ──────────────── */
+[style*="color:#111"], [style*="color: #111"], [style*="color:'#111'"],
+[style*="color:#1a1a1a"], [style*="color:#222"], [style*="color:#000"],
+[style*="color:#333"], [style*="color: #333"] {
+  color: #ffffff !important;
+}
+[style*="color:#444"], [style*="color: #444"], [style*="color:#555"],
+[style*="color:#666"], [style*="color: #666"] {
+  color: rgba(255,255,255,0.72) !important;
+}
+[style*="color:#777"], [style*="color:#888"], [style*="color:#999"],
+[style*="color: #999"], [style*="color:#aaa"], [style*="color: #aaa"] {
+  color: rgba(255,255,255,0.5) !important;
+}
+[style*="color:#bbb"], [style*="color:#ccc"], [style*="color: #ccc"],
+[style*="color:#ddd"] {
+  color: rgba(255,255,255,0.35) !important;
+}
+
+/* keep the brand greens and status colors as-is (don't override) */
+[style*="#39FF14"], [style*="#39ff14"], [style*="#33aa00"], [style*="#22cc00"],
+[style*="#2aa800"], [style*="#2ad400"] {
+  /* intentionally untouched — battery green stays green */
+}
+
+/* ── 5. TOPBAR + SIDEBAR ────────────────────────────────────── */
+.vv-topbar {
+  background: rgba(6,12,6,0.8) !important;
+  border-color: rgba(57,255,20,0.1) !important;
+}
+.vv-sidebar {
+  background: linear-gradient(180deg, rgba(8,16,8,0.9), rgba(4,8,4,0.95)) !important;
+  border-color: rgba(57,255,20,0.1) !important;
+}
+
+/* ── 6. INPUTS / SEARCH ─────────────────────────────────────── */
+input, textarea, select,
+.vv-tb-search input {
+  background: rgba(255,255,255,0.04) !important;
+  color: #fff !important;
+  border-color: rgba(57,255,20,0.15) !important;
+}
+input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.35) !important; }
+
+/* ── 7. PILLS / TABS / NAV ──────────────────────────────────── */
+.vv-sp, .vv-sport-tab, .vv-nb {
+  background: rgba(255,255,255,0.04) !important;
+  color: rgba(255,255,255,0.6) !important;
+  border-color: rgba(57,255,20,0.12) !important;
+}
+.vv-sp.on, .vv-sport-tab.on, .vv-nb.on, .vv-nb.active {
+  background: #39FF14 !important;
+  color: #031003 !important;
+  border-color: #39FF14 !important;
+}
+.vv-nb:hover { background: rgba(57,255,20,0.08) !important; }
+
+/* ── 8. AUTH GATE (login screen) → dark ─────────────────────── */
+[style*="rgba(246,249,246"] {
+  background: rgba(3,6,3,0.97) !important;
+}
+
+/* ── 9. SCRIM / DRAWER OVERLAYS ─────────────────────────────── */
+.vv-scrim { background: rgba(0,0,0,0.6) !important; }
+
+/* ── 10. DIVIDERS / HAIRLINES on light borders ──────────────── */
+[style*="rgba(0,0,0,0.05)"], [style*="rgba(0,0,0,0.07)"],
+[style*="rgba(0,0,0,0.06)"], [style*="rgba(0,0,0,0.08)"] {
+  border-color: rgba(57,255,20,0.08) !important;
+}
+
+/* ── 11. KEEP STATUS COLORS READABLE ON DARK ────────────────── */
+[style*="#dd4444"], [style*="#ff5050"] { color: #ff6b6b !important; }
+[style*="#5588ee"] { color: #6ba3ff !important; }
+
+/* ── 12. SCROLLBARS ─────────────────────────────────────────── */
+*::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); }

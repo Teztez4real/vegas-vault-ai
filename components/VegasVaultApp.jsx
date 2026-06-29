@@ -6,6 +6,7 @@ import NewLookShell from '@/components/NewLookShell';
 import '@/app/new-look.css';
 import '@/app/vv-4d-modern.css';
 import '@/app/vv-4d-modern-v2.css';
+import '@/app/vv-dark-theme.css';
 
 // ── SUPABASE CROSS-DEVICE SYNC ────────────────────────────────────────────────
 async function syncLoad(userId, key) {
@@ -3114,7 +3115,7 @@ export default function VegasVaultApp() {
           <div style={{ background:'rgba(255,255,255,0.9)',border:'1px solid rgba(57,255,20,0.3)',borderRadius:20,width:'100%',maxWidth:420,padding:'32px 28px',boxShadow:'0 20px 60px rgba(0,0,0,0.1)' }}>
             <div style={{ textAlign:'center',marginBottom:24 }}>
               <img
-                src="/vv-logo.svg"
+                src="/vv-logo-horizontal.svg"
                 alt="Vegas Vault AI"
                 style={{ width:200, height:'auto', margin:'0 auto 8px', display:'block' }}
               />
