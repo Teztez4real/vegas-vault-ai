@@ -62,7 +62,7 @@ export default function LandingPage() {
         </div>
         <div className="vv-nav-links" style={{ display:'flex', alignItems:'center', gap:'clamp(14px,2vw,30px)' }}>
           {['Pricing','How It Works','Results','FAQ'].map(l => (
-            <span key={l} onClick={()=>{ if(l==='How It Works'){ document.getElementById('how-it-works')?.scrollIntoView({behavior:'smooth'}); } else { go('/dashboard'); } }} style={{ fontSize:14, fontWeight:600, color:'rgba(255,255,255,0.7)', cursor:'pointer', whiteSpace:'nowrap' }}
+            <span key={l} onClick={()=>{ if(l==='How It Works'){ document.getElementById('how-it-works')?.scrollIntoView({behavior:'smooth'}); } else if(l==='Pricing'){ document.getElementById('pricing')?.scrollIntoView({behavior:'smooth'}); } else { go('/dashboard'); } }} style={{ fontSize:14, fontWeight:600, color:'rgba(255,255,255,0.7)', cursor:'pointer', whiteSpace:'nowrap' }}
               onMouseEnter={e=>e.currentTarget.style.color='#fff'} onMouseLeave={e=>e.currentTarget.style.color='rgba(255,255,255,0.7)'}>{l}</span>
           ))}
           <button onClick={()=>go('/dashboard')} style={{ fontSize:14, fontWeight:600, color:'rgba(255,255,255,0.85)', background:'transparent', border:'none', cursor:'pointer' }}>Sign In</button>
@@ -238,6 +238,92 @@ export default function LandingPage() {
         </div>
       </div>
 
+      {/* ── PRICING ── */}
+      <div id="pricing" style={{ position:'relative', zIndex:5, maxWidth:1040, margin:'0 auto', padding:'clamp(48px,7vw,96px) clamp(16px,4vw,56px)' }}>
+        {/* section header */}
+        <div style={{ textAlign:'center', marginBottom:'clamp(40px,5vw,60px)' }}>
+          <div style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'7px 15px', borderRadius:30, border:`1px solid rgba(57,255,20,0.22)`, background:'rgba(57,255,20,0.05)', marginBottom:20 }}>
+            <i className="ti ti-diamond" style={{ fontSize:14, color:GREEN }} />
+            <span style={{ fontSize:12, fontWeight:800, letterSpacing:'1.5px', color:'rgba(255,255,255,0.8)' }}>PRICING</span>
+          </div>
+          <h2 style={{ fontSize:'clamp(30px,4.4vw,56px)', fontWeight:900, lineHeight:1.05, letterSpacing:'-0.02em', margin:'0 0 16px', textTransform:'uppercase' }}>
+            <span style={{ color:'#fff' }}>One Model. </span>
+            <span style={{ background:`linear-gradient(135deg,${GREEN},#8fff6e,#22cc00)`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text', filter:`drop-shadow(0 0 24px rgba(57,255,20,0.3))` }}>Full Access.</span>
+          </h2>
+          <p style={{ fontSize:'clamp(15px,1.7vw,18px)', color:'rgba(255,255,255,0.6)', maxWidth:560, margin:'0 auto', lineHeight:1.6 }}>
+            Every plan unlocks the full model — all sports, all Tier-1 locks, auto-updating plays, and alerts. Pick the cycle that fits you.
+          </p>
+        </div>
+
+        {/* plans */}
+        <div className="vv-plans" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20, alignItems:'stretch' }}>
+
+          {/* WEEKLY */}
+          <div style={{
+            position:'relative', display:'flex', flexDirection:'column',
+            background:'linear-gradient(160deg,rgba(18,32,18,0.7),rgba(6,12,6,0.85))',
+            border:'1px solid rgba(57,255,20,0.14)', borderRadius:22, padding:'32px 28px',
+            boxShadow:'0 20px 50px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)',
+          }}>
+            <div style={{ fontSize:13, fontWeight:800, letterSpacing:'1.5px', color:'rgba(255,255,255,0.6)', marginBottom:14 }}>WEEKLY</div>
+            <div style={{ display:'flex', alignItems:'baseline', gap:6, marginBottom:6 }}>
+              <span style={{ fontSize:48, fontWeight:900, color:'#fff', lineHeight:1 }}>$19.99</span>
+              <span style={{ fontSize:16, fontWeight:600, color:'rgba(255,255,255,0.45)' }}>/week</span>
+            </div>
+            <div style={{ fontSize:13, color:'rgba(255,255,255,0.5)', marginBottom:24 }}>Perfect for trying the model out.</div>
+            <div style={{ display:'flex', flexDirection:'column', gap:12, marginBottom:28, flex:1 }}>
+              {['Full AI model — all sports','All Tier-1 locks & scam plays','Auto-updating plays all day','Line movement & sharp money','Push alerts on confirmed plays'].map(f=>(
+                <div key={f} style={{ display:'flex', alignItems:'center', gap:10, fontSize:14, color:'rgba(255,255,255,0.8)' }}>
+                  <i className="ti ti-circle-check" style={{ fontSize:17, color:GREEN, flexShrink:0 }} />{f}
+                </div>
+              ))}
+            </div>
+            <button onClick={()=>go('/dashboard')} style={{ width:'100%', fontSize:15, fontWeight:800, color:'#fff', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.16)', borderRadius:13, padding:'15px', cursor:'pointer', fontFamily:'inherit' }}>
+              Start Weekly
+            </button>
+          </div>
+
+          {/* MONTHLY — highlighted */}
+          <div style={{
+            position:'relative', display:'flex', flexDirection:'column',
+            background:'linear-gradient(160deg,rgba(24,46,20,0.85),rgba(8,18,6,0.92))',
+            border:`1.5px solid rgba(57,255,20,0.4)`, borderRadius:22, padding:'32px 28px',
+            boxShadow:`0 24px 60px rgba(0,0,0,0.5), 0 0 50px rgba(57,255,20,0.12), inset 0 1px 0 rgba(57,255,20,0.1)`,
+          }}>
+            {/* best value badge */}
+            <div style={{ position:'absolute', top:-13, left:'50%', transform:'translateX(-50%)', display:'inline-flex', alignItems:'center', gap:6, padding:'6px 16px', borderRadius:30, background:`linear-gradient(135deg,${GREEN},#2ad400)`, boxShadow:`0 4px 16px rgba(57,255,20,0.4)` }}>
+              <i className="ti ti-star-filled" style={{ fontSize:12, color:'#031003' }} />
+              <span style={{ fontSize:11, fontWeight:900, letterSpacing:'1px', color:'#031003' }}>BEST VALUE</span>
+            </div>
+            <div style={{ fontSize:13, fontWeight:800, letterSpacing:'1.5px', color:GREEN, marginBottom:14 }}>MONTHLY</div>
+            <div style={{ display:'flex', alignItems:'baseline', gap:6, marginBottom:4 }}>
+              <span style={{ fontSize:48, fontWeight:900, color:'#fff', lineHeight:1, filter:`drop-shadow(0 0 20px rgba(57,255,20,0.3))` }}>$49.99</span>
+              <span style={{ fontSize:16, fontWeight:600, color:'rgba(255,255,255,0.45)' }}>/month</span>
+            </div>
+            <div style={{ fontSize:13, color:GREEN, fontWeight:700, marginBottom:24 }}>Save 38% vs weekly · best for the full season</div>
+            <div style={{ display:'flex', flexDirection:'column', gap:12, marginBottom:28, flex:1 }}>
+              {['Everything in Weekly','Best price per day','Uninterrupted full-season access','Priority on new sports & features','Cancel anytime'].map(f=>(
+                <div key={f} style={{ display:'flex', alignItems:'center', gap:10, fontSize:14, color:'#fff', fontWeight:500 }}>
+                  <i className="ti ti-circle-check-filled" style={{ fontSize:17, color:GREEN, flexShrink:0 }} />{f}
+                </div>
+              ))}
+            </div>
+            <button onClick={()=>go('/dashboard')} style={{ width:'100%', fontSize:15, fontWeight:900, color:'#031003', background:`linear-gradient(135deg,${GREEN},#2ad400)`, border:'none', borderRadius:13, padding:'15px', cursor:'pointer', fontFamily:'inherit', boxShadow:`0 6px 22px rgba(57,255,20,0.4)`, textTransform:'uppercase', letterSpacing:'0.5px' }}>
+              Get Full Access
+            </button>
+          </div>
+        </div>
+
+        {/* trust line */}
+        <div style={{ display:'flex', flexWrap:'wrap', justifyContent:'center', gap:'clamp(16px,3vw,32px)', marginTop:'clamp(32px,4vw,48px)' }}>
+          {[['ti-lock','Secure checkout'],['ti-credit-card','Cancel anytime'],['ti-bolt','Instant access'],['ti-shield-check','No long-term contract']].map(([ic,t])=>(
+            <span key={t} style={{ display:'inline-flex', alignItems:'center', gap:8, fontSize:13, fontWeight:600, color:'rgba(255,255,255,0.5)' }}>
+              <i className={`ti ${ic}`} style={{ fontSize:15, color:GREEN }} />{t}
+            </span>
+          ))}
+        </div>
+      </div>
+
       {/* responsive + animations */}
       <style>{`
         @keyframes vvticker { from{transform:translateX(0)} to{transform:translateX(-50%)} }
@@ -248,6 +334,7 @@ export default function LandingPage() {
           .vv-nav-links span:not(:last-child) { display:none !important; }
           .vv-steps { grid-template-columns: 1fr 1fr !important; }
           .vv-step-connector { display:none !important; }
+          .vv-plans { grid-template-columns: 1fr !important; max-width:420px; margin:0 auto; }
         }
         @media (max-width: 560px) {
           .vv-steps { grid-template-columns: 1fr !important; }
