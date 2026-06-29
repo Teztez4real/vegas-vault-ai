@@ -35,14 +35,14 @@
   <!-- inner hairline ring -->
   <circle cx="65" cy="65" r="39" fill="none" stroke="#39FF14" stroke-width="0.6" opacity="0.25"/>
 
-  <!-- VV monogram inside badge -->
+  <!-- V monogram inside badge -->
   <g filter="url(#vvGlow)">
-    <path d="M44,46 L56,86 L65,46 M65,46 L74,86 L86,46"
-          fill="none" stroke="url(#vvGreen)" stroke-width="7"
+    <path d="M48,44 L65,88 L82,44"
+          fill="none" stroke="url(#vvGreen)" stroke-width="8"
           stroke-linecap="butt" stroke-linejoin="miter"/>
   </g>
   <!-- top cap line -->
-  <line x1="44" y1="46" x2="86" y2="46" stroke="#39FF14" stroke-width="2" opacity="0.5"/>
+  <line x1="48" y1="44" x2="82" y2="44" stroke="#39FF14" stroke-width="2" opacity="0.5"/>
 
   <!-- ── WORDMARK ── -->
   <!-- VEGAS (white) VAULT (green gradient) -->
