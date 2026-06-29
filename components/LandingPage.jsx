@@ -18,6 +18,7 @@ const TICKER = [
 export default function LandingPage() {
   const router = useRouter();
   const [checking, setChecking] = useState(true);
+  const [openFaq, setOpenFaq] = useState(null);
 
   // If already signed in, skip the landing page and go to the dashboard.
   // EXCEPTION: ?preview in the URL lets you view the landing page while
@@ -62,7 +63,7 @@ export default function LandingPage() {
         </div>
         <div className="vv-nav-links" style={{ display:'flex', alignItems:'center', gap:'clamp(14px,2vw,30px)' }}>
           {['Pricing','How It Works','Results','FAQ'].map(l => (
-            <span key={l} onClick={()=>{ if(l==='How It Works'){ document.getElementById('how-it-works')?.scrollIntoView({behavior:'smooth'}); } else if(l==='Pricing'){ document.getElementById('pricing')?.scrollIntoView({behavior:'smooth'}); } else { go('/dashboard'); } }} style={{ fontSize:14, fontWeight:600, color:'rgba(255,255,255,0.7)', cursor:'pointer', whiteSpace:'nowrap' }}
+            <span key={l} onClick={()=>{ if(l==='How It Works'){ document.getElementById('how-it-works')?.scrollIntoView({behavior:'smooth'}); } else if(l==='Pricing'){ document.getElementById('pricing')?.scrollIntoView({behavior:'smooth'}); } else if(l==='FAQ'){ document.getElementById('faq')?.scrollIntoView({behavior:'smooth'}); } else { go('/dashboard'); } }} style={{ fontSize:14, fontWeight:600, color:'rgba(255,255,255,0.7)', cursor:'pointer', whiteSpace:'nowrap' }}
               onMouseEnter={e=>e.currentTarget.style.color='#fff'} onMouseLeave={e=>e.currentTarget.style.color='rgba(255,255,255,0.7)'}>{l}</span>
           ))}
           <button onClick={()=>go('/dashboard')} style={{ fontSize:14, fontWeight:600, color:'rgba(255,255,255,0.85)', background:'transparent', border:'none', cursor:'pointer' }}>Sign In</button>
@@ -321,6 +322,69 @@ export default function LandingPage() {
               <i className={`ti ${ic}`} style={{ fontSize:15, color:GREEN }} />{t}
             </span>
           ))}
+        </div>
+      </div>
+
+      {/* ── FAQ ── */}
+      <div id="faq" style={{ position:'relative', zIndex:5, maxWidth:820, margin:'0 auto', padding:'clamp(48px,7vw,96px) clamp(16px,4vw,56px)' }}>
+        <div style={{ textAlign:'center', marginBottom:'clamp(36px,4vw,52px)' }}>
+          <div style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'7px 15px', borderRadius:30, border:`1px solid rgba(57,255,20,0.22)`, background:'rgba(57,255,20,0.05)', marginBottom:20 }}>
+            <i className="ti ti-help-circle" style={{ fontSize:14, color:GREEN }} />
+            <span style={{ fontSize:12, fontWeight:800, letterSpacing:'1.5px', color:'rgba(255,255,255,0.8)' }}>FAQ</span>
+          </div>
+          <h2 style={{ fontSize:'clamp(30px,4.4vw,56px)', fontWeight:900, lineHeight:1.05, letterSpacing:'-0.02em', margin:0, textTransform:'uppercase' }}>
+            <span style={{ color:'#fff' }}>Got </span>
+            <span style={{ background:`linear-gradient(135deg,${GREEN},#8fff6e,#22cc00)`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text', filter:`drop-shadow(0 0 24px rgba(57,255,20,0.3))` }}>Questions?</span>
+          </h2>
+        </div>
+
+        <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+          {[
+            { q:'How accurate is the AI model?', a:'The model targets the highest-conviction plays — the Tier-1 locks where every signal aligns. It only commits to a play when line movement, pricing, matchup data, and situational context all agree. When signals conflict, it either flags a scam or passes the game entirely rather than forcing a pick.' },
+            { q:'What sports are covered?', a:'MLB is fully live right now. NBA and NFL models are built and ready — they switch on automatically the moment each season starts. Tennis and WNBA analysis are also supported within the model.' },
+            { q:'How often do the plays update?', a:'All day. The AI works the entire board like a professional bettor — refining each game as lineups confirm, injuries break, and lines move. The cadence intensifies as each game approaches, with a final lock-in update right before start. Once a game begins, the play is locked and never changes.' },
+            { q:'Do I have to be on the app for it to work?', a:'No. The model runs on its own around the clock, independent of any device. Whether the app is open or closed, your plays are analyzed, updated, and ready. You\'ll get a push alert when a play is confirmed or something material changes on a game you\'re tracking.' },
+            { q:'What does it cost and can I cancel?', a:'$19.99/week or $49.99/month — the monthly plan saves you about 38%. Both unlock the full model with no long-term contract. You can cancel anytime.' },
+            { q:'Is this guaranteed to win?', a:'No one can guarantee outcomes in sports betting, and anyone who claims otherwise isn\'t being honest. What the model does is find genuine edges where the market misprices reality, and only surface plays with a clear, defensible case. Bet responsibly and only what you can afford.' },
+          ].map((item, i) => {
+            const open = openFaq === i;
+            return (
+              <div key={i} style={{
+                background:'linear-gradient(160deg,rgba(18,32,18,0.6),rgba(6,12,6,0.8))',
+                border:`1px solid ${open ? 'rgba(57,255,20,0.3)' : 'rgba(57,255,20,0.12)'}`,
+                borderRadius:16, overflow:'hidden', transition:'border-color 0.3s ease',
+              }}>
+                <button onClick={()=>setOpenFaq(open ? null : i)} style={{
+                  width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', gap:16,
+                  padding:'20px 22px', background:'transparent', border:'none', cursor:'pointer',
+                  fontFamily:'inherit', textAlign:'left',
+                }}>
+                  <span style={{ fontSize:'clamp(15px,1.8vw,17px)', fontWeight:700, color:'#fff' }}>{item.q}</span>
+                  <i className="ti ti-chevron-down" style={{ fontSize:20, color:GREEN, flexShrink:0, transition:'transform 0.3s ease', transform:open ? 'rotate(180deg)' : 'rotate(0)' }} />
+                </button>
+                <div style={{ maxHeight:open ? 320 : 0, overflow:'hidden', transition:'max-height 0.35s ease' }}>
+                  <div style={{ padding:'0 22px 22px', fontSize:14.5, lineHeight:1.65, color:'rgba(255,255,255,0.6)' }}>{item.a}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* final CTA */}
+        <div style={{ textAlign:'center', marginTop:'clamp(40px,5vw,60px)' }}>
+          <div style={{ fontSize:'clamp(18px,2.2vw,24px)', fontWeight:800, color:'#fff', marginBottom:18 }}>Ready to beat the line?</div>
+          <button onClick={()=>go('/dashboard')} style={{ display:'inline-flex', alignItems:'center', gap:9, fontSize:16, fontWeight:800, color:'#031003', background:`linear-gradient(135deg,${GREEN},#2ad400)`, border:'none', borderRadius:14, padding:'17px 38px', cursor:'pointer', boxShadow:`0 6px 24px rgba(57,255,20,0.4)`, fontFamily:'inherit', textTransform:'uppercase', letterSpacing:'0.5px' }}>
+            Start Winning <i className="ti ti-flame" style={{ fontSize:17 }} />
+          </button>
+        </div>
+
+        {/* footer */}
+        <div style={{ marginTop:'clamp(48px,6vw,80px)', paddingTop:32, borderTop:'1px solid rgba(57,255,20,0.1)', textAlign:'center' }}>
+          <img src="/vv-logo-horizontal.svg" alt="Vegas Vault AI" style={{ height:40, width:'auto', opacity:0.85, marginBottom:16 }} />
+          <div style={{ fontSize:12, color:'rgba(255,255,255,0.35)', lineHeight:1.7, maxWidth:560, margin:'0 auto' }}>
+            Vegas Vault AI provides data-driven analysis for entertainment and informational purposes only. It is not financial advice and does not guarantee outcomes. You must be of legal betting age in your jurisdiction. Please bet responsibly. If gambling becomes a problem, call 1-800-GAMBLER.
+          </div>
+          <div style={{ fontSize:11, color:'rgba(255,255,255,0.25)', marginTop:16 }}>© {new Date().getFullYear()} Vegas Vault AI. All rights reserved.</div>
         </div>
       </div>
 
