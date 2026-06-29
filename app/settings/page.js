@@ -4,6 +4,9 @@ import { supabase } from '@/lib/supabaseClient';
 import { useIdleSignOut } from '@/lib/useIdleSignOut';
 import NewLookShell from '@/components/NewLookShell';
 import '@/app/new-look.css';
+import '@/app/vv-4d-modern.css';
+import '@/app/vv-4d-modern-v2.css';
+import '@/app/vv-dark-theme.css';
 
 export default function SettingsPage() {
   const ADMIN_EMAIL = 'battlecortez@gmail.com';

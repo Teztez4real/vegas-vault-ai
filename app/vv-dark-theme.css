@@ -55,48 +55,74 @@ html, body, .vv-root, .vv-body, .vv-main {
 /* ── 3. GLASS / CARD SURFACES (inline white → dark glass) ─────
    The component sets inline rgba(255,255,255,*) backgrounds in
    many places. Convert those frosted-white surfaces to the
-   dark green glass without touching layout. */
+   dark green glass without touching layout. Covers every alpha
+   level the component uses (0.5 through 0.95). */
+[style*="rgba(255,255,255,0.5)"],
+[style*="rgba(255,255,255,0.55)"],
+[style*="rgba(255,255,255,0.6)"],
+[style*="rgba(255,255,255,0.62)"],
+[style*="rgba(255,255,255,0.65)"],
 [style*="rgba(255,255,255,0.7)"],
 [style*="rgba(255,255,255,0.72)"],
-[style*="rgba(255,255,255,0.62)"],
-[style*="rgba(255,255,255,0.6)"],
-[style*="rgba(255,255,255,0.55)"],
-[style*="rgba(255,255,255,0.88)"],
+[style*="rgba(255,255,255,0.75)"],
+[style*="rgba(255,255,255,0.8)"],
 [style*="rgba(255,255,255,0.85)"],
+[style*="rgba(255,255,255,0.88)"],
 [style*="rgba(255,255,255,0.9)"],
 [style*="rgba(255,255,255,0.92)"],
 [style*="rgba(255,255,255,0.95)"],
 [style*="background:#fff"],
 [style*="background: #fff"],
 [style*="background:'#fff'"],
+[style*="background:#ffffff"],
 [style*="background:white"] {
   background: linear-gradient(160deg, rgba(18,32,18,0.72), rgba(8,16,8,0.82)) !important;
   border-color: rgba(57,255,20,0.14) !important;
 }
 
-/* glass utility classes */
-.vv-glass, .vv-glass-g, .vv-card, .vv-panel, .vv-tb-search, .vv-nb, .vv-sb-user {
+/* glass utility classes + game card / analysis panel surfaces */
+.vv-glass, .vv-glass-g, .vv-card, .vv-panel, .vv-tb-search, .vv-nb,
+.vv-sb-user, .vv-gc, .vv-game-card, .vv-result-strip, .vv-matchup {
   background: linear-gradient(160deg, rgba(18,32,18,0.72), rgba(8,16,8,0.82)) !important;
   border-color: rgba(57,255,20,0.14) !important;
 }
 
+/* ── 3b. ANALYSIS MODAL ─────────────────────────────────────── */
+/* The modal backdrop is already dark (rgba(0,0,0,0.82)) — good.
+   Catch any light inner panels and white sub-surfaces inside it. */
+[style*="rgba(248,255,248"], [style*="rgba(246,249,246"],
+[style*="rgba(250,250,250"], [style*="rgba(245,"] {
+  background: rgba(12,24,12,0.6) !important;
+}
+
 /* ── 4. TEXT COLORS (inline dark text → light) ──────────────── */
+/* Near-black / primary dark text → white. Covers quoted, unquoted,
+   spaced, and hex variations the component uses inline. */
 [style*="color:#111"], [style*="color: #111"], [style*="color:'#111'"],
-[style*="color:#1a1a1a"], [style*="color:#222"], [style*="color:#000"],
-[style*="color:#333"], [style*="color: #333"] {
+[style*="color:#1a1a1a"], [style*="color:#222"], [style*="color: #222"],
+[style*="color:#000"], [style*="color: #000"], [style*="color:black"],
+[style*="color:#333"], [style*="color: #333"], [style*="color:#2a2a2a"],
+[style*="color:#1f1f1f"], [style*="color:#0a0a0a"] {
   color: #ffffff !important;
 }
+/* Mid-dark text → soft white */
 [style*="color:#444"], [style*="color: #444"], [style*="color:#555"],
-[style*="color:#666"], [style*="color: #666"] {
-  color: rgba(255,255,255,0.72) !important;
+[style*="color: #555"], [style*="color:#666"], [style*="color: #666"],
+[style*="color:#4a4a4a"], [style*="color:#505050"], [style*="color:#3a3a3a"] {
+  color: rgba(255,255,255,0.74) !important;
 }
-[style*="color:#777"], [style*="color:#888"], [style*="color:#999"],
-[style*="color: #999"], [style*="color:#aaa"], [style*="color: #aaa"] {
-  color: rgba(255,255,255,0.5) !important;
+/* Muted grey text → dim white */
+[style*="color:#777"], [style*="color: #777"], [style*="color:#888"],
+[style*="color: #888"], [style*="color:#999"], [style*="color: #999"],
+[style*="color:#aaa"], [style*="color: #aaa"], [style*="color:#9a9a9a"],
+[style*="color:#808080"], [style*="color:gray"], [style*="color:grey"] {
+  color: rgba(255,255,255,0.52) !important;
 }
-[style*="color:#bbb"], [style*="color:#ccc"], [style*="color: #ccc"],
-[style*="color:#ddd"] {
-  color: rgba(255,255,255,0.35) !important;
+/* Very light grey (placeholder-ish) → faint white */
+[style*="color:#bbb"], [style*="color: #bbb"], [style*="color:#ccc"],
+[style*="color: #ccc"], [style*="color:#ddd"], [style*="color: #ddd"],
+[style*="color:#c0c0c0"], [style*="color:#d0d0d0"] {
+  color: rgba(255,255,255,0.38) !important;
 }
 
 /* keep the brand greens and status colors as-is (don't override) */
