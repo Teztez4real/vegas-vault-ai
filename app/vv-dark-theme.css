@@ -224,6 +224,32 @@ input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.35) !impor
 /* ── 9. SCRIM / DRAWER OVERLAYS ─────────────────────────────── */
 .vv-scrim { background: rgba(0,0,0,0.6) !important; }
 
+/* ── 9b. MOBILE DRAWER (slide-in sidebar) ───────────────────── */
+/* The mobile nav drawer uses background:#fff — convert to the
+   landing page's dark sidebar look so it matches on phones. */
+.vv-drawer {
+  background: linear-gradient(180deg, rgba(8,16,8,0.98), rgba(4,8,4,0.99)) !important;
+  border-right: 1px solid rgba(57,255,20,0.12) !important;
+  box-shadow: 6px 0 32px rgba(0,0,0,0.6) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+}
+.vv-drawer-close { color: rgba(255,255,255,0.55) !important; }
+/* nav items inside the drawer */
+.vv-drawer .vv-nb,
+.vv-drawer .vv-nav-item {
+  color: rgba(255,255,255,0.7) !important;
+}
+.vv-drawer .vv-nb:hover { background: rgba(57,255,20,0.08) !important; }
+.vv-drawer .vv-nb.on,
+.vv-drawer .vv-nb.active {
+  background: #39FF14 !important;
+  color: #031003 !important;
+}
+/* any dark text inside the drawer → light */
+.vv-drawer [style*="color: rgb(17, 17, 17)"],
+.vv-drawer [style*="color:#111"] { color: #fff !important; }
+
 /* ── 10. DIVIDERS / HAIRLINES on light borders ──────────────── */
 [style*="rgba(0,0,0,0.05)"], [style*="rgba(0,0,0,0.07)"],
 [style*="rgba(0,0,0,0.06)"], [style*="rgba(0,0,0,0.08)"] {
