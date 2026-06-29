@@ -29,7 +29,7 @@ function SidebarBrand() {
   return (
     <div className="vv-sb-brand" style={{ padding:'8px 0 4px' }}>
       <img
-        src="/vv-logo.svg"
+        src="/vv-logo-horizontal.svg"
         alt="Vegas Vault AI"
         style={{ width:'100%', maxWidth:180, height:'auto', display:'block', margin:'0 auto' }}
       />

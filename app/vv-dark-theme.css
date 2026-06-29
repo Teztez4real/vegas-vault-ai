@@ -1,0 +1,238 @@
+/* ============================================================
+   VEGAS VAULT AI — DASHBOARD DARK THEME (landing-page match)
+   Branch: 4d-modern-v2-preview
+   ────────────────────────────────────────────────────────
+   PURELY ADDITIVE. Loads LAST (after new-look.css,
+   vv-4d-modern.css, vv-4d-modern-v2.css).
+   Converts the dashboard from the light AI-OS surface to the
+   landing page's dark #030603 + battery-green identity.
+   Same layout, same components, same logic — ONLY color.
+   Two mechanisms:
+     1. Re-map the --vv-* CSS variables to dark equivalents
+        (catches everything that flows through the theme).
+     2. Targeted !important overrides for the inline hardcoded
+        light surfaces and dark text in the component, so
+        nothing turns invisible on the dark background.
+   ============================================================ */
+
+/* ── 1. RE-MAP THEME VARIABLES TO DARK ──────────────────────── */
+:root {
+  --vv-bg:           #030603 !important;
+  --vv-glass-bg:     rgba(18,32,18,0.72) !important;
+  --vv-glass-bg2:    rgba(12,24,12,0.66) !important;
+  --vv-glass-border: rgba(57,255,20,0.16) !important;
+  --vv-glass-green:  rgba(57,255,20,0.32) !important;
+  --vv-text:         #ffffff !important;
+  --vv-text-2:       rgba(255,255,255,0.72) !important;
+  --vv-text-3:       rgba(255,255,255,0.5) !important;
+  --vv-text-4:       rgba(255,255,255,0.3) !important;
+  --vv-green-text:   #39FF14 !important;
+  --vv-shadow:
+    0 8px 30px rgba(0,0,0,0.5),
+    0 2px 8px rgba(0,0,0,0.4),
+    inset 0 1px 0 rgba(255,255,255,0.05) !important;
+  --vv-shadow-g:
+    0 10px 36px rgba(57,255,20,0.12),
+    0 3px 10px rgba(0,0,0,0.4),
+    inset 0 1px 0 rgba(57,255,20,0.08) !important;
+}
+
+/* ── 2. BASE SURFACES ───────────────────────────────────────── */
+html, body, .vv-root, .vv-body, .vv-main {
+  background: #030603 !important;
+  color: #fff !important;
+}
+
+/* dotted/grid ambient texture behind everything, like the landing page */
+.vv-root::before {
+  background-image:
+    linear-gradient(rgba(57,255,20,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(57,255,20,0.025) 1px, transparent 1px) !important;
+  background-size: 48px 48px !important;
+  opacity: 1 !important;
+}
+
+/* ── 3. GLASS / CARD SURFACES ────────────────────────────────
+   CRITICAL: browsers SERIALIZE inline styles when writing them
+   to the DOM style attribute — rgba(255,255,255,0.7) becomes
+   "rgba(255, 255, 255, 0.7)" (with spaces) and #fff becomes
+   "rgb(255, 255, 255)". Attribute selectors match the SERIALIZED
+   form, so we must target the spaced/rgb() variants. We include
+   both spaced and unspaced to be safe across browsers. */
+
+/* white rgb() solid (from #fff / #ffffff / white) */
+[style*="background: rgb(255, 255, 255)"],
+[style*="background:rgb(255,255,255)"],
+[style*="background-color: rgb(255, 255, 255)"],
+/* spaced rgba whites (browser-serialized) */
+[style*="rgba(255, 255, 255, 0.5)"],
+[style*="rgba(255, 255, 255, 0.55)"],
+[style*="rgba(255, 255, 255, 0.6)"],
+[style*="rgba(255, 255, 255, 0.62)"],
+[style*="rgba(255, 255, 255, 0.65)"],
+[style*="rgba(255, 255, 255, 0.7)"],
+[style*="rgba(255, 255, 255, 0.72)"],
+[style*="rgba(255, 255, 255, 0.75)"],
+[style*="rgba(255, 255, 255, 0.8)"],
+[style*="rgba(255, 255, 255, 0.85)"],
+[style*="rgba(255, 255, 255, 0.88)"],
+[style*="rgba(255, 255, 255, 0.9)"],
+[style*="rgba(255, 255, 255, 0.92)"],
+[style*="rgba(255, 255, 255, 0.95)"],
+/* unspaced fallbacks */
+[style*="rgba(255,255,255,0.5)"],
+[style*="rgba(255,255,255,0.6)"],
+[style*="rgba(255,255,255,0.62)"],
+[style*="rgba(255,255,255,0.7)"],
+[style*="rgba(255,255,255,0.72)"],
+[style*="rgba(255,255,255,0.8)"],
+[style*="rgba(255,255,255,0.85)"],
+[style*="rgba(255,255,255,0.9)"],
+[style*="rgba(255,255,255,0.92)"] {
+  background: linear-gradient(160deg, rgba(18,32,18,0.78), rgba(8,16,8,0.86)) !important;
+  border-color: rgba(57,255,20,0.14) !important;
+}
+
+/* glass utility classes + game card / analysis panel surfaces */
+.vv-glass, .vv-glass-g, .vv-card, .vv-panel, .vv-tb-search, .vv-nb,
+.vv-sb-user, .vv-gc, .vv-game-card, .vv-result-strip, .vv-matchup {
+  background: linear-gradient(160deg, rgba(18,32,18,0.78), rgba(8,16,8,0.86)) !important;
+  border-color: rgba(57,255,20,0.14) !important;
+}
+
+/* ── 3b. ANALYSIS MODAL (was staying white) ─────────────────── */
+[style*="rgb(248, 255, 248)"], [style*="rgb(246, 249, 246)"],
+[style*="rgb(250, 250, 250)"], [style*="rgb(245, 245, 245)"],
+[style*="rgba(248, 255, 248"], [style*="rgba(246, 249, 246"] {
+  background: rgba(12,24,12,0.7) !important;
+}
+
+/* ── 4. TEXT COLORS ──────────────────────────────────────────
+   Browsers convert hex → rgb() in the serialized style attribute.
+   Target the rgb() forms (with spaces) that the DOM actually has. */
+
+/* near-black primary text (#111=rgb(17,17,17), #000, #222, #333) → white */
+[style*="color: rgb(17, 17, 17)"], [style*="color:rgb(17,17,17)"],
+[style*="color: rgb(0, 0, 0)"], [style*="color:rgb(0,0,0)"],
+[style*="color: rgb(34, 34, 34)"], [style*="color: rgb(51, 51, 51)"],
+[style*="color: rgb(26, 26, 26)"], [style*="color: rgb(42, 42, 42)"],
+[style*="color:#111"], [style*="color: #111"] {
+  color: #ffffff !important;
+}
+/* mid-dark (#444=68, #555=85, #666=102) → soft white */
+[style*="color: rgb(68, 68, 68)"], [style*="color: rgb(85, 85, 85)"],
+[style*="color: rgb(102, 102, 102)"], [style*="color: rgb(74, 74, 74)"],
+[style*="color:#444"], [style*="color:#555"], [style*="color:#666"] {
+  color: rgba(255,255,255,0.74) !important;
+}
+/* muted grey (#777=119, #888=136, #999=153, #aaa=170) → dim white */
+[style*="color: rgb(119, 119, 119)"], [style*="color: rgb(136, 136, 136)"],
+[style*="color: rgb(153, 153, 153)"], [style*="color: rgb(170, 170, 170)"],
+[style*="color:#777"], [style*="color:#888"], [style*="color:#999"], [style*="color:#aaa"] {
+  color: rgba(255,255,255,0.52) !important;
+}
+/* light grey (#bbb=187, #ccc=204, #ddd=221) → faint white */
+[style*="color: rgb(187, 187, 187)"], [style*="color: rgb(204, 204, 204)"],
+[style*="color: rgb(221, 221, 221)"],
+[style*="color:#bbb"], [style*="color:#ccc"], [style*="color:#ddd"] {
+  color: rgba(255,255,255,0.4) !important;
+}
+
+/* keep the brand greens and status colors as-is (don't override) */
+[style*="#39FF14"], [style*="#39ff14"], [style*="#33aa00"], [style*="#22cc00"],
+[style*="#2aa800"], [style*="#2ad400"] {
+  /* intentionally untouched — battery green stays green */
+}
+
+/* ── 4b. CLASS-BASED DARK TEXT (from inline <style> blocks) ───
+   COMPLETE list of every class in the component's inline <style>
+   blocks that sets a dark text color. Extracted directly from
+   source so nothing is missed. These are the section titles,
+   stat values, card labels, etc. that stayed dark. */
+/* near-black (#111/#000/#222/#333) class text → white */
+.vv-agent-nm, .vv-ai-nm, .vv-am-v, .vv-anm-v, .vv-card-t, .vv-chat-title,
+.vv-dc-v, .vv-em-v, .vv-engine-badge, .vv-engine-nm, .vv-gc-t, .vv-gr-pick,
+.vv-hc-t, .vv-hc-title, .vv-mc-nm, .vv-mc-pr, .vv-mcr-v, .vv-mem-title,
+.vv-model-nm, .vv-mrv, .vv-mv, .vv-oc-title, .vv-pv, .vv-sc-val, .vv-sys-mv,
+.vv-vf-nm {
+  color: #ffffff !important;
+}
+/* muted grey (#666-#ccc) class text → dim white */
+.vv-agent-desc, .vv-agent-role, .vv-am-l, .vv-an-sel, .vv-anm-l, .vv-attach,
+.vv-card-ey, .vv-dc-l, .vv-em-l, .vv-engine-sub, .vv-gc-sub, .vv-gr-odds,
+.vv-gr-t, .vv-hc-divider, .vv-hc-time, .vv-input-hint, .vv-mc-ey2, .vv-mcr-k,
+.vv-mem-desc, .vv-mem-time, .vv-mk, .vv-model-stages, .vv-mrk, .vv-msg-time,
+.vv-oc-ey, .vv-pk, .vv-sc-ey, .vv-sc-sub, .vv-sys-mk, .vv-vf-sz {
+  color: rgba(255,255,255,0.55) !important;
+}
+
+/* ── 3c. STAT CARDS / SCORE BOXES (light → dark) ───────────── */
+.vv-stat, .vv-stat-card, .vv-ss-card, .vv-dc, .vv-em, .vv-anm,
+.vv-score-box, .vv-mini-stat, .vv-metric, .vv-metric-box,
+.vv-sb-stat, .vv-pill-stat,
+/* exact light-bg classes from the inline style block */
+.vv-an-sel, .vv-dock-i, .vv-msg-card, .vv-sys-m {
+  background: rgba(57,255,20,0.05) !important;
+  border-color: rgba(57,255,20,0.12) !important;
+  color: #fff !important;
+}
+
+/* ── 3d. SOLID-WHITE MODAL CONTAINERS (analysis modal etc.) ── */
+[style*="background: rgb(255, 255, 255)"],
+[style*="background:rgb(255,255,255)"] {
+  background: linear-gradient(165deg, rgba(14,26,14,0.98), rgba(6,12,6,0.99)) !important;
+  border-color: rgba(57,255,20,0.16) !important;
+}
+
+/* ── 5. TOPBAR + SIDEBAR ────────────────────────────────────── */
+.vv-topbar {
+  background: rgba(6,12,6,0.8) !important;
+  border-color: rgba(57,255,20,0.1) !important;
+}
+.vv-sidebar {
+  background: linear-gradient(180deg, rgba(8,16,8,0.9), rgba(4,8,4,0.95)) !important;
+  border-color: rgba(57,255,20,0.1) !important;
+}
+
+/* ── 6. INPUTS / SEARCH ─────────────────────────────────────── */
+input, textarea, select,
+.vv-tb-search input {
+  background: rgba(255,255,255,0.04) !important;
+  color: #fff !important;
+  border-color: rgba(57,255,20,0.15) !important;
+}
+input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.35) !important; }
+
+/* ── 7. PILLS / TABS / NAV ──────────────────────────────────── */
+.vv-sp, .vv-sport-tab, .vv-nb {
+  background: rgba(255,255,255,0.04) !important;
+  color: rgba(255,255,255,0.6) !important;
+  border-color: rgba(57,255,20,0.12) !important;
+}
+.vv-sp.on, .vv-sport-tab.on, .vv-nb.on, .vv-nb.active {
+  background: #39FF14 !important;
+  color: #031003 !important;
+  border-color: #39FF14 !important;
+}
+.vv-nb:hover { background: rgba(57,255,20,0.08) !important; }
+
+/* ── 8. AUTH GATE (login screen) → dark ─────────────────────── */
+[style*="rgba(246,249,246"] {
+  background: rgba(3,6,3,0.97) !important;
+}
+
+/* ── 9. SCRIM / DRAWER OVERLAYS ─────────────────────────────── */
+.vv-scrim { background: rgba(0,0,0,0.6) !important; }
+
+/* ── 10. DIVIDERS / HAIRLINES on light borders ──────────────── */
+[style*="rgba(0,0,0,0.05)"], [style*="rgba(0,0,0,0.07)"],
+[style*="rgba(0,0,0,0.06)"], [style*="rgba(0,0,0,0.08)"] {
+  border-color: rgba(57,255,20,0.08) !important;
+}
+
+/* ── 11. KEEP STATUS COLORS READABLE ON DARK ────────────────── */
+[style*="#dd4444"], [style*="#ff5050"] { color: #ff6b6b !important; }
+[style*="#5588ee"] { color: #6ba3ff !important; }
+
+/* ── 12. SCROLLBARS ─────────────────────────────────────────── */
+*::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); }
