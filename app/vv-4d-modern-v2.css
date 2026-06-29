@@ -1,0 +1,314 @@
+/* ============================================================
+   VEGAS VAULT AI — 4D MODERN v2 (2026 PREMIUM POLISH)
+   Branch: 4d-modern-v2-preview
+   ────────────────────────────────────────────────────────
+   PURELY ADDITIVE. Loads AFTER vv-4d-modern.css.
+   Same colors (#39FF14 battery green, white AI-OS surfaces),
+   same dashboard, same layout, same everything functional.
+   This layer ONLY deepens material quality: finer light,
+   richer depth, more tactile motion, sharper rendering.
+   It changes nothing structural — no new components, no
+   moved elements, no color changes. Pure surface craft.
+   ============================================================ */
+
+/* ── GLOBAL RENDERING QUALITY: crisper type, smoother everything ── */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* ── REFINED DEPTH SYSTEM v2 — more believable light physics ──
+   Real surfaces have: ambient occlusion (soft far shadow),
+   contact shadow (tight near shadow), a key-light top highlight,
+   and a faint bounce-light bottom edge. We layer all four. */
+:root {
+  --vv4d2-surface:
+    0 0.5px 1px rgba(12,28,12,0.03),
+    0 2px 4px rgba(12,28,12,0.04),
+    0 6px 14px rgba(12,28,12,0.04),
+    0 14px 36px rgba(12,28,12,0.05),
+    inset 0 1px 0 rgba(255,255,255,0.95),
+    inset 0 -1px 0 rgba(57,255,20,0.02);
+  --vv4d2-surface-raised:
+    0 1px 2px rgba(12,28,12,0.04),
+    0 4px 8px rgba(12,28,12,0.05),
+    0 12px 28px rgba(12,28,12,0.06),
+    0 24px 60px rgba(12,28,12,0.07),
+    inset 0 1px 0 rgba(255,255,255,1),
+    inset 0 -1px 0 rgba(57,255,20,0.03);
+  --vv4d2-green-aura:
+    0 2px 6px rgba(57,255,20,0.10),
+    0 10px 28px rgba(57,255,20,0.10),
+    0 24px 64px rgba(57,255,20,0.08),
+    inset 0 1px 0 rgba(255,255,255,1),
+    inset 0 0 0 1px rgba(57,255,20,0.06);
+  --vv4d2-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --vv4d2-ease-out: cubic-bezier(0.33, 1, 0.68, 1);
+}
+
+/* ── GLASS SURFACES v2: richer blur, finer edge bevel ──
+   Pushes the frosted depth a touch further and adds a subtle
+   saturation lift so the green reads as luminous, not flat. */
+.vv-glass,
+.vv-glass-g {
+  backdrop-filter: blur(32px) saturate(1.7) brightness(1.02) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(1.7) brightness(1.02) !important;
+  box-shadow: var(--vv4d2-surface) !important;
+  transition:
+    box-shadow 0.5s var(--vv4d2-ease),
+    transform 0.5s var(--vv4d2-ease),
+    border-color 0.5s var(--vv4d2-ease) !important;
+}
+.vv-glass-g {
+  box-shadow: var(--vv4d2-green-aura) !important;
+}
+
+/* Hover: float higher with a soft green ground-glow blooming underneath */
+.vv-glass:hover {
+  box-shadow: var(--vv4d2-surface-raised) !important;
+  transform: translateY(-3px) scale(1.004);
+}
+.vv-glass-g:hover {
+  box-shadow: var(--vv4d2-green-aura), 0 30px 70px rgba(57,255,20,0.12) !important;
+  transform: translateY(-3px) scale(1.004);
+}
+
+/* ── GAME CARDS: a faint diagonal sheen that shifts on hover ──
+   Reads like light raking across a glossy surface = real 4D cue. */
+.vv-glass::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    rgba(255,255,255,0) 0%,
+    rgba(255,255,255,0.04) 38%,
+    rgba(255,255,255,0.10) 48%,
+    rgba(255,255,255,0.04) 58%,
+    rgba(255,255,255,0) 100%
+  );
+  background-size: 250% 250%;
+  background-position: 100% 100%;
+  opacity: 0;
+  transition: opacity 0.6s var(--vv4d2-ease), background-position 0.9s var(--vv4d2-ease);
+  pointer-events: none;
+  z-index: 2;
+}
+.vv-glass:hover::after {
+  opacity: 1;
+  background-position: 0% 0%;
+}
+
+/* ── TOPBAR v2: deeper frost, hairline luminous base edge ── */
+.vv-topbar {
+  backdrop-filter: blur(30px) saturate(1.8) brightness(1.03) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(1.8) brightness(1.03) !important;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.7),
+    0 1px 1px rgba(57,255,20,0.04),
+    0 6px 30px rgba(12,28,12,0.06) !important;
+}
+
+/* ── SIDEBAR v2: subtle depth gradient + luminous right edge ── */
+.vv-sidebar {
+  box-shadow:
+    inset -1px 0 0 rgba(255,255,255,0.6),
+    inset -2px 0 0 rgba(57,255,20,0.03),
+    3px 0 28px rgba(12,28,12,0.04) !important;
+}
+
+/* ── PILL / SPORT TABS v2: springier press, deeper active glow ── */
+.vv-sp {
+  transition:
+    background 0.3s var(--vv4d2-ease),
+    color 0.3s var(--vv4d2-ease),
+    box-shadow 0.3s var(--vv4d2-ease),
+    transform 0.22s var(--vv4d2-ease) !important;
+}
+.vv-sp:hover { transform: translateY(-1.5px); }
+.vv-sp:active { transform: translateY(0) scale(0.96); }
+.vv-sp.on {
+  box-shadow:
+    0 2px 10px rgba(57,255,20,0.4),
+    0 8px 24px rgba(57,255,20,0.22),
+    0 1px 0 rgba(255,255,255,0.5) inset,
+    0 0 0 0.5px rgba(57,255,20,0.3) !important;
+}
+
+/* ── NAV ITEMS v2: glide + faint trailing glow on active ── */
+.vv-nav-item,
+.vv-sb-nav-item {
+  transition:
+    background 0.3s var(--vv4d2-ease),
+    color 0.3s var(--vv4d2-ease),
+    transform 0.24s var(--vv4d2-ease),
+    box-shadow 0.3s var(--vv4d2-ease) !important;
+  position: relative;
+}
+.vv-nav-item:hover,
+.vv-sb-nav-item:hover {
+  transform: translateX(3px);
+}
+.vv-nav-item.active,
+.vv-sb-nav-item.active,
+.vv-nav-item[class*="on"],
+.vv-sb-nav-item[class*="on"] {
+  box-shadow:
+    inset 2px 0 0 #39FF14,
+    0 2px 12px rgba(57,255,20,0.10) !important;
+}
+
+/* ── BADGES, CHIPS, TIER PILLS v2: lift higher, micro-bloom ── */
+.vv-tbi {
+  transition: transform 0.26s var(--vv4d2-ease), box-shadow 0.26s var(--vv4d2-ease), filter 0.26s var(--vv4d2-ease) !important;
+}
+.vv-tbi:hover {
+  transform: translateY(-1.5px) scale(1.06);
+  filter: saturate(1.15) brightness(1.04);
+}
+
+/* Tier / slot tags get a crisper inner bevel */
+.vv-tier-tag, .vv-slot-tag, .vv-tag {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.4),
+    0 1px 3px rgba(12,28,12,0.08) !important;
+}
+
+/* ── BUTTONS v2: more tactile, with a light spring on release ── */
+button {
+  transition:
+    transform 0.18s var(--vv4d2-ease-out),
+    box-shadow 0.26s var(--vv4d2-ease),
+    filter 0.26s var(--vv4d2-ease) !important;
+}
+button:hover { filter: brightness(1.03) saturate(1.06); }
+button:active { transform: scale(0.97); }
+
+/* ── PRIMARY GREEN BUTTONS: luminous depth ──
+   Targets the battery-green CTA fills already in the UI. */
+button[style*="39FF14"],
+button[style*="39ff14"] {
+  box-shadow:
+    0 2px 8px rgba(57,255,20,0.3),
+    0 6px 18px rgba(57,255,20,0.18),
+    inset 0 1px 0 rgba(255,255,255,0.5) !important;
+}
+button[style*="39FF14"]:hover,
+button[style*="39ff14"]:hover {
+  box-shadow:
+    0 3px 12px rgba(57,255,20,0.42),
+    0 10px 28px rgba(57,255,20,0.26),
+    inset 0 1px 0 rgba(255,255,255,0.6) !important;
+}
+
+/* ── AMBIENT BACKGROUND v2: dual aura for richer atmospheric depth ──
+   A second, slower aura on the opposite side adds parallax-like
+   depth without touching layout. Both are behind all content. */
+.vv-root::before {
+  content: '';
+  position: fixed;
+  bottom: -25%;
+  left: -12%;
+  width: 55vw;
+  height: 55vw;
+  max-width: 760px;
+  max-height: 760px;
+  background: radial-gradient(circle, rgba(57,255,20,0.035) 0%, rgba(57,255,20,0) 68%);
+  pointer-events: none;
+  z-index: 0;
+  animation: vv4d2-aura-b 19s ease-in-out infinite alternate;
+}
+@keyframes vv4d2-aura-b {
+  0%   { transform: translate(0,0) scale(1); opacity: 0.6; }
+  100% { transform: translate(5%,-4%) scale(1.15); opacity: 0.9; }
+}
+
+/* ── LOGO MARK v2: richer floating drop, gentle breathing ── */
+.vv-sb-brand img {
+  filter: drop-shadow(0 6px 16px rgba(57,255,20,0.16)) drop-shadow(0 2px 4px rgba(12,28,12,0.08));
+  animation: vv4d2-float 6s ease-in-out infinite;
+}
+@keyframes vv4d2-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-2px); }
+}
+
+/* ── STAT NUMBERS / BIG FIGURES: subtle depth on the hero metrics ──
+   Gives the big percentage/figure displays a faint engraved feel. */
+.vv-ss-val, .vv-dc-v, .vv-em-v, .vv-anm-v {
+  text-shadow: 0 1px 0 rgba(255,255,255,0.6);
+}
+
+/* ── ODDS TILES / SPORTSBOOK CHIPS: tactile depth ──
+   Common odds-tile class patterns get a soft pressed-in surface. */
+[class*="odds"], [class*="book"], [class*="tile"] {
+  transition: transform 0.22s var(--vv4d2-ease), box-shadow 0.22s var(--vv4d2-ease) !important;
+}
+[class*="odds"]:hover, [class*="book"]:hover, [class*="tile"]:hover {
+  transform: translateY(-1px);
+}
+
+/* ── ENTRANCE MOTION v2: cards rise with a gentler, longer settle ── */
+@keyframes vv4d2-rise {
+  from { opacity: 0; transform: translateY(10px) scale(0.992); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.vv-game-grid > * {
+  animation: vv4d2-rise 0.6s var(--vv4d2-ease) both;
+}
+
+/* ── SCROLLBAR v2: slimmer, glassier, glows on hover ── */
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(57,255,20,0.4), rgba(34,204,0,0.28));
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background 0.3s ease;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(57,255,20,0.65), rgba(34,204,0,0.45));
+  background-clip: padding-box;
+}
+
+/* ── MODAL OVERLAY v2: deeper cinematic backdrop ── */
+.vv-modal-backdrop,
+[class*="modal-backdrop"] {
+  backdrop-filter: blur(12px) saturate(1.3) brightness(0.96) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(1.3) brightness(0.96) !important;
+}
+
+/* ── FOCUS VISIBILITY (accessibility floor) ── */
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid rgba(57,255,20,0.7);
+  outline-offset: 2px;
+}
+
+/* ── RESPECT REDUCED MOTION ── */
+@media (prefers-reduced-motion: reduce) {
+  .vv-root::before,
+  .vv-sb-brand img,
+  .vv-game-grid > * {
+    animation: none !important;
+  }
+  .vv-glass,
+  .vv-glass-g,
+  .vv-glass:hover,
+  .vv-glass-g:hover,
+  .vv-glass::after,
+  .vv-sp,
+  .vv-nav-item,
+  .vv-sb-nav-item,
+  .vv-tbi,
+  button,
+  [class*="odds"],
+  [class*="book"],
+  [class*="tile"] {
+    transition: none !important;
+    transform: none !important;
+  }
+}
