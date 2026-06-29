@@ -1182,6 +1182,17 @@ export default function VegasVaultApp() {
   // Keep saveStateRef current on every render — no dep array needed, runs every render cheaply
   useEffect(() => { saveStateRef.current = { results, finalized, watchlist, pickHistory, altPicks }; });
   const [showAuth, setShowAuth]         = useState(false);
+  const [authChecked, setAuthChecked]   = useState(false);
+
+  // Once the session check completes and there's NO user, send them to the
+  // public landing page (the old in-app auth gate is retired — sign-in now
+  // lives at /signin and /join). This runs only after authChecked so we never
+  // bounce a logged-in user before their session finishes loading.
+  useEffect(() => {
+    if (authChecked && !authUser) {
+      try { window.location.href = '/'; } catch(e) {}
+    }
+  }, [authChecked, authUser]);
   const [authMode, setAuthMode]         = useState('login');
   const [authEmail, setAuthEmail]       = useState('');
   const [authPw, setAuthPw]             = useState('');
@@ -1252,6 +1263,7 @@ export default function VegasVaultApp() {
           setPickHistory(rawHist.filter(e => { if (seenKeys.has(e.key)) return false; seenKeys.add(e.key); return true; }));
         }
         setSyncedDataReady(true);
+        setAuthChecked(true);
       });
       const { data: { subscription } } = sb.auth.onAuthStateChange(async (_e, session) => {
         if (session?.user) {
@@ -3109,78 +3121,15 @@ export default function VegasVaultApp() {
         }
       `}</style>
 
-      {/* ── AUTH GATE ── */}
-      {!authUser && (
-        <div style={{ position:'fixed',inset:0,zIndex:9999,background:'rgba(246,249,246,0.97)',backdropFilter:'blur(20px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
-          <div style={{ background:'rgba(255,255,255,0.9)',border:'1px solid rgba(57,255,20,0.3)',borderRadius:20,width:'100%',maxWidth:420,padding:'32px 28px',boxShadow:'0 20px 60px rgba(0,0,0,0.1)' }}>
-            <div style={{ textAlign:'center',marginBottom:24 }}>
-              <img
-                src="/vv-logo-horizontal.svg"
-                alt="Vegas Vault AI"
-                style={{ width:200, height:'auto', margin:'0 auto 8px', display:'block' }}
-              />
-            </div>
-            {authMode === 'confirm' ? (
-              <>
-                <div style={{ fontSize:18,fontWeight:800,color:'#111',textAlign:'center',marginBottom:4 }}>Check your email</div>
-                <div style={{ fontSize:11,color:'#aaa',textAlign:'center',marginBottom:20,lineHeight:1.6 }}>
-                  We sent a confirmation link to <b style={{ color:'#444' }}>{authEmail}</b>. Click the link to verify your account, then log in below to choose your plan.
-                </div>
-                <button onClick={()=>{ setAuthMode('login'); setAuthPw(''); }}
-                  style={{ width:'100%',padding:13,borderRadius:11,background:'linear-gradient(135deg,#39FF14,#22cc00)',border:'none',fontFamily:'inherit',fontSize:13,fontWeight:800,color:'#111',cursor:'pointer',boxShadow:'0 4px 16px rgba(57,255,20,0.35)' }}>
-                  Go to Login →
-                </button>
-              </>
-            ) : (
-            <>
-            <div style={{ fontSize:18,fontWeight:800,color:'#111',textAlign:'center',marginBottom:4 }}>{authMode==='signup' ? 'Create your account' : 'Welcome back'}</div>
-            <div style={{ fontSize:11,color:'#aaa',textAlign:'center',marginBottom:20 }}>{authMode==='signup' ? 'Sign up to access your AI sports intelligence platform' : 'Sign in to access your AI sports intelligence platform'}</div>
-            {authMode==='signup' && (
-              <div style={{ marginBottom:12 }}>
-                <div style={{ fontSize:9,textTransform:'uppercase',letterSpacing:'0.6px',color:'#aaa',marginBottom:5,fontWeight:600 }}>Full Name</div>
-                <div style={{ display:'flex',alignItems:'center',gap:8,border:'1px solid rgba(0,0,0,0.08)',borderRadius:10,padding:'11px 13px',background:'rgba(255,255,255,0.8)' }}>
-                  <i className="ti ti-user" style={{ fontSize:15,color:'#bbb' }} />
-                  <input type="text" value={authFullName} onChange={e=>setAuthFullName(e.target.value)} placeholder="Your name"
-                    style={{ flex:1,border:'none',background:'transparent',fontSize:12,color:'#333',outline:'none',fontFamily:'inherit' }}
-                    onKeyDown={e=>e.key==='Enter'&&doAuth()} />
-                </div>
-              </div>
-            )}
-            <div style={{ marginBottom:12 }}>
-              <div style={{ fontSize:9,textTransform:'uppercase',letterSpacing:'0.6px',color:'#aaa',marginBottom:5,fontWeight:600 }}>Email</div>
-              <div style={{ display:'flex',alignItems:'center',gap:8,border:'1px solid rgba(0,0,0,0.08)',borderRadius:10,padding:'11px 13px',background:'rgba(255,255,255,0.8)' }}>
-                <i className="ti ti-mail" style={{ fontSize:15,color:'#bbb' }} />
-                <input type="email" value={authEmail} onChange={e=>setAuthEmail(e.target.value)} placeholder="you@email.com"
-                  style={{ flex:1,border:'none',background:'transparent',fontSize:12,color:'#333',outline:'none',fontFamily:'inherit' }}
-                  onKeyDown={e=>e.key==='Enter'&&doAuth()} />
-              </div>
-            </div>
-            <div style={{ marginBottom:16 }}>
-              <div style={{ fontSize:9,textTransform:'uppercase',letterSpacing:'0.6px',color:'#aaa',marginBottom:5,fontWeight:600 }}>Password</div>
-              <div style={{ display:'flex',alignItems:'center',gap:8,border:'1px solid rgba(0,0,0,0.08)',borderRadius:10,padding:'11px 13px',background:'rgba(255,255,255,0.8)' }}>
-                <i className="ti ti-lock" style={{ fontSize:15,color:'#bbb' }} />
-                <input type={showPw?'text':'password'} value={authPw} onChange={e=>setAuthPw(e.target.value)} placeholder="••••••••"
-                  style={{ flex:1,border:'none',background:'transparent',fontSize:12,color:'#333',outline:'none',fontFamily:'inherit' }}
-                  onKeyDown={e=>e.key==='Enter'&&doAuth()} />
-                <span onClick={()=>setShowPw(p=>!p)} style={{ cursor:'pointer',fontSize:15,color:'#bbb' }}>
-                  <i className={showPw?'ti ti-eye-off':'ti ti-eye'} />
-                </span>
-              </div>
-            </div>
-            {authError && <div style={{ fontSize:11,color:'#dd4444',background:'rgba(255,80,80,0.08)',border:'1px solid rgba(255,80,80,0.2)',borderRadius:8,padding:'8px 12px',marginBottom:12,textAlign:'center' }}>{authError}</div>}
-            <button onClick={doAuth} disabled={authLoading}
-              style={{ width:'100%',padding:13,borderRadius:11,background:'linear-gradient(135deg,#39FF14,#22cc00)',border:'none',fontFamily:'inherit',fontSize:13,fontWeight:800,color:'#111',cursor:authLoading?'wait':'pointer',boxShadow:'0 4px 16px rgba(57,255,20,0.35)',marginBottom:12 }}>
-              {authLoading ? (authMode==='signup' ? 'Creating account...' : 'Signing in...') : (authMode==='signup' ? 'Create Account →' : 'Log In to Vault →')}
-            </button>
-            <div style={{ textAlign:'center',fontSize:11,color:'#aaa' }}>
-              {authMode==='login' ? "Don't have an account? " : "Already have an account? "}{' '}
-              <span onClick={()=>setAuthMode(authMode==='login'?'signup':'login')} style={{ color:'#33aa00',fontWeight:700,cursor:'pointer' }}>
-                {authMode==='login'?'Sign up':'Sign in'}
-              </span>
-            </div>
-            </>
-            )}
-          </div>
+      {/* ── AUTH GATE (retired) ──
+          The in-app login screen has been removed. Sign-in now lives on the
+          public landing page (/), with dedicated /signin and /join pages.
+          Unauthenticated users are redirected to / by the effect above; while
+          that redirect happens we show a brief dark loader so the old light
+          login form never flashes. */}
+      {authChecked && !authUser && (
+        <div style={{ position:'fixed',inset:0,zIndex:9999,background:'#030603',display:'flex',alignItems:'center',justifyContent:'center' }}>
+          <div style={{ width:34,height:34,border:'3px solid rgba(57,255,20,0.2)',borderTopColor:'#39FF14',borderRadius:'50%',animation:'spin 0.8s linear infinite' }} />
         </div>
       )}
 
