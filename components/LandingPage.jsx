@@ -20,11 +20,14 @@ export default function LandingPage() {
   const [checking, setChecking] = useState(true);
 
   // If already signed in, skip the landing page and go to the dashboard.
+  // EXCEPTION: ?preview in the URL lets you view the landing page while
+  // signed in (for reviewing the design before it goes live).
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
-        if (supabase) {
+        const isPreview = typeof window !== 'undefined' && window.location.search.includes('preview');
+        if (!isPreview && supabase) {
           const { data } = await supabase.auth.getSession();
           if (alive && data?.session?.user) { router.replace('/dashboard'); return; }
         }
