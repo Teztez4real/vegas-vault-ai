@@ -62,7 +62,7 @@ export default function LandingPage() {
         </div>
         <div className="vv-nav-links" style={{ display:'flex', alignItems:'center', gap:'clamp(14px,2vw,30px)' }}>
           {['Pricing','How It Works','Results','FAQ'].map(l => (
-            <span key={l} onClick={()=>go('/dashboard')} style={{ fontSize:14, fontWeight:600, color:'rgba(255,255,255,0.7)', cursor:'pointer', whiteSpace:'nowrap' }}
+            <span key={l} onClick={()=>{ if(l==='How It Works'){ document.getElementById('how-it-works')?.scrollIntoView({behavior:'smooth'}); } else { go('/dashboard'); } }} style={{ fontSize:14, fontWeight:600, color:'rgba(255,255,255,0.7)', cursor:'pointer', whiteSpace:'nowrap' }}
               onMouseEnter={e=>e.currentTarget.style.color='#fff'} onMouseLeave={e=>e.currentTarget.style.color='rgba(255,255,255,0.7)'}>{l}</span>
           ))}
           <button onClick={()=>go('/dashboard')} style={{ fontSize:14, fontWeight:600, color:'rgba(255,255,255,0.85)', background:'transparent', border:'none', cursor:'pointer' }}>Sign In</button>
@@ -130,7 +130,7 @@ export default function LandingPage() {
             <button onClick={()=>go('/dashboard')} style={{ display:'flex', alignItems:'center', gap:9, fontSize:16, fontWeight:800, color:'#031003', background:`linear-gradient(135deg,${GREEN},#2ad400)`, border:'none', borderRadius:14, padding:'17px 34px', cursor:'pointer', boxShadow:`0 6px 24px rgba(57,255,20,0.4)`, fontFamily:'inherit', textTransform:'uppercase', letterSpacing:'0.5px' }}>
               Start Winning <i className="ti ti-flame" style={{ fontSize:17 }} />
             </button>
-            <button onClick={()=>go('/dashboard')} style={{ fontSize:16, fontWeight:700, color:'#fff', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.14)', borderRadius:14, padding:'17px 30px', cursor:'pointer', fontFamily:'inherit' }}>
+            <button onClick={()=>document.getElementById('how-it-works')?.scrollIntoView({behavior:'smooth'})} style={{ fontSize:16, fontWeight:700, color:'#fff', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.14)', borderRadius:14, padding:'17px 30px', cursor:'pointer', fontFamily:'inherit' }}>
               See How It Works
             </button>
           </div>
@@ -183,6 +183,61 @@ export default function LandingPage() {
         </div>
       </div>
 
+      {/* ── HOW IT WORKS ── */}
+      <div id="how-it-works" style={{ position:'relative', zIndex:5, maxWidth:1240, margin:'0 auto', padding:'clamp(48px,7vw,96px) clamp(16px,4vw,56px)' }}>
+        {/* section header */}
+        <div style={{ textAlign:'center', marginBottom:'clamp(40px,5vw,64px)' }}>
+          <div style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'7px 15px', borderRadius:30, border:`1px solid rgba(57,255,20,0.22)`, background:'rgba(57,255,20,0.05)', marginBottom:20 }}>
+            <i className="ti ti-route" style={{ fontSize:14, color:GREEN }} />
+            <span style={{ fontSize:12, fontWeight:800, letterSpacing:'1.5px', color:'rgba(255,255,255,0.8)' }}>HOW IT WORKS</span>
+          </div>
+          <h2 style={{ fontSize:'clamp(30px,4.4vw,56px)', fontWeight:900, lineHeight:1.05, letterSpacing:'-0.02em', margin:'0 0 16px', textTransform:'uppercase' }}>
+            <span style={{ color:'#fff' }}>From Slate to </span>
+            <span style={{ background:`linear-gradient(135deg,${GREEN},#8fff6e,#22cc00)`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text', filter:`drop-shadow(0 0 24px rgba(57,255,20,0.3))` }}>Locked Play.</span>
+          </h2>
+          <p style={{ fontSize:'clamp(15px,1.7vw,18px)', color:'rgba(255,255,255,0.6)', maxWidth:600, margin:'0 auto', lineHeight:1.6 }}>
+            The model works the entire board like a professional bettor — refining all day, then locking the play the moment everything's confirmed.
+          </p>
+        </div>
+
+        {/* steps */}
+        <div className="vv-steps" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:18 }}>
+          {[
+            { n:'01', ic:'ti-database', t:'Pull The Data', d:'Live odds, confirmed lineups, pitching matchups, bullpen usage, injuries, weather, park factors, and DraftKings line movement — pulled for every game on the board.' },
+            { n:'02', ic:'ti-brain', t:'Find The Edge', d:'A 4-stage AI model cross-references every signal to find where the market misrepresents reality — the gap between what should happen and what the line says.' },
+            { n:'03', ic:'ti-shield-check', t:'Align & Verify', d:'A 10-point alignment check flags anything that doesn\'t line up. The play only stands when line movement, pricing, data, and narrative all agree.' },
+            { n:'04', ic:'ti-lock', t:'Lock It In', d:'Plays auto-update all day as news breaks, then lock the moment the game starts. You get one clear play with a clear edge — and an alert when it\'s confirmed.' },
+          ].map((s,i) => (
+            <div key={s.n} className="vv-step-card" style={{
+              position:'relative',
+              background:'linear-gradient(160deg,rgba(18,32,18,0.7),rgba(6,12,6,0.85))',
+              border:'1px solid rgba(57,255,20,0.14)',
+              borderRadius:18, padding:'26px 22px',
+              boxShadow:'0 20px 50px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)',
+            }}>
+              {/* step number watermark */}
+              <div style={{ position:'absolute', top:16, right:18, fontSize:34, fontWeight:900, color:'rgba(57,255,20,0.1)', lineHeight:1 }}>{s.n}</div>
+              {/* icon */}
+              <div style={{ width:50, height:50, borderRadius:14, background:'linear-gradient(145deg,rgba(57,255,20,0.12),rgba(34,204,0,0.05))', border:`1px solid rgba(57,255,20,0.25)`, display:'flex', alignItems:'center', justifyContent:'center', marginBottom:18 }}>
+                <i className={`ti ${s.ic}`} style={{ fontSize:24, color:GREEN }} />
+              </div>
+              <div style={{ fontSize:18, fontWeight:800, color:'#fff', marginBottom:10 }}>{s.t}</div>
+              <div style={{ fontSize:13.5, lineHeight:1.6, color:'rgba(255,255,255,0.58)' }}>{s.d}</div>
+              {/* connector line (desktop only, between cards) */}
+              {i < 3 && <div className="vv-step-connector" style={{ position:'absolute', top:'50%', right:-18, width:18, height:2, background:'linear-gradient(90deg,rgba(57,255,20,0.4),rgba(57,255,20,0))', zIndex:6 }} />}
+            </div>
+          ))}
+        </div>
+
+        {/* CTA below steps */}
+        <div style={{ textAlign:'center', marginTop:'clamp(36px,4vw,56px)' }}>
+          <button onClick={()=>go('/dashboard')} style={{ display:'inline-flex', alignItems:'center', gap:9, fontSize:16, fontWeight:800, color:'#031003', background:`linear-gradient(135deg,${GREEN},#2ad400)`, border:'none', borderRadius:14, padding:'16px 34px', cursor:'pointer', boxShadow:`0 6px 24px rgba(57,255,20,0.4)`, fontFamily:'inherit', textTransform:'uppercase', letterSpacing:'0.5px' }}>
+            Get Today's Plays <i className="ti ti-arrow-right" style={{ fontSize:17 }} />
+          </button>
+          <div style={{ fontSize:13, color:'rgba(255,255,255,0.4)', marginTop:14 }}>$19.99 to start · Cancel anytime</div>
+        </div>
+      </div>
+
       {/* responsive + animations */}
       <style>{`
         @keyframes vvticker { from{transform:translateX(0)} to{transform:translateX(-50%)} }
@@ -191,6 +246,11 @@ export default function LandingPage() {
           .vv-hero { grid-template-columns: 1fr !important; }
           .vv-hero-cards { min-height: 460px !important; margin-top: 12px; }
           .vv-nav-links span:not(:last-child) { display:none !important; }
+          .vv-steps { grid-template-columns: 1fr 1fr !important; }
+          .vv-step-connector { display:none !important; }
+        }
+        @media (max-width: 560px) {
+          .vv-steps { grid-template-columns: 1fr !important; }
         }
       `}</style>
     </div>
