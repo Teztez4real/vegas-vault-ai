@@ -1439,6 +1439,8 @@ export default function VegasVaultApp() {
     localStorage.removeItem('vv_watchlist'); localStorage.removeItem('vv_pick_history');
     localStorage.removeItem('vv_alt_picks');
     setIsSubscribed(false); setResults({}); setFinalized({}); setWatchlist([]); setPickHistory([]);
+    // Redirect to the public landing page after sign out
+    try { window.location.href = '/'; } catch(e) {}
   }
 
   async function doSubscribe(plan) {

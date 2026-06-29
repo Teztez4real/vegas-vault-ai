@@ -66,8 +66,8 @@ export default function LandingPage() {
             <span key={l} onClick={()=>{ if(l==='How It Works'){ document.getElementById('how-it-works')?.scrollIntoView({behavior:'smooth'}); } else if(l==='Pricing'){ document.getElementById('pricing')?.scrollIntoView({behavior:'smooth'}); } else if(l==='FAQ'){ document.getElementById('faq')?.scrollIntoView({behavior:'smooth'}); } else { go('/dashboard'); } }} style={{ fontSize:14, fontWeight:600, color:'rgba(255,255,255,0.7)', cursor:'pointer', whiteSpace:'nowrap' }}
               onMouseEnter={e=>e.currentTarget.style.color='#fff'} onMouseLeave={e=>e.currentTarget.style.color='rgba(255,255,255,0.7)'}>{l}</span>
           ))}
-          <button onClick={()=>go('/dashboard')} style={{ fontSize:14, fontWeight:600, color:'rgba(255,255,255,0.85)', background:'transparent', border:'none', cursor:'pointer' }}>Sign In</button>
-          <button onClick={()=>go('/dashboard')} style={{ display:'flex', alignItems:'center', gap:7, fontSize:14, fontWeight:800, color:'#031003', background:`linear-gradient(135deg,${GREEN},#2ad400)`, border:'none', borderRadius:30, padding:'11px 22px', cursor:'pointer', boxShadow:`0 4px 18px rgba(57,255,20,0.35)`, fontFamily:'inherit' }}>
+          <button onClick={()=>go('/signin')} style={{ fontSize:14, fontWeight:600, color:'rgba(255,255,255,0.85)', background:'transparent', border:'none', cursor:'pointer' }}>Sign In</button>
+          <button onClick={()=>go('/join')} style={{ display:'flex', alignItems:'center', gap:7, fontSize:14, fontWeight:800, color:'#031003', background:`linear-gradient(135deg,${GREEN},#2ad400)`, border:'none', borderRadius:30, padding:'11px 22px', cursor:'pointer', boxShadow:`0 4px 18px rgba(57,255,20,0.35)`, fontFamily:'inherit' }}>
             Join Now <span style={{ fontSize:16 }}>›</span>
           </button>
         </div>
@@ -128,7 +128,7 @@ export default function LandingPage() {
 
           {/* CTAs */}
           <div style={{ display:'flex', flexWrap:'wrap', gap:14 }}>
-            <button onClick={()=>go('/dashboard')} style={{ display:'flex', alignItems:'center', gap:9, fontSize:16, fontWeight:800, color:'#031003', background:`linear-gradient(135deg,${GREEN},#2ad400)`, border:'none', borderRadius:14, padding:'17px 34px', cursor:'pointer', boxShadow:`0 6px 24px rgba(57,255,20,0.4)`, fontFamily:'inherit', textTransform:'uppercase', letterSpacing:'0.5px' }}>
+            <button onClick={()=>go('/join')} style={{ display:'flex', alignItems:'center', gap:9, fontSize:16, fontWeight:800, color:'#031003', background:`linear-gradient(135deg,${GREEN},#2ad400)`, border:'none', borderRadius:14, padding:'17px 34px', cursor:'pointer', boxShadow:`0 6px 24px rgba(57,255,20,0.4)`, fontFamily:'inherit', textTransform:'uppercase', letterSpacing:'0.5px' }}>
               Start Winning <i className="ti ti-flame" style={{ fontSize:17 }} />
             </button>
             <button onClick={()=>document.getElementById('how-it-works')?.scrollIntoView({behavior:'smooth'})} style={{ fontSize:16, fontWeight:700, color:'#fff', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.14)', borderRadius:14, padding:'17px 30px', cursor:'pointer', fontFamily:'inherit' }}>
@@ -232,7 +232,7 @@ export default function LandingPage() {
 
         {/* CTA below steps */}
         <div style={{ textAlign:'center', marginTop:'clamp(36px,4vw,56px)' }}>
-          <button onClick={()=>go('/dashboard')} style={{ display:'inline-flex', alignItems:'center', gap:9, fontSize:16, fontWeight:800, color:'#031003', background:`linear-gradient(135deg,${GREEN},#2ad400)`, border:'none', borderRadius:14, padding:'16px 34px', cursor:'pointer', boxShadow:`0 6px 24px rgba(57,255,20,0.4)`, fontFamily:'inherit', textTransform:'uppercase', letterSpacing:'0.5px' }}>
+          <button onClick={()=>go('/join')} style={{ display:'inline-flex', alignItems:'center', gap:9, fontSize:16, fontWeight:800, color:'#031003', background:`linear-gradient(135deg,${GREEN},#2ad400)`, border:'none', borderRadius:14, padding:'16px 34px', cursor:'pointer', boxShadow:`0 6px 24px rgba(57,255,20,0.4)`, fontFamily:'inherit', textTransform:'uppercase', letterSpacing:'0.5px' }}>
             Get Today's Plays <i className="ti ti-arrow-right" style={{ fontSize:17 }} />
           </button>
           <div style={{ fontSize:13, color:'rgba(255,255,255,0.4)', marginTop:14 }}>$19.99 to start · Cancel anytime</div>
@@ -279,7 +279,7 @@ export default function LandingPage() {
                 </div>
               ))}
             </div>
-            <button onClick={()=>go('/dashboard')} style={{ width:'100%', fontSize:15, fontWeight:800, color:'#fff', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.16)', borderRadius:13, padding:'15px', cursor:'pointer', fontFamily:'inherit' }}>
+            <button onClick={()=>go('/join')} style={{ width:'100%', fontSize:15, fontWeight:800, color:'#fff', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.16)', borderRadius:13, padding:'15px', cursor:'pointer', fontFamily:'inherit' }}>
               Start Weekly
             </button>
           </div>
@@ -309,7 +309,7 @@ export default function LandingPage() {
                 </div>
               ))}
             </div>
-            <button onClick={()=>go('/dashboard')} style={{ width:'100%', fontSize:15, fontWeight:900, color:'#031003', background:`linear-gradient(135deg,${GREEN},#2ad400)`, border:'none', borderRadius:13, padding:'15px', cursor:'pointer', fontFamily:'inherit', boxShadow:`0 6px 22px rgba(57,255,20,0.4)`, textTransform:'uppercase', letterSpacing:'0.5px' }}>
+            <button onClick={()=>go('/join')} style={{ width:'100%', fontSize:15, fontWeight:900, color:'#031003', background:`linear-gradient(135deg,${GREEN},#2ad400)`, border:'none', borderRadius:13, padding:'15px', cursor:'pointer', fontFamily:'inherit', boxShadow:`0 6px 22px rgba(57,255,20,0.4)`, textTransform:'uppercase', letterSpacing:'0.5px' }}>
               Get Full Access
             </button>
           </div>
@@ -373,7 +373,7 @@ export default function LandingPage() {
         {/* final CTA */}
         <div style={{ textAlign:'center', marginTop:'clamp(40px,5vw,60px)' }}>
           <div style={{ fontSize:'clamp(18px,2.2vw,24px)', fontWeight:800, color:'#fff', marginBottom:18 }}>Ready to beat the line?</div>
-          <button onClick={()=>go('/dashboard')} style={{ display:'inline-flex', alignItems:'center', gap:9, fontSize:16, fontWeight:800, color:'#031003', background:`linear-gradient(135deg,${GREEN},#2ad400)`, border:'none', borderRadius:14, padding:'17px 38px', cursor:'pointer', boxShadow:`0 6px 24px rgba(57,255,20,0.4)`, fontFamily:'inherit', textTransform:'uppercase', letterSpacing:'0.5px' }}>
+          <button onClick={()=>go('/join')} style={{ display:'inline-flex', alignItems:'center', gap:9, fontSize:16, fontWeight:800, color:'#031003', background:`linear-gradient(135deg,${GREEN},#2ad400)`, border:'none', borderRadius:14, padding:'17px 38px', cursor:'pointer', boxShadow:`0 6px 24px rgba(57,255,20,0.4)`, fontFamily:'inherit', textTransform:'uppercase', letterSpacing:'0.5px' }}>
             Start Winning <i className="ti ti-flame" style={{ fontSize:17 }} />
           </button>
         </div>
