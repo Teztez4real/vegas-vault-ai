@@ -2426,15 +2426,24 @@ export default function VegasVaultApp() {
       if (slotted.length > 0 && Object.keys(results).length === 0 && Object.keys(finalized).length === 0) return;
       queuedDateRef.current = selectedDate; // sync the ref so we don't re-enter
     }
-    // Wait for slots to be assigned
-    // WNBA always analyzes — no slot pattern required
-    const wnbaGames = games.filter(g => g.sport === 'WNBA');
-    if (!hasSlotPattern && wnbaGames.length === 0) return;
-    if (!hasSlotPattern && wnbaGames.length > 0) {
-      const wnbaQueue = wnbaGames.filter(g => !results[g.id+'-WNBA'] && !finalized[g.id+'-WNBA']).map(g => ({ game: g, slot: 'WNBA', key: g.id+'-WNBA' }));
-      if (wnbaQueue.length) setPreAnalyzeQueue(q => [...q, ...wnbaQueue.filter(nq => !q.find(eq => eq.key === nq.key))]);
-      return;
+    // ── NO-SLOT SPORTS (WNBA + Tennis) — always analyze, no pattern required ──
+    // These are queued regardless of whether an MLB/NBA/NFL slot pattern exists.
+    const noSlotGames = games.filter(g => g.sport === 'WNBA' || g.sport === 'Tennis');
+    if (noSlotGames.length > 0) {
+      const noSlotQueue = noSlotGames
+        .map(g => {
+          const label = g.sport; // 'WNBA' or 'Tennis' used as the slot key
+          return { game: g, slot: label, key: `${g.id}-${label}` };
+        })
+        .filter(item => !results[item.key] && !finalized[item.key]);
+      if (noSlotQueue.length) {
+        setPreAnalyzeQueue(q => [...q, ...noSlotQueue.filter(nq => !q.find(eq => eq.key === nq.key))]);
+      }
     }
+
+    // If there's no slot pattern AND no slotted sports to analyze, stop here
+    // (but the no-slot sports above were already queued).
+    if (!hasSlotPattern) return;
 
     const toAnalyze = [];
     for (const game of games) {
@@ -2637,7 +2646,7 @@ export default function VegasVaultApp() {
   }, [selectedDate]);
 
   const generated = Object.keys(results).length;
-  const FILTERS = ["ALL","MLB","NBA","NFL"];
+  const FILTERS = ["ALL","MLB","NBA","NFL","Tennis"];
   const filteredGames = games.filter(g=>{
     if(filter==="MLB")return g.sport==="MLB";
     if(filter==="NBA")return g.sport==="NBA";
@@ -3438,7 +3447,7 @@ export default function VegasVaultApp() {
             <div className="vv-gc-hd"><div className="vv-gc-t">Games Slate</div><i className="ti ti-dots" style={{ color:'#ccc',fontSize:13 }} /></div>
             <div className="vv-gc-sub">{new Date(selectedDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>
             <div className="vv-sp-tabs">
-              {['ALL', ...new Set([...games.map(g=>g.sport).filter(Boolean), 'NBA', 'NFL'])].map(s=>(
+              {['ALL', ...new Set([...games.map(g=>g.sport).filter(Boolean), 'NBA', 'NFL', 'Tennis'])].map(s=>(
                 <div key={s} className={`vv-sp${filter===s?' on':''}`} onClick={()=>setFilter(s)}>{s}</div>
               ))}
             </div>
@@ -3532,7 +3541,7 @@ export default function VegasVaultApp() {
                   <i className="ti ti-chevron-right" style={{ fontSize:14 }} />
                 </button>
               </div>
-              {['ALL', ...new Set([...games.map(g=>g.sport).filter(Boolean), 'NBA', 'NFL'])].map(s=>(
+              {['ALL', ...new Set([...games.map(g=>g.sport).filter(Boolean), 'NBA', 'NFL', 'Tennis'])].map(s=>(
                 <button key={s} onClick={()=>setFilter(s)}
                   style={{ fontSize:11, fontWeight:700, padding:'6px 14px', borderRadius:14, border:filter===s?'1px solid #39FF14':'1px solid rgba(0,0,0,0.07)', background:filter===s?'#39FF14':'rgba(255,255,255,0.7)', color:filter===s?'#111':'#999', cursor:'pointer', boxShadow:filter===s?'0 0 8px rgba(57,255,20,0.3)':'none' }}>
                   {s}

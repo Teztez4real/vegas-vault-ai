@@ -1323,6 +1323,76 @@ async function fetchWNBAH2H(awayTeam, homeTeam) {
   } catch { return 'H2H unavailable'; }
 }
 
+// ── TENNIS MATCHES (ATP + WTA via The Odds API) ───────────────────────────────
+// Tennis has NO slot pattern — no Public/Vegas day system. Each match is
+// analyzed on its own merits with the full Tennis model (surface, serve/return,
+// fatigue, mental, pricing) including scam detection. Player vs player.
+async function fetchTennisGames(date) {
+  const targetDate = date || new Date().toISOString().split('T')[0];
+  const out = [];
+  const tours = [{ key: 'tennis_atp', tour: 'ATP' }, { key: 'tennis_wta', tour: 'WTA' }];
+  for (const { key, tour } of tours) {
+    try {
+      const res = await fetch(
+        `https://api.the-odds-api.com/v4/sports/${key}/odds/?apiKey=${process.env.ODDS_API_KEY}&regions=us&markets=h2h&oddsFormat=american`,
+        { cache: 'no-store' }
+      );
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (!Array.isArray(data)) continue;
+      const dateFiltered = data.filter(m => {
+        const ct = new Date(new Date(m.commence_time).getTime() - 5 * 60 * 60 * 1000);
+        return ct.toISOString().split('T')[0] === targetDate;
+      });
+      dateFiltered.forEach((m, i) => {
+        const p1 = m.home_team, p2 = m.away_team;
+        let p1ML = 'N/A', p2ML = 'N/A';
+        const PRIORITY = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'bet365'];
+        const books = (m.bookmakers || []).sort((a,b) => PRIORITY.indexOf(a.key) - PRIORITY.indexOf(b.key));
+        const bookPrices = {}, _raw = {};
+        books.forEach(bm => {
+          const label = bm.key==='draftkings'?'DK':bm.key==='fanduel'?'FD':bm.key==='betmgm'?'MGM':bm.key==='caesars'?'CZR':'B365';
+          bm.markets?.forEach(mkt => {
+            if (mkt.key==='h2h') mkt.outcomes?.forEach(o => {
+              bookPrices[label]=bookPrices[label]||{}; _raw[bm.key]=_raw[bm.key]||{};
+              if (o.name===p1){bookPrices[label].p1=fmt(o.price);_raw[bm.key].p1=o.price;if(p1ML==='N/A')p1ML=fmt(o.price);}
+              if (o.name===p2){bookPrices[label].p2=fmt(o.price);_raw[bm.key].p2=o.price;if(p2ML==='N/A')p2ML=fmt(o.price);}
+            });
+          });
+        });
+        const pricingStr = Object.entries(bookPrices).map(([l,v])=>`${l}: ${v.p1||'N/A'}/${v.p2||'N/A'}`).join(' | ');
+        const b365=_raw['bet365']?.p1, fd=_raw['fanduel']?.p1, dk=_raw['draftkings']?.p1;
+        const signals=[];
+        if(b365&&fd&&Math.abs(b365-fd)>=10) signals.push(`B365 ${fmt(b365)} vs FD ${fmt(fd)} — sharp on ${b365<fd?p1:p2}`);
+        if(b365&&dk&&Math.abs(b365-dk)>=10) signals.push(`B365 ${fmt(b365)} vs DK ${fmt(dk)} — sharp on ${b365<dk?p1:p2}`);
+        const lineMovement = signals.join(' | ') || 'No significant movement';
+        out.push({
+          id: `tennis-${(m.commence_time||'').split('T')[0]}-${tour}-${i}`,
+          sport: 'Tennis', tour,
+          date: (m.commence_time||'').split('T')[0],
+          player1: p1, player2: p2,
+          away: p2, home: p1,
+          awayAbbr: (p2||'').split(' ').pop().slice(0,3).toUpperCase(),
+          homeAbbr: (p1||'').split(' ').pop().slice(0,3).toUpperCase(),
+          time: formatTime(m.commence_time),
+          rawTime: m.commence_time,
+          tournament: `${tour} event`,
+          p1ML, p2ML, awayML: p2ML, homeML: p1ML,
+          spread: 'N/A', total: 'N/A',
+          pricingStr,
+          openingAwayML: pricingStr || 'N/A',
+          openingHomeML: pricingStr || 'N/A',
+          lineMovement,
+          slot: null,
+          injuries: 'Check ATP/WTA injury reports',
+          weather: 'N/A',
+        });
+      });
+    } catch {}
+  }
+  return out;
+}
+
 async function fetchWNBAGames(date) {
   try {
     const wnbaRecords = await fetchWNBARecords();
@@ -1946,7 +2016,11 @@ export async function GET(request) {
     } catch {}
     const nbaGames = nbaPattern ? nbaGamesRaw.map((g,i) => ({ ...g, slot: nbaPattern[i]||null })) : nbaGamesRaw.map(g => ({ ...g, slot: null }));
 
-    const allGames = [...mlbGames, ...nbaGames, ...nflGames];
+    // Tennis — no slot pattern; analyzed on its own merits with the full model
+    let tennisGames = [];
+    try { tennisGames = await fetchTennisGames(dateParam); } catch {}
+
+    const allGames = [...mlbGames, ...nbaGames, ...nflGames, ...tennisGames];
 
     // ── LIVE AI INSIGHTS from real line movement data ────────────────────────
     const insights = [];
