@@ -803,6 +803,15 @@ async function assembleMLBGame(game, oddsMap) {
     const homeWRC = teamWRC?.[home]?.wrcPlus ?? null;
     const awayPenERA = bullpenRates?.[away]?.era ?? null;
     const homePenERA = bullpenRates?.[home]?.era ?? null;
+    // ── TOTALS ENGINE DEBUG (preview only) ──────────────────────────────────
+    // Confirms whether the FanGraphs wRC+/bullpen pulls resolved and how many
+    // teams matched. If wRC+ is null here, the field name or team-name match
+    // needs adjusting. Check Vercel → Deployments → Functions logs for this.
+    console.log(`[TOTALS-ENGINE] ${away} @ ${home} | wRC+ resolved: ${teamWRC ? Object.keys(teamWRC).length+' teams' : 'NULL (fetch failed)'} | ${away}=${awayWRC ?? 'NO MATCH'} ${home}=${homeWRC ?? 'NO MATCH'} | pen: ${away}=${awayPenERA ?? 'NA'} ${home}=${homePenERA ?? 'NA'}`);
+    if (teamWRC && (awayWRC == null || homeWRC == null)) {
+      // Name-match miss — log available team names once to spot the format diff
+      console.log(`[TOTALS-ENGINE] team-name keys sample:`, Object.keys(teamWRC).slice(0, 6).join(' | '));
+    }
 
     // Park factor for home team's ballpark
     const parkData = MLB_PARK_FACTORS[home] || { factor: 1.00, note: 'Neutral park — standard run environment' };
@@ -927,6 +936,8 @@ async function assembleMLBGame(game, oddsMap) {
         homeBullpenERA: homePenERA,
       };
       gameObj.totalsProjection = projectTotal(projInput);
+      const tp = gameObj.totalsProjection;
+      console.log(`[TOTALS-ENGINE] ${away} @ ${home} | projection: ${tp.available ? `${tp.projectedTotal} vs Vegas ${tp.vegasTotal} = ${tp.gap} ${tp.leaning} (${tp.band})` : `SAT OUT — ${tp.reason}`}`);
     } catch (e) {
       gameObj.totalsProjection = { available: false, reason: 'projection error' };
     }
@@ -2109,6 +2120,16 @@ export async function GET(request) {
       oddsFeed: oddsFeed.length > 0 ? oddsFeed : null,
       marketScanner,
       hasSlotPattern: !!(mlbPattern || nflPattern || nbaPattern),
+      // ── TOTALS ENGINE DEBUG SUMMARY (preview) — remove before final merge ──
+      // Lets you confirm at a glance whether projections are firing. View by
+      // hitting /api/today?date=YYYY-MM-DD and reading _totalsDebug.
+      _totalsDebug: mlbGames.map(g => ({
+        game: `${g.away} @ ${g.home}`,
+        wRCplus: `${g.awayWRCPlus ?? 'NULL'}/${g.homeWRCPlus ?? 'NULL'}`,
+        projection: g.totalsProjection?.available
+          ? `${g.totalsProjection.projectedTotal} vs ${g.totalsProjection.vegasTotal} = ${g.totalsProjection.gap} ${g.totalsProjection.leaning} (${g.totalsProjection.band})`
+          : `SAT OUT — ${g.totalsProjection?.reason || 'n/a'}`,
+      })),
       generatedAt: new Date().toISOString(),
     });
   } catch (err) {
