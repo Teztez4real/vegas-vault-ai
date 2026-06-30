@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { assignNBASlots } from '@/lib/nbaModel';
+import { projectTotal } from '@/lib/totalsEngine';
 
 function assignNFLSlots(games, pattern) {
   if (!pattern) return games.map(g => ({ ...g, slot: null }));
@@ -455,6 +456,64 @@ const MLB_PARK_FACTORS = {
   'St. Louis Cardinals':    { factor: 1.00, note: 'Busch Stadium — neutral, open air, standard dimensions' },
 };
 
+// ── TOTALS ENGINE DATA: TEAM wRC+ (FanGraphs batting leaderboard) ─────────────
+// Offense backbone for the run-total projection. wRC+ is the most complete
+// offensive metric: 100 = league average, 120 = 20% better than average.
+// Memoized per slate (10 min) so we hit FanGraphs once, not once per game.
+let _wrcCache = { season: null, ts: 0, byTeam: null };
+async function fetchTeamWRCPlus() {
+  const season = new Date().getFullYear();
+  if (_wrcCache.byTeam && _wrcCache.season === season && (Date.now() - _wrcCache.ts) < 600000) {
+    return _wrcCache.byTeam;
+  }
+  try {
+    const url = `https://www.fangraphs.com/api/leaders/major-league/data?age=0&pos=all&stats=bat&lg=all&qual=0&type=8&season=${season}&month=0&season1=${season}&ind=0&team=0,ts&rost=0&players=0&page=1_50`;
+    const res = await fetch(url, { cache: 'no-store', headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' } });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const rows = data?.data || [];
+    if (!rows.length) return null;
+    const byTeam = {};
+    for (const r of rows) {
+      const team = r.TeamName || r.Team || r.teamName;
+      const wrc = r['wRC+'] != null ? Math.round(parseFloat(r['wRC+'])) : null;
+      const woba = r.wOBA != null ? parseFloat(r.wOBA).toFixed(3) : null;
+      if (team && wrc != null) byTeam[team] = { wrcPlus: wrc, wOBA: woba };
+    }
+    if (!Object.keys(byTeam).length) return null;
+    _wrcCache = { season, ts: Date.now(), byTeam };
+    return byTeam;
+  } catch { return null; }
+}
+
+// ── TOTALS ENGINE DATA: TEAM BULLPEN RATES (FanGraphs relief leaderboard) ──────
+// Bullpen ERA/FIP for projecting runs allowed over the innings the pen throws.
+let _penCache = { season: null, ts: 0, byTeam: null };
+async function fetchBullpenRates() {
+  const season = new Date().getFullYear();
+  if (_penCache.byTeam && _penCache.season === season && (Date.now() - _penCache.ts) < 600000) {
+    return _penCache.byTeam;
+  }
+  try {
+    const url = `https://www.fangraphs.com/api/leaders/major-league/data?age=0&pos=all&stats=rel&lg=all&qual=0&type=1&season=${season}&month=0&season1=${season}&ind=0&team=0,ts&rost=0&players=0&page=1_50`;
+    const res = await fetch(url, { cache: 'no-store', headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' } });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const rows = data?.data || [];
+    if (!rows.length) return null;
+    const byTeam = {};
+    for (const r of rows) {
+      const team = r.TeamName || r.Team || r.teamName;
+      const era = r.ERA != null ? parseFloat(r.ERA) : null;
+      const fip = r.FIP != null ? parseFloat(r.FIP) : null;
+      if (team && (era != null || fip != null)) byTeam[team] = { era, fip };
+    }
+    if (!Object.keys(byTeam).length) return null;
+    _penCache = { season, ts: Date.now(), byTeam };
+    return byTeam;
+  } catch { return null; }
+}
+
 // ── FETCH PITCHER ADVANCED STATS (FanGraphs — free, no auth required) ─────────
 // Returns xFIP and SIERA — far better ERA predictors because they remove
 // defense and luck. A pitcher with ERA 4.50 but xFIP 3.20 is outperforming
@@ -728,7 +787,7 @@ async function assembleMLBGame(game, oddsMap) {
     ]);
 
     // ── NEW: Advanced stats fetch (separate Promise.all — doesn't touch existing destructuring) ──
-    const [awayAdvanced, homeAdvanced, awayPitchMix, homePitchMix, awayBullpenUsage, homeBullpenUsage, f5Lines] = await Promise.all([
+    const [awayAdvanced, homeAdvanced, awayPitchMix, homePitchMix, awayBullpenUsage, homeBullpenUsage, f5Lines, teamWRC, bullpenRates] = await Promise.all([
       awayPitcherId ? fetchPitcherAdvancedStats(awayPitcherId, awayPitcher) : Promise.resolve(null),
       homePitcherId ? fetchPitcherAdvancedStats(homePitcherId, homePitcher) : Promise.resolve(null),
       fetchPitcherPitchMix(awayPitcher),
@@ -736,12 +795,19 @@ async function assembleMLBGame(game, oddsMap) {
       awayTeamId ? fetchBullpenUsage(awayTeamId, away) : Promise.resolve(null),
       homeTeamId ? fetchBullpenUsage(homeTeamId, home) : Promise.resolve(null),
       fetchF5Lines(away, home),
+      fetchTeamWRCPlus(),
+      fetchBullpenRates(),
     ]);
+    // Totals-engine team inputs (defensive — null if FanGraphs didn't resolve)
+    const awayWRC = teamWRC?.[away]?.wrcPlus ?? null;
+    const homeWRC = teamWRC?.[home]?.wrcPlus ?? null;
+    const awayPenERA = bullpenRates?.[away]?.era ?? null;
+    const homePenERA = bullpenRates?.[home]?.era ?? null;
 
     // Park factor for home team's ballpark
     const parkData = MLB_PARK_FACTORS[home] || { factor: 1.00, note: 'Neutral park — standard run environment' };
 
-    return {
+    const gameObj = {
       id: game.gamePk,
       sport: 'MLB',
       away, home,
@@ -843,7 +909,28 @@ async function assembleMLBGame(game, oddsMap) {
       // Park factor
       parkFactor:     parkData.factor,
       parkFactorNote: parkData.note,
+      // ── TOTALS ENGINE INPUTS (new) ──────────────────────────────────────────
+      awayWRCPlus:   awayWRC,
+      homeWRCPlus:   homeWRC,
+      awayBullpenERA_num: awayPenERA,  // numeric pen ERA for projection math
+      homeBullpenERA_num: homePenERA,
     };
+
+    // ── RUN THE TOTALS PROJECTION (Phase 1) ──────────────────────────────────
+    // Pure, defensive: returns { available:false } if inputs are missing, so a
+    // partial slate never produces a bogus number. Map the numeric pen ERA into
+    // the field names the engine reads.
+    try {
+      const projInput = {
+        ...gameObj,
+        awayBullpenERA: awayPenERA,   // engine reads these numeric fields
+        homeBullpenERA: homePenERA,
+      };
+      gameObj.totalsProjection = projectTotal(projInput);
+    } catch (e) {
+      gameObj.totalsProjection = { available: false, reason: 'projection error' };
+    }
+    return gameObj;
   } catch { return null; }
 }
 
