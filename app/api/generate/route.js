@@ -37,7 +37,7 @@ Do not search for things already provided in the data above. Keep searches focus
   };
 
   if (allowSearch) {
-    params.tools = [{ type: 'web_search_20250305', name: 'web_search', max_uses: 5 }];
+    params.tools = [{ type: 'web_search_20250305', name: 'web_search', max_uses: 8 }];
   }
 
   const msg = await ai.messages.create(params);

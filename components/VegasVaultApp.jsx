@@ -4245,11 +4245,11 @@ export default function VegasVaultApp() {
         const ringOffset = ringCirc * (1 - confPct / 100);
 
         // Reasoning bullets pulled from real analysis fields (no invented stats)
-        const reasoningOrder = ['matchupFoundation','pitching','hitterLineup','recentForm','headToHead','situational','sharpMoney','propaganda','gameScript'];
+        const reasoningOrder = ['matchupFoundation','pitching','hitterLineup','recentForm','headToHead','situational','sharpMoney','propaganda','storyline','gameScript'];
         const reasoningBullets = reasoningOrder
           .map(k => analysis[k])
           .filter(v => v && typeof v === 'string' && v.length > 0 && v !== 'N/A')
-          .slice(0, 6);
+          .slice(0, 7);
 
         const fmtOdds = v => { if(!v||v==='N/A'||v==='null') return null; if(typeof v==='number') return v>0?`+${v}`:`${v}`; return v; };
         const awayOdds = fmtOdds(game.dkAwayML) || fmtOdds(game.awayML) || '—';
