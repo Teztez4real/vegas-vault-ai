@@ -172,17 +172,38 @@ export async function POST(req) {
   try {
     const authHeader = req.headers.get('authorization') || '';
     const body = await req.json().catch(() => ({}));
-    const isAuthorized =
+    let isAuthorized =
       authHeader === `Bearer ${process.env.CRON_SECRET}` ||
       body.adminKey === process.env.ADMIN_SECRET_KEY;
+
+    // Allow an admin-triggered run (e.g. right after saving a slot pattern)
+    // authenticated by the admin's own Supabase session — no secret needed
+    // client-side. We verify the token resolves to the admin email.
+    if (!isAuthorized && body.trigger === 'admin-pattern-save') {
+      try {
+        const token = body.token || authHeader.replace('Bearer ', '');
+        if (token) {
+          const sbAuth = await getSB();
+          const { data: { user } } = await sbAuth.auth.getUser(token);
+          if (user?.email === 'battlecortez@gmail.com') isAuthorized = true;
+        }
+      } catch {}
+    }
+
     if (!isAuthorized) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const date = body.date || new Date().toISOString().split('T')[0];
+    // Default date to US Central (matches slot patterns + slate), not UTC.
+    const ctNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+    const ctDate = `${ctNow.getFullYear()}-${String(ctNow.getMonth()+1).padStart(2,'0')}-${String(ctNow.getDate()).padStart(2,'0')}`;
+    const date = body.date || ctDate;
     const sb = await getSB();
 
-    // 1. Fetch today's full game slate with all live data
-    const reqUrl = new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000');
-    const base = `${reqUrl.protocol}//${reqUrl.host}`;
+    // 1. Fetch today's full game slate with all live data.
+    // Prefer the base URL passed from the cron (derived from the request
+    // origin) so this works on Vercel without NEXT_PUBLIC_APP_URL set.
+    const base = body.base
+      || process.env.NEXT_PUBLIC_APP_URL
+      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
     const gamesRes = await fetch(`${base}/api/today?date=${date}`, { cache: 'no-store' });
     if (!gamesRes.ok) throw new Error('Failed to fetch games');
     const { games } = await gamesRes.json();
@@ -359,18 +380,28 @@ export async function GET(req) {
   const authHeader = req.headers.get('authorization') || '';
   const isCron = authHeader === `Bearer ${process.env.CRON_SECRET}`;
 
+  // US Central date — slot patterns and the game slate are keyed by CT, NOT
+  // UTC. Using UTC here meant that during US evening hours (when UTC has
+  // already rolled to tomorrow) the cron looked up TOMORROW's slot pattern,
+  // found no slotted games, and analyzed nothing. This is why analysis only
+  // appeared to happen when a client was on the app (the client used CT).
+  const ctNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+  const ctDate = `${ctNow.getFullYear()}-${String(ctNow.getMonth()+1).padStart(2,'0')}-${String(ctNow.getDate()).padStart(2,'0')}`;
+
   if (isCron) {
-    const date = new Date().toISOString().split('T')[0];
-    return POST(new Request(req.url, {
+    // Derive the absolute base URL from the incoming request so the server can
+    // reach its own /api/today even when NEXT_PUBLIC_APP_URL isn't set.
+    const origin = new URL(req.url).origin;
+    return POST(new Request(`${origin}/api/auto-analyze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'authorization': authHeader },
-      body: JSON.stringify({ date }),
+      body: JSON.stringify({ date: ctDate, base: origin }),
     }));
   }
 
   // Client polling — return stored analyses for the date
   const { searchParams } = new URL(req.url);
-  const date = searchParams.get('date') || new Date().toISOString().split('T')[0];
+  const date = searchParams.get('date') || ctDate;
   try {
     const sb = await getSB();
     const { data, error } = await sb

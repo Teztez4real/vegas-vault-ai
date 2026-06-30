@@ -97,7 +97,16 @@ export default function SettingsPage() {
       const { data: { session: s } } = await supabase.auth.getSession();
       const res = await fetch('/api/slot-pattern', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ date: slotDate, sport: slotSport, pattern: slotPattern, note: slotNote, token: s?.access_token }) });
       const data = await res.json();
-      if (data.success) setSlotMsg('✅ Pattern saved!');
+      if (data.success) {
+        setSlotMsg('✅ Pattern saved! AI is now analyzing the slate…');
+        // Kick off server-side analysis immediately so the AI starts working
+        // the moment the pattern is saved — no waiting for the next cron.
+        fetch('/api/auto-analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ date: slotDate, trigger: 'admin-pattern-save', token: s?.access_token }),
+        }).catch(()=>{});
+      }
       else setSlotMsg('❌ ' + (data.error || 'Save failed'));
     } catch(e) { setSlotMsg('❌ ' + e.message); }
     setSlotSaving(false);
