@@ -19,6 +19,18 @@ export default function LandingPage() {
   const router = useRouter();
   const [checking, setChecking] = useState(true);
   const [openFaq, setOpenFaq] = useState(null);
+  const [stats, setStats] = useState(null); // live cards data
+
+  // Fetch live landing stats (real featured play, win rate, line movement).
+  // Falls back to the static placeholders if anything is unavailable.
+  useEffect(() => {
+    let alive = true;
+    fetch('/api/landing-stats')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (alive && d) setStats(d); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
 
   // If already signed in, skip the landing page and go to the dashboard.
   // EXCEPTION: ?preview in the URL lets you view the landing page while
@@ -104,11 +116,11 @@ export default function LandingPage() {
           {/* big stat + bar */}
           <div style={{ marginBottom:24 }}>
             <div style={{ display:'flex', alignItems:'baseline', gap:14, marginBottom:12 }}>
-              <span style={{ fontSize:'clamp(36px,5vw,58px)', fontWeight:900, color:GREEN, filter:`drop-shadow(0 0 22px rgba(57,255,20,0.4))`, lineHeight:1 }}>72%+</span>
-              <span style={{ fontSize:'clamp(14px,1.6vw,20px)', fontWeight:700, color:'rgba(255,255,255,0.75)', letterSpacing:'1px' }}>TIER-1 HIT RATE</span>
+              <span style={{ fontSize:'clamp(36px,5vw,58px)', fontWeight:900, color:GREEN, filter:`drop-shadow(0 0 22px rgba(57,255,20,0.4))`, lineHeight:1 }}>{stats?.winRate ? `${stats.winRate.pct}%` : '72%+'}</span>
+              <span style={{ fontSize:'clamp(14px,1.6vw,20px)', fontWeight:700, color:'rgba(255,255,255,0.75)', letterSpacing:'1px' }}>{stats?.winRate ? 'WIN RATE' : 'TIER-1 HIT RATE'}</span>
             </div>
             <div style={{ height:6, borderRadius:6, background:'rgba(255,255,255,0.06)', overflow:'hidden', maxWidth:520 }}>
-              <div style={{ width:'72%', height:'100%', background:`linear-gradient(90deg,#22cc00,${GREEN})`, borderRadius:6, boxShadow:`0 0 16px rgba(57,255,20,0.5)` }} />
+              <div style={{ width:`${stats?.winRate ? Math.min(100, stats.winRate.pct) : 72}%`, height:'100%', background:`linear-gradient(90deg,#22cc00,${GREEN})`, borderRadius:6, boxShadow:`0 0 16px rgba(57,255,20,0.5)` }} />
             </div>
           </div>
 
@@ -144,41 +156,41 @@ export default function LandingPage() {
             <div style={{ position:'absolute', inset:0, backgroundImage:`linear-gradient(rgba(57,255,20,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(57,255,20,0.04) 1px,transparent 1px)`, backgroundSize:'32px 32px' }} />
           </div>
 
-          {/* CARD 1 — AI Play of the Day */}
+          {/* CARD 1 — AI Play of the Day (live, falls back to placeholder) */}
           <div style={cardStyle({ top:'2%', left:'0%', width:'62%' })}>
             <div style={cardLabel}>
               <span style={{ width:7, height:7, borderRadius:'50%', background:GREEN, boxShadow:`0 0 8px ${GREEN}` }} />
               AI PLAY OF THE DAY
             </div>
-            <div style={{ fontSize:22, fontWeight:900, color:'#fff', margin:'8px 0 3px' }}>Yankees −1.5</div>
-            <div style={{ fontSize:12, color:'rgba(255,255,255,0.5)', marginBottom:12 }}>NYY @ BOS · 7:10 PM ET</div>
+            <div style={{ fontSize:22, fontWeight:900, color:'#fff', margin:'8px 0 3px' }}>{stats?.play?.pick || 'Yankees −1.5'}</div>
+            <div style={{ fontSize:12, color:'rgba(255,255,255,0.5)', marginBottom:12 }}>{stats?.play ? `${stats.play.matchup}${stats.play.time ? ' · ' + stats.play.time : ''}` : 'NYY @ BOS · 7:10 PM ET'}</div>
             <div style={{ display:'flex', gap:8 }}>
-              <span style={tierTag}>🔒 TIER 1</span>
-              <span style={{ ...tierTag, background:'rgba(57,255,20,0.1)', color:GREEN, border:`1px solid rgba(57,255,20,0.3)` }}>−115</span>
+              <span style={tierTag}>🔒 TIER {stats?.play?.tier || '1'}</span>
+              {(stats?.play?.odds || !stats?.play) && <span style={{ ...tierTag, background:'rgba(57,255,20,0.1)', color:GREEN, border:`1px solid rgba(57,255,20,0.3)` }}>{stats?.play?.odds || '−115'}</span>}
             </div>
           </div>
 
-          {/* CARD 2 — Win Rate */}
+          {/* CARD 2 — Win Rate (live, falls back to placeholder) */}
           <div style={cardStyle({ top:'30%', right:'-2%', width:'52%' })}>
             <div style={cardLabel}><i className="ti ti-trophy" style={{ fontSize:13, color:GREEN }} /> SEASON WIN RATE</div>
-            <div style={{ fontSize:38, fontWeight:900, color:GREEN, lineHeight:1, margin:'8px 0 6px', filter:`drop-shadow(0 0 18px rgba(57,255,20,0.4))` }}>72.4%</div>
+            <div style={{ fontSize:38, fontWeight:900, color:GREEN, lineHeight:1, margin:'8px 0 6px', filter:`drop-shadow(0 0 18px rgba(57,255,20,0.4))` }}>{stats?.winRate ? `${stats.winRate.pct}%` : '72.4%'}</div>
             <div style={{ display:'flex', gap:4, alignItems:'flex-end', height:30 }}>
               {[60,72,55,80,68,90,74,85].map((h,i)=>(
                 <div key={i} style={{ flex:1, height:`${h}%`, background:i%2?GREEN:'rgba(57,255,20,0.4)', borderRadius:2 }} />
               ))}
             </div>
-            <div style={{ fontSize:11, color:'rgba(255,255,255,0.45)', marginTop:8 }}>Tier-1 plays · last 30 days</div>
+            <div style={{ fontSize:11, color:'rgba(255,255,255,0.45)', marginTop:8 }}>{stats?.winRate ? `${stats.winRate.wins}W · ${stats.winRate.losses}L tracked` : 'Tier-1 plays · last 30 days'}</div>
           </div>
 
-          {/* CARD 3 — Line Movement */}
+          {/* CARD 3 — Line Movement (live, falls back to placeholder) */}
           <div style={cardStyle({ bottom:'4%', left:'6%', width:'58%' })}>
             <div style={cardLabel}><i className="ti ti-trending-up" style={{ fontSize:13, color:GREEN }} /> LINE MOVEMENT</div>
             <div style={{ fontSize:13, color:'rgba(255,255,255,0.8)', margin:'8px 0', lineHeight:1.5 }}>
-              DraftKings opened <span style={{ color:'#fff', fontWeight:700 }}>−142</span> → now <span style={{ color:GREEN, fontWeight:800 }}>−158</span>
+              {stats?.lineMovement?.text || (<>DraftKings opened <span style={{ color:'#fff', fontWeight:700 }}>−142</span> → now <span style={{ color:GREEN, fontWeight:800 }}>−158</span></>)}
             </div>
             <div style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'5px 11px', borderRadius:8, background:'rgba(57,255,20,0.1)', border:`1px solid rgba(57,255,20,0.25)` }}>
               <i className="ti ti-bolt" style={{ fontSize:12, color:GREEN }} />
-              <span style={{ fontSize:11, fontWeight:800, color:GREEN, letterSpacing:'0.5px' }}>SHARP MONEY · YANKEES</span>
+              <span style={{ fontSize:11, fontWeight:800, color:GREEN, letterSpacing:'0.5px' }}>{stats?.lineMovement?.matchup ? `SHARP · ${stats.lineMovement.matchup}` : 'SHARP MONEY · YANKEES'}</span>
             </div>
           </div>
         </div>
