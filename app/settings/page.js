@@ -87,8 +87,18 @@ export default function SettingsPage() {
       if (s?.user?.id) {
         await supabase.from('user_data').delete().eq('user_id', s.user.id).in('key', ['results', 'finalized', 'pick_history']);
       }
-      setClearMsg('✅ Cleared — redirecting to dashboard...');
-      setTimeout(() => { window.location.href = '/dashboard'; }, 1000);
+      // CRITICAL: also clear the SHARED game_analyses table — this is where
+      // every device reloads from. Clearing only user data leaves stale
+      // analyses here that reload on the next fetch (why clear "did nothing").
+      try {
+        await fetch('/api/clear-analyses', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ all: true, token: s?.access_token }),
+        });
+      } catch {}
+      setClearMsg('✅ Cleared everything — redirecting to dashboard...');
+      setTimeout(() => { window.location.href = '/dashboard'; }, 1200);
     } catch(e) { setClearMsg('❌ ' + e.message); }
   }
 

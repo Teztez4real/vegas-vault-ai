@@ -155,10 +155,15 @@ function buildSnapshot(game) {
 }
 
 // ── ANALYZE ONE GAME via the 4-stage engine ───────────────────────────────────
-async function analyzeGame(game) {
-  const reqUrl = new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000');
-  const base = `${reqUrl.protocol}//${reqUrl.host}`;
-  const res = await fetch(`${base}/api/generate`, {
+async function analyzeGame(game, base) {
+  // base is derived from the incoming request origin (passed by caller) so the
+  // server can reach its own /api/generate even when NEXT_PUBLIC_APP_URL isn't
+  // set. Falling back to localhost:3000 here silently broke ALL analysis on
+  // Vercel — every game threw, so nothing got re-analyzed.
+  const target = base
+    || process.env.NEXT_PUBLIC_APP_URL
+    || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+  const res = await fetch(`${target}/api/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ game }),
@@ -331,7 +336,7 @@ export async function POST(req) {
         const batch = toAnalyze.slice(i, i + 3);
         await Promise.allSettled(batch.map(async ({ game, key, reason }) => {
           try {
-            const result = await analyzeGame(game);
+            const result = await analyzeGame(game, base);
             await sb.from('game_analyses').upsert({
               game_key: key, game_id: game.id, date, slot: game.slot,
               sport: game.sport, away: game.away, home: game.home,
