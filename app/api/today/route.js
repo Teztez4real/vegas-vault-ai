@@ -1323,18 +1323,44 @@ async function fetchWNBAH2H(awayTeam, homeTeam) {
   } catch { return 'H2H unavailable'; }
 }
 
-// ── TENNIS MATCHES (ATP + WTA via The Odds API) ───────────────────────────────
-// Tennis has NO slot pattern — no Public/Vegas day system. Each match is
-// analyzed on its own merits with the full Tennis model (surface, serve/return,
-// fatigue, mental, pricing) including scam detection. Player vs player.
+// ── TENNIS MATCHES (ALL ATP + WTA tournaments via The Odds API) ───────────────
+// Dynamically discovers EVERY active tennis tournament (Grand Slams, Masters,
+// ATP/WTA 250/500/1000, and any other in-season events) by querying the Odds
+// API sports list and filtering to the Tennis group — then pulls matches for
+// each. This captures ALL tournaments automatically instead of hardcoding keys.
+// Tennis has NO slot pattern — each match is analyzed on its own merits with
+// the full Tennis model (surface, serve/return, fatigue, mental, pricing) incl.
+// scam detection.
 async function fetchTennisGames(date) {
   const targetDate = date || new Date().toISOString().split('T')[0];
   const out = [];
-  const tours = [{ key: 'tennis_atp', tour: 'ATP' }, { key: 'tennis_wta', tour: 'WTA' }];
-  for (const { key, tour } of tours) {
+  const apiKey = process.env.ODDS_API_KEY;
+  if (!apiKey) return out;
+
+  // 1. Discover all active tennis tournament keys from the sports list.
+  let tennisKeys = [];
+  try {
+    const listRes = await fetch(`https://api.the-odds-api.com/v4/sports/?apiKey=${apiKey}`, { cache: 'no-store' });
+    if (listRes.ok) {
+      const sports = await listRes.json();
+      tennisKeys = (Array.isArray(sports) ? sports : [])
+        .filter(s => (s.group === 'Tennis' || (s.key || '').startsWith('tennis_')) && s.active !== false)
+        .map(s => ({ key: s.key, title: s.title || s.key, tour: /wta/i.test(s.key) ? 'WTA' : /atp/i.test(s.key) ? 'ATP' : 'TENNIS' }));
+    }
+  } catch {}
+  // Fallback to the aggregate keys if the sports list didn't return tennis.
+  if (!tennisKeys.length) {
+    tennisKeys = [
+      { key: 'tennis_atp', title: 'ATP', tour: 'ATP' },
+      { key: 'tennis_wta', title: 'WTA', tour: 'WTA' },
+    ];
+  }
+
+  // 2. Pull matches for each tournament key.
+  for (const { key, title, tour } of tennisKeys) {
     try {
       const res = await fetch(
-        `https://api.the-odds-api.com/v4/sports/${key}/odds/?apiKey=${process.env.ODDS_API_KEY}&regions=us&markets=h2h&oddsFormat=american`,
+        `https://api.the-odds-api.com/v4/sports/${key}/odds/?apiKey=${apiKey}&regions=us&markets=h2h&oddsFormat=american`,
         { cache: 'no-store' }
       );
       if (!res.ok) continue;
@@ -1346,6 +1372,7 @@ async function fetchTennisGames(date) {
       });
       dateFiltered.forEach((m, i) => {
         const p1 = m.home_team, p2 = m.away_team;
+        if (!p1 || !p2) return;
         let p1ML = 'N/A', p2ML = 'N/A';
         const PRIORITY = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'bet365'];
         const books = (m.bookmakers || []).sort((a,b) => PRIORITY.indexOf(a.key) - PRIORITY.indexOf(b.key));
@@ -1367,8 +1394,8 @@ async function fetchTennisGames(date) {
         if(b365&&dk&&Math.abs(b365-dk)>=10) signals.push(`B365 ${fmt(b365)} vs DK ${fmt(dk)} — sharp on ${b365<dk?p1:p2}`);
         const lineMovement = signals.join(' | ') || 'No significant movement';
         out.push({
-          id: `tennis-${(m.commence_time||'').split('T')[0]}-${tour}-${i}`,
-          sport: 'Tennis', tour,
+          id: `tennis-${key}-${(m.commence_time||'').split('T')[0]}-${i}`,
+          sport: 'Tennis', tour, tournament: title,
           date: (m.commence_time||'').split('T')[0],
           player1: p1, player2: p2,
           away: p2, home: p1,
@@ -1376,7 +1403,6 @@ async function fetchTennisGames(date) {
           homeAbbr: (p1||'').split(' ').pop().slice(0,3).toUpperCase(),
           time: formatTime(m.commence_time),
           rawTime: m.commence_time,
-          tournament: `${tour} event`,
           p1ML, p2ML, awayML: p2ML, homeML: p1ML,
           spread: 'N/A', total: 'N/A',
           pricingStr,
