@@ -810,7 +810,9 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
 
 
   const isVegas = game.slot === 'VEGAS';
-  const key = `${game.id}-${game.slot}`;
+  // No-slot sports (Tennis/WNBA) are keyed by sport, not slot.
+  const slotKey = game.slot || ((game.sport === 'Tennis' || game.sport === 'WNBA') ? game.sport : game.slot);
+  const key = `${game.id}-${slotKey}`;
   const isGen = generating === key;
   const hasRes = !!results[key];
   const histEntry = pickHistory?.find(p => p.key === key);
@@ -941,13 +943,13 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
       ):isGen?(
         <div style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:'10px 0',background:'rgba(57,255,20,0.06)',border:'1px solid rgba(57,255,20,0.2)',borderRadius:10 }}>
           <div style={{ width:12,height:12,borderRadius:'50%',border:'2px solid rgba(57,255,20,0.3)',borderTop:'2px solid #39FF14',animation:'spin 0.8s linear infinite' }}/>
-          <span style={{ fontSize:10,fontWeight:700,color:'#33aa00' }}>ANALYZING {game.slot}…</span>
+          <span style={{ fontSize:10,fontWeight:700,color:'#33aa00' }}>ANALYZING {game.slot || game.sport}…</span>
         </div>
       ):hasRes?(
         <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'9px 12px',background:'rgba(248,255,248,0.7)',border:'1px solid rgba(195,240,195,0.5)',borderRadius:10 }}>
-          <span style={{ fontSize:10,fontWeight:700,color:'#33aa00' }}>✓ {game.slot} — ANALYZED</span>
+          <span style={{ fontSize:10,fontWeight:700,color:'#33aa00' }}>✓ {game.slot || game.sport} — ANALYZED</span>
         </div>
-      ):hasSlotPattern?(
+      ):hasSlotPattern||isTennis||game.sport==='WNBA'?(
         <div style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:'10px 0',background:'rgba(57,255,20,0.06)',border:'1px solid rgba(57,255,20,0.2)',borderRadius:10 }}>
           <div style={{ width:12,height:12,borderRadius:'50%',border:'2px solid rgba(57,255,20,0.3)',borderTop:'2px solid #39FF14',animation:'spin 0.8s linear infinite' }}/>
           <span style={{ fontSize:10,fontWeight:700,color:'#33aa00' }}>QUEUED FOR ANALYSIS…</span>
