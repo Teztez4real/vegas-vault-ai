@@ -74,8 +74,29 @@ Do not search for things already provided in the data above. Keep searches focus
   try {
     return JSON.parse(jsonStr);
   } catch (err) {
-    console.error('JSON parse error:', err.message, '| str:', jsonStr.slice(0, 200));
-    return null;
+    // Attempt a repair for the common failure mode: JSON truncated mid-output
+    // when the model ran out of token budget. Close open strings/braces so we
+    // salvage the fields that DID complete rather than failing the whole stage
+    // (which would fall back to PASS).
+    try {
+      let repaired = jsonStr;
+      // Strip a trailing incomplete "key": "value... with no close
+      repaired = repaired.replace(/,\s*"[^"]*"\s*:\s*"[^"]*$/, '');
+      repaired = repaired.replace(/,\s*"[^"]*"\s*:\s*$/, '');
+      // Balance braces/brackets
+      const opens = (repaired.match(/\{/g) || []).length;
+      const closes = (repaired.match(/\}/g) || []).length;
+      const obOpen = (repaired.match(/\[/g) || []).length;
+      const obClose = (repaired.match(/\]/g) || []).length;
+      repaired += ']'.repeat(Math.max(0, obOpen - obClose));
+      repaired += '}'.repeat(Math.max(0, opens - closes));
+      const parsed = JSON.parse(repaired);
+      console.warn('JSON repaired after truncation');
+      return parsed;
+    } catch {
+      console.error('JSON parse error (unrepairable):', err.message, '| str:', jsonStr.slice(-200));
+      return null;
+    }
   }
 }
 
@@ -174,7 +195,11 @@ export async function POST(request) {
     };
 
     // ── STAGE 2: Edge Filter ───────────────────────────────────────────────
-    const stage2 = await runStage(stages.s2(game, stage1), 1500, true, trackRecord);
+    // Budget raised to 3000: Stage 2 now does storyline web search + alignment
+    // red/green flags, which need room to complete the JSON. Too small a budget
+    // truncates the JSON mid-output → parse fails → falls back to PASS on every
+    // game. This was the cause of the "everything says PASS" regression.
+    const stage2 = await runStage(stages.s2(game, stage1), 3000, true, trackRecord);
     if (!stage2) return NextResponse.json(passResult('Edge analysis failed — please re-analyze.', slot));
 
     // No edge or weak edge → PASS immediately
