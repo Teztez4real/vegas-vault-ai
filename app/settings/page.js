@@ -220,7 +220,6 @@ export default function SettingsPage() {
                     <option value="mlb">MLB</option>
                     <option value="nba">NBA</option>
                     <option value="nfl">NFL</option>
-                    <option value="tennis">Tennis</option>
                   </select>
                 </div>
                 <div style={{ width:90 }}>
