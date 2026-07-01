@@ -168,6 +168,55 @@ async function analyzeGame(game) {
 }
 
 // ── MAIN HANDLER ──────────────────────────────────────────────────────────────
+// Selective notifications — only ping watchlisted users on material events.
+async function notifyWatchlisted(results, sb, base) {
+  const isNotifyWorthy = (reason = '') => {
+    const r = reason.toLowerCase();
+    return r.includes('pitcher changed') || r.includes('starter confirmed') ||
+      r.includes('lineup confirmed') || r.includes('injury') || r.includes('trell') ||
+      r.includes('line moved') || r.includes('lock-in');
+  };
+  const notifyEvents = results.filter(r => r.status === 'ok' && isNotifyWorthy(r.reason));
+  if (!notifyEvents.length) return;
+  let watchRows = [];
+  try {
+    const { data } = await sb.from('user_data').select('user_id, value').eq('key', 'watchlist');
+    watchRows = data || [];
+  } catch {}
+  for (const ev of notifyEvents) {
+    try {
+      const gameId = ev.game?.id;
+      const watchers = watchRows
+        .filter(row => { try { return JSON.parse(row.value).includes(gameId); } catch { return false; } })
+        .map(row => row.user_id);
+      if (!watchers.length) continue;
+      const matchup = `${ev.game.away} @ ${ev.game.home}`;
+      const r = ev.reason.toLowerCase();
+      let title, bodyMsg;
+      if (r.includes('lock-in')) {
+        const pick = ev.result?.summary ? `${ev.result.summary.pick} ${ev.result.summary.betType}` : 'Play locked';
+        title = `🔒 BET NOW — ${matchup}`; bodyMsg = `${pick} — lineups confirmed, play is locked.`;
+      } else if (r.includes('pitcher') || r.includes('starter')) {
+        title = `🔄 Pitcher Update — ${matchup}`; bodyMsg = ev.reason;
+      } else if (r.includes('lineup')) {
+        title = `📋 Lineup Confirmed — ${matchup}`; bodyMsg = 'Final lineups posted. Play updated.';
+      } else if (r.includes('injury')) {
+        title = `🚨 Injury Update — ${matchup}`; bodyMsg = 'Injury report changed. Play updated.';
+      } else if (r.includes('trell')) {
+        title = `⚠️ Trell Rule — ${matchup}`; bodyMsg = 'Key player status changed. Play updated.';
+      } else if (r.includes('line moved')) {
+        title = `📊 Sharp Money — ${matchup}`; bodyMsg = ev.reason;
+      } else {
+        title = `🔄 Updated — ${matchup}`; bodyMsg = ev.reason;
+      }
+      await fetch(`${base}/api/push/targeted`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, body: bodyMsg, url: '/', tag: `vv-${gameId}`, userIds: watchers, trigger: 'cron' }),
+      });
+    } catch {}
+  }
+}
+
 export async function POST(req) {
   try {
     const authHeader = req.headers.get('authorization') || '';
@@ -275,119 +324,54 @@ export async function POST(req) {
       });
     }
 
-    // 5. Analyze in batches of 3 (prevents timeout on large slates)
-    const results = [];
-    for (let i = 0; i < toAnalyze.length; i += 3) {
-      const batch = toAnalyze.slice(i, i + 3);
-      await Promise.allSettled(batch.map(async ({ game, key, reason }) => {
-        try {
-          const result = await analyzeGame(game);
-          await sb.from('game_analyses').upsert({
-            game_key:      key,
-            game_id:       game.id,
-            date,
-            slot:          game.slot,
-            sport:         game.sport,
-            away:          game.away,
-            home:          game.home,
-            result:        JSON.stringify({ ...result, updatedAt: new Date().toISOString() }),
-            game_snapshot: buildSnapshot(game),
-            auto_update_reason: reason,
-            updated_at:    new Date().toISOString(),
-          }, { onConflict: 'game_key' });
-          results.push({ key, status: 'ok', reason, game, result });
-        } catch (e) {
-          results.push({ key, status: 'error', error: e.message, reason });
-        }
-      }));
+    // Build the analysis worker (runs the batches + publishes each result).
+    const runAnalysis = async () => {
+      const results = [];
+      for (let i = 0; i < toAnalyze.length; i += 3) {
+        const batch = toAnalyze.slice(i, i + 3);
+        await Promise.allSettled(batch.map(async ({ game, key, reason }) => {
+          try {
+            const result = await analyzeGame(game);
+            await sb.from('game_analyses').upsert({
+              game_key: key, game_id: game.id, date, slot: game.slot,
+              sport: game.sport, away: game.away, home: game.home,
+              result: JSON.stringify({ ...result, updatedAt: new Date().toISOString() }),
+              game_snapshot: buildSnapshot(game),
+              auto_update_reason: reason,
+              updated_at: new Date().toISOString(),
+            }, { onConflict: 'game_key' });
+            results.push({ key, status: 'ok', reason, game, result });
+          } catch (e) {
+            results.push({ key, status: 'error', error: e.message, reason });
+          }
+        }));
+      }
+      return results;
+    };
+
+    // FORCE-ALL: respond immediately, process in the background. A full slate
+    // (13+ games with AI stages) exceeds the 300s request limit if awaited —
+    // which is why the button appeared to "not work" (function died before
+    // responding). Now the button gets an instant answer and the analysis
+    // continues server-side, each game publishing as it finishes.
+    if (forceAll) {
+      runAnalysis()
+        .then(rs => notifyWatchlisted(rs, sb, base))
+        .catch(() => {});
+      return NextResponse.json({
+        analyzed: toAnalyze.length,
+        message: `Re-analyzing ${toAnalyze.length} games in the background — refresh the slate in 2-3 min as each completes.`,
+        date,
+      });
     }
+
+    // 5. Non-force path: run synchronously and report results.
+    const results = await runAnalysis();
 
     const succeeded = results.filter(r => r.status === 'ok').length;
     const failed    = results.filter(r => r.status === 'error').length;
 
-    // 6. SELECTIVE NOTIFICATIONS — only notify for genuinely important events.
-    // A 30-min cron must NOT spam clients on every routine refresh. We only
-    // notify watchlisted users when something they'd actually want to know
-    // about happens to a game they're tracking.
-    //
-    // NOTIFY-WORTHY reasons (material, actionable):
-    //   • Starting pitcher changed or confirmed
-    //   • Lineup confirmed
-    //   • Injury report changed
-    //   • Trell Rule trigger
-    //   • Significant line movement
-    //   • Final lock-in window (the "BET NOW" moment)
-    // NOT notify-worthy (routine, silent):
-    //   • Periodic refresh, low-confidence refinement, first analysis
-    const isNotifyWorthy = (reason = '') => {
-      const r = reason.toLowerCase();
-      return (
-        r.includes('pitcher changed') ||
-        r.includes('starter confirmed') ||
-        r.includes('lineup confirmed') ||
-        r.includes('injury') ||
-        r.includes('trell') ||
-        r.includes('line moved') ||
-        r.includes('lock-in')
-      );
-    };
-
-    const notifyEvents = results.filter(r => r.status === 'ok' && isNotifyWorthy(r.reason));
-
-    if (notifyEvents.length > 0) {
-      // Load all watchlists once so we only notify users tracking these games
-      let watchRows = [];
-      try {
-        const { data } = await sb.from('user_data').select('user_id, value').eq('key', 'watchlist');
-        watchRows = data || [];
-      } catch {}
-
-      for (const ev of notifyEvents) {
-        try {
-          const gameId = ev.game?.id;
-          const watchers = watchRows
-            .filter(row => { try { return JSON.parse(row.value).includes(gameId); } catch { return false; } })
-            .map(row => row.user_id);
-          if (!watchers.length) continue; // nobody tracking this game — stay silent
-
-          const matchup = `${ev.game.away} @ ${ev.game.home}`;
-          const r = ev.reason.toLowerCase();
-          let title, bodyMsg;
-          if (r.includes('lock-in')) {
-            const pick = ev.result?.summary ? `${ev.result.summary.pick} ${ev.result.summary.betType}` : 'Play locked';
-            title = `🔒 BET NOW — ${matchup}`;
-            bodyMsg = `${pick} — lineups confirmed, play is locked.`;
-          } else if (r.includes('pitcher') || r.includes('starter')) {
-            title = `🔄 Pitcher Update — ${matchup}`;
-            bodyMsg = ev.reason;
-          } else if (r.includes('lineup')) {
-            title = `📋 Lineup Confirmed — ${matchup}`;
-            bodyMsg = `Final lineups posted. Play updated.`;
-          } else if (r.includes('injury')) {
-            title = `🚨 Injury Update — ${matchup}`;
-            bodyMsg = `Injury report changed. Play updated.`;
-          } else if (r.includes('trell')) {
-            title = `⚠️ Trell Rule — ${matchup}`;
-            bodyMsg = `Key player status changed. Play updated.`;
-          } else if (r.includes('line moved')) {
-            title = `📊 Sharp Money — ${matchup}`;
-            bodyMsg = ev.reason;
-          } else {
-            title = `🔄 Updated — ${matchup}`;
-            bodyMsg = ev.reason;
-          }
-
-          await fetch(`${base}/api/push/targeted`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              title, body: bodyMsg, url: '/', tag: `vv-${gameId}`,
-              userIds: watchers, trigger: 'cron',
-            }),
-          });
-        } catch {}
-      }
-    }
+    await notifyWatchlisted(results, sb, base);
 
     return NextResponse.json({
       success: true,
@@ -395,7 +379,6 @@ export async function POST(req) {
       analyzed: succeeded,
       failed,
       skipped: skipped.length,
-      details: results,
     });
 
   } catch (err) {
