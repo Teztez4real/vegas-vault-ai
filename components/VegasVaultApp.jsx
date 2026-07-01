@@ -685,8 +685,7 @@ function PlayResult({ result, game, onClose, isResolved, resolvedResult }) {
           <div style={{ marginBottom:8,padding:"10px 12px",background:"rgba(59,130,246,0.06)",border:"1px solid rgba(59,130,246,0.2)",borderRadius:10 }}>
             <div style={{ fontSize:9,fontWeight:700,letterSpacing:"0.1em",color:"#3b82f6",marginBottom:4 }}>PRIMARY PLAY</div>
             <div style={{ display:"flex",alignItems:"baseline",gap:12 }}>
-              <span style={{ fontSize:28,fontWeight:800,color:"#f8fafc",letterSpacing:"-0.02em" }}>{result.summary.pick}</span>
-              <span style={{ fontSize:16,fontWeight:600,color:"#3b82f6" }}>{liveBetType}</span>
+              <span style={{ fontSize:28,fontWeight:800,color:"#f8fafc",letterSpacing:"-0.02em" }}>{formatPickDisplay(result.summary.pick, liveBetType)}</span>
             </div>
           </div>
 
@@ -904,8 +903,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
           <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between' }}>
             <div>
               <div style={{ fontSize:7,fontWeight:800,color:isVegas?'#2aa800':'#5588ee',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:2 }}>{game.slot} PRIMARY</div>
-              <div style={{ fontSize:13,fontWeight:800,color:'#111' }}>{summary.pick}</div>
-              <div style={{ fontSize:10,color:'#aaa',marginTop:1 }}>{summary.betType}</div>
+              <div style={{ fontSize:13,fontWeight:800,color:'#111' }}>{formatPickDisplay(summary.pick, summary.betType)}</div>
             </div>
             <div style={{ textAlign:'right' }}>
               {isLock&&<div style={{ fontSize:9,fontWeight:800,color:'#2aa800',border:'1px solid rgba(57,255,20,0.3)',borderRadius:6,padding:'2px 8px',background:'rgba(57,255,20,0.07)',marginBottom:4 }}>🔒 LOCK</div>}
@@ -917,7 +915,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
             <div style={{ marginTop:8, paddingTop:8, borderTop:'1px solid rgba(0,0,0,0.06)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
               <div>
                 <div style={{ fontSize:7,fontWeight:800,color:'#33aa00',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:2 }}>YOUR PICK</div>
-                <div style={{ fontSize:11,fontWeight:700,color:'#222' }}>{altPick.pick} {altPick.betType}</div>
+                <div style={{ fontSize:11,fontWeight:700,color:'#222' }}>{formatPickDisplay(altPick.pick, altPick.betType)}</div>
               </div>
               {altPick.result==='win'&&<div style={{ fontSize:10,fontWeight:800,color:'#33aa00' }}>✅ WIN</div>}
               {altPick.result==='loss'&&<div style={{ fontSize:10,fontWeight:800,color:'#dd4444' }}>❌ LOSS</div>}
@@ -1078,6 +1076,21 @@ function ForceSmartUpdate() {
 }
 
 // ── TOP PLAY BANNER ───────────────────────────────────────────────────────────
+// Shared pick formatter — prevents "Tampa Bay Rays Tampa Bay Rays ML" duplication.
+// The AI sometimes puts the team name in both pick and betType fields.
+function formatPickDisplay(pick, betType) {
+  if (!pick && !betType) return '';
+  if (!pick) return betType || '';
+  if (!betType) return pick;
+  const p = pick.trim(), bt = betType.trim();
+  if (bt.toLowerCase().startsWith(p.toLowerCase())) {
+    const remainder = bt.slice(p.length).trim();
+    return remainder ? `${p} ${remainder}` : p;
+  }
+  if (p.toLowerCase().includes(bt.toLowerCase())) return p;
+  return `${p} ${bt}`;
+}
+
 function TopPlayBanner({ topPlay, loading, results, pickHistory, isSubscribed, isAdmin, watchlist, onToggleWatch, onForceRefresh }) {
   const result = topPlay && (results[`${topPlay.id}-${topPlay.slot}`]||results[`${topPlay.id}-PUBLIC`]||results[`${topPlay.id}-VEGAS`]);
   const summary = result?.summary;
@@ -1112,8 +1125,7 @@ function TopPlayBanner({ topPlay, loading, results, pickHistory, isSubscribed, i
       <div style={{ display:'flex',alignItems:'flex-start',gap:14,flexWrap:'wrap' }}>
         <div style={{ background:'rgba(255,255,255,0.7)',border:'1px solid rgba(57,255,20,0.2)',borderRadius:10,padding:'10px 14px',flexShrink:0 }}>
           <div style={{ fontSize:9,color:'#33aa00',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:3 }}>THE PLAY</div>
-          <div style={{ fontSize:18,fontWeight:900,color:'#111' }}>{summary.pick}</div>
-          <div style={{ fontSize:10,color:'#aaa',marginTop:2 }}>{summary.betType}</div>
+          <div style={{ fontSize:18,fontWeight:900,color:'#111' }}>{formatPickDisplay(summary.pick, summary.betType)}</div>
         </div>
         <div style={{ flex:1,minWidth:0 }}>
           <div style={{ fontSize:11,color:'#999',marginBottom:4 }}>{topPlay.away} @ {topPlay.home}</div>
@@ -3312,8 +3324,8 @@ export default function VegasVaultApp() {
                                 style={{ color:result==='win'?'#2aa800':result==='loss'?'#e55':isLive?'#39FF14':'#aa8800', fontSize:11 }} />
                             </div>
                             <div style={{ flex:1, minWidth:0 }}>
-                              <div className="vv-vf-nm" style={{ fontSize:10 }}>{r.summary.pick}</div>
-                              <div style={{ fontSize:8,color:'#999',marginTop:1 }}>{g.awayAbbr} @ {g.homeAbbr} · {r.summary.betType}</div>
+                              <div className="vv-vf-nm" style={{ fontSize:10 }}>{formatPickDisplay(r.summary.pick, r.summary.betType)}</div>
+                              <div style={{ fontSize:8,color:'#999',marginTop:1 }}>{g.awayAbbr} @ {g.homeAbbr}</div>
                             </div>
                             <div className="vv-vf-tm" style={{ color: result==='win'?'#2aa800':result==='loss'?'#e55':isLive?'#39FF14':'#aaa' }}>
                               {result==='win'?'WIN':result==='loss'?'LOSS':isLive?'LIVE':'—'}
