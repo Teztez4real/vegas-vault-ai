@@ -325,9 +325,15 @@ export default function SettingsPage() {
                   const { data: { session: s } } = await supabase.auth.getSession();
                   const today = new Date(new Date().toLocaleString('en-US',{timeZone:'America/Chicago'}));
                   const ctDate = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
-                  const res = await fetch('/api/auto-analyze', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ date: ctDate, forceAll: true, trigger:'admin-pattern-save', token: s?.access_token }) });
-                  const d = await res.json();
-                  setSmartUpdateMsg(d.error ? `❌ ${d.error}` : `✅ Re-analyzing ${d.analyzed ?? 0} games — refresh the slate in ~1-2 min`);
+                  const res = await fetch('/api/auto-analyze', {
+                    method:'POST',
+                    headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({ date: ctDate, forceAll: true, trigger:'admin-pattern-save', token: s?.access_token, base: window.location.origin })
+                  });
+                  const text = await res.text();
+                  let d; try { d = JSON.parse(text); } catch { d = { error: `Non-JSON response (${res.status}): ${text.slice(0,120)}` }; }
+                  if (d.error) setSmartUpdateMsg(`❌ ${d.error}`);
+                  else setSmartUpdateMsg(`✅ ${d.message || `Re-analyzing ${d.analyzed ?? 0} games`} — refresh the slate in ~1-2 min`);
                 } catch(e) { setSmartUpdateMsg(`❌ ${e.message}`); }
                 setForcingAll(false);
               }} style={{ ...btnPrimary, background:'rgba(57,255,20,0.12)', color:'#33aa00', border:'1px solid rgba(57,255,20,0.4)', opacity: forcingAll ? 0.6 : 1 }}>

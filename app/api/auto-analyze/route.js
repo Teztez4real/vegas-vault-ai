@@ -205,18 +205,29 @@ export async function POST(req) {
       || process.env.NEXT_PUBLIC_APP_URL
       || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
     const gamesRes = await fetch(`${base}/api/today?date=${date}`, { cache: 'no-store' });
-    if (!gamesRes.ok) throw new Error('Failed to fetch games');
+    if (!gamesRes.ok) {
+      const body_txt = await gamesRes.text().catch(() => '');
+      return NextResponse.json({ error: `Could not fetch slate from ${base}/api/today (HTTP ${gamesRes.status}). ${body_txt.slice(0,100)}` }, { status: 200 });
+    }
     const { games } = await gamesRes.json();
-    if (!games?.length) return NextResponse.json({ message: 'No games today', analyzed: 0 });
+    if (!games?.length) return NextResponse.json({ message: 'No games on the slate today', analyzed: 0 }, { status: 200 });
 
-    // 2. Only consider games with slot assigned and not yet started
+    // 2. Build the slate. Normal mode: slotted MLB/NBA/NFL games not yet started.
+    //    forceAll mode ALSO includes no-slot sports (Tennis/WNBA).
     const now = new Date();
+    const forceAllMode = body.forceAll === true;
     const slateGames = games.filter(g => {
-      if (!g.slot || g.slot === 'NONE') return false;
       if (g.rawTime && new Date(g.rawTime) <= now) return false; // already started
+      const noSlotSport = g.sport === 'Tennis' || g.sport === 'WNBA';
+      if (noSlotSport) return true; // always eligible
+      if (!g.slot || g.slot === 'NONE') return false; // slotted sports need a slot
       return true;
+    }).map(g => {
+      // no-slot sports use their sport as the slot key
+      if ((g.sport === 'Tennis' || g.sport === 'WNBA') && !g.slot) return { ...g, slot: g.sport };
+      return g;
     });
-    if (!slateGames.length) return NextResponse.json({ message: 'No pre-game slate games', analyzed: 0 });
+    if (!slateGames.length) return NextResponse.json({ message: 'No eligible pre-game games (no slot pattern set, or all games started)', analyzed: 0 }, { status: 200 });
 
     // 3. Load all existing analyses for today in one query
     const { data: existingRows } = await sb
