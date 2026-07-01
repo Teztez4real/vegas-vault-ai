@@ -1323,102 +1323,6 @@ async function fetchWNBAH2H(awayTeam, homeTeam) {
   } catch { return 'H2H unavailable'; }
 }
 
-// ── TENNIS MATCHES (ALL ATP + WTA tournaments via The Odds API) ───────────────
-// Dynamically discovers EVERY active tennis tournament (Grand Slams, Masters,
-// ATP/WTA 250/500/1000, and any other in-season events) by querying the Odds
-// API sports list and filtering to the Tennis group — then pulls matches for
-// each. This captures ALL tournaments automatically instead of hardcoding keys.
-// Tennis has NO slot pattern — each match is analyzed on its own merits with
-// the full Tennis model (surface, serve/return, fatigue, mental, pricing) incl.
-// scam detection.
-async function fetchTennisGames(date) {
-  const targetDate = date || new Date().toISOString().split('T')[0];
-  const out = [];
-  const apiKey = process.env.ODDS_API_KEY;
-  if (!apiKey) return out;
-
-  // 1. Discover all active tennis tournament keys from the sports list.
-  let tennisKeys = [];
-  try {
-    const listRes = await fetch(`https://api.the-odds-api.com/v4/sports/?apiKey=${apiKey}`, { cache: 'no-store' });
-    if (listRes.ok) {
-      const sports = await listRes.json();
-      tennisKeys = (Array.isArray(sports) ? sports : [])
-        .filter(s => (s.group === 'Tennis' || (s.key || '').startsWith('tennis_')) && s.active !== false)
-        .map(s => ({ key: s.key, title: s.title || s.key, tour: /wta/i.test(s.key) ? 'WTA' : /atp/i.test(s.key) ? 'ATP' : 'TENNIS' }));
-    }
-  } catch {}
-  // Fallback to the aggregate keys if the sports list didn't return tennis.
-  if (!tennisKeys.length) {
-    tennisKeys = [
-      { key: 'tennis_atp', title: 'ATP', tour: 'ATP' },
-      { key: 'tennis_wta', title: 'WTA', tour: 'WTA' },
-    ];
-  }
-
-  // 2. Pull matches for each tournament key.
-  for (const { key, title, tour } of tennisKeys) {
-    try {
-      const res = await fetch(
-        `https://api.the-odds-api.com/v4/sports/${key}/odds/?apiKey=${apiKey}&regions=us&markets=h2h&oddsFormat=american`,
-        { cache: 'no-store' }
-      );
-      if (!res.ok) continue;
-      const data = await res.json();
-      if (!Array.isArray(data)) continue;
-      const dateFiltered = data.filter(m => {
-        const ct = new Date(new Date(m.commence_time).getTime() - 5 * 60 * 60 * 1000);
-        return ct.toISOString().split('T')[0] === targetDate;
-      });
-      dateFiltered.forEach((m, i) => {
-        const p1 = m.home_team, p2 = m.away_team;
-        if (!p1 || !p2) return;
-        let p1ML = 'N/A', p2ML = 'N/A';
-        const PRIORITY = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'bet365'];
-        const books = (m.bookmakers || []).sort((a,b) => PRIORITY.indexOf(a.key) - PRIORITY.indexOf(b.key));
-        const bookPrices = {}, _raw = {};
-        books.forEach(bm => {
-          const label = bm.key==='draftkings'?'DK':bm.key==='fanduel'?'FD':bm.key==='betmgm'?'MGM':bm.key==='caesars'?'CZR':'B365';
-          bm.markets?.forEach(mkt => {
-            if (mkt.key==='h2h') mkt.outcomes?.forEach(o => {
-              bookPrices[label]=bookPrices[label]||{}; _raw[bm.key]=_raw[bm.key]||{};
-              if (o.name===p1){bookPrices[label].p1=fmt(o.price);_raw[bm.key].p1=o.price;if(p1ML==='N/A')p1ML=fmt(o.price);}
-              if (o.name===p2){bookPrices[label].p2=fmt(o.price);_raw[bm.key].p2=o.price;if(p2ML==='N/A')p2ML=fmt(o.price);}
-            });
-          });
-        });
-        const pricingStr = Object.entries(bookPrices).map(([l,v])=>`${l}: ${v.p1||'N/A'}/${v.p2||'N/A'}`).join(' | ');
-        const b365=_raw['bet365']?.p1, fd=_raw['fanduel']?.p1, dk=_raw['draftkings']?.p1;
-        const signals=[];
-        if(b365&&fd&&Math.abs(b365-fd)>=10) signals.push(`B365 ${fmt(b365)} vs FD ${fmt(fd)} — sharp on ${b365<fd?p1:p2}`);
-        if(b365&&dk&&Math.abs(b365-dk)>=10) signals.push(`B365 ${fmt(b365)} vs DK ${fmt(dk)} — sharp on ${b365<dk?p1:p2}`);
-        const lineMovement = signals.join(' | ') || 'No significant movement';
-        out.push({
-          id: `tennis-${key}-${(m.commence_time||'').split('T')[0]}-${i}`,
-          sport: 'Tennis', tour, tournament: title,
-          date: (m.commence_time||'').split('T')[0],
-          player1: p1, player2: p2,
-          away: p2, home: p1,
-          awayAbbr: (p2||'').split(' ').pop().slice(0,3).toUpperCase(),
-          homeAbbr: (p1||'').split(' ').pop().slice(0,3).toUpperCase(),
-          time: formatTime(m.commence_time),
-          rawTime: m.commence_time,
-          p1ML, p2ML, awayML: p2ML, homeML: p1ML,
-          spread: 'N/A', total: 'N/A',
-          pricingStr,
-          openingAwayML: pricingStr || 'N/A',
-          openingHomeML: pricingStr || 'N/A',
-          lineMovement,
-          slot: null,
-          injuries: 'Check ATP/WTA injury reports',
-          weather: 'N/A',
-        });
-      });
-    } catch {}
-  }
-  return out;
-}
-
 async function fetchWNBAGames(date) {
   try {
     const wnbaRecords = await fetchWNBARecords();
@@ -2042,11 +1946,7 @@ export async function GET(request) {
     } catch {}
     const nbaGames = nbaPattern ? nbaGamesRaw.map((g,i) => ({ ...g, slot: nbaPattern[i]||null })) : nbaGamesRaw.map(g => ({ ...g, slot: null }));
 
-    // Tennis — no slot pattern; analyzed on its own merits with the full model
-    let tennisGames = [];
-    try { tennisGames = await fetchTennisGames(dateParam); } catch {}
-
-    const allGames = [...mlbGames, ...nbaGames, ...nflGames, ...tennisGames];
+    const allGames = [...mlbGames, ...nbaGames, ...nflGames];
 
     // ── LIVE AI INSIGHTS from real line movement data ────────────────────────
     const insights = [];

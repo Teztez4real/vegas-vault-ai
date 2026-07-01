@@ -810,8 +810,8 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
 
 
   const isVegas = game.slot === 'VEGAS';
-  // No-slot sports (Tennis/WNBA) are keyed by sport, not slot.
-  const slotKey = game.slot || ((game.sport === 'Tennis' || game.sport === 'WNBA') ? game.sport : game.slot);
+  // No-slot sports (WNBA) are keyed by sport, not slot.
+  const slotKey = game.slot || (game.sport === 'WNBA' ? game.sport : game.slot);
   const key = `${game.id}-${slotKey}`;
   const isGen = generating === key;
   const hasRes = !!results[key];
@@ -949,7 +949,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
         <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'9px 12px',background:'rgba(248,255,248,0.7)',border:'1px solid rgba(195,240,195,0.5)',borderRadius:10 }}>
           <span style={{ fontSize:10,fontWeight:700,color:'#33aa00' }}>✓ {game.slot || game.sport} — ANALYZED</span>
         </div>
-      ):hasSlotPattern||isTennis||game.sport==='WNBA'?(
+      ):hasSlotPattern||game.sport==='WNBA'?(
         <div style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:'10px 0',background:'rgba(57,255,20,0.06)',border:'1px solid rgba(57,255,20,0.2)',borderRadius:10 }}>
           <div style={{ width:12,height:12,borderRadius:'50%',border:'2px solid rgba(57,255,20,0.3)',borderTop:'2px solid #39FF14',animation:'spin 0.8s linear infinite' }}/>
           <span style={{ fontSize:10,fontWeight:700,color:'#33aa00' }}>QUEUED FOR ANALYSIS…</span>
@@ -2430,7 +2430,7 @@ export default function VegasVaultApp() {
     }
     // ── NO-SLOT SPORTS (WNBA + Tennis) — always analyze, no pattern required ──
     // These are queued regardless of whether an MLB/NBA/NFL slot pattern exists.
-    const noSlotGames = games.filter(g => g.sport === 'WNBA' || g.sport === 'Tennis');
+    const noSlotGames = games.filter(g => g.sport === 'WNBA');
     if (noSlotGames.length > 0) {
       const noSlotQueue = noSlotGames
         .map(g => {
@@ -2648,7 +2648,7 @@ export default function VegasVaultApp() {
   }, [selectedDate]);
 
   const generated = Object.keys(results).length;
-  const FILTERS = ["ALL","MLB","NBA","NFL","Tennis"];
+  const FILTERS = ["ALL","MLB","NBA","NFL"];
   const filteredGames = games.filter(g=>{
     if(filter==="MLB")return g.sport==="MLB";
     if(filter==="NBA")return g.sport==="NBA";
@@ -3449,7 +3449,7 @@ export default function VegasVaultApp() {
             <div className="vv-gc-hd"><div className="vv-gc-t">Games Slate</div><i className="ti ti-dots" style={{ color:'#ccc',fontSize:13 }} /></div>
             <div className="vv-gc-sub">{new Date(selectedDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>
             <div className="vv-sp-tabs">
-              {['ALL', ...new Set([...games.map(g=>g.sport).filter(Boolean), 'NBA', 'NFL', 'Tennis'])].map(s=>(
+              {['ALL', ...new Set([...games.map(g=>g.sport).filter(Boolean), 'NBA', 'NFL'])].map(s=>(
                 <div key={s} className={`vv-sp${filter===s?' on':''}`} onClick={()=>setFilter(s)}>{s}</div>
               ))}
             </div>
@@ -3543,7 +3543,7 @@ export default function VegasVaultApp() {
                   <i className="ti ti-chevron-right" style={{ fontSize:14 }} />
                 </button>
               </div>
-              {['ALL', ...new Set([...games.map(g=>g.sport).filter(Boolean), 'NBA', 'NFL', 'Tennis'])].map(s=>(
+              {['ALL', ...new Set([...games.map(g=>g.sport).filter(Boolean), 'NBA', 'NFL'])].map(s=>(
                 <button key={s} onClick={()=>setFilter(s)}
                   style={{ fontSize:11, fontWeight:700, padding:'6px 14px', borderRadius:14, border:filter===s?'1px solid #39FF14':'1px solid rgba(0,0,0,0.07)', background:filter===s?'#39FF14':'rgba(255,255,255,0.7)', color:filter===s?'#111':'#999', cursor:'pointer', boxShadow:filter===s?'0 0 8px rgba(57,255,20,0.3)':'none' }}>
                   {s}
@@ -4256,11 +4256,11 @@ export default function VegasVaultApp() {
         const ringOffset = ringCirc * (1 - confPct / 100);
 
         // Reasoning bullets pulled from real analysis fields (no invented stats)
-        const reasoningOrder = ['matchupFoundation','pitching','hitterLineup','recentForm','headToHead','situational','sharpMoney','propaganda','storyline','gameScript'];
+        const reasoningOrder = ['matchupFoundation','pitching','hitterLineup','recentForm','headToHead','situational','sharpMoney','propaganda','gameScript'];
         const reasoningBullets = reasoningOrder
           .map(k => analysis[k])
           .filter(v => v && typeof v === 'string' && v.length > 0 && v !== 'N/A')
-          .slice(0, 7);
+          .slice(0, 6);
 
         const fmtOdds = v => { if(!v||v==='N/A'||v==='null') return null; if(typeof v==='number') return v>0?`+${v}`:`${v}`; return v; };
         const awayOdds = fmtOdds(game.dkAwayML) || fmtOdds(game.awayML) || '—';
