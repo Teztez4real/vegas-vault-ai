@@ -105,7 +105,7 @@ export default function SettingsPage() {
         fetch('/api/auto-analyze', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ date: slotDate, trigger: 'admin-pattern-save', token: s?.access_token }),
+          body: JSON.stringify({ date: slotDate, trigger: 'admin-pattern-save', token: s?.access_token, base: window.location.origin }),
         }).catch(()=>{});
       }
       else setSlotMsg('❌ ' + (data.error || 'Save failed'));
