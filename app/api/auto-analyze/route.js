@@ -227,7 +227,20 @@ export async function POST(req) {
       if ((g.sport === 'Tennis' || g.sport === 'WNBA') && !g.slot) return { ...g, slot: g.sport };
       return g;
     });
-    if (!slateGames.length) return NextResponse.json({ message: 'No eligible pre-game games (no slot pattern set, or all games started)', analyzed: 0 }, { status: 200 });
+    if (!slateGames.length) {
+      // Precise diagnostic so we know WHY nothing is eligible
+      const total = games.length;
+      const started = games.filter(g => g.rawTime && new Date(g.rawTime) <= now).length;
+      const withSlot = games.filter(g => g.slot && g.slot !== 'NONE').length;
+      const noSlotSports = games.filter(g => g.sport === 'Tennis' || g.sport === 'WNBA').length;
+      const bySport = {};
+      games.forEach(g => { bySport[g.sport] = (bySport[g.sport]||0)+1; });
+      return NextResponse.json({
+        message: `0 eligible. Slate has ${total} games (${JSON.stringify(bySport)}). ${withSlot} have a slot assigned, ${started} already started, ${noSlotSports} no-slot sports. ${withSlot===0 ? '→ No slot pattern set for today — set the Public/Vegas pattern in Settings first.' : ''}`,
+        analyzed: 0,
+        diagnostic: { total, withSlot, started, noSlotSports, bySport, date },
+      }, { status: 200 });
+    }
 
     // 3. Load all existing analyses for today in one query
     const { data: existingRows } = await sb

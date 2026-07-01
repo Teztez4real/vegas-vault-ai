@@ -333,7 +333,8 @@ export default function SettingsPage() {
                   const text = await res.text();
                   let d; try { d = JSON.parse(text); } catch { d = { error: `Non-JSON response (${res.status}): ${text.slice(0,120)}` }; }
                   if (d.error) setSmartUpdateMsg(`❌ ${d.error}`);
-                  else setSmartUpdateMsg(`✅ ${d.message || `Re-analyzing ${d.analyzed ?? 0} games`} — refresh the slate in ~1-2 min`);
+                  else if (d.analyzed > 0) setSmartUpdateMsg(`✅ Re-analyzing ${d.analyzed} games — refresh the slate in ~1-2 min`);
+                  else setSmartUpdateMsg(`⚠️ ${d.message || '0 games re-analyzing'}`);
                 } catch(e) { setSmartUpdateMsg(`❌ ${e.message}`); }
                 setForcingAll(false);
               }} style={{ ...btnPrimary, background:'rgba(57,255,20,0.12)', color:'#33aa00', border:'1px solid rgba(57,255,20,0.4)', opacity: forcingAll ? 0.6 : 1 }}>
