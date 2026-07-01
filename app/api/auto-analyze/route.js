@@ -228,10 +228,15 @@ export async function POST(req) {
     // 4. Decide which games to analyze
     const toAnalyze = [];
     const skipped   = [];
+    const forceAll = body.forceAll === true; // admin: re-analyze the whole slate
     for (const game of slateGames) {
       const key = `${game.id}-${game.slot}`;
       const existing = existingMap[key] || null;
-      const decision = shouldReanalyze(game, existing);
+      // forceAll still respects the game-started lock (never re-analyze a live/final game)
+      const started = game.rawTime && new Date(game.rawTime) <= new Date();
+      const decision = forceAll
+        ? (started ? { yes: false, reason: 'Game started — locked' } : { yes: true, reason: 'Admin force re-analyze' })
+        : shouldReanalyze(game, existing);
       if (decision.yes) {
         toAnalyze.push({ game, key, reason: decision.reason });
       } else {

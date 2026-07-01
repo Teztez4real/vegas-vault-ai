@@ -26,6 +26,7 @@ export default function SettingsPage() {
   const [testMsg, setTestMsg] = useState('');
   const [smartUpdateMsg, setSmartUpdateMsg] = useState('');
   const [smartUpdating, setSmartUpdating] = useState(false);
+  const [forcingAll, setForcingAll] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && 'Notification' in window)
@@ -314,6 +315,24 @@ export default function SettingsPage() {
               }} style={{ ...btnPrimary, opacity: smartUpdating ? 0.6 : 1 }}>
                 <i className={`ti ${smartUpdating ? 'ti-loader-2' : 'ti-refresh'}`} style={{ fontSize:12, marginRight:5 }} />
                 {smartUpdating ? 'Running...' : 'Run Smart Update Now'}
+              </button>
+              <div style={{ fontSize:11, color:'#777', margin:'16px 0 8px', lineHeight:1.5 }}>
+                Force a full fresh re-analysis of EVERY game on today's slate (ignores the "recently analyzed" skip). Use after a model change.
+              </div>
+              <button disabled={forcingAll} onClick={async () => {
+                setForcingAll(true); setSmartUpdateMsg('');
+                try {
+                  const { data: { session: s } } = await supabase.auth.getSession();
+                  const today = new Date(new Date().toLocaleString('en-US',{timeZone:'America/Chicago'}));
+                  const ctDate = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+                  const res = await fetch('/api/auto-analyze', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ date: ctDate, forceAll: true, trigger:'admin-pattern-save', token: s?.access_token }) });
+                  const d = await res.json();
+                  setSmartUpdateMsg(d.error ? `❌ ${d.error}` : `✅ Re-analyzing ${d.analyzed ?? 0} games — refresh the slate in ~1-2 min`);
+                } catch(e) { setSmartUpdateMsg(`❌ ${e.message}`); }
+                setForcingAll(false);
+              }} style={{ ...btnPrimary, background:'rgba(57,255,20,0.12)', color:'#33aa00', border:'1px solid rgba(57,255,20,0.4)', opacity: forcingAll ? 0.6 : 1 }}>
+                <i className={`ti ${forcingAll ? 'ti-loader-2' : 'ti-bolt'}`} style={{ fontSize:12, marginRight:5 }} />
+                {forcingAll ? 'Re-analyzing all…' : 'Force Re-analyze All Games'}
               </button>
             </div>
           </div>
