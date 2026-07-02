@@ -10,7 +10,94 @@ async function getSB() {
   return cc(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 }
 
-// ── PLAY STABILITY — should we re-analyze this game? ─────────────────────────
+// ── SERVER-SIDE GRADING — grade completed picks against final scores ─────────
+// Previously, grading (win/loss) ONLY happened client-side, and only for
+// watchlisted games — meaning the AI's own track record barely populated
+// unless someone had the app open with that exact game tracked. This mirrors
+// the client's exact grading logic (lib line ~1760 in VegasVaultApp.jsx) but
+// runs server-side for EVERY analyzed game, independent of any user/device.
+function gradePick(pick, away, home, awayScore, homeScore) {
+  const pickTeam = pick.pick;
+  const betType = (pick.betType || 'ML');
+  const awayWon = awayScore > homeScore;
+  const homeWon = homeScore > awayScore;
+  const margin = Math.abs(homeScore - awayScore);
+  const pickIsAway = pickTeam === away || away?.includes(pickTeam) || pickTeam?.includes((away || '').split(' ').pop());
+  const pickIsHome = !pickIsAway;
+
+  const bt = betType.toUpperCase();
+  if (bt.includes('OVER')) {
+    const total = parseFloat(bt.replace(/[^0-9.]/g, ''));
+    return (awayScore + homeScore) > total ? 'win' : 'loss';
+  }
+  if (bt.includes('UNDER')) {
+    const total = parseFloat(bt.replace(/[^0-9.]/g, ''));
+    return (awayScore + homeScore) < total ? 'win' : 'loss';
+  }
+  if (bt.includes('-1.5') || bt.includes('RUN LINE')) {
+    return (pickIsAway && awayWon && margin >= 2) || (pickIsHome && homeWon && margin >= 2) ? 'win' : 'loss';
+  }
+  if (bt.includes('+1.5')) {
+    return (pickIsAway && (awayWon || margin <= 1)) || (pickIsHome && (homeWon || margin <= 1)) ? 'win' : 'loss';
+  }
+  // ML default
+  return (pickIsAway && awayWon) || (pickIsHome && homeWon) ? 'win' : 'loss';
+}
+
+async function gradeCompletedGames(sb, date, base) {
+  try {
+    // Pull today's (and yesterday's, in case grading is delayed) game_analyses
+    // that haven't been graded yet, plus MLB final scores for the same window.
+    const ctNow = new Date();
+    const yest = new Date(ctNow); yest.setDate(yest.getDate() - 1);
+    const yestStr = `${yest.getFullYear()}-${String(yest.getMonth()+1).padStart(2,'0')}-${String(yest.getDate()).padStart(2,'0')}`;
+
+    for (const d of [date, yestStr]) {
+      const { data: rows } = await sb.from('game_analyses').select('game_key, away, home, sport, result, date').eq('date', d);
+      if (!rows?.length) continue;
+
+      // Fetch final scores for this date via /api/today (already aggregates live/final scores)
+      const gRes = await fetch(`${base}/api/today?date=${d}`, { cache: 'no-store' });
+      if (!gRes.ok) continue;
+      const { games: liveGames } = await gRes.json();
+
+      for (const row of rows) {
+        let parsed; try { parsed = JSON.parse(row.result); } catch { continue; }
+        if (parsed?.graded) continue; // already graded, skip
+        const s = parsed?.summary;
+        if (!s?.pick || s.tier === 'PASS' || s.tier === '3') continue;
+
+        const g = (liveGames || []).find(x =>
+          (x.away === row.away && x.home === row.home) ||
+          (x.sport === row.sport && x.away === row.away && x.home === row.home)
+        );
+        const isFinal = g?.isFinal === true;
+        const awayScore = g?.awayScore;
+        const homeScore = g?.homeScore;
+        if (!isFinal || awayScore == null || homeScore == null) continue;
+
+        const result = gradePick(s, row.away, row.home, awayScore, homeScore);
+        const updatedResult = { ...parsed, graded: true, gradedResult: result, gradedScore: `${row.away} ${awayScore} - ${homeScore} ${row.home}`, gradedAt: new Date().toISOString() };
+        await sb.from('game_analyses').update({ result: JSON.stringify(updatedResult) }).eq('game_key', row.game_key);
+
+        // Also write to a shared, user-independent track record table so the
+        // AI's own win rate reflects EVERY graded pick, not just ones a user
+        // happened to watchlist. Defensive — table may not exist yet.
+        try {
+          await sb.from('ai_track_record').upsert({
+            game_key: row.game_key, date: d, sport: row.sport,
+            away: row.away, home: row.home,
+            pick: s.pick, bet_type: s.betType, tier: s.tier,
+            result, score: `${row.away} ${awayScore} - ${homeScore} ${row.home}`,
+            graded_at: new Date().toISOString(),
+          }, { onConflict: 'game_key' });
+        } catch {}
+      }
+    }
+  } catch {}
+}
+
+
 // Acts like a professional bettor: refine until confirmed, then lock it in.
 //
 // Re-analyze when:
@@ -267,6 +354,11 @@ export async function POST(req) {
     }
     const { games } = await gamesRes.json();
     if (!games?.length) return NextResponse.json({ message: 'No games on the slate today', analyzed: 0 }, { status: 200 });
+
+    // Grade any completed games server-side — independent of watchlist status
+    // or whether any client is open. Fire-and-forget so it never blocks or
+    // slows down the analysis response.
+    gradeCompletedGames(sb, date, base).catch(() => {});
 
     // 2. Build the slate. Normal mode: slotted MLB/NBA/NFL games not yet started.
     //    forceAll mode ALSO includes no-slot sports (Tennis/WNBA).

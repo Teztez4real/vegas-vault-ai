@@ -86,27 +86,41 @@ export async function GET(req) {
       }
     } catch {}
 
-    // ── 2. SEASON WIN RATE — from graded pick history across all users ──
+    // ── 2. SEASON WIN RATE — from the shared AI track record (every graded
+    // pick, server-side, independent of any user's watchlist). Falls back to
+    // per-user pick_history if the shared table isn't populated yet (e.g.
+    // right after this feature ships, before any games have been graded).
     try {
-      const { data: histRows } = await sb
-        .from('user_data')
-        .select('value')
-        .eq('key', 'pick_history')
-        .limit(50);
-      let wins = 0, losses = 0;
-      for (const row of histRows || []) {
-        let hist; try { hist = JSON.parse(row.value); } catch { continue; }
-        if (!Array.isArray(hist)) continue;
-        for (const p of hist) {
-          if (p.isUserAlt) continue;
-          const res = (p.result || '').toString().toLowerCase();
-          if (res === 'win') wins++;
-          else if (res === 'loss') losses++;
-        }
+      const { data: trRows } = await sb.from('ai_track_record').select('result');
+      if (trRows?.length) {
+        const wins = trRows.filter(r => r.result === 'win').length;
+        const losses = trRows.filter(r => r.result === 'loss').length;
+        const total = wins + losses;
+        if (total >= 5) out.winRate = { pct: Math.round((wins / total) * 1000) / 10, wins, losses };
       }
-      const total = wins + losses;
-      if (total >= 5) out.winRate = { pct: Math.round((wins / total) * 1000) / 10, wins, losses };
     } catch {}
+    if (!out.winRate) {
+      try {
+        const { data: histRows } = await sb
+          .from('user_data')
+          .select('value')
+          .eq('key', 'pick_history')
+          .limit(50);
+        let wins = 0, losses = 0;
+        for (const row of histRows || []) {
+          let hist; try { hist = JSON.parse(row.value); } catch { continue; }
+          if (!Array.isArray(hist)) continue;
+          for (const p of hist) {
+            if (p.isUserAlt) continue;
+            const res = (p.result || '').toString().toLowerCase();
+            if (res === 'win') wins++;
+            else if (res === 'loss') losses++;
+          }
+        }
+        const total = wins + losses;
+        if (total >= 5) out.winRate = { pct: Math.round((wins / total) * 1000) / 10, wins, losses };
+      } catch {}
+    }
 
     // ── 3. LINE MOVEMENT — pulled from the LIVE slate (/api/today) for the
     // featured play's OWN date (today or the fallback day). If the featured
