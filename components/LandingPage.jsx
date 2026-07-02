@@ -161,10 +161,14 @@ export default function LandingPage() {
           <div style={cardStyle({ top:'2%', left:'0%', width:'62%' })}>
             <div style={cardLabel}>
               <span style={{ width:7, height:7, borderRadius:'50%', background:GREEN, boxShadow:`0 0 8px ${GREEN}` }} />
-              AI PLAY OF THE DAY
+              {stats?.play && stats.play.isToday === false ? 'RECENT AI PLAY' : 'AI PLAY OF THE DAY'}
             </div>
             <div style={{ fontSize:22, fontWeight:900, color:'#fff', margin:'8px 0 3px' }}>{stats?.play ? formatPickDisplay(stats.play.pick, stats.play.betType) : 'Yankees −1.5'}</div>
-            <div style={{ fontSize:12, color:'rgba(255,255,255,0.5)', marginBottom:12 }}>{stats?.play ? `${stats.play.matchup}${stats.play.time ? ' · ' + stats.play.time : ''}` : 'NYY @ BOS · 7:10 PM ET'}</div>
+            <div style={{ fontSize:12, color:'rgba(255,255,255,0.5)', marginBottom:12 }}>
+              {stats?.play
+                ? `${stats.play.matchup}${stats.play.time ? ' · ' + stats.play.time : ''}${stats.play.isToday === false && stats.play.date ? ' · ' + new Date(stats.play.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}) : ''}`
+                : 'NYY @ BOS · 7:10 PM ET'}
+            </div>
             <div style={{ display:'flex', gap:8 }}>
               <span style={tierTag}>🔒 TIER {stats?.play?.tier || '1'}</span>
               {(stats?.play?.odds || !stats?.play) && <span style={{ ...tierTag, background:'rgba(57,255,20,0.1)', color:GREEN, border:`1px solid rgba(57,255,20,0.3)` }}>{stats?.play?.odds || '−115'}</span>}
