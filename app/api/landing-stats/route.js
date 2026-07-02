@@ -1,3 +1,4 @@
+import { NextResponse } from 'next/server';
 import { formatPickDisplay } from '@/lib/pickFormat';
 
 export const runtime = 'nodejs';
@@ -6,7 +7,7 @@ export const maxDuration = 20;
 // Public, lightweight endpoint for the landing page's three live cards:
 //   1. AI Play of the Day  — best Tier-1/2 play from today's stored analyses
 //   2. Season Win Rate     — computed from graded pick history
-//   3. Line Movement       — a real DraftKings movement example from the slate
+//   3. Line Movement       — real line movement pulled from today's live slate
 // Pure DB/data reads — NO AI calls — so it's cheap and fast for every visitor.
 // Everything is defensive: if data isn't available, fields come back null and
 // the landing page falls back to its static placeholders.
@@ -21,6 +22,7 @@ export async function GET(req) {
     const date = `${ctNow.getFullYear()}-${String(ctNow.getMonth()+1).padStart(2,'0')}-${String(ctNow.getDate()).padStart(2,'0')}`;
 
     // ── 1. AI PLAY OF THE DAY — best non-PASS play from today's analyses ──
+    let featuredMatchup = null;
     try {
       const { data: rows } = await sb
         .from('game_analyses')
@@ -46,23 +48,18 @@ export async function GET(req) {
           const c = candidates[0];
           out.play = {
             matchup: `${c.away} @ ${c.home}`,
-            pick: formatPickDisplay(s.pick, s.betType || ''),
+            pick: formatPickDisplay(c.pick, c.betType || ''),
             tier: c.tier, odds: c.odds, time: c.time,
           };
-          // Use the same game for line movement if it has one
-          const lmRow = rows.find(r => r.away === c.away && r.home === c.home);
-          if (lmRow) {
-            try {
-              const p = JSON.parse(lmRow.result);
-              if (p.lineMovement && p.lineMovement !== 'No significant movement') out.lineMovement = { text: p.lineMovement, matchup: `${c.away} @ ${c.home}` };
-            } catch {}
-          }
+          featuredMatchup = { away: c.away, home: c.home };
         }
       }
     } catch {}
 
     // ── 2. SEASON WIN RATE — from graded pick history across all users ──
-    // We store finalized graded picks; compute W/(W+L). Falls back to null.
+    // Field names/logic match the in-app analytics exactly: lowercase
+    // 'win'/'loss', and isUserAlt entries excluded (those are user-selected
+    // alternate-market picks, not the AI's own track record).
     try {
       const { data: histRows } = await sb
         .from('user_data')
@@ -74,32 +71,35 @@ export async function GET(req) {
         let hist; try { hist = JSON.parse(row.value); } catch { continue; }
         if (!Array.isArray(hist)) continue;
         for (const p of hist) {
-          const res = (p.result || p.outcome || '').toString().toUpperCase();
-          if (res === 'WIN' || res === 'W') wins++;
-          else if (res === 'LOSS' || res === 'L') losses++;
+          if (p.isUserAlt) continue;
+          const res = (p.result || '').toString().toLowerCase();
+          if (res === 'win') wins++;
+          else if (res === 'loss') losses++;
         }
       }
       const total = wins + losses;
       if (total >= 5) out.winRate = { pct: Math.round((wins / total) * 1000) / 10, wins, losses };
     } catch {}
 
-    // ── 3. LINE MOVEMENT — if the featured play didn't supply one, find any ──
-    if (!out.lineMovement) {
-      try {
-        const { data: rows } = await sb
-          .from('game_analyses')
-          .select('away, home, result')
-          .eq('date', date)
-          .limit(30);
-        for (const r of rows || []) {
-          let p; try { p = JSON.parse(r.result); } catch { continue; }
-          if (p.lineMovement && p.lineMovement !== 'No significant movement' && /→|opened|moved|sharp/i.test(p.lineMovement)) {
-            out.lineMovement = { text: p.lineMovement, matchup: `${r.away} @ ${r.home}` };
-            break;
-          }
+    // ── 3. LINE MOVEMENT — pulled from the LIVE slate (/api/today), where
+    // lineMovement actually lives. It is NOT part of the AI's stored analysis
+    // result, which is a bug the earlier version had (always came back null).
+    // Prefer the featured play's game; otherwise take the first game on the
+    // slate that shows real movement.
+    try {
+      const origin = new URL(req.url).origin;
+      const gamesRes = await fetch(`${origin}/api/today?date=${date}`, { cache: 'no-store' });
+      if (gamesRes.ok) {
+        const { games } = await gamesRes.json();
+        const hasMovement = (g) => g?.lineMovement && g.lineMovement !== 'No significant movement' && g.lineMovement !== 'N/A';
+        let g = null;
+        if (featuredMatchup) {
+          g = (games || []).find(x => x.away === featuredMatchup.away && x.home === featuredMatchup.home && hasMovement(x));
         }
-      } catch {}
-    }
+        if (!g) g = (games || []).find(hasMovement);
+        if (g) out.lineMovement = { text: g.lineMovement, matchup: `${g.away} @ ${g.home}` };
+      }
+    } catch {}
 
     return NextResponse.json(out, { headers: { 'Cache-Control': 'public, max-age=120' } });
   } catch (e) {
