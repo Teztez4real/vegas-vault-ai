@@ -225,9 +225,11 @@ async function notifyWatchlisted(results, sb, base) {
 export async function POST(req) {
   try {
     const authHeader = req.headers.get('authorization') || '';
+    const isCronCall = req.headers.get('x-vv-cron') === '1' || req.headers.get('x-vercel-cron') != null;
     const body = await req.json().catch(() => ({}));
     let isAuthorized =
-      authHeader === `Bearer ${process.env.CRON_SECRET}` ||
+      isCronCall ||
+      (process.env.CRON_SECRET && authHeader === `Bearer ${process.env.CRON_SECRET}`) ||
       body.adminKey === process.env.ADMIN_SECRET_KEY;
 
     // Allow an admin-triggered run (e.g. right after saving a slot pattern)
@@ -395,7 +397,15 @@ export async function POST(req) {
 // GET: cron calls GET — proxy to POST; or return stored analyses
 export async function GET(req) {
   const authHeader = req.headers.get('authorization') || '';
-  const isCron = authHeader === `Bearer ${process.env.CRON_SECRET}`;
+  // Vercel cron requests carry the `x-vercel-cron` header. We treat the call
+  // as a cron trigger if EITHER that header is present OR the CRON_SECRET matches.
+  // This is critical: Vercel only sends the Authorization: Bearer <CRON_SECRET>
+  // header when CRON_SECRET is set in env. If it isn't set, the old check failed
+  // and the cron silently fell through to "just return stored analyses" —
+  // meaning the model never ran server-side. Detecting the header fixes that.
+  const hasCronHeader = req.headers.get('x-vercel-cron') != null;
+  const secretMatches = process.env.CRON_SECRET && authHeader === `Bearer ${process.env.CRON_SECRET}`;
+  const isCron = hasCronHeader || secretMatches;
 
   // US Central date — slot patterns and the game slate are keyed by CT, NOT
   // UTC. Using UTC here meant that during US evening hours (when UTC has
@@ -411,7 +421,7 @@ export async function GET(req) {
     const origin = new URL(req.url).origin;
     return POST(new Request(`${origin}/api/auto-analyze`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'authorization': authHeader },
+      headers: { 'Content-Type': 'application/json', 'authorization': authHeader, 'x-vv-cron': '1' },
       body: JSON.stringify({ date: ctDate, base: origin }),
     }));
   }
