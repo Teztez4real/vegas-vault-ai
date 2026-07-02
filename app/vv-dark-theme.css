@@ -299,3 +299,26 @@ input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.35) !impor
   .vv-tb-search { display: none !important; }
   .vv-tb-spacer { flex: 1 !important; }
 }
+
+/* ── 15. MOBILE-ONLY CENTERED TOPBAR LOGO ───────────────────── */
+/* Hidden on desktop; centered in the topbar on mobile, positioned
+   absolutely so it floats independently of the hamburger/icons flex
+   layout and never pushes or overlaps them. Does NOT affect the
+   sidebar logo or the drawer logo (SidebarBrand) — separate element. */
+.vv-tb-logo-mobile {
+  display: none;
+}
+@media (max-width: 768px) {
+  .vv-topbar { position: relative; }
+  .vv-tb-logo-mobile {
+    display: block;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    height: 26px;
+    width: auto;
+    pointer-events: none;
+    z-index: 1;
+  }
+}

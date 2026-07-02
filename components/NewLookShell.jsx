@@ -127,6 +127,9 @@ function Topbar({ onMenuToggle, hasNotification, onBellClick }) {
       <div className="vv-menu-toggle" onClick={onMenuToggle} aria-label="Open navigation menu">
         <i className="ti ti-menu-2" />
       </div>
+      {/* Mobile-only centered logo — hidden on desktop via CSS, does not
+          affect the sidebar or drawer logo (SidebarBrand) at all. */}
+      <img src="/vv-logo-horizontal.svg" alt="Vegas Vault AI" className="vv-tb-logo-mobile" />
       <div className="vv-tb-search">
         <i className="ti ti-search" />
         <input type="text" placeholder="Ask Vegas Vault AI anything..." />
