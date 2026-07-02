@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import { formatPickDisplay } from '@/lib/pickFormat';
 
 // ── VEGAS VAULT AI — LANDING PAGE ────────────────────────────────────────────
 // Structure modeled on a modern AI fintech hero (two-column: copy left,
@@ -162,7 +163,7 @@ export default function LandingPage() {
               <span style={{ width:7, height:7, borderRadius:'50%', background:GREEN, boxShadow:`0 0 8px ${GREEN}` }} />
               AI PLAY OF THE DAY
             </div>
-            <div style={{ fontSize:22, fontWeight:900, color:'#fff', margin:'8px 0 3px' }}>{stats?.play?.pick || 'Yankees −1.5'}</div>
+            <div style={{ fontSize:22, fontWeight:900, color:'#fff', margin:'8px 0 3px' }}>{stats?.play ? formatPickDisplay(stats.play.pick, stats.play.betType) : 'Yankees −1.5'}</div>
             <div style={{ fontSize:12, color:'rgba(255,255,255,0.5)', marginBottom:12 }}>{stats?.play ? `${stats.play.matchup}${stats.play.time ? ' · ' + stats.play.time : ''}` : 'NYY @ BOS · 7:10 PM ET'}</div>
             <div style={{ display:'flex', gap:8 }}>
               <span style={tierTag}>🔒 TIER {stats?.play?.tier || '1'}</span>

@@ -1076,20 +1076,9 @@ function ForceSmartUpdate() {
 }
 
 // ── TOP PLAY BANNER ───────────────────────────────────────────────────────────
-// Shared pick formatter — prevents "Tampa Bay Rays Tampa Bay Rays ML" duplication.
-// The AI sometimes puts the team name in both pick and betType fields.
-function formatPickDisplay(pick, betType) {
-  if (!pick && !betType) return '';
-  if (!pick) return betType || '';
-  if (!betType) return pick;
-  const p = pick.trim(), bt = betType.trim();
-  if (bt.toLowerCase().startsWith(p.toLowerCase())) {
-    const remainder = bt.slice(p.length).trim();
-    return remainder ? `${p} ${remainder}` : p;
-  }
-  if (p.toLowerCase().includes(bt.toLowerCase())) return p;
-  return `${p} ${bt}`;
-}
+// Shared pick formatter — prevents duplications like "St. Louis Cardinals Cardinals ML"
+// or "Under Under 9". Handles full-string and partial-word-overlap cases.
+import { formatPickDisplay } from '@/lib/pickFormat';
 
 function TopPlayBanner({ topPlay, loading, results, pickHistory, isSubscribed, isAdmin, watchlist, onToggleWatch, onForceRefresh }) {
   const result = topPlay && (results[`${topPlay.id}-${topPlay.slot}`]||results[`${topPlay.id}-PUBLIC`]||results[`${topPlay.id}-VEGAS`]);

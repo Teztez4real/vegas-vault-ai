@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { formatPickDisplay } from '@/lib/pickFormat';
 
 export const runtime = 'nodejs';
 export const maxDuration = 20;
@@ -46,7 +46,7 @@ export async function GET(req) {
           const c = candidates[0];
           out.play = {
             matchup: `${c.away} @ ${c.home}`,
-            pick: `${c.pick}${c.betType && !String(c.pick).includes(c.betType) ? ' ' + c.betType : ''}`.trim(),
+            pick: formatPickDisplay(s.pick, s.betType || ''),
             tier: c.tier, odds: c.odds, time: c.time,
           };
           // Use the same game for line movement if it has one
