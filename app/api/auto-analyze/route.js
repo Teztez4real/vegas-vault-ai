@@ -46,18 +46,20 @@ function gradePick(pick, away, home, awayScore, homeScore) {
 
 async function gradeCompletedGames(sb, date, base) {
   try {
-    // Pull today's (and yesterday's, in case grading is delayed) game_analyses
-    // that haven't been graded yet, plus MLB final scores for the same window.
-    const ctNow = new Date();
-    const yest = new Date(ctNow); yest.setDate(yest.getDate() - 1);
-    const yestStr = `${yest.getFullYear()}-${String(yest.getMonth()+1).padStart(2,'0')}-${String(yest.getDate()).padStart(2,'0')}`;
+    // Compute "yesterday" relative to the CT date param (not server UTC).
+    // Using new Date() here was UTC-based and could be a full day off during
+    // US evening hours, causing grading to query the wrong day.
+    const [y, m, d0] = date.split('-').map(Number);
+    const dateObj = new Date(Date.UTC(y, m - 1, d0));
+    dateObj.setUTCDate(dateObj.getUTCDate() - 1);
+    const yestStr = `${dateObj.getUTCFullYear()}-${String(dateObj.getUTCMonth()+1).padStart(2,'0')}-${String(dateObj.getUTCDate()).padStart(2,'0')}`;
 
-    for (const d of [date, yestStr]) {
-      const { data: rows } = await sb.from('game_analyses').select('game_key, away, home, sport, result, date').eq('date', d);
+    for (const dd of [date, yestStr]) {
+      const { data: rows } = await sb.from('game_analyses').select('game_key, away, home, sport, result, date').eq('date', dd);
       if (!rows?.length) continue;
 
       // Fetch final scores for this date via /api/today (already aggregates live/final scores)
-      const gRes = await fetch(`${base}/api/today?date=${d}`, { cache: 'no-store' });
+      const gRes = await fetch(`${base}/api/today?date=${dd}`, { cache: 'no-store' });
       if (!gRes.ok) continue;
       const { games: liveGames } = await gRes.json();
 
@@ -80,12 +82,9 @@ async function gradeCompletedGames(sb, date, base) {
         const updatedResult = { ...parsed, graded: true, gradedResult: result, gradedScore: `${row.away} ${awayScore} - ${homeScore} ${row.home}`, gradedAt: new Date().toISOString() };
         await sb.from('game_analyses').update({ result: JSON.stringify(updatedResult) }).eq('game_key', row.game_key);
 
-        // Also write to a shared, user-independent track record table so the
-        // AI's own win rate reflects EVERY graded pick, not just ones a user
-        // happened to watchlist. Defensive — table may not exist yet.
         try {
           await sb.from('ai_track_record').upsert({
-            game_key: row.game_key, date: d, sport: row.sport,
+            game_key: row.game_key, date: dd, sport: row.sport,
             away: row.away, home: row.home,
             pick: s.pick, bet_type: s.betType, tier: s.tier,
             result, score: `${row.away} ${awayScore} - ${homeScore} ${row.home}`,
@@ -424,10 +423,10 @@ export async function POST(req) {
     }
 
     // Build the analysis worker (runs the batches + publishes each result).
-    const runAnalysis = async () => {
+    const runAnalysis = async (items = toAnalyze) => {
       const results = [];
-      for (let i = 0; i < toAnalyze.length; i += 3) {
-        const batch = toAnalyze.slice(i, i + 3);
+      for (let i = 0; i < items.length; i += 3) {
+        const batch = items.slice(i, i + 3);
         await Promise.allSettled(batch.map(async ({ game, key, reason }) => {
           try {
             const result = await analyzeGame(game, base);
@@ -464,11 +463,27 @@ export async function POST(req) {
       });
     }
 
-    // 5. Non-force path: run synchronously and report results.
-    const results = await runAnalysis();
+    // 5. Non-force path (the every-30-min cron): cap how many games we analyze
+    // per invocation so we NEVER approach the 300s function timeout. A full
+    // slate of 13+ games at ~15-20s each would exceed 300s and the function
+    // would die mid-run, leaving games unanalyzed. We prioritize the games
+    // CLOSEST to start (most time-sensitive: lineups, scratches, closing line)
+    // and let the rest roll to the next cron cycle 30 min later.
+    const MAX_PER_CRON = 8;
+    let cronBatch = toAnalyze;
+    if (toAnalyze.length > MAX_PER_CRON) {
+      cronBatch = [...toAnalyze].sort((a, b) => {
+        const at = a.game.rawTime ? new Date(a.game.rawTime).getTime() : Infinity;
+        const bt = b.game.rawTime ? new Date(b.game.rawTime).getTime() : Infinity;
+        return at - bt; // soonest first
+      }).slice(0, MAX_PER_CRON);
+    }
+
+    const results = await runAnalysis(cronBatch);
 
     const succeeded = results.filter(r => r.status === 'ok').length;
     const failed    = results.filter(r => r.status === 'error').length;
+    const deferred  = toAnalyze.length - cronBatch.length;
 
     await notifyWatchlisted(results, sb, base);
 
@@ -477,6 +492,7 @@ export async function POST(req) {
       date,
       analyzed: succeeded,
       failed,
+      deferred, // games rolled to the next cron cycle to stay under the timeout
       skipped: skipped.length,
     });
 
