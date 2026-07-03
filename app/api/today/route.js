@@ -1061,7 +1061,7 @@ async function fetchNBAGames(date) {
     if (!res.ok) return [];
     const data = await res.json();
     // Filter to only games on the requested date (in CT timezone)
-    const targetDate = date || new Date().toISOString().split('T')[0];
+    const targetDate = date || todayStr();
     const filtered = data.filter(game => {
       const gameDate = new Date(game.commence_time);
       // Convert to CT (UTC-5 or UTC-6)
@@ -1332,7 +1332,7 @@ async function fetchWNBAGames(date) {
     );
     if (!res.ok) return [];
     const data = await res.json();
-    const targetDate = date || new Date().toISOString().split('T')[0];
+    const targetDate = date || todayStr();
     const dateFiltered = data.filter(game => {
       const ct = new Date(new Date(game.commence_time).getTime() - 5 * 60 * 60 * 1000);
       return ct.toISOString().split('T')[0] === targetDate;
@@ -1422,7 +1422,7 @@ async function fetchWNBAGames(date) {
 async function fetchTeamRecentForm(teamId, teamName) {
   try {
     const season = new Date().getFullYear();
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayStr();
     const tenDaysAgo = new Date(Date.now() - 14 * 86400000).toISOString().split('T')[0];
 
     // Fetch recent games AND full season record in parallel

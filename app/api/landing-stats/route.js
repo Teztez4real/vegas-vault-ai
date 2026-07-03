@@ -25,7 +25,22 @@ export async function GET(req) {
     const todayStr = `${ctNow.getFullYear()}-${String(ctNow.getMonth()+1).padStart(2,'0')}-${String(ctNow.getDate()).padStart(2,'0')}`;
 
     // ── 1. AI PLAY OF THE DAY — best non-PASS play from TODAY ONLY ──
+    // We query game_analyses by today's date, but we ALSO cross-check the
+    // featured game against today's ACTUAL live slate (/api/today). This is a
+    // safeguard: if any analysis row is mis-stamped with the wrong date (e.g.
+    // analyzed near the CT midnight rollover), the date column alone could let
+    // a prior-day game slip through. Requiring the game to appear on today's
+    // real slate guarantees the play is genuinely from today.
     let featuredMatchup = null;
+    let todaySlate = [];
+    try {
+      const origin = new URL(req.url).origin;
+      const slateRes = await fetch(`${origin}/api/today?date=${todayStr}`, { cache: 'no-store' });
+      if (slateRes.ok) { const j = await slateRes.json(); todaySlate = j.games || []; }
+    } catch {}
+    const onTodaySlate = (away, home) =>
+      todaySlate.length === 0 || todaySlate.some(g => g.away === away && g.home === home);
+
     try {
       const { data: rows } = await sb
         .from('game_analyses')
@@ -37,6 +52,8 @@ export async function GET(req) {
           let parsed; try { parsed = JSON.parse(r.result); } catch { continue; }
           const s = parsed?.summary;
           if (!s || !s.pick || s.tier === 'PASS' || s.tier === '3') continue;
+          // Must actually be on today's live slate (guards against mis-dated rows)
+          if (!onTodaySlate(r.away, r.home)) continue;
           const tierRank = s.tier === '1' ? 3 : s.tier === '2' ? 2 : 1;
           candidates.push({
             away: r.away, home: r.home,
@@ -96,20 +113,16 @@ export async function GET(req) {
       } catch {}
     }
 
-    // ── 3. LINE MOVEMENT — pulled from today's LIVE slate (/api/today) ──
+    // ── 3. LINE MOVEMENT — from today's LIVE slate (reuse todaySlate) ──
     try {
-      const origin = new URL(req.url).origin;
-      const gamesRes = await fetch(`${origin}/api/today?date=${todayStr}`, { cache: 'no-store' });
-      if (gamesRes.ok) {
-        const { games } = await gamesRes.json();
-        const hasMovement = (g) => g?.lineMovement && g.lineMovement !== 'No significant movement' && g.lineMovement !== 'N/A';
-        let g = null;
-        if (featuredMatchup) {
-          g = (games || []).find(x => x.away === featuredMatchup.away && x.home === featuredMatchup.home && hasMovement(x));
-        }
-        if (!g) g = (games || []).find(hasMovement);
-        if (g) out.lineMovement = { text: g.lineMovement, matchup: `${g.away} @ ${g.home}` };
+      const games = todaySlate;
+      const hasMovement = (g) => g?.lineMovement && g.lineMovement !== 'No significant movement' && g.lineMovement !== 'N/A';
+      let g = null;
+      if (featuredMatchup) {
+        g = (games || []).find(x => x.away === featuredMatchup.away && x.home === featuredMatchup.home && hasMovement(x));
       }
+      if (!g) g = (games || []).find(hasMovement);
+      if (g) out.lineMovement = { text: g.lineMovement, matchup: `${g.away} @ ${g.home}` };
     } catch {}
 
     return NextResponse.json(out, { headers: { 'Cache-Control': 'public, max-age=120' } });
