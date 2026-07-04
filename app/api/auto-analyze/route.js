@@ -44,6 +44,59 @@ function gradePick(pick, away, home, awayScore, homeScore) {
   return (pickIsAway && awayWon) || (pickIsHome && homeWon) ? 'win' : 'loss';
 }
 
+// Checks whether EVERY game that needs analysis today has a result yet,
+// and if so — and we haven't already notified for this date — sends a
+// ONE-TIME broadcast push to every subscribed client: "today's slate is
+// ready." This is what lets clients know they can open the app and find
+// every pick already sitting there, without them needing to trigger or
+// wait on anything themselves.
+async function checkAndNotifySlateComplete(sb, date, base) {
+  try {
+    // Already notified for this date — nothing to do.
+    const { data: already } = await sb.from('slate_complete_notifications').select('date').eq('date', date).maybeSingle();
+    if (already) return;
+
+    const gamesRes = await fetch(`${base}/api/today?date=${date}`, { cache: 'no-store' });
+    if (!gamesRes.ok) return;
+    const { games } = await gamesRes.json();
+    if (!games?.length) return;
+
+    const now = new Date();
+    // A game "needs analysis" if it's a slotted MLB/NBA/NFL game or a
+    // no-slot sport (Tennis/WNBA), and hasn't already started (started
+    // games are locked and excluded from the completion check).
+    const needsAnalysis = games.filter(g => {
+      if (g.rawTime && new Date(g.rawTime) <= now) return false; // started/locked, doesn't block completion
+      const noSlotSport = g.sport === 'Tennis' || g.sport === 'WNBA';
+      if (noSlotSport) return true;
+      return !!g.slot && g.slot !== 'NONE';
+    });
+    if (!needsAnalysis.length) return; // nothing to analyze today at all yet (e.g. no slot pattern saved)
+
+    const { data: rows } = await sb.from('game_analyses').select('away, home, sport, slot').eq('date', date);
+    const analyzedKeys = new Set((rows || []).map(r => `${r.away}|${r.home}|${r.sport}`));
+
+    const allDone = needsAnalysis.every(g => analyzedKeys.has(`${g.away}|${g.home}|${g.sport}`));
+    if (!allDone) return;
+
+    // Everything's analyzed — send the one-time broadcast and mark it sent.
+    try {
+      await fetch(`${base}/api/push/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: '✅ Today\'s Slate Is Ready',
+          body: `All ${needsAnalysis.length} games have been analyzed — open the app to see today's plays.`,
+          url: '/dashboard',
+          tag: `vv-slate-complete-${date}`,
+          adminKey: process.env.ADMIN_SECRET_KEY,
+        }),
+      });
+    } catch {}
+    await sb.from('slate_complete_notifications').upsert({ date, notified_at: new Date().toISOString() }, { onConflict: 'date' });
+  } catch {}
+}
+
 async function gradeCompletedGames(sb, date, base) {
   try {
     // Build a small lookback window (today + prior 3 days) relative to the CT
@@ -422,6 +475,7 @@ export async function POST(req) {
     }
 
     if (!toAnalyze.length) {
+      checkAndNotifySlateComplete(sb, date, base).catch(() => {});
       return NextResponse.json({
         message: 'All plays confirmed — no re-analysis needed',
         analyzed: 0, skipped: skipped.length, date,
@@ -461,6 +515,7 @@ export async function POST(req) {
     if (forceAll) {
       runAnalysis()
         .then(rs => notifyWatchlisted(rs, sb, base))
+        .then(() => checkAndNotifySlateComplete(sb, date, base))
         .catch(() => {});
       return NextResponse.json({
         analyzed: toAnalyze.length,
@@ -492,6 +547,7 @@ export async function POST(req) {
     const deferred  = toAnalyze.length - cronBatch.length;
 
     await notifyWatchlisted(results, sb, base);
+    await checkAndNotifySlateComplete(sb, date, base);
 
     return NextResponse.json({
       success: true,

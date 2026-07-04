@@ -2496,6 +2496,15 @@ export default function VegasVaultApp() {
 
   useEffect(() => {
     if (!games || games.length === 0) return;
+    // ── CLIENT-SIDE AUTO-ANALYZE IS ADMIN-ONLY ──────────────────────────────
+    // Regular clients are read-only: they only ever display whatever the
+    // server-side cron has already published to the shared game_analyses
+    // table. This avoids any client device doing analysis work — the admin
+    // saving the slot pattern (or the 30-min cron) is the sole trigger.
+    // Clients can still manually tap "Re-analyze" on a card whose analysis
+    // failed (see the ANALYSIS FAILED button on GameCard) — that's a direct,
+    // deliberate user action, not automatic background queuing.
+    if (authUser?.email !== ADMIN_EMAIL) return;
     // Critical: don't evaluate which games need analysis until the synced
     // results/finalized data has actually finished loading. Without this,
     // a fresh login (or re-login after sign-out) could see `results` still
