@@ -194,6 +194,17 @@ html, body, .vv-root, .vv-body, .vv-main {
   border-color: rgba(57,255,20,0.1) !important;
 }
 
+/* Sidebar user block (admin/member name at bottom of sidebar) — the name
+   was #222 (near-black), designed for the light theme, and had been missed
+   in every prior dark-theme pass since it's a class rule, not inline style. */
+.vv-sb-uname {
+  color: #ffffff !important;
+  font-size: 12px !important;
+}
+.vv-sb-urole.admin { color: #39FF14 !important; font-weight: 800 !important; }
+.vv-sb-urole.member { color: #7fb0ff !important; font-weight: 800 !important; }
+.vv-sb-chev { color: rgba(255,255,255,0.4) !important; }
+
 /* ── 6. INPUTS / SEARCH ─────────────────────────────────────── */
 input, textarea, select,
 .vv-tb-search input {
