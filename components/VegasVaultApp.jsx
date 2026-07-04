@@ -3544,6 +3544,8 @@ export default function VegasVaultApp() {
                       <>
                         <span className="vv-gr-pick" style={{ color: isPass ? '#ccc' : '#111' }}>{summary.pick}</span>
                         <span className="vv-gr-odds">{pickOdds}</span>
+                        {result?.gradedResult==='win' && <span style={{ fontSize:9,fontWeight:800,color:'#33aa00',marginLeft:6 }}>✅ CASHED</span>}
+                        {result?.gradedResult==='loss' && <span style={{ fontSize:9,fontWeight:800,color:'#dd4444',marginLeft:6 }}>❌ LOSS</span>}
                       </>
                     ) : (
                       <span className="vv-gr-pick" style={{ color:'#bbb', fontSize:10 }}>Click to analyze</span>
