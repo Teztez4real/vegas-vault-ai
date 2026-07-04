@@ -4,47 +4,44 @@ import { formatPickDisplay } from '@/lib/pickFormat';
 export const runtime = 'nodejs';
 export const maxDuration = 20;
 
-// Public, lightweight endpoint for the landing page's three live cards:
-//   1. AI Play of the Day  — best Tier-1/2 play from TODAY's analyses ONLY.
-//      If today's slate hasn't produced a qualifying play yet, the card
-//      falls back to the static placeholder rather than showing a stale
-//      play from a prior day (a play from yesterday should never be shown
-//      as if it's today's).
-//   2. Season Win Rate     — computed from the shared AI track record
-//   3. Line Movement       — real line movement pulled from today's live slate
-// Pure DB/data reads — NO AI calls — so it's cheap and fast for every visitor.
+function toDateStr(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// Public, lightweight endpoint for the landing page's live cards:
+//   1. AI Play of the Day — today's play if the slate has produced a real
+//      Tier-1/2 pick. Otherwise, CARRIES OVER the most recent real play from
+//      a prior day (with its graded WIN/LOSS result stamped on it) rather
+//      than falling back to a fake static example. The carried-over play
+//      only rolls off once today's slate produces its own real play.
+//   2. Season Win Rate — from the shared AI track record (all graded picks).
+//   3. Line Movement — ALWAYS pulled from today's live slate data (real odds
+//      tracking is independent of whether the admin has set today's slot
+//      pattern), never a static/fabricated example.
 export async function GET(req) {
   const out = { play: null, winRate: null, lineMovement: null };
   try {
     const { createClient } = await import('@supabase/supabase-js');
     const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-    // US Central "today" — must match exactly what the analysis pipeline
-    // uses when it writes the `date` column on game_analyses.
     const ctNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }));
-    const todayStr = `${ctNow.getFullYear()}-${String(ctNow.getMonth()+1).padStart(2,'0')}-${String(ctNow.getDate()).padStart(2,'0')}`;
+    const todayStr = toDateStr(ctNow);
 
-    // ── 1. AI PLAY OF THE DAY — best non-PASS play from TODAY ONLY ──
-    // We query game_analyses by today's date, but we ALSO cross-check the
-    // featured game against today's ACTUAL live slate (/api/today). This is a
-    // safeguard: if any analysis row is mis-stamped with the wrong date (e.g.
-    // analyzed near the CT midnight rollover), the date column alone could let
-    // a prior-day game slip through. Requiring the game to appear on today's
-    // real slate guarantees the play is genuinely from today.
-    let featuredMatchup = null;
+    const origin = new URL(req.url).origin;
     let todaySlate = [];
     try {
-      const origin = new URL(req.url).origin;
       const slateRes = await fetch(`${origin}/api/today?date=${todayStr}`, { cache: 'no-store' });
       if (slateRes.ok) { const j = await slateRes.json(); todaySlate = j.games || []; }
     } catch {}
     const onTodaySlate = (away, home) =>
       todaySlate.length === 0 || todaySlate.some(g => g.away === away && g.home === home);
 
+    // ── 1a. TRY TODAY FIRST ──
+    let featuredMatchup = null;
     try {
       const { data: rows } = await sb
         .from('game_analyses')
-        .select('away, home, result, date, updated_at')
+        .select('away, home, result, date')
         .eq('date', todayStr);
       if (rows?.length) {
         const candidates = [];
@@ -52,13 +49,11 @@ export async function GET(req) {
           let parsed; try { parsed = JSON.parse(r.result); } catch { continue; }
           const s = parsed?.summary;
           if (!s || !s.pick || s.tier === 'PASS' || s.tier === '3') continue;
-          // Must actually be on today's live slate (guards against mis-dated rows)
           if (!onTodaySlate(r.away, r.home)) continue;
           const tierRank = s.tier === '1' ? 3 : s.tier === '2' ? 2 : 1;
           candidates.push({
-            away: r.away, home: r.home,
-            pick: s.pick, betType: s.betType || '', odds: s.odds || s.price || '',
-            tier: s.tier, confidence: s.confidencePercent || 0,
+            away: r.away, home: r.home, pick: s.pick, betType: s.betType || '',
+            odds: s.odds || s.price || '', tier: s.tier, confidence: s.confidencePercent || 0,
             time: parsed.gameTime || s.gameTime || '',
             score: tierRank * 1000 + (s.confidencePercent || 0),
           });
@@ -70,17 +65,67 @@ export async function GET(req) {
             matchup: `${c.away} @ ${c.home}`,
             pick: formatPickDisplay(c.pick, c.betType || ''),
             tier: c.tier, odds: c.odds, time: c.time,
-            date: todayStr,
-            isToday: true,
+            date: todayStr, isToday: true,
+            resultStamp: null, // today's play is fresh/pending, no result yet
           };
           featuredMatchup = { away: c.away, home: c.home };
         }
       }
     } catch {}
 
-    // ── 2. SEASON WIN RATE — from the shared AI track record (every graded
-    // pick, server-side, independent of any user's watchlist). Falls back to
-    // per-user pick_history if the shared table isn't populated yet.
+    // ── 1b. CARRY OVER the most recent prior real play (with its graded
+    // result) if today hasn't produced one yet. Looks back up to 14 days.
+    if (!out.play) {
+      try {
+        const windowStart = new Date(ctNow);
+        windowStart.setDate(windowStart.getDate() - 14);
+        const windowStartStr = toDateStr(windowStart);
+
+        const { data: rows } = await sb
+          .from('game_analyses')
+          .select('away, home, result, date')
+          .gte('date', windowStartStr)
+          .lt('date', todayStr)
+          .order('date', { ascending: false });
+
+        if (rows?.length) {
+          const byDate = {};
+          for (const r of rows) {
+            let parsed; try { parsed = JSON.parse(r.result); } catch { continue; }
+            const s = parsed?.summary;
+            if (!s || !s.pick || s.tier === 'PASS' || s.tier === '3') continue;
+            const tierRank = s.tier === '1' ? 3 : s.tier === '2' ? 2 : 1;
+            (byDate[r.date] = byDate[r.date] || []).push({
+              away: r.away, home: r.home, pick: s.pick, betType: s.betType || '',
+              odds: s.odds || s.price || '', tier: s.tier, confidence: s.confidencePercent || 0,
+              time: parsed.gameTime || s.gameTime || '',
+              graded: parsed.graded === true,
+              gradedResult: parsed.gradedResult || null, // 'win' | 'loss'
+              score: tierRank * 1000 + (s.confidencePercent || 0),
+              date: r.date,
+            });
+          }
+          const orderedDates = [...new Set(rows.map(r => r.date))];
+          for (const d of orderedDates) {
+            const cands = byDate[d];
+            if (!cands?.length) continue;
+            cands.sort((a, b) => b.score - a.score);
+            const c = cands[0];
+            out.play = {
+              matchup: `${c.away} @ ${c.home}`,
+              pick: formatPickDisplay(c.pick, c.betType || ''),
+              tier: c.tier, odds: c.odds, time: c.time,
+              date: d, isToday: false,
+              resultStamp: c.gradedResult === 'win' ? 'CASHED ✅' : c.gradedResult === 'loss' ? 'LOSS ❌' : null,
+            };
+            featuredMatchup = { away: c.away, home: c.home };
+            break;
+          }
+        }
+      } catch {}
+    }
+
+    // ── 2. SEASON WIN RATE — from the shared AI track record ──
     try {
       const { data: trRows } = await sb.from('ai_track_record').select('result');
       if (trRows?.length) {
@@ -92,11 +137,7 @@ export async function GET(req) {
     } catch {}
     if (!out.winRate) {
       try {
-        const { data: histRows } = await sb
-          .from('user_data')
-          .select('value')
-          .eq('key', 'pick_history')
-          .limit(50);
+        const { data: histRows } = await sb.from('user_data').select('value').eq('key', 'pick_history').limit(50);
         let wins = 0, losses = 0;
         for (const row of histRows || []) {
           let hist; try { hist = JSON.parse(row.value); } catch { continue; }
@@ -104,8 +145,7 @@ export async function GET(req) {
           for (const p of hist) {
             if (p.isUserAlt) continue;
             const res = (p.result || '').toString().toLowerCase();
-            if (res === 'win') wins++;
-            else if (res === 'loss') losses++;
+            if (res === 'win') wins++; else if (res === 'loss') losses++;
           }
         }
         const total = wins + losses;
@@ -113,20 +153,29 @@ export async function GET(req) {
       } catch {}
     }
 
-    // ── 3. LINE MOVEMENT — from today's LIVE slate (reuse todaySlate) ──
+    // ── 3. LINE MOVEMENT — ALWAYS from today's live slate. Real odds
+    // tracking happens for every fetched game regardless of whether the
+    // admin has saved a slot pattern, so this is always live data, never a
+    // static/fabricated example. Prefers the featured game; falls back to
+    // any game showing real movement; if truly nothing has moved yet today,
+    // says so honestly instead of showing a fake number.
     try {
-      const games = todaySlate;
       const hasMovement = (g) => g?.lineMovement && g.lineMovement !== 'No significant movement' && g.lineMovement !== 'N/A';
       let g = null;
-      if (featuredMatchup) {
-        g = (games || []).find(x => x.away === featuredMatchup.away && x.home === featuredMatchup.home && hasMovement(x));
+      if (featuredMatchup && out.play?.isToday) {
+        g = todaySlate.find(x => x.away === featuredMatchup.away && x.home === featuredMatchup.home && hasMovement(x));
       }
-      if (!g) g = (games || []).find(hasMovement);
-      if (g) out.lineMovement = { text: g.lineMovement, matchup: `${g.away} @ ${g.home}` };
+      if (!g) g = todaySlate.find(hasMovement);
+      if (g) {
+        out.lineMovement = { text: g.lineMovement, matchup: `${g.away} @ ${g.home}`, live: true };
+      } else if (todaySlate.length > 0) {
+        // Real data, just genuinely no significant movement yet today — honest, not fake.
+        out.lineMovement = { text: 'Monitoring live odds — no significant movement yet today', matchup: null, live: true };
+      }
     } catch {}
 
     return NextResponse.json(out, { headers: { 'Cache-Control': 'public, max-age=120' } });
   } catch (e) {
-    return NextResponse.json(out); // always return the shape; landing uses fallbacks
+    return NextResponse.json(out);
   }
 }
