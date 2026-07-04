@@ -346,43 +346,72 @@ async function fetchOdds(sport, dateParam) {
 }
 
 
+// Fetches a URL with one retry on failure/non-200 — a single transient
+// network hiccup should never cause a false "no career data" result.
+async function fetchWithRetry(url, attempts = 2) {
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const res = await fetch(url, { cache: 'no-store' });
+      if (res.ok) return res;
+    } catch {}
+  }
+  return null;
+}
+
+// Sums stat fields across ALL splits in a response, not just the first —
+// some pitchers have multiple split entries per team/season (e.g. traded
+// mid-season, multiple stints), and only reading splits[0] would silently
+// undercount or miss games entirely.
+function sumSplits(splits) {
+  const totals = { g: 0, ip: 0, er: 0, h: 0, bb: 0, so: 0, hasData: false };
+  for (const split of splits || []) {
+    const stat = split?.stat;
+    if (!stat) continue;
+    const g = stat.gamesPitched ?? 0;
+    if (g === 0) continue;
+    totals.hasData = true;
+    totals.g  += g;
+    totals.ip += parseFloat(stat.inningsPitched || '0') || 0;
+    totals.er += stat.earnedRuns ?? 0;
+    totals.h  += stat.hits ?? 0;
+    totals.bb += stat.baseOnBalls ?? 0;
+    totals.so += stat.strikeOuts ?? 0;
+  }
+  return totals;
+}
+
 async function fetchPitcherVsOpponent(pitcherId, opponentTeamId, pitcherName) {
   if (!pitcherId || !opponentTeamId) return 'N/A';
   try {
-    // First try vsTeamTotal — gives career aggregate vs a specific team in one call
-    const careerRes = await fetch(
-      `https://statsapi.mlb.com/api/v1/people/${pitcherId}/stats?stats=vsTeamTotal&opposingTeamId=${opponentTeamId}&group=pitching`,
-      { cache: 'no-store' }
-    ).catch(() => null);
+    // First try vsTeamTotal — gives career aggregate vs a specific team in one
+    // call. Sum across ALL splits (not just the first) to avoid undercounting
+    // pitchers with multiple stints/split entries. Retries once on failure.
+    const careerRes = await fetchWithRetry(
+      `https://statsapi.mlb.com/api/v1/people/${pitcherId}/stats?stats=vsTeamTotal&opposingTeamId=${opponentTeamId}&group=pitching`
+    );
 
-    if (careerRes?.ok) {
+    if (careerRes) {
       const careerData = await careerRes.json().catch(() => null);
-      const stats = careerData?.stats?.[0]?.splits?.[0]?.stat;
-      if (stats && (stats.gamesPitched ?? 0) > 0) {
-        const g   = stats.gamesPitched ?? 0;
-        const ip  = parseFloat(stats.inningsPitched || '0');
-        const er  = stats.earnedRuns ?? 0;
-        const h   = stats.hits ?? 0;
-        const bb  = stats.baseOnBalls ?? 0;
-        const so  = stats.strikeOuts ?? 0;
-        const era = ip > 0 ? ((er * 9) / ip).toFixed(2) : 'N/A';
-        return `${pitcherName} career vs this team: ${g} G | ${ip.toFixed(1)} IP | ERA ${era} | ${h} H | ${er} ER | ${bb} BB | ${so} K`;
+      const totals = sumSplits(careerData?.stats?.[0]?.splits);
+      if (totals.hasData) {
+        const era = totals.ip > 0 ? ((totals.er * 9) / totals.ip).toFixed(2) : 'N/A';
+        return `${pitcherName} career vs this team: ${totals.g} G | ${totals.ip.toFixed(1)} IP | ERA ${era} | ${totals.h} H | ${totals.er} ER | ${totals.bb} BB | ${totals.so} K`;
       }
     }
 
     // Fallback: aggregate season-by-season. IMPORTANT — cover the pitcher's
-    // ENTIRE MLB career, not an arbitrary recent window. The previous version
-    // hardcoded a 10-year lookback, which silently missed earlier matchups
-    // for veteran pitchers (e.g. a pitcher who debuted 12+ years ago and faced
-    // this opponent early in their career) — producing a FALSE "no career
-    // data" even though real history existed. We look up the pitcher's actual
-    // MLB debut year and query every season since, so this only ever reports
-    // "no career data" when that's genuinely true.
+    // ENTIRE MLB career, not an arbitrary recent window. A hardcoded 10-year
+    // lookback silently missed earlier matchups for veteran pitchers (e.g. a
+    // pitcher who debuted 12+ years ago and faced this opponent early in
+    // their career) — producing a FALSE "no career data" even though real
+    // history existed. We look up the pitcher's actual MLB debut year and
+    // query every season since, so this only ever reports "no career data"
+    // when that's genuinely true.
     const currentSeason = new Date().getFullYear();
     let debutYear = currentSeason - 15; // sane fallback if bio lookup fails
     try {
-      const bioRes = await fetch(`https://statsapi.mlb.com/api/v1/people/${pitcherId}`, { cache: 'no-store' });
-      if (bioRes.ok) {
+      const bioRes = await fetchWithRetry(`https://statsapi.mlb.com/api/v1/people/${pitcherId}`);
+      if (bioRes) {
         const bioData = await bioRes.json().catch(() => null);
         const debutDate = bioData?.people?.[0]?.mlbDebutDate;
         if (debutDate) debutYear = new Date(debutDate).getFullYear();
@@ -397,27 +426,24 @@ async function fetchPitcherVsOpponent(pitcherId, opponentTeamId, pitcherName) {
     for (let s = currentSeason; s >= debutYear; s--) seasons.push(s);
 
     const results = await Promise.all(seasons.map(season =>
-      fetch(
-        `https://statsapi.mlb.com/api/v1/people/${pitcherId}/stats?stats=vsTeam&opposingTeamId=${opponentTeamId}&group=pitching&season=${season}`,
-        { cache: 'no-store' }
-      ).then(r => r.ok ? r.json() : null).catch(() => null)
+      fetchWithRetry(
+        `https://statsapi.mlb.com/api/v1/people/${pitcherId}/stats?stats=vsTeam&opposingTeamId=${opponentTeamId}&group=pitching&season=${season}`
+      ).then(res => res ? res.json().catch(() => null) : null)
     ));
 
     let totalG = 0, totalIP = 0, totalER = 0, totalH = 0, totalBB = 0, totalSO = 0;
     let hasAnyData = false;
 
     for (const data of results) {
-      const stats = data?.stats?.[0]?.splits?.[0]?.stat;
-      if (!stats) continue;
-      const g = stats.gamesPitched ?? 0;
-      if (g === 0) continue;
+      const totals = sumSplits(data?.stats?.[0]?.splits);
+      if (!totals.hasData) continue;
       hasAnyData = true;
-      totalG  += g;
-      totalIP += parseFloat(stats.inningsPitched || '0') || 0;
-      totalER += stats.earnedRuns ?? 0;
-      totalH  += stats.hits ?? 0;
-      totalBB += stats.baseOnBalls ?? 0;
-      totalSO += stats.strikeOuts ?? 0;
+      totalG  += totals.g;
+      totalIP += totals.ip;
+      totalER += totals.er;
+      totalH  += totals.h;
+      totalBB += totals.bb;
+      totalSO += totals.so;
     }
 
     if (!hasAnyData) return `${pitcherName} — no career data vs this opponent`;
