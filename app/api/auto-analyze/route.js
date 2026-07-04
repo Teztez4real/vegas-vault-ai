@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { gradeCompletedGames } from '@/lib/grading';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -8,40 +9,6 @@ export const maxDuration = 300;
 async function getSB() {
   const { createClient: cc } = await import('@supabase/supabase-js');
   return cc(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
-}
-
-// ── SERVER-SIDE GRADING — grade completed picks against final scores ─────────
-// Previously, grading (win/loss) ONLY happened client-side, and only for
-// watchlisted games — meaning the AI's own track record barely populated
-// unless someone had the app open with that exact game tracked. This mirrors
-// the client's exact grading logic (lib line ~1760 in VegasVaultApp.jsx) but
-// runs server-side for EVERY analyzed game, independent of any user/device.
-function gradePick(pick, away, home, awayScore, homeScore) {
-  const pickTeam = pick.pick;
-  const betType = (pick.betType || 'ML');
-  const awayWon = awayScore > homeScore;
-  const homeWon = homeScore > awayScore;
-  const margin = Math.abs(homeScore - awayScore);
-  const pickIsAway = pickTeam === away || away?.includes(pickTeam) || pickTeam?.includes((away || '').split(' ').pop());
-  const pickIsHome = !pickIsAway;
-
-  const bt = betType.toUpperCase();
-  if (bt.includes('OVER')) {
-    const total = parseFloat(bt.replace(/[^0-9.]/g, ''));
-    return (awayScore + homeScore) > total ? 'win' : 'loss';
-  }
-  if (bt.includes('UNDER')) {
-    const total = parseFloat(bt.replace(/[^0-9.]/g, ''));
-    return (awayScore + homeScore) < total ? 'win' : 'loss';
-  }
-  if (bt.includes('-1.5') || bt.includes('RUN LINE')) {
-    return (pickIsAway && awayWon && margin >= 2) || (pickIsHome && homeWon && margin >= 2) ? 'win' : 'loss';
-  }
-  if (bt.includes('+1.5')) {
-    return (pickIsAway && (awayWon || margin <= 1)) || (pickIsHome && (homeWon || margin <= 1)) ? 'win' : 'loss';
-  }
-  // ML default
-  return (pickIsAway && awayWon) || (pickIsHome && homeWon) ? 'win' : 'loss';
 }
 
 // Checks whether EVERY game that needs analysis today has a result yet,
@@ -94,64 +61,6 @@ async function checkAndNotifySlateComplete(sb, date, base) {
       });
     } catch {}
     await sb.from('slate_complete_notifications').upsert({ date, notified_at: new Date().toISOString() }, { onConflict: 'date' });
-  } catch {}
-}
-
-async function gradeCompletedGames(sb, date, base) {
-  try {
-    // Build a small lookback window (today + prior 3 days) relative to the CT
-    // date param (not server UTC — UTC could be a full day off during US
-    // evening hours). Widened from just "yesterday" to 3 days back so a game
-    // is never permanently missed if grading is delayed for any reason
-    // (postponement, late-finishing game, a skipped cron cycle, etc). Already-
-    // graded rows are skipped via the `graded` flag, so this stays cheap.
-    const [y, m, d0] = date.split('-').map(Number);
-    const dateWindows = [date];
-    for (let back = 1; back <= 3; back++) {
-      const dObj = new Date(Date.UTC(y, m - 1, d0));
-      dObj.setUTCDate(dObj.getUTCDate() - back);
-      dateWindows.push(`${dObj.getUTCFullYear()}-${String(dObj.getUTCMonth()+1).padStart(2,'0')}-${String(dObj.getUTCDate()).padStart(2,'0')}`);
-    }
-
-    for (const dd of dateWindows) {
-      const { data: rows } = await sb.from('game_analyses').select('game_key, away, home, sport, result, date').eq('date', dd);
-      if (!rows?.length) continue;
-
-      // Fetch final scores for this date via /api/today (already aggregates live/final scores)
-      const gRes = await fetch(`${base}/api/today?date=${dd}`, { cache: 'no-store' });
-      if (!gRes.ok) continue;
-      const { games: liveGames } = await gRes.json();
-
-      for (const row of rows) {
-        let parsed; try { parsed = JSON.parse(row.result); } catch { continue; }
-        if (parsed?.graded) continue; // already graded, skip
-        const s = parsed?.summary;
-        if (!s?.pick || s.tier === 'PASS' || s.tier === '3') continue;
-
-        const g = (liveGames || []).find(x =>
-          (x.away === row.away && x.home === row.home) ||
-          (x.sport === row.sport && x.away === row.away && x.home === row.home)
-        );
-        const isFinal = g?.isFinal === true;
-        const awayScore = g?.awayScore;
-        const homeScore = g?.homeScore;
-        if (!isFinal || awayScore == null || homeScore == null) continue;
-
-        const result = gradePick(s, row.away, row.home, awayScore, homeScore);
-        const updatedResult = { ...parsed, graded: true, gradedResult: result, gradedScore: `${row.away} ${awayScore} - ${homeScore} ${row.home}`, gradedAt: new Date().toISOString() };
-        await sb.from('game_analyses').update({ result: JSON.stringify(updatedResult) }).eq('game_key', row.game_key);
-
-        try {
-          await sb.from('ai_track_record').upsert({
-            game_key: row.game_key, date: dd, sport: row.sport,
-            away: row.away, home: row.home,
-            pick: s.pick, bet_type: s.betType, tier: s.tier,
-            result, score: `${row.away} ${awayScore} - ${homeScore} ${row.home}`,
-            graded_at: new Date().toISOString(),
-          }, { onConflict: 'game_key' });
-        } catch {}
-      }
-    }
   } catch {}
 }
 

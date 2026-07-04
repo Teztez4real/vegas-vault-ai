@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { gradeCompletedGames } from '@/lib/grading';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -17,8 +18,12 @@ export const maxDuration = 30;
 // score without buzzing the phone every couple of minutes. It will not have
 // the rich native Live Activity UI (Dynamic Island, progress ring, etc).
 //
-// Runs on its own frequent cron (every 2 min — see vercel.json) since score
-// changes need much tighter polling than the 30-min analysis cron.
+// ALSO runs grading on this same frequent cron (not just the 30-min
+// analysis cron) — a finished game's final score is visible instantly via
+// live scoreboard data, but the WIN/LOSS grade used to only get computed up
+// to 30 minutes later. Running it here too means a game is graded within
+// ~2 minutes of going final, so the CASHED/LOSS stamp (game cards, share
+// images, track record) shows up almost immediately instead of lagging.
 export async function GET(req) {
   const hasCronHeader = req.headers.get('x-vercel-cron') != null;
   const authHeader = req.headers.get('authorization') || '';
@@ -32,6 +37,15 @@ export async function GET(req) {
     const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
     const origin = new URL(req.url).origin;
 
+    // CT date, matching the rest of the app
+    const ctNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+    const todayStr = `${ctNow.getFullYear()}-${String(ctNow.getMonth()+1).padStart(2,'0')}-${String(ctNow.getDate()).padStart(2,'0')}`;
+
+    // Grade any newly-finished games FIRST — runs regardless of watchlist
+    // state, since it's the AI's own track record, not a per-user feature.
+    let gradedCount = 0;
+    try { gradedCount = await gradeCompletedGames(sb, todayStr, origin); } catch {}
+
     // 1. Build a map of gameId -> [userIds who have it watchlisted]
     const { data: watchRows } = await sb.from('user_data').select('user_id, value').eq('key', 'watchlist');
     const watchers = {}; // gameId -> [userId]
@@ -43,13 +57,11 @@ export async function GET(req) {
       }
     }
     const watchedGameIds = new Set(Object.keys(watchers).map(String));
-    if (!watchedGameIds.size) return NextResponse.json({ checked: 0, sent: 0, note: 'No watchlisted games' });
+    if (!watchedGameIds.size) return NextResponse.json({ checked: 0, sent: 0, graded: gradedCount, note: 'No watchlisted games' });
 
     // 2. Fetch today's live scores (CT date, matching the rest of the app)
-    const ctNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }));
-    const todayStr = `${ctNow.getFullYear()}-${String(ctNow.getMonth()+1).padStart(2,'0')}-${String(ctNow.getDate()).padStart(2,'0')}`;
     const scoresRes = await fetch(`${origin}/api/livescores?date=${todayStr}`, { cache: 'no-store' });
-    if (!scoresRes.ok) return NextResponse.json({ checked: 0, sent: 0, error: 'livescores fetch failed' });
+    if (!scoresRes.ok) return NextResponse.json({ checked: 0, sent: 0, graded: gradedCount, error: 'livescores fetch failed' });
     const { scores } = await scoresRes.json();
 
     // 3. For every LIVE (in-progress) watchlisted game, check if the score
@@ -89,7 +101,7 @@ export async function GET(req) {
       } catch {}
     }
 
-    return NextResponse.json({ checked, sent, watchedGames: watchedGameIds.size });
+    return NextResponse.json({ checked, sent, graded: gradedCount, watchedGames: watchedGameIds.size });
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: 200 });
   }
