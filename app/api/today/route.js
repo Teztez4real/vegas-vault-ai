@@ -55,6 +55,43 @@ function assignMLBSlots(games, adminPattern = null) {
 
 }
 
+// ── SHARED ESPN SCOREBOARD (final/live scores) ────────────────────────────────
+// MLB gets isFinal/awayScore/homeScore from the MLB Stats API. NBA and NFL had
+// NO equivalent — their game objects never carried a final score, so games in
+// those sports could never be graded (win/loss tracked) even once analyzed.
+// This gives NBA and NFL the SAME score-tracking parity MLB already has, using
+// ESPN's scoreboard endpoint (the same site.api.espn.com host already used
+// successfully elsewhere in this file for NBA/WNBA schedule and standings).
+// Returns a map keyed by "Away Team|Home Team" (ESPN displayName) →
+// { isFinal, awayScore, homeScore, status }.
+async function fetchESPNFinalScores(sportPath, dateStr) {
+  const map = {};
+  try {
+    const ymd = (dateStr || todayStr()).replace(/-/g, '');
+    const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${sportPath}/scoreboard?dates=${ymd}`, { cache: 'no-store' });
+    if (!res.ok) return map;
+    const data = await res.json();
+    for (const event of data.events || []) {
+      const comp = event.competitions?.[0];
+      if (!comp) continue;
+      const away = comp.competitors?.find(c => c.homeAway === 'away');
+      const home = comp.competitors?.find(c => c.homeAway === 'home');
+      if (!away || !home) continue;
+      const awayName = away.team?.displayName || away.team?.name;
+      const homeName = home.team?.displayName || home.team?.name;
+      if (!awayName || !homeName) continue;
+      const completed = comp.status?.type?.completed === true;
+      map[`${awayName}|${homeName}`] = {
+        isFinal: completed,
+        awayScore: away.score != null ? parseInt(away.score, 10) : null,
+        homeScore: home.score != null ? parseInt(home.score, 10) : null,
+        status: comp.status?.type?.description || (completed ? 'Final' : 'Scheduled'),
+      };
+    }
+  } catch {}
+  return map;
+}
+
 async function fetchNFLGames(dateParam) {
   try {
     // Check if NFL season is active (September through February)
@@ -95,6 +132,10 @@ async function fetchNFLGames(dateParam) {
       "San Francisco 49ers":"SF","Seattle Seahawks":"SEA","Tampa Bay Buccaneers":"TB",
       "Tennessee Titans":"TEN","Washington Commanders":"WSH",
     };
+
+    // Final/live scores from ESPN — gives NFL the same score parity MLB has,
+    // so games can actually be graded (win/loss tracked) once analyzed.
+    const nflScores = await fetchESPNFinalScores('football/nfl', targetDate);
 
     const games = (await Promise.all(filtered.map(async (game, i) => {
       const away = (game.away_team || '').trim();
@@ -149,6 +190,7 @@ async function fetchNFLGames(dateParam) {
 
       const gameDate = new Date(game.commence_time).toISOString().split('T')[0];
       const key = `${away}@${home}`;
+      const espnScore = nflScores[`${away}|${home}`] || null;
 
       return {
         id: `nfl-${gameDate}-${i}`, sport: 'NFL',
@@ -156,6 +198,9 @@ async function fetchNFLGames(dateParam) {
         time: formatTime(game.commence_time),
         date: gameDate,
         away, home,
+        isFinal: espnScore?.isFinal ?? false,
+        awayScore: espnScore?.awayScore ?? null,
+        homeScore: espnScore?.homeScore ?? null,
         awayCity: away.split(' ').slice(0,-1).join(' ').toUpperCase(),
         homeCity: home.split(' ').slice(0,-1).join(' ').toUpperCase(),
         awayAbbr: ABBR[away] || away.split(' ').pop().slice(0,3).toUpperCase(),
@@ -1069,6 +1114,8 @@ async function fetchNBAGames(date) {
       const gameDateStr = ct.toISOString().split('T')[0];
       return gameDateStr === targetDate;
     });
+    // Final/live scores from ESPN — same score parity MLB has.
+    const nbaScores = await fetchESPNFinalScores('basketball/nba', targetDate);
     return Promise.all(filtered.map(async (game, i) => {
       const away = game.away_team;
       const home = game.home_team;
@@ -1125,6 +1172,9 @@ async function fetchNBAGames(date) {
         id: `nba-${(game.commence_time||'').split('T')[0]}-${i}`, sport: 'NBA',
         date: (game.commence_time||'').split('T')[0],
         away, home,
+        isFinal: nbaScores[`${away}|${home}`]?.isFinal ?? false,
+        awayScore: nbaScores[`${away}|${home}`]?.awayScore ?? null,
+        homeScore: nbaScores[`${away}|${home}`]?.homeScore ?? null,
         awayAbbr: nbaAbbrMap[away] || away.split(' ').pop().slice(0,3).toUpperCase(),
         homeAbbr: nbaAbbrMap[home] || home.split(' ').pop().slice(0,3).toUpperCase(),
         time: formatTime(game.commence_time),
@@ -1338,6 +1388,8 @@ async function fetchWNBAGames(date) {
       return ct.toISOString().split('T')[0] === targetDate;
     });
 
+    // Final/live scores from ESPN — same score parity MLB has.
+    const wnbaScores = await fetchESPNFinalScores('basketball/wnba', targetDate);
     return Promise.all(dateFiltered.map(async (game, i) => {
       const away = game.away_team;
       const home = game.home_team;
@@ -1387,6 +1439,9 @@ async function fetchWNBAGames(date) {
         id: `wnba-${(game.commence_time||'').split('T')[0]}-${i}`, sport: 'WNBA',
         date: (game.commence_time||'').split('T')[0],
         away, home,
+        isFinal: wnbaScores[`${away}|${home}`]?.isFinal ?? false,
+        awayScore: wnbaScores[`${away}|${home}`]?.awayScore ?? null,
+        homeScore: wnbaScores[`${away}|${home}`]?.homeScore ?? null,
         awayAbbr: wnbaAbbrMap[away] || away.split(' ').pop().slice(0,3).toUpperCase(),
         homeAbbr: wnbaAbbrMap[home] || home.split(' ').pop().slice(0,3).toUpperCase(),
         time: formatTime(game.commence_time),
