@@ -926,28 +926,42 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
       </div>
 
 
-      {/* Row 4: AI result strip */}
+      {/* Row 4: AI result strip — when the user has selected an alternate
+          play for this game, THAT pick becomes primary (it's what's
+          actually tracked/graded for this user), and the AI's original
+          recommendation is shown as a small muted reference underneath
+          with no result badge of its own, since showing a win/loss on a
+          pick the user didn't actually take is misleading. */}
       {isSubscribed&&hasRes&&summary&&(
         <div style={{ background:isVegas?'rgba(57,255,20,0.06)':'rgba(80,140,255,0.05)',border:isVegas?'1px solid rgba(57,255,20,0.2)':'1px solid rgba(80,140,255,0.15)',borderRadius:9,padding:'8px 10px',marginBottom:8 }}>
-          <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between' }}>
-            <div>
-              <div style={{ fontSize:7,fontWeight:800,color:isVegas?'#2aa800':'#5588ee',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:2 }}>{game.slot} PRIMARY</div>
-              <div style={{ fontSize:13,fontWeight:800,color:'#111' }}>{formatPickDisplay(summary.pick, summary.betType)}</div>
-            </div>
-            <div style={{ textAlign:'right' }}>
-              {isLock&&<div style={{ fontSize:9,fontWeight:800,color:'#2aa800',border:'1px solid rgba(57,255,20,0.3)',borderRadius:6,padding:'2px 8px',background:'rgba(57,255,20,0.07)',marginBottom:4 }}>🔒 LOCK</div>}
-              {pickResult==='win'&&<div style={{ fontSize:11,fontWeight:800,color:'#33aa00' }}>✅ WIN</div>}
-              {pickResult==='loss'&&<div style={{ fontSize:11,fontWeight:800,color:'#dd4444' }}>❌ LOSS</div>}
-            </div>
-          </div>
-          {altPick && (
-            <div style={{ marginTop:8, paddingTop:8, borderTop:'1px solid rgba(0,0,0,0.06)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-              <div>
-                <div style={{ fontSize:7,fontWeight:800,color:'#33aa00',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:2 }}>YOUR PICK</div>
-                <div style={{ fontSize:11,fontWeight:700,color:'#222' }}>{formatPickDisplay(altPick.pick, altPick.betType)}</div>
+          {altPick ? (
+            <>
+              <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between' }}>
+                <div>
+                  <div style={{ fontSize:7,fontWeight:800,color:'#33aa00',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:2 }}>YOUR PICK</div>
+                  <div style={{ fontSize:13,fontWeight:800,color:'#111' }}>{formatPickDisplay(altPick.pick, altPick.betType)}</div>
+                </div>
+                <div style={{ textAlign:'right' }}>
+                  {altPick.result==='win'&&<div style={{ fontSize:11,fontWeight:800,color:'#33aa00' }}>✅ WIN</div>}
+                  {altPick.result==='loss'&&<div style={{ fontSize:11,fontWeight:800,color:'#dd4444' }}>❌ LOSS</div>}
+                </div>
               </div>
-              {altPick.result==='win'&&<div style={{ fontSize:10,fontWeight:800,color:'#33aa00' }}>✅ WIN</div>}
-              {altPick.result==='loss'&&<div style={{ fontSize:10,fontWeight:800,color:'#dd4444' }}>❌ LOSS</div>}
+              <div style={{ marginTop:8, paddingTop:8, borderTop:'1px solid rgba(0,0,0,0.06)' }}>
+                <div style={{ fontSize:7,fontWeight:800,color:'#999',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:2 }}>AI recommended</div>
+                <div style={{ fontSize:11,fontWeight:600,color:'#888' }}>{formatPickDisplay(summary.pick, summary.betType)}</div>
+              </div>
+            </>
+          ) : (
+            <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between' }}>
+              <div>
+                <div style={{ fontSize:7,fontWeight:800,color:isVegas?'#2aa800':'#5588ee',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:2 }}>{game.slot} PRIMARY</div>
+                <div style={{ fontSize:13,fontWeight:800,color:'#111' }}>{formatPickDisplay(summary.pick, summary.betType)}</div>
+              </div>
+              <div style={{ textAlign:'right' }}>
+                {isLock&&<div style={{ fontSize:9,fontWeight:800,color:'#2aa800',border:'1px solid rgba(57,255,20,0.3)',borderRadius:6,padding:'2px 8px',background:'rgba(57,255,20,0.07)',marginBottom:4 }}>🔒 LOCK</div>}
+                {pickResult==='win'&&<div style={{ fontSize:11,fontWeight:800,color:'#33aa00' }}>✅ WIN</div>}
+                {pickResult==='loss'&&<div style={{ fontSize:11,fontWeight:800,color:'#dd4444' }}>❌ LOSS</div>}
+              </div>
             </div>
           )}
         </div>
@@ -4369,15 +4383,23 @@ export default function VegasVaultApp() {
                         setSharingCard(true);
                         try {
                           const matchupStr = isTennis ? `${game.player1} vs ${game.player2}` : `${game.away} @ ${game.home}`;
+                          // If the user selected an alternate play for this game,
+                          // share THAT — it's what's actually tracked for them,
+                          // not the AI's original recommendation.
+                          const userAlt = altPicks?.[`${game.id}-${game.slot}`];
+                          const sharePick = userAlt ? formatPickDisplay(userAlt.pick, userAlt.betType) : formatPickDisplay(summary.pick, summary.betType);
+                          const shareStamp = userAlt
+                            ? (userAlt.result === 'win' ? 'CASHED ✅' : userAlt.result === 'loss' ? 'LOSS ❌' : null)
+                            : (result?.gradedResult === 'win' ? 'CASHED ✅' : result?.gradedResult === 'loss' ? 'LOSS ❌' : null);
                           await shareOrDownloadCard({
                             matchup: matchupStr,
                             sport: game.sport,
                             time: game.time,
-                            pick: formatPickDisplay(summary.pick, summary.betType),
+                            pick: sharePick,
                             tier: summary.tier,
                             confidencePercent: summary.confidencePercent,
                             verdict: summary.verdict,
-                            resultStamp: result?.gradedResult === 'win' ? 'CASHED ✅' : result?.gradedResult === 'loss' ? 'LOSS ❌' : null,
+                            resultStamp: shareStamp,
                             isVegasSlot: game.slot === 'VEGAS',
                           }, `vv-${game.awayAbbr || 'away'}-${game.homeAbbr || 'home'}`);
                         } catch (e) { console.error('Share failed', e); }
@@ -4596,20 +4618,43 @@ export default function VegasVaultApp() {
                           ]});
                         }
 
-                        // Spread market (skip if primary is spread or no spread number)
-                        if (primaryCat !== 'SPREAD' && awaySpreadStr && game.sport !== 'Tennis') {
-                          markets.push({ label: 'Spread', market: 'SPREAD', sides: [
-                            { sideLabel: `${game.awayAbbr} ${awaySpreadStr}`, pick: game.away, betType: `${awaySpreadStr} ${awaySpreadPrice}` },
-                            { sideLabel: `${game.homeAbbr} ${homeSpreadStr}`, pick: game.home, betType: `${homeSpreadStr} ${homeSpreadPrice}` },
-                          ]});
+                        // Spread market — ALWAYS offered. If the AI's primary pick is
+                        // already a spread/run line, show ONLY the opposing team's
+                        // side (the AI's own side is already shown as the primary
+                        // pick, so re-listing it here would be redundant). If the AI
+                        // picked ML or Total, show both sides as before.
+                        if (awaySpreadStr && game.sport !== 'Tennis') {
+                          if (primaryCat === 'SPREAD') {
+                            markets.push({ label: 'Spread', market: 'SPREAD', sides: [
+                              pickIsAway
+                                ? { sideLabel: `${game.homeAbbr} ${homeSpreadStr}`, pick: game.home, betType: `${homeSpreadStr} ${homeSpreadPrice}` }
+                                : { sideLabel: `${game.awayAbbr} ${awaySpreadStr}`, pick: game.away, betType: `${awaySpreadStr} ${awaySpreadPrice}` },
+                            ]});
+                          } else {
+                            markets.push({ label: 'Spread', market: 'SPREAD', sides: [
+                              { sideLabel: `${game.awayAbbr} ${awaySpreadStr}`, pick: game.away, betType: `${awaySpreadStr} ${awaySpreadPrice}` },
+                              { sideLabel: `${game.homeAbbr} ${homeSpreadStr}`, pick: game.home, betType: `${homeSpreadStr} ${homeSpreadPrice}` },
+                            ]});
+                          }
                         }
 
-                        // Total market (skip if primary is total or no total)
-                        if (primaryCat !== 'TOTAL' && totalVal) {
-                          markets.push({ label: 'Total', market: 'TOTAL', sides: [
-                            { sideLabel: `Over ${totalVal}`, pick: 'OVER', betType: `OVER ${totalVal} ${overPrice}` },
-                            { sideLabel: `Under ${totalVal}`, pick: 'UNDER', betType: `UNDER ${totalVal} ${underPrice}` },
-                          ]});
+                        // Total market — ALWAYS offered, same logic: if the AI's
+                        // primary pick is already Over/Under, show only the OTHER
+                        // side of the total (opposing direction), not both again.
+                        if (totalVal) {
+                          if (primaryCat === 'TOTAL') {
+                            const pickedOver = (summary.pick || '').toUpperCase().includes('OVER');
+                            markets.push({ label: 'Total', market: 'TOTAL', sides: [
+                              pickedOver
+                                ? { sideLabel: `Under ${totalVal}`, pick: 'UNDER', betType: `UNDER ${totalVal} ${underPrice}` }
+                                : { sideLabel: `Over ${totalVal}`, pick: 'OVER', betType: `OVER ${totalVal} ${overPrice}` },
+                            ]});
+                          } else {
+                            markets.push({ label: 'Total', market: 'TOTAL', sides: [
+                              { sideLabel: `Over ${totalVal}`, pick: 'OVER', betType: `OVER ${totalVal} ${overPrice}` },
+                              { sideLabel: `Under ${totalVal}`, pick: 'UNDER', betType: `UNDER ${totalVal} ${underPrice}` },
+                            ]});
+                          }
                         }
 
                         return (
