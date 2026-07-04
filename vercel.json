@@ -14,12 +14,19 @@
     },
     "app/api/auto-analyze/route.js": {
       "maxDuration": 300
+    },
+    "app/api/live-score-push/route.js": {
+      "maxDuration": 30
     }
   },
   "crons": [
     {
       "path": "/api/auto-analyze",
       "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/live-score-push",
+      "schedule": "*/2 * * * *"
     }
   ]
 }

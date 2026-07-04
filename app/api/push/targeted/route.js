@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 export async function POST(req) {
   try {
-    const { title, body, url = '/', tag = 'vv', userIds = [], trigger } = await req.json();
+    const { title, body, url = '/', tag = 'vv', userIds = [], trigger, silent = false } = await req.json();
     if (!userIds.length) return NextResponse.json({ success: true, sent: 0 });
     if (!process.env.VAPID_PRIVATE_KEY) return NextResponse.json({ success: true, sent: 0, note: 'Push not configured' });
 
@@ -16,7 +16,7 @@ export async function POST(req) {
     let sent = 0, failed = 0;
     await Promise.allSettled((subs || []).map(async row => {
       try {
-        await webpush.sendNotification(JSON.parse(row.subscription), JSON.stringify({ title, body, url, tag }));
+        await webpush.sendNotification(JSON.parse(row.subscription), JSON.stringify({ title, body, url, tag, silent }));
         sent++;
       } catch (e) {
         failed++;

@@ -11,16 +11,22 @@ self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
 self.addEventListener('push', e => {
   const data = e.data?.json() || {};
   const title = data.title || 'Vegas Vault AI';
+  // "silent" is used for live-score ticker updates on watchlisted games —
+  // the notification updates in place (same tag) WITHOUT re-vibrating or
+  // re-alerting every time, so it behaves like a quietly-refreshing score
+  // rather than a new alert every couple minutes.
+  const isSilent = data.silent === true;
   const options = {
     body: data.body || 'New update from Vegas Vault AI.',
     icon: '/icon-192.png',   // proper sized icon for mobile home screen
     badge: '/icon-192.png',  // small badge icon shown in notification bar
-    vibrate: [200, 100, 200, 100, 200],
+    vibrate: isSilent ? [] : [200, 100, 200, 100, 200],
     tag: data.tag || 'vv-notification',
-    renotify: true,           // always vibrate/sound even if same tag
+    renotify: !isSilent,     // silent updates replace in place, no re-alert
+    silent: isSilent,
     requireInteraction: false,
     data: { url: data.url || '/dashboard' },
-    actions: [
+    actions: isSilent ? [] : [
       { action: 'open', title: 'View Pick' },
       { action: 'dismiss', title: 'Dismiss' },
     ],
