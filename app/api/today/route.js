@@ -370,9 +370,32 @@ async function fetchPitcherVsOpponent(pitcherId, opponentTeamId, pitcherName) {
       }
     }
 
-    // Fallback: aggregate season-by-season over the last 10 years
+    // Fallback: aggregate season-by-season. IMPORTANT — cover the pitcher's
+    // ENTIRE MLB career, not an arbitrary recent window. The previous version
+    // hardcoded a 10-year lookback, which silently missed earlier matchups
+    // for veteran pitchers (e.g. a pitcher who debuted 12+ years ago and faced
+    // this opponent early in their career) — producing a FALSE "no career
+    // data" even though real history existed. We look up the pitcher's actual
+    // MLB debut year and query every season since, so this only ever reports
+    // "no career data" when that's genuinely true.
     const currentSeason = new Date().getFullYear();
-    const seasons = Array.from({ length: 10 }, (_, i) => currentSeason - i);
+    let debutYear = currentSeason - 15; // sane fallback if bio lookup fails
+    try {
+      const bioRes = await fetch(`https://statsapi.mlb.com/api/v1/people/${pitcherId}`, { cache: 'no-store' });
+      if (bioRes.ok) {
+        const bioData = await bioRes.json().catch(() => null);
+        const debutDate = bioData?.people?.[0]?.mlbDebutDate;
+        if (debutDate) debutYear = new Date(debutDate).getFullYear();
+      }
+    } catch {}
+    // Safety cap — bounds worst-case request count even if the bio lookup
+    // returns a bad/very old date; 20 years covers virtually any active
+    // MLB starter's full career.
+    debutYear = Math.max(debutYear, currentSeason - 20);
+
+    const seasons = [];
+    for (let s = currentSeason; s >= debutYear; s--) seasons.push(s);
+
     const results = await Promise.all(seasons.map(season =>
       fetch(
         `https://statsapi.mlb.com/api/v1/people/${pitcherId}/stats?stats=vsTeam&opposingTeamId=${opponentTeamId}&group=pitching&season=${season}`,
