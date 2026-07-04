@@ -1108,6 +1108,7 @@ function ForceSmartUpdate() {
 // Shared pick formatter — prevents duplications like "St. Louis Cardinals Cardinals ML"
 // or "Under Under 9". Handles full-string and partial-word-overlap cases.
 import { formatPickDisplay } from '@/lib/pickFormat';
+import { shareOrDownloadCard } from '@/lib/shareCard';
 
 function TopPlayBanner({ topPlay, loading, results, pickHistory, isSubscribed, isAdmin, watchlist, onToggleWatch, onForceRefresh }) {
   const result = topPlay && (results[`${topPlay.id}-${topPlay.slot}`]||results[`${topPlay.id}-PUBLIC`]||results[`${topPlay.id}-VEGAS`]);
@@ -1551,6 +1552,7 @@ export default function VegasVaultApp() {
   const [generating, setGenerating]   = useState(null);
   const [activeResult, setActiveResult] = useState(null);
   const [activeGame, setActiveGame]   = useState(null);
+  const [sharingCard, setSharingCard] = useState(false);
   useEffect(() => {
     if (!activeGame) return;
     const altKey = `${activeGame.id}-${activeGame.slot}`;
@@ -4345,6 +4347,32 @@ export default function VegasVaultApp() {
                     <i className="ti ti-arrow-left" style={{ fontSize:13 }} /> Back to Game Slate
                   </div>
                   <div style={{ display:'flex',alignItems:'center',gap:8 }}>
+                    <button
+                      disabled={sharingCard}
+                      onClick={async ()=>{
+                        setSharingCard(true);
+                        try {
+                          const matchupStr = isTennis ? `${game.player1} vs ${game.player2}` : `${game.away} @ ${game.home}`;
+                          await shareOrDownloadCard({
+                            matchup: matchupStr,
+                            sport: game.sport,
+                            time: game.time,
+                            pick: formatPickDisplay(summary.pick, summary.betType),
+                            tier: summary.tier,
+                            confidencePercent: summary.confidencePercent,
+                            verdict: summary.verdict,
+                            resultStamp: result?.gradedResult === 'win' ? 'CASHED ✅' : result?.gradedResult === 'loss' ? 'LOSS ❌' : null,
+                            isVegasSlot: game.slot === 'VEGAS',
+                          }, `vv-${game.awayAbbr || 'away'}-${game.homeAbbr || 'home'}`);
+                        } catch (e) { console.error('Share failed', e); }
+                        setSharingCard(false);
+                      }}
+                      style={{ fontSize:10,fontWeight:700,cursor: sharingCard ? 'default' : 'pointer',
+                        color:'#2aa800', background:'rgba(57,255,20,0.1)', border:'1px solid rgba(57,255,20,0.25)',
+                        borderRadius:8,padding:'6px 12px',display:'flex',alignItems:'center',gap:5, opacity: sharingCard ? 0.6 : 1 }}>
+                      <i className={sharingCard ? "ti ti-loader-2" : "ti ti-share-2"} style={{ fontSize:12 }} />
+                      {sharingCard ? 'Generating…' : 'Share'}
+                    </button>
                     <div onClick={()=>setWatchlist(p=>{const u=p.includes(game.id)?p.filter(x=>x!==game.id):[...p,game.id];if(authUser?.id)saveKey(authUser.id,'watchlist',u);return u;})} style={{ fontSize:10,fontWeight:700,cursor:'pointer',
                       color: watchlist?.includes(game.id) ? '#2aa800' : '#666',
                       background: watchlist?.includes(game.id) ? 'rgba(57,255,20,0.1)' : 'rgba(0,0,0,0.04)',
