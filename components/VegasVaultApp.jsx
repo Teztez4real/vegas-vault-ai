@@ -4747,6 +4747,12 @@ export default function VegasVaultApp() {
                       ) : (
                         <div style={{ fontSize:11,color:'#bbb' }}>No injury report available.</div>
                       )}
+                      {analysis.trellRule && (
+                        <div style={{ marginTop:12,paddingTop:12,borderTop:'1px solid rgba(0,0,0,0.05)' }}>
+                          <div style={{ fontSize:9,fontWeight:800,color:'#bb6600',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:4 }}>Trell Rule</div>
+                          <div style={{ fontSize:11,color:'#664400',lineHeight:1.6 }}>{analysis.trellRule}</div>
+                        </div>
+                      )}
                     </div>
                     <div style={{ background:'rgba(240,248,255,0.5)',border:'1px solid rgba(80,140,255,0.25)',borderRadius:14,padding:'14px 16px' }}>
                       <div style={{ fontSize:11,fontWeight:800,color:'#5588ee',marginBottom:10,display:'flex',alignItems:'center',gap:6 }}>
@@ -4899,12 +4905,6 @@ export default function VegasVaultApp() {
                       <div style={{ fontSize:12,color:'#444',lineHeight:1.7 }}>{analysis.seriesContext}</div>
                     ) : (
                       <div style={{ fontSize:11,color:'#bbb' }}>No series context available.</div>
-                    )}
-                    {analysis.trellRule && (
-                      <div style={{ marginTop:12,paddingTop:12,borderTop:'1px solid rgba(0,0,0,0.05)' }}>
-                        <div style={{ fontSize:9,fontWeight:800,color:'#33aa00',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:4 }}>Trell Rule</div>
-                        <div style={{ fontSize:11,color:'#444',lineHeight:1.6 }}>{analysis.trellRule}</div>
-                      </div>
                     )}
                     {analysis.situational && (
                       <div style={{ marginTop:12,paddingTop:12,borderTop:'1px solid rgba(0,0,0,0.05)' }}>
