@@ -21,19 +21,22 @@ export default function LandingPage() {
   const [checking, setChecking] = useState(true);
   const [openFaq, setOpenFaq] = useState(null);
   const [stats, setStats] = useState(null); // live cards data
+  const [statsLoading, setStatsLoading] = useState(true);
 
   // Fetch live landing stats (real featured play, win rate, line movement),
   // then keep polling so the page stays genuinely live — a visitor who's
   // had the tab open all day sees today's play appear the moment it's
-  // ready, without needing to reload. Falls back to static placeholders
-  // if anything is unavailable.
+  // ready, without needing to reload. NEVER shows fake/static example data —
+  // while the first fetch is in flight, the cards show a genuine loading
+  // state instead (see statsLoading below), not a placeholder pick.
   useEffect(() => {
     let alive = true;
     const fetchStats = () => {
       fetch('/api/landing-stats', { cache: 'no-store' })
         .then(r => r.ok ? r.json() : null)
         .then(d => { if (alive && d) setStats(d); })
-        .catch(() => {});
+        .catch(() => {})
+        .finally(() => { if (alive) setStatsLoading(false); });
     };
     fetchStats();
     const t = setInterval(fetchStats, 60 * 1000);
@@ -124,12 +127,22 @@ export default function LandingPage() {
           {/* big stat + bar */}
           <div style={{ marginBottom:24 }}>
             <div style={{ display:'flex', alignItems:'baseline', gap:14, marginBottom:12 }}>
-              <span style={{ fontSize:'clamp(36px,5vw,58px)', fontWeight:900, color:GREEN, filter:`drop-shadow(0 0 22px rgba(57,255,20,0.4))`, lineHeight:1 }}>{stats?.winRate ? `${stats.winRate.pct}%` : '72%+'}</span>
-              <span style={{ fontSize:'clamp(14px,1.6vw,20px)', fontWeight:700, color:'rgba(255,255,255,0.75)', letterSpacing:'1px' }}>{stats?.winRate ? 'WIN RATE' : 'TIER-1 HIT RATE'}</span>
+              {statsLoading ? (
+                <div style={{ width:140, height:48, borderRadius:8, background:'rgba(255,255,255,0.06)', animation:'vvpulse 1.4s ease-in-out infinite' }} />
+              ) : stats?.winRate ? (
+                <>
+                  <span style={{ fontSize:'clamp(36px,5vw,58px)', fontWeight:900, color:GREEN, filter:`drop-shadow(0 0 22px rgba(57,255,20,0.4))`, lineHeight:1 }}>{stats.winRate.pct}%</span>
+                  <span style={{ fontSize:'clamp(14px,1.6vw,20px)', fontWeight:700, color:'rgba(255,255,255,0.75)', letterSpacing:'1px' }}>WIN RATE</span>
+                </>
+              ) : (
+                <span style={{ fontSize:'clamp(18px,2.2vw,26px)', fontWeight:700, color:'rgba(255,255,255,0.55)' }}>Building track record…</span>
+              )}
             </div>
-            <div style={{ height:6, borderRadius:6, background:'rgba(255,255,255,0.06)', overflow:'hidden', maxWidth:520 }}>
-              <div style={{ width:`${stats?.winRate ? Math.min(100, stats.winRate.pct) : 72}%`, height:'100%', background:`linear-gradient(90deg,#22cc00,${GREEN})`, borderRadius:6, boxShadow:`0 0 16px rgba(57,255,20,0.5)` }} />
-            </div>
+            {!statsLoading && (
+              <div style={{ height:6, borderRadius:6, background:'rgba(255,255,255,0.06)', overflow:'hidden', maxWidth:520 }}>
+                <div style={{ width:`${stats?.winRate ? Math.min(100, stats.winRate.pct) : 8}%`, height:'100%', background:`linear-gradient(90deg,#22cc00,${GREEN})`, borderRadius:6, boxShadow:`0 0 16px rgba(57,255,20,0.5)` }} />
+              </div>
+            )}
           </div>
 
           {/* feature chips */}
@@ -166,45 +179,70 @@ export default function LandingPage() {
 
           {/* CARD 1 — AI Play of the Day (live; carries over the most recent
               real play with a WIN/LOSS stamp if today's slate hasn't
-              produced its own play yet — never a fake static example once
-              any real history exists) */}
+              produced its own play yet). NEVER shows fake/example data —
+              a genuine loading skeleton shows instead until the first
+              fetch resolves. */}
           <div style={cardStyle({ top:'2%', left:'0%', width:'62%' })}>
             <div style={cardLabel}>
               <span style={{ width:7, height:7, borderRadius:'50%', background:GREEN, boxShadow:`0 0 8px ${GREEN}` }} />
               {stats?.play && stats.play.isToday === false ? 'RECENT AI PLAY' : 'AI PLAY OF THE DAY'}
             </div>
-            <div style={{ display:'flex', alignItems:'center', gap:10, margin:'8px 0 3px' }}>
-              <div style={{ fontSize:22, fontWeight:900, color:'#fff' }}>{stats?.play ? formatPickDisplay(stats.play.pick, stats.play.betType) : 'Yankees −1.5'}</div>
-              {stats?.play?.resultStamp && (
-                <span style={{
-                  fontSize:11, fontWeight:800, padding:'3px 9px', borderRadius:7, letterSpacing:'0.3px',
-                  background: stats.play.resultStamp.startsWith('CASHED') ? 'rgba(57,255,20,0.15)' : 'rgba(255,60,60,0.15)',
-                  color: stats.play.resultStamp.startsWith('CASHED') ? GREEN : '#ff6b6b',
-                  border: `1px solid ${stats.play.resultStamp.startsWith('CASHED') ? 'rgba(57,255,20,0.35)' : 'rgba(255,60,60,0.35)'}`,
-                }}>{stats.play.resultStamp}</span>
-              )}
-            </div>
-            <div style={{ fontSize:12, color:'rgba(255,255,255,0.5)', marginBottom:12 }}>
-              {stats?.play
-                ? `${stats.play.matchup}${stats.play.time ? ' · ' + stats.play.time : ''}${stats.play.isToday === false && stats.play.date ? ' · ' + new Date(stats.play.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}) : ''}`
-                : 'NYY @ BOS · 7:10 PM ET'}
-            </div>
-            <div style={{ display:'flex', gap:8 }}>
-              <span style={tierTag}>🔒 TIER {stats?.play?.tier || '1'}</span>
-              {(stats?.play?.odds || !stats?.play) && <span style={{ ...tierTag, background:'rgba(57,255,20,0.1)', color:GREEN, border:`1px solid rgba(57,255,20,0.3)` }}>{stats?.play?.odds || '−115'}</span>}
-            </div>
+            {statsLoading ? (
+              <div style={{ margin:'10px 0 12px' }}>
+                <div style={{ width:'70%', height:26, borderRadius:6, background:'rgba(255,255,255,0.06)', animation:'vvpulse 1.4s ease-in-out infinite', marginBottom:8 }} />
+                <div style={{ width:'45%', height:14, borderRadius:6, background:'rgba(255,255,255,0.04)', animation:'vvpulse 1.4s ease-in-out infinite' }} />
+              </div>
+            ) : stats?.play ? (
+              <>
+                <div style={{ display:'flex', alignItems:'center', gap:10, margin:'8px 0 3px' }}>
+                  <div style={{ fontSize:22, fontWeight:900, color:'#fff' }}>{formatPickDisplay(stats.play.pick, stats.play.betType)}</div>
+                  {stats.play.resultStamp && (
+                    <span style={{
+                      fontSize:11, fontWeight:800, padding:'3px 9px', borderRadius:7, letterSpacing:'0.3px',
+                      background: stats.play.resultStamp.startsWith('CASHED') ? 'rgba(57,255,20,0.15)' : 'rgba(255,60,60,0.15)',
+                      color: stats.play.resultStamp.startsWith('CASHED') ? GREEN : '#ff6b6b',
+                      border: `1px solid ${stats.play.resultStamp.startsWith('CASHED') ? 'rgba(57,255,20,0.35)' : 'rgba(255,60,60,0.35)'}`,
+                    }}>{stats.play.resultStamp}</span>
+                  )}
+                </div>
+                <div style={{ fontSize:12, color:'rgba(255,255,255,0.5)', marginBottom:12 }}>
+                  {`${stats.play.matchup}${stats.play.time ? ' · ' + stats.play.time : ''}${stats.play.isToday === false && stats.play.date ? ' · ' + new Date(stats.play.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}) : ''}`}
+                </div>
+                <div style={{ display:'flex', gap:8 }}>
+                  <span style={tierTag}>🔒 TIER {stats.play.tier || '1'}</span>
+                  {stats.play.odds && <span style={{ ...tierTag, background:'rgba(57,255,20,0.1)', color:GREEN, border:`1px solid rgba(57,255,20,0.3)` }}>{stats.play.odds}</span>}
+                </div>
+              </>
+            ) : (
+              <div style={{ fontSize:14, color:'rgba(255,255,255,0.5)', margin:'10px 0 4px' }}>AI is analyzing today's slate…</div>
+            )}
           </div>
 
-          {/* CARD 2 — Win Rate (live, falls back to placeholder only before any grading exists) */}
+          {/* CARD 2 — Win Rate: genuine loading skeleton until first fetch
+              resolves; honest "building track record" message if there
+              genuinely aren't 5+ graded picks yet — never a fake percent. */}
           <div style={cardStyle({ top:'30%', right:'-2%', width:'52%' })}>
             <div style={cardLabel}><i className="ti ti-trophy" style={{ fontSize:13, color:GREEN }} /> SEASON WIN RATE</div>
-            <div style={{ fontSize:38, fontWeight:900, color:GREEN, lineHeight:1, margin:'8px 0 6px', filter:`drop-shadow(0 0 18px rgba(57,255,20,0.4))` }}>{stats?.winRate ? `${stats.winRate.pct}%` : '72.4%'}</div>
-            <div style={{ display:'flex', gap:4, alignItems:'flex-end', height:30 }}>
-              {[60,72,55,80,68,90,74,85].map((h,i)=>(
-                <div key={i} style={{ flex:1, height:`${h}%`, background:i%2?GREEN:'rgba(57,255,20,0.4)', borderRadius:2 }} />
-              ))}
-            </div>
-            <div style={{ fontSize:11, color:'rgba(255,255,255,0.45)', marginTop:8 }}>{stats?.winRate ? `${stats.winRate.wins}W · ${stats.winRate.losses}L tracked` : 'Tier-1 plays · last 30 days'}</div>
+            {statsLoading ? (
+              <>
+                <div style={{ width:90, height:36, borderRadius:6, background:'rgba(255,255,255,0.06)', animation:'vvpulse 1.4s ease-in-out infinite', margin:'8px 0 6px' }} />
+                <div style={{ display:'flex', gap:4, alignItems:'flex-end', height:30 }}>
+                  {[1,2,3,4,5,6,7,8].map(i=>(<div key={i} style={{ flex:1, height:'40%', background:'rgba(255,255,255,0.05)', borderRadius:2 }} />))}
+                </div>
+              </>
+            ) : stats?.winRate ? (
+              <>
+                <div style={{ fontSize:38, fontWeight:900, color:GREEN, lineHeight:1, margin:'8px 0 6px', filter:`drop-shadow(0 0 18px rgba(57,255,20,0.4))` }}>{stats.winRate.pct}%</div>
+                <div style={{ display:'flex', gap:4, alignItems:'flex-end', height:30 }}>
+                  {[60,72,55,80,68,90,74,85].map((h,i)=>(
+                    <div key={i} style={{ flex:1, height:`${h}%`, background:i%2?GREEN:'rgba(57,255,20,0.4)', borderRadius:2 }} />
+                  ))}
+                </div>
+                <div style={{ fontSize:11, color:'rgba(255,255,255,0.45)', marginTop:8 }}>{`${stats.winRate.wins}W · ${stats.winRate.losses}L tracked`}</div>
+              </>
+            ) : (
+              <div style={{ fontSize:14, color:'rgba(255,255,255,0.5)', margin:'14px 0' }}>Building track record…</div>
+            )}
           </div>
 
           {/* CARD 3 — Line Movement — ALWAYS genuinely live: real odds
