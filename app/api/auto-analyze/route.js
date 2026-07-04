@@ -46,15 +46,21 @@ function gradePick(pick, away, home, awayScore, homeScore) {
 
 async function gradeCompletedGames(sb, date, base) {
   try {
-    // Compute "yesterday" relative to the CT date param (not server UTC).
-    // Using new Date() here was UTC-based and could be a full day off during
-    // US evening hours, causing grading to query the wrong day.
+    // Build a small lookback window (today + prior 3 days) relative to the CT
+    // date param (not server UTC — UTC could be a full day off during US
+    // evening hours). Widened from just "yesterday" to 3 days back so a game
+    // is never permanently missed if grading is delayed for any reason
+    // (postponement, late-finishing game, a skipped cron cycle, etc). Already-
+    // graded rows are skipped via the `graded` flag, so this stays cheap.
     const [y, m, d0] = date.split('-').map(Number);
-    const dateObj = new Date(Date.UTC(y, m - 1, d0));
-    dateObj.setUTCDate(dateObj.getUTCDate() - 1);
-    const yestStr = `${dateObj.getUTCFullYear()}-${String(dateObj.getUTCMonth()+1).padStart(2,'0')}-${String(dateObj.getUTCDate()).padStart(2,'0')}`;
+    const dateWindows = [date];
+    for (let back = 1; back <= 3; back++) {
+      const dObj = new Date(Date.UTC(y, m - 1, d0));
+      dObj.setUTCDate(dObj.getUTCDate() - back);
+      dateWindows.push(`${dObj.getUTCFullYear()}-${String(dObj.getUTCMonth()+1).padStart(2,'0')}-${String(dObj.getUTCDate()).padStart(2,'0')}`);
+    }
 
-    for (const dd of [date, yestStr]) {
+    for (const dd of dateWindows) {
       const { data: rows } = await sb.from('game_analyses').select('game_key, away, home, sport, result, date').eq('date', dd);
       if (!rows?.length) continue;
 

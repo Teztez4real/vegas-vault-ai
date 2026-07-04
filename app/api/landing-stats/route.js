@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { formatPickDisplay } from '@/lib/pickFormat';
+import { isCurrentSeason } from '@/lib/seasonUtils';
 
 export const runtime = 'nodejs';
 export const maxDuration = 20;
@@ -125,12 +126,15 @@ export async function GET(req) {
       } catch {}
     }
 
-    // ── 2. SEASON WIN RATE — from the shared AI track record ──
+    // ── 2. SEASON WIN RATE — from the shared AI track record, scoped to
+    // each sport's CURRENT season (records reset per sport at season start —
+    // see lib/seasonUtils.js). ──
     try {
-      const { data: trRows } = await sb.from('ai_track_record').select('result');
+      const { data: trRows } = await sb.from('ai_track_record').select('result, sport, date');
       if (trRows?.length) {
-        const wins = trRows.filter(r => r.result === 'win').length;
-        const losses = trRows.filter(r => r.result === 'loss').length;
+        const current = trRows.filter(r => isCurrentSeason(r.sport, r.date, todayStr));
+        const wins = current.filter(r => r.result === 'win').length;
+        const losses = current.filter(r => r.result === 'loss').length;
         const total = wins + losses;
         if (total >= 5) out.winRate = { pct: Math.round((wins / total) * 1000) / 10, wins, losses };
       }

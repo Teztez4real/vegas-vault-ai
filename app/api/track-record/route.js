@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { isCurrentSeason } from '@/lib/seasonUtils';
 
 export const runtime = 'nodejs';
 export const maxDuration = 20;
@@ -11,18 +12,34 @@ export const maxDuration = 20;
 // which feeds: the Dashboard AI Performance widget, the Models section
 // per-sport stats, the landing page Season Win Rate, and the track-record
 // context fed back into the AI's own Stage 2/4 prompts.
+//
+// SEASON RESET: records and results reset every new season, per sport. A
+// game's row always stays in the database (nothing is deleted — it's still
+// useful history), but stats here only COUNT rows from each sport's CURRENT
+// season. MLB/Tennis/WNBA reset at the new calendar year (their season
+// starts and ends within one year); NBA/NFL reset when their new season
+// starts in the fall, since their season spans two calendar years.
 export async function GET() {
   const empty = { overall: null, bySport: {}, recent20: null };
   try {
     const { createClient } = await import('@supabase/supabase-js');
     const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-    const { data: rows } = await sb
+    const { data: allRows } = await sb
       .from('ai_track_record')
-      .select('sport, result, graded_at')
+      .select('sport, result, date, graded_at')
       .order('graded_at', { ascending: false });
 
-    if (!rows?.length) return NextResponse.json(empty);
+    if (!allRows?.length) return NextResponse.json(empty);
+
+    // US Central "today" — used as the reference point for season boundaries.
+    const ctNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+    const todayStr = `${ctNow.getFullYear()}-${String(ctNow.getMonth()+1).padStart(2,'0')}-${String(ctNow.getDate()).padStart(2,'0')}`;
+
+    // Only count rows from each sport's CURRENT season — this is the reset.
+    const rows = allRows.filter(r => isCurrentSeason(r.sport, r.date, todayStr));
+
+    if (!rows.length) return NextResponse.json(empty);
 
     const wins = rows.filter(r => r.result === 'win').length;
     const losses = rows.filter(r => r.result === 'loss').length;
