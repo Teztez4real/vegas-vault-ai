@@ -362,6 +362,31 @@ function trackRecordSummary(pickHistory) {
   };
 }
 
+// Prefers the SHARED AI track record (every graded pick, server-side) over
+// the personal/watchlist-scoped pickHistory — this is what should represent
+// "how well the model is actually doing," not just what one device tracked.
+// Falls back to the pickHistory-based summary only if the shared record
+// hasn't loaded yet or has no data. Returns the SAME shape either way so
+// every consumer (Memory tab, the AI prompt feed) works unchanged.
+function getTrackRecordSummary(pickHistory, sharedRecord) {
+  if (sharedRecord?.overall?.total > 0) {
+    const bySportArr = Object.entries(sharedRecord.bySport || {})
+      .filter(([, v]) => v.total > 0)
+      .map(([label, v]) => ({ label, wins: v.wins, losses: v.losses, n: v.total, pct: v.pct }))
+      .sort((a, b) => b.n - a.n);
+    const r20 = sharedRecord.recent20;
+    return {
+      totalResolved: sharedRecord.overall.total,
+      overallWins: sharedRecord.overall.wins,
+      overallLosses: sharedRecord.overall.losses,
+      recent: r20 ? { n: r20.n, wins: r20.wins, pct: r20.pct } : { n: sharedRecord.overall.total, wins: sharedRecord.overall.wins, pct: sharedRecord.overall.pct },
+      byTier: [], bySlot: [], byScamLayer: [], byBetCategory: [],
+      bySport: bySportArr,
+    };
+  }
+  return trackRecordSummary(pickHistory);
+}
+
 // Renders the track record into a short, plain-language string for the AI
 // prompt — only includes a breakdown line if its sample size is large
 // enough to mean anything, explicitly stating the sample size so the model
@@ -815,7 +840,11 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
   const isGen = generating === key;
   const hasRes = !!results[key];
   const histEntry = pickHistory?.find(p => p.key === key);
-  const pickResult = histEntry?.result;
+  // Prefer the SHARED server-side grade (every non-pass game gets graded
+  // regardless of watchlist) over the personal histEntry, which only exists
+  // if this device happened to grade it. This is what makes results visible
+  // on every card, not just watchlisted ones.
+  const pickResult = results[key]?.gradedResult || histEntry?.result;
 
   return (
     <div onClick={()=>hasRes&&onCardClick&&onCardClick(game, results[key])}
@@ -1084,7 +1113,7 @@ function TopPlayBanner({ topPlay, loading, results, pickHistory, isSubscribed, i
   const result = topPlay && (results[`${topPlay.id}-${topPlay.slot}`]||results[`${topPlay.id}-PUBLIC`]||results[`${topPlay.id}-VEGAS`]);
   const summary = result?.summary;
   const histEntry = topPlay && pickHistory?.find(p=>p.key===`${topPlay.id}-${topPlay.slot}`);
-  const pickResult = histEntry?.result;
+  const pickResult = result?.gradedResult || histEntry?.result;
   const isVegas = topPlay?.slot === 'VEGAS';
   const isLock = summary?.tier === '1';
 
@@ -1505,6 +1534,12 @@ export default function VegasVaultApp() {
   }
   const [bookmakerCount, setBookmakerCount] = useState(12);
   const [winRate, setWinRate] = useState(null);
+  // Shared AI track record — every graded pick across every user, from the
+  // server (ai_track_record table). This is the model's OWN performance,
+  // distinct from the personal/watchlist-scoped pickHistory used by the
+  // Analytics tab. Feeds AI Performance, Models section, and the track-record
+  // context given back to the AI in its own prompts.
+  const [sharedRecord, setSharedRecord] = useState(null);
   const [pickHistory, setPickHistory] = useState(() => {
     try {
       // Don't pre-load from localStorage — will load from Supabase per user
@@ -1562,6 +1597,26 @@ export default function VegasVaultApp() {
     const t = setInterval(poll, 5 * 60 * 1000);
     return () => { live = false; clearInterval(t); };
   }, [authUser?.id, selectedDate]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── SHARED AI TRACK RECORD — every graded pick, server-side ──────────────
+  // Powers AI Performance (Dashboard), the Models section per-sport stats,
+  // and the track-record context fed back into the AI's own analysis prompts.
+  // Refreshes every 10 min so results update through the day as games finish.
+  useEffect(() => {
+    if (!authUser?.id) return;
+    let live = true;
+    const fetchRecord = async () => {
+      try {
+        const r = await fetch('/api/track-record', { cache: 'no-store' });
+        if (!r.ok || !live) return;
+        const data = await r.json().catch(() => null);
+        if (data && live) setSharedRecord(data);
+      } catch {}
+    };
+    fetchRecord();
+    const t = setInterval(fetchRecord, 10 * 60 * 1000);
+    return () => { live = false; clearInterval(t); };
+  }, [authUser?.id]);
 
   useEffect(()=>{
     setLoading(true);
@@ -1934,7 +1989,7 @@ export default function VegasVaultApp() {
           const key = `${game.id}-${slot}`;
           if (!results[key]?.summary) continue;
           try {
-            const fresh = await generatePlay({ ...game, slot }, trackRecordPromptText(trackRecordSummary(pickHistory)));
+            const fresh = await generatePlay({ ...game, slot }, trackRecordPromptText(getTrackRecordSummary(pickHistory, sharedRecord)));
             if (fresh?.summary) {
               setResults(prev => ({ ...prev, [key]: fresh }));
               if (fresh.summary.readyToFinalize === true) {
@@ -1982,7 +2037,7 @@ export default function VegasVaultApp() {
           preGameRefreshRef.current[key] = true;
           console.log(`Pre-game freshness re-analysis: ${game.away} @ ${game.home} (${slot}), ${Math.round(minsUntil)}min to start`);
           try {
-            const fresh = await generatePlay({ ...game, slot }, trackRecordPromptText(trackRecordSummary(pickHistory)));
+            const fresh = await generatePlay({ ...game, slot }, trackRecordPromptText(getTrackRecordSummary(pickHistory, sharedRecord)));
             if (fresh?.summary) {
               setResults(prev => ({ ...prev, [key]: fresh }));
               if (fresh.summary.readyToFinalize === true) {
@@ -2214,7 +2269,7 @@ export default function VegasVaultApp() {
             if (!isNaN(current) && !isNaN(last) && Math.abs(current - last) >= 5) {
               // Significant line movement — re-analyze and finalize
               try {
-                const fresh = await generatePlay({ ...game, slot }, trackRecordPromptText(trackRecordSummary(pickHistory)));
+                const fresh = await generatePlay({ ...game, slot }, trackRecordPromptText(getTrackRecordSummary(pickHistory, sharedRecord)));
                 if (fresh?.summary) {
                   // Let AI decide finalization via readyToFinalize
                   const shouldFinalize = fresh.summary.readyToFinalize === true;
@@ -2393,16 +2448,17 @@ export default function VegasVaultApp() {
     setConfHistory(prev => [...prev.slice(-14), confPct]);
   }, [results]);
 
-  // Win rate = real results from pick history (last 7 days) — excludes
-  // user-selected alternate-market picks, which are the user's own choices
-  // and shouldn't be blended into the AI's reported performance.
+  // Win rate = the AI's OWN track record (every graded pick, shared across
+  // all users) — NOT just this device's watchlisted picks. Falls back to
+  // personal pickHistory only if the shared record hasn't loaded yet.
   useEffect(() => {
+    if (sharedRecord?.overall) { setWinRate(sharedRecord.overall.pct); return; }
     const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
     const recent = pickHistory.filter(p => p.resolvedAt && new Date(p.resolvedAt).getTime() > sevenDaysAgo && !p.isUserAlt);
     if (recent.length === 0) { setWinRate(null); return; }
     const wins = recent.filter(p => p.result === 'win').length;
     setWinRate(Math.round((wins / recent.length) * 100));
-  }, [pickHistory]);
+  }, [pickHistory, sharedRecord]);
 
   // ── AUTO-ANALYSIS: queue every game by its assigned slot ───────────────────
   // Track if we've queued for today already — prevents re-queue on every liveScores poll
@@ -2505,7 +2561,7 @@ export default function VegasVaultApp() {
     console.log('Analyzing:', next.game.away, '@', next.game.home, next.slot);
     setPreAnalyzing(true);
 
-    generatePlay({ ...next.game, slot: next.slot }, trackRecordPromptText(trackRecordSummary(pickHistory)))
+    generatePlay({ ...next.game, slot: next.slot }, trackRecordPromptText(getTrackRecordSummary(pickHistory, sharedRecord)))
       .then(result => {
         if (!result?.summary) {
           result = { ...result, summary:{ tier:'3', tierLabel:'Tier 3', pick:'No Pick', betType:'N/A', confidence:'LOW', verdict:'Analysis incomplete.', isScamPlay:false, slot:next.slot } };
@@ -2705,7 +2761,7 @@ export default function VegasVaultApp() {
     const key=`${game.id}-${slot}`;
     setGenerating(key); setError(null);
     try{
-      const result=await generatePlay({...game,slot}, trackRecordPromptText(trackRecordSummary(pickHistory)));
+      const result=await generatePlay({...game,slot}, trackRecordPromptText(getTrackRecordSummary(pickHistory, sharedRecord)));
       // Ensure result always has a valid summary before storing
       if (!result.summary) {
         result.summary = {
@@ -3252,7 +3308,7 @@ export default function VegasVaultApp() {
                     <div className="vv-dc"><span className="vv-dc-v">{winRate!=null?`${winRate}%`:'—'}</span><span className="vv-dc-l">{winRate!=null&&winRate>=60?'OPTIMAL':'TRACKING'}</span></div>
                   </div>
                   <div className="vv-pr">
-                    <div className="vv-pr-r"><span className="vv-pk">Picks Tracked</span><span className="vv-pv">{pickHistory.length}</span></div>
+                    <div className="vv-pr-r"><span className="vv-pk">Picks Tracked</span><span className="vv-pv">{sharedRecord?.overall?.total ?? pickHistory.length}</span></div>
                     <div className="vv-pr-r"><span className="vv-pk">Bookmakers</span><span className="vv-pv">{bookmakerCount}</span></div>
                     <div className="vv-pr-r"><span className="vv-pk">Accuracy</span><span className="vv-pv" style={{ color:'#39FF14' }}>{winRate!=null?`${winRate}%`:'—'}</span></div>
                     <div className="vv-pr-r"><span className="vv-pk">AI Confidence</span><span className="vv-pv">{aiConfidence!=null?`${aiConfidence}%`:'—'}</span></div>
@@ -3788,12 +3844,14 @@ export default function VegasVaultApp() {
 
       {/* ── MODELS — sport-specific AI analysis engines ── */}
       {authUser && isSubscribed && shellView === 'models' && (() => {
-        const overallWins = pickHistory.filter(p=>p.result==='win'&&!p.isUserAlt).length;
-        const overallLosses = pickHistory.filter(p=>p.result==='loss'&&!p.isUserAlt).length;
-        const overallTotal = overallWins + overallLosses;
-        const overallRate = overallTotal > 0 ? Math.round((overallWins/overallTotal)*100) : null;
+        const overallWins = sharedRecord?.overall?.wins ?? pickHistory.filter(p=>p.result==='win'&&!p.isUserAlt).length;
+        const overallLosses = sharedRecord?.overall?.losses ?? pickHistory.filter(p=>p.result==='loss'&&!p.isUserAlt).length;
+        const overallTotal = sharedRecord?.overall?.total ?? (overallWins + overallLosses);
+        const overallRate = sharedRecord?.overall?.pct ?? (overallTotal > 0 ? Math.round((overallWins/overallTotal)*100) : null);
 
         const sportStats = (sport) => {
+          const shared = sharedRecord?.bySport?.[sport];
+          if (shared && shared.total > 0) return { rate: shared.pct, record: shared.record };
           const picks = pickHistory.filter(p => p.sport === sport);
           const w = picks.filter(p=>p.result==='win').length;
           const l = picks.filter(p=>p.result==='loss').length;
@@ -3857,7 +3915,7 @@ export default function VegasVaultApp() {
         const trackedEntities = games.length * 12 + pickHistory.length;
         const activeRules = 12;
         const recentCorrections = pickHistory.filter(p => p.result === 'loss' && !p.isUserAlt).length;
-        const tr = trackRecordSummary(pickHistory);
+        const tr = getTrackRecordSummary(pickHistory, sharedRecord);
 
         const memItems = [
           { icon:'ti-alert-triangle', tag:'TRELL RULE', title:'Trell Rule — monitoring active injury reports',
