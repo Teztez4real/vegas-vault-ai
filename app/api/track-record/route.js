@@ -25,12 +25,23 @@ export async function GET() {
     const { createClient } = await import('@supabase/supabase-js');
     const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-    const { data: allRows } = await sb
+    const { data: allRows, error: queryError } = await sb
       .from('ai_track_record')
       .select('sport, result, date, graded_at')
       .order('graded_at', { ascending: false });
 
-    if (!allRows?.length) return NextResponse.json(empty);
+    // Surface exactly what happened — visit this endpoint's URL directly to
+    // check: if queryError is set, the ai_track_record table almost
+    // certainly doesn't exist yet (run supabase/migrations/ai_track_record.sql
+    // in Supabase → SQL Editor). If no error but totalRowsEver is 0, the
+    // table exists but nothing has been graded into it yet.
+    const _debug = {
+      tableReachable: !queryError,
+      queryError: queryError?.message || null,
+      totalRowsEver: allRows?.length || 0,
+    };
+
+    if (!allRows?.length) return NextResponse.json({ ...empty, _debug });
 
     // US Central "today" — used as the reference point for season boundaries.
     const ctNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }));
@@ -39,7 +50,7 @@ export async function GET() {
     // Only count rows from each sport's CURRENT season — this is the reset.
     const rows = allRows.filter(r => isCurrentSeason(r.sport, r.date, todayStr));
 
-    if (!rows.length) return NextResponse.json(empty);
+    if (!rows.length) return NextResponse.json({ ...empty, _debug });
 
     const wins = rows.filter(r => r.result === 'win').length;
     const losses = rows.filter(r => r.result === 'loss').length;
@@ -59,8 +70,8 @@ export async function GET() {
     const rw = recent.filter(r => r.result === 'win').length;
     const recent20 = recent.length > 0 ? { wins: rw, losses: recent.length - rw, n: recent.length, pct: Math.round((rw / recent.length) * 1000) / 10 } : null;
 
-    return NextResponse.json({ overall, bySport, recent20 }, { headers: { 'Cache-Control': 'public, max-age=60' } });
+    return NextResponse.json({ overall, bySport, recent20, _debug }, { headers: { 'Cache-Control': 'public, max-age=60' } });
   } catch (e) {
-    return NextResponse.json(empty);
+    return NextResponse.json({ ...empty, _debug: { tableReachable: false, queryError: e.message, totalRowsEver: 0 } });
   }
 }
