@@ -4400,6 +4400,11 @@ export default function VegasVaultApp() {
                           const shareStamp = userAlt
                             ? (userAlt.result === 'win' ? 'CASHED ✅' : userAlt.result === 'loss' ? 'LOSS ❌' : null)
                             : (result?.gradedResult === 'win' ? 'CASHED ✅' : result?.gradedResult === 'loss' ? 'LOSS ❌' : null);
+                          // Tennis and WNBA have NO slot system at all — game.slot
+                          // holds the sport name itself for those, not VEGAS/PUBLIC.
+                          // Distinguish all three cases so the card never mislabels
+                          // a no-slot sport as a Public slot pick.
+                          const hasSlotSystem = game.slot === 'VEGAS' || game.slot === 'PUBLIC';
                           await shareOrDownloadCard({
                             matchup: matchupStr,
                             sport: game.sport,
@@ -4410,6 +4415,7 @@ export default function VegasVaultApp() {
                             verdict: summary.verdict,
                             resultStamp: shareStamp,
                             isVegasSlot: game.slot === 'VEGAS',
+                            hasSlotSystem,
                           }, `vv-${game.awayAbbr || 'away'}-${game.homeAbbr || 'home'}`);
                         } catch (e) { console.error('Share failed', e); }
                         setSharingCard(false);
