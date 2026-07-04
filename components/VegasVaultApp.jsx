@@ -975,6 +975,14 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
       ):hasRes?(
         <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'9px 12px',background:'rgba(248,255,248,0.7)',border:'1px solid rgba(195,240,195,0.5)',borderRadius:10 }}>
           <span style={{ fontSize:10,fontWeight:700,color:'#33aa00' }}>✓ {game.slot || game.sport} — ANALYZED</span>
+          <button
+            onClick={(e)=>{ e.stopPropagation(); onGenerate && onGenerate(game, game.slot); }}
+            title="Re-analyze this game"
+            style={{ display:'flex',alignItems:'center',gap:4,fontSize:9,fontWeight:700,color:'#2aa800',
+              background:'rgba(57,255,20,0.12)',border:'1px solid rgba(57,255,20,0.3)',borderRadius:7,
+              padding:'4px 9px',cursor:'pointer',fontFamily:'inherit' }}>
+            <i className="ti ti-refresh" style={{ fontSize:11 }} /> Re-analyze
+          </button>
         </div>
       ):hasSlotPattern||game.sport==='WNBA'?(
         <div style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:'10px 0',background:'rgba(57,255,20,0.06)',border:'1px solid rgba(57,255,20,0.2)',borderRadius:10 }}>
