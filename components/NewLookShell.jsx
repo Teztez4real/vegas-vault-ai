@@ -42,7 +42,7 @@ function SidebarUser({ userName, isAdmin, onClick }) {
   return (
     <div className="vv-sb-user" onClick={onClick} style={{ cursor: onClick ? 'pointer' : 'default' }}>
       <div className="vv-sb-av"><i className="ti ti-user" /></div>
-      <div>
+      <div className="vv-sb-utext">
         <div className="vv-sb-uname">{userName || "Member"}</div>
         <div className={`vv-sb-urole ${isAdmin ? "admin" : "member"}`}>
           {isAdmin ? "Admin" : "Premium Member"}

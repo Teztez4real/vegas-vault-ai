@@ -282,8 +282,12 @@ html, body {
   flex-shrink: 0; display: flex; align-items: center; justify-content: center;
 }
 .vv-sb-av i { color: #fff; font-size: 14px; }
-.vv-sb-uname { font-size: 11px; font-weight: 800; color: #222; }
-.vv-sb-urole { font-size: 8px; font-weight: 700; margin-top: 1px; }
+.vv-sb-utext { min-width: 0; flex: 1; overflow: hidden; }
+.vv-sb-uname {
+  font-size: 11px; font-weight: 800; color: #222;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.vv-sb-urole { font-size: 8px; font-weight: 700; margin-top: 1px; white-space: nowrap; }
 .vv-sb-urole.admin { color: var(--vv-green-text); }
 .vv-sb-urole.member { color: var(--vv-blue); }
 .vv-sb-chev { margin-left: auto; font-size: 13px; color: #ccc; }
