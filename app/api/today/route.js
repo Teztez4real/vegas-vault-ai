@@ -81,15 +81,38 @@ async function fetchESPNFinalScores(sportPath, dateStr) {
       const homeName = home.team?.displayName || home.team?.name;
       if (!awayName || !homeName) continue;
       const completed = comp.status?.type?.completed === true;
-      map[`${awayName}|${homeName}`] = {
+      const scoreData = {
         isFinal: completed,
         awayScore: away.score != null ? parseInt(away.score, 10) : null,
         homeScore: home.score != null ? parseInt(home.score, 10) : null,
         status: comp.status?.type?.description || (completed ? 'Final' : 'Scheduled'),
       };
+      // Exact full-name key (e.g. "Kansas City Chiefs|Buffalo Bills")
+      map[`${awayName}|${homeName}`] = scoreData;
+      // ALSO index by team NICKNAME (last word, e.g. "Chiefs|Bills"). The Odds
+      // API and ESPN don't always format team names identically (city
+      // abbreviations, "LA" vs "Los Angeles", etc) — an exact-string-only
+      // match would silently fail on any such difference and that game
+      // could NEVER be graded. The nickname is far more stable across
+      // providers, so this is the safety net that keeps every game matchable.
+      const awayNick = awayName.trim().split(' ').pop();
+      const homeNick = homeName.trim().split(' ').pop();
+      const nickKey = `${awayNick}|${homeNick}`;
+      if (!map[nickKey]) map[nickKey] = scoreData;
     }
   } catch {}
   return map;
+}
+
+// Looks up a score for (away, home) trying an exact match first, then
+// falling back to a nickname (last-word) match — see the comment above.
+function lookupESPNScore(scoresMap, away, home) {
+  if (!away || !home) return null;
+  const exact = scoresMap[`${away}|${home}`];
+  if (exact) return exact;
+  const awayNick = away.trim().split(' ').pop();
+  const homeNick = home.trim().split(' ').pop();
+  return scoresMap[`${awayNick}|${homeNick}`] || null;
 }
 
 async function fetchNFLGames(dateParam) {
@@ -190,7 +213,7 @@ async function fetchNFLGames(dateParam) {
 
       const gameDate = new Date(game.commence_time).toISOString().split('T')[0];
       const key = `${away}@${home}`;
-      const espnScore = nflScores[`${away}|${home}`] || null;
+      const espnScore = lookupESPNScore(nflScores, away, home);
 
       return {
         id: `nfl-${gameDate}-${i}`, sport: 'NFL',
@@ -1221,9 +1244,9 @@ async function fetchNBAGames(date) {
         id: `nba-${(game.commence_time||'').split('T')[0]}-${i}`, sport: 'NBA',
         date: (game.commence_time||'').split('T')[0],
         away, home,
-        isFinal: nbaScores[`${away}|${home}`]?.isFinal ?? false,
-        awayScore: nbaScores[`${away}|${home}`]?.awayScore ?? null,
-        homeScore: nbaScores[`${away}|${home}`]?.homeScore ?? null,
+        isFinal: lookupESPNScore(nbaScores, away, home)?.isFinal ?? false,
+        awayScore: lookupESPNScore(nbaScores, away, home)?.awayScore ?? null,
+        homeScore: lookupESPNScore(nbaScores, away, home)?.homeScore ?? null,
         awayAbbr: nbaAbbrMap[away] || away.split(' ').pop().slice(0,3).toUpperCase(),
         homeAbbr: nbaAbbrMap[home] || home.split(' ').pop().slice(0,3).toUpperCase(),
         time: formatTime(game.commence_time),
@@ -1488,9 +1511,9 @@ async function fetchWNBAGames(date) {
         id: `wnba-${(game.commence_time||'').split('T')[0]}-${i}`, sport: 'WNBA',
         date: (game.commence_time||'').split('T')[0],
         away, home,
-        isFinal: wnbaScores[`${away}|${home}`]?.isFinal ?? false,
-        awayScore: wnbaScores[`${away}|${home}`]?.awayScore ?? null,
-        homeScore: wnbaScores[`${away}|${home}`]?.homeScore ?? null,
+        isFinal: lookupESPNScore(wnbaScores, away, home)?.isFinal ?? false,
+        awayScore: lookupESPNScore(wnbaScores, away, home)?.awayScore ?? null,
+        homeScore: lookupESPNScore(wnbaScores, away, home)?.homeScore ?? null,
         awayAbbr: wnbaAbbrMap[away] || away.split(' ').pop().slice(0,3).toUpperCase(),
         homeAbbr: wnbaAbbrMap[home] || home.split(' ').pop().slice(0,3).toUpperCase(),
         time: formatTime(game.commence_time),
