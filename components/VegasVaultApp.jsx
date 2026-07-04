@@ -3199,7 +3199,7 @@ export default function VegasVaultApp() {
                 SUBSCRIPTION REQUIRED
               </div>
               <div style={{ fontSize:20,fontWeight:800,color:'#111' }}>Unlock Vegas Vault AI</div>
-              <div style={{ fontSize:11,color:'#aaa',marginTop:4,lineHeight:1.5 }}>Subscribe to access live AI analysis, Tier 1 locks,<br/>and the full Games Slate across all sports.</div>
+              <div style={{ fontSize:11,color:'#aaa',marginTop:4,lineHeight:1.5 }}>Subscribe to access live AI analysis, Tier 1 locks,<br/>and the full Game Slate across all sports.</div>
             </div>
             <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,padding:'16px 28px' }}>
               {[{name:'Weekly',price:'$19.99',period:'per week',save:''},
@@ -3445,9 +3445,9 @@ export default function VegasVaultApp() {
 
           </div>
 
-          {/* FAR RIGHT: Games Slate */}
+          {/* FAR RIGHT: Game Slate */}
           <div className="vv-glass vv-slate">
-            <div className="vv-gc-hd"><div className="vv-gc-t">Games Slate</div><i className="ti ti-dots" style={{ color:'#ccc',fontSize:13 }} /></div>
+            <div className="vv-gc-hd"><div className="vv-gc-t">Game Slate</div><i className="ti ti-dots" style={{ color:'#ccc',fontSize:13 }} /></div>
             <div className="vv-gc-sub">{new Date(selectedDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>
             <div className="vv-sp-tabs">
               {['ALL', ...new Set([...games.map(g=>g.sport).filter(Boolean), 'NBA', 'NFL'])].map(s=>(
@@ -3527,7 +3527,7 @@ export default function VegasVaultApp() {
 
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10 }}>
             <div>
-              <div style={{ fontSize:18, fontWeight:800, color:'#111', letterSpacing:-0.3 }}>Games Slate</div>
+              <div style={{ fontSize:18, fontWeight:800, color:'#111', letterSpacing:-0.3 }}>Game Slate</div>
               <div style={{ fontSize:11, color:'#aaa', marginTop:2 }}>
                 {new Date(selectedDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'})}
                 {' · '}{games.length} games
@@ -4284,7 +4284,7 @@ export default function VegasVaultApp() {
               <div style={{ padding:'16px 20px',borderBottom:'1px solid rgba(0,0,0,0.06)' }}>
                 <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10 }}>
                   <div onClick={()=>setActiveGame(null)} style={{ display:'flex',alignItems:'center',gap:6,fontSize:11,color:'#999',cursor:'pointer',fontWeight:600 }}>
-                    <i className="ti ti-arrow-left" style={{ fontSize:13 }} /> Back to Games Slate
+                    <i className="ti ti-arrow-left" style={{ fontSize:13 }} /> Back to Game Slate
                   </div>
                   <div style={{ display:'flex',alignItems:'center',gap:8 }}>
                     <div onClick={()=>setWatchlist(p=>{const u=p.includes(game.id)?p.filter(x=>x!==game.id):[...p,game.id];if(authUser?.id)saveKey(authUser.id,'watchlist',u);return u;})} style={{ fontSize:10,fontWeight:700,cursor:'pointer',

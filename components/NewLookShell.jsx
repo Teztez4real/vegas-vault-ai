@@ -10,7 +10,7 @@ const NAV_SECTIONS = [
   { key: "agents",        label: "Agents",         icon: "ti-users" },
   { key: "vault",         label: "Vault",          icon: "ti-shield" },
   { key: "analytics",     label: "Analytics",      icon: "ti-chart-bar" },
-  { key: "slate",         label: "Games Slate",    icon: "ti-ball-baseball" },
+  { key: "slate",         label: "Game Slate",    icon: "ti-ball-baseball" },
   { key: "settings",      label: "Settings",       icon: "ti-settings" },
 ];
 
