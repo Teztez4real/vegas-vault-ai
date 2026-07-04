@@ -22,15 +22,22 @@ export default function LandingPage() {
   const [openFaq, setOpenFaq] = useState(null);
   const [stats, setStats] = useState(null); // live cards data
 
-  // Fetch live landing stats (real featured play, win rate, line movement).
-  // Falls back to the static placeholders if anything is unavailable.
+  // Fetch live landing stats (real featured play, win rate, line movement),
+  // then keep polling so the page stays genuinely live — a visitor who's
+  // had the tab open all day sees today's play appear the moment it's
+  // ready, without needing to reload. Falls back to static placeholders
+  // if anything is unavailable.
   useEffect(() => {
     let alive = true;
-    fetch('/api/landing-stats')
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (alive && d) setStats(d); })
-      .catch(() => {});
-    return () => { alive = false; };
+    const fetchStats = () => {
+      fetch('/api/landing-stats', { cache: 'no-store' })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (alive && d) setStats(d); })
+        .catch(() => {});
+    };
+    fetchStats();
+    const t = setInterval(fetchStats, 60 * 1000);
+    return () => { alive = false; clearInterval(t); };
   }, []);
 
   // If already signed in, skip the landing page and go to the dashboard.
