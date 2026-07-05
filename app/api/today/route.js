@@ -6,6 +6,7 @@ function assignNFLSlots(games, pattern) {
   return games.map((g, i) => ({ ...g, slot: pattern[i] || null }));
 }
 import { createClient } from '@supabase/supabase-js';
+import { getOrFreezeOpeningLine, buildTrueLineMovementText } from '@/lib/openingLines';
 
 // ── UTILITIES ─────────────────────────────────────────────────────────────────
 
@@ -202,18 +203,28 @@ async function fetchNFLGames(dateParam) {
 
       const pricingStr = Object.entries(bookPrices).map(([l,v]) => `${l}: ${v.away||'N/A'}/${v.home||'N/A'}`).join(' | ');
 
-      // Line movement: Bet365 (sharp) vs FD/DK
+      // Cross-book divergence AT THIS MOMENT — a useful sharp-money signal,
+      // but not line movement (doesn't compare across time). Kept separate.
       const b365 = _raw['bet365']?.away;
       const fd = _raw['fanduel']?.away;
       const dk = _raw['draftkings']?.away;
-      const signals = [];
-      if (b365 && fd && Math.abs(b365-fd) >= 10) signals.push(`B365 ${fmt(b365)} vs FD ${fmt(fd)} — sharp on ${b365<fd?away.split(' ').pop():home.split(' ').pop()}`);
-      if (b365 && dk && Math.abs(b365-dk) >= 10) signals.push(`B365 ${fmt(b365)} vs DK ${fmt(dk)} — sharp on ${b365<dk?away.split(' ').pop():home.split(' ').pop()}`);
-      if (fd && dk && Math.abs(fd-dk) >= 8) signals.push(`FD ${fmt(fd)} vs DK ${fmt(dk)} — divergence on ${fd<dk?away.split(' ').pop():home.split(' ').pop()}`);
+      const crossBookSignals = [];
+      if (b365 && fd && Math.abs(b365-fd) >= 10) crossBookSignals.push(`B365 ${fmt(b365)} vs FD ${fmt(fd)} — sharp on ${b365<fd?away.split(' ').pop():home.split(' ').pop()}`);
+      if (b365 && dk && Math.abs(b365-dk) >= 10) crossBookSignals.push(`B365 ${fmt(b365)} vs DK ${fmt(dk)} — sharp on ${b365<dk?away.split(' ').pop():home.split(' ').pop()}`);
+      if (fd && dk && Math.abs(fd-dk) >= 8) crossBookSignals.push(`FD ${fmt(fd)} vs DK ${fmt(dk)} — divergence on ${fd<dk?away.split(' ').pop():home.split(' ').pop()}`);
 
       const gameDate = new Date(game.commence_time).toISOString().split('T')[0];
       const key = `${away}@${home}`;
       const espnScore = lookupESPNScore(nflScores, away, home);
+
+      // TRUE opening line — frozen the first time this game was ever seen.
+      const sbOpening = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+      const nflGameKey = `nfl-${gameDate}-${key}`;
+      const currentForFreeze = { awayML, homeML, spread, awaySpreadPrice, homeSpreadPrice, total, overPrice, underPrice };
+      const opening = await getOrFreezeOpeningLine(sbOpening, nflGameKey, gameDate, 'NFL', currentForFreeze);
+      const openingAwayML = opening?.away_ml != null ? (opening.away_ml > 0 ? `+${opening.away_ml}` : `${opening.away_ml}`) : (awayML || 'N/A');
+      const openingHomeML = opening?.home_ml != null ? (opening.home_ml > 0 ? `+${opening.home_ml}` : `${opening.home_ml}`) : (homeML || 'N/A');
+      const trueLineMovement = buildTrueLineMovementText(opening, currentForFreeze);
 
       return {
         id: `nfl-${gameDate}-${i}`, sport: 'NFL',
@@ -233,15 +244,14 @@ async function fetchNFLGames(dateParam) {
         awayLast5: 'N/A', homeLast5: 'N/A', awayLast10: 'N/A', homeLast10: 'N/A',
         awayStreak: 'N/A', homeStreak: 'N/A',
         awayML, homeML,
-        openingAwayML: pricingStr || 'N/A',
-        openingHomeML: pricingStr || 'N/A',
+        openingAwayML, openingHomeML,
         spread, total,
         awaySpreadPrice: awaySpreadPrice || '-110',
         homeSpreadPrice: homeSpreadPrice || '-110',
         overPrice: overPrice || '-110',
         underPrice: underPrice || '-110',
-        lineMovement: signals.join(' | ') || 'No significant movement',
-        sharpSignal: signals.join(' | ') || 'None',
+        lineMovement: trueLineMovement,
+        sharpSignal: crossBookSignals.join(' | ') || 'No cross-book divergence',
         betPercentage: 'Available with paid tier',
         moneyPercentage: 'Available with paid tier',
         awayQB: 'Check depth chart', homeQB: 'Check depth chart',
@@ -308,8 +318,9 @@ async function fetchOdds(sport, dateParam) {
     }
 
     const oddsMap = {};
+    const sbOpening = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 
-    data.forEach(game => {
+    await Promise.all(data.map(async game => {
       const away = (game.away_team || '').trim();
       const home = (game.home_team || '').trim();
       const key = `${away}@${home}`;
@@ -351,17 +362,39 @@ async function fetchOdds(sport, dateParam) {
 
       const pricingStr = Object.entries(bookPrices).map(([l,v]) => `${l}: ${v.away||'N/A'}/${v.home||'N/A'}`).join(' | ');
 
-      // Line movement: Bet365 (sharp) vs FD/DK
+      // Cross-book divergence at THIS moment (e.g. Bet365 vs FanDuel disagree
+      // right now) — a genuinely useful sharp-money SIGNAL, but it is NOT
+      // line movement (it doesn't compare across time). Kept as its own
+      // separately-labeled field (sharpSignal), matching what the AI prompts
+      // already expect.
       const b365 = _raw['bet365']?.away;
       const fd = _raw['fanduel']?.away;
       const dk = _raw['draftkings']?.away;
-      const signals = [];
-      if (b365 && fd && Math.abs(b365-fd) >= 10) signals.push(`B365 ${fmt(b365)} vs FD ${fmt(fd)} — sharp on ${b365<fd?away.split(' ').pop():home.split(' ').pop()}`);
-      if (b365 && dk && Math.abs(b365-dk) >= 10) signals.push(`B365 ${fmt(b365)} vs DK ${fmt(dk)} — sharp on ${b365<dk?away.split(' ').pop():home.split(' ').pop()}`);
-      if (fd && dk && Math.abs(fd-dk) >= 8) signals.push(`FD ${fmt(fd)} vs DK ${fmt(dk)} — divergence on ${fd<dk?away.split(' ').pop():home.split(' ').pop()}`);
+      const crossBookSignals = [];
+      if (b365 && fd && Math.abs(b365-fd) >= 10) crossBookSignals.push(`B365 ${fmt(b365)} vs FD ${fmt(fd)} — sharp on ${b365<fd?away.split(' ').pop():home.split(' ').pop()}`);
+      if (b365 && dk && Math.abs(b365-dk) >= 10) crossBookSignals.push(`B365 ${fmt(b365)} vs DK ${fmt(dk)} — sharp on ${b365<dk?away.split(' ').pop():home.split(' ').pop()}`);
+      if (fd && dk && Math.abs(fd-dk) >= 8) crossBookSignals.push(`FD ${fmt(fd)} vs DK ${fmt(dk)} — divergence on ${fd<dk?away.split(' ').pop():home.split(' ').pop()}`);
 
-      oddsMap[key] = { awayML, homeML, spread, total, awaySpreadPrice: awaySpreadPrice||'-110', homeSpreadPrice: homeSpreadPrice||'-110', overPrice: overPrice||'-110', underPrice: underPrice||'-110', openingAwayML: pricingStr||'N/A', openingHomeML: pricingStr||'N/A', lineMovement: signals.join(' | ')||'No significant movement', pricingStr };
-    });
+      // TRUE OPENING LINE — frozen the first time this game was ever seen
+      // (could be hours or days before the AI analyzes it or the slot
+      // pattern is set), so movement is a genuine opening→now comparison.
+      const gameKey = `mlb-${dateParam || todayStr()}-${key}`;
+      const currentForFreeze = { awayML, homeML, spread, awaySpreadPrice, homeSpreadPrice, total, overPrice, underPrice };
+      const opening = await getOrFreezeOpeningLine(sbOpening, gameKey, dateParam || todayStr(), 'MLB', currentForFreeze);
+      const openingAwayML = opening?.away_ml != null ? (opening.away_ml > 0 ? `+${opening.away_ml}` : `${opening.away_ml}`) : (awayML || 'N/A');
+      const openingHomeML = opening?.home_ml != null ? (opening.home_ml > 0 ? `+${opening.home_ml}` : `${opening.home_ml}`) : (homeML || 'N/A');
+      const trueLineMovement = buildTrueLineMovementText(opening, currentForFreeze);
+
+      oddsMap[key] = {
+        awayML, homeML, spread, total,
+        awaySpreadPrice: awaySpreadPrice||'-110', homeSpreadPrice: homeSpreadPrice||'-110',
+        overPrice: overPrice||'-110', underPrice: underPrice||'-110',
+        openingAwayML, openingHomeML,
+        lineMovement: trueLineMovement,
+        sharpSignal: crossBookSignals.join(' | ') || 'No cross-book divergence',
+        pricingStr,
+      };
+    }));
 
     console.log('OddsMap keys:', Object.keys(oddsMap).join(' | '));
     return { oddsMap, bookmakerCount: 5 };
@@ -880,15 +913,16 @@ async function assembleMLBGame(game, oddsMap) {
       homeSpreadPrice: odds.homeSpreadPrice || '-110',
       overPrice: odds.overPrice || '-110',
       underPrice: odds.underPrice || '-110',
-      openingAwayML: odds.openAway ? (odds.openAway > 0 ? `+${odds.openAway}` : `${odds.openAway}`) : (odds.dkAwayML ? (odds.dkAwayML > 0 ? `+${odds.dkAwayML}` : `${odds.dkAwayML}`) : odds.awayML || 'N/A'),
-      openingHomeML: odds.openHome ? (odds.openHome > 0 ? `+${odds.openHome}` : `${odds.openHome}`) : (odds.dkHomeML ? (odds.dkHomeML > 0 ? `+${odds.dkHomeML}` : `${odds.dkHomeML}`) : odds.homeML || 'N/A'),
+      openingAwayML: odds.openingAwayML || odds.awayML || 'N/A',
+      openingHomeML: odds.openingHomeML || odds.homeML || 'N/A',
       spread: odds.spread || 'N/A',
       runLine: odds.spread ? `${home} ${odds.spread}` : 'N/A',
       total: odds.total || 'N/A',
       lineMovement: odds.lineMovement || 'N/A',
+      sharpSignal: odds.sharpSignal || 'N/A',
       betPercentage: odds.betPercentage || 'N/A',
       moneyPercentage: odds.moneyPercentage || 'N/A',
-      openingLine: odds.openingLine || odds.pricingStr || 'N/A',
+      openingLine: `Away ${odds.openingAwayML || 'N/A'} / Home ${odds.openingHomeML || 'N/A'}`,
       pricingStr: odds.pricingStr || 'N/A',
       awayRecord: `${awayWins}-${awayLosses}`,
       homeRecord: `${homeWins}-${homeLosses}`,
@@ -1225,12 +1259,22 @@ async function fetchNBAGames(date) {
       });
       const pricingStr = Object.entries(bookPrices).map(([l,v]) => `${l}: ${v.away||'N/A'}/${v.home||'N/A'}`).join(' | ');
 
-      // Line movement signals
+      // Cross-book divergence AT THIS MOMENT — useful sharp signal, but not
+      // line movement (doesn't compare across time). Kept separate.
       const b365Away = _raw['bet365']?.away, fdAway = _raw['fanduel']?.away, dkAway = _raw['draftkings']?.away;
-      const signals = [];
-      if (b365Away && fdAway && Math.abs(b365Away-fdAway) >= 8) signals.push(`B365 ${fmt(b365Away)} vs FD ${fmt(fdAway)} — sharp on ${b365Away<fdAway?away.split(' ').pop():home.split(' ').pop()}`);
-      if (b365Away && dkAway && Math.abs(b365Away-dkAway) >= 8) signals.push(`B365 ${fmt(b365Away)} vs DK ${fmt(dkAway)} — sharp on ${b365Away<dkAway?away.split(' ').pop():home.split(' ').pop()}`);
-      const lineMovement = signals.join(' | ') || 'No significant movement';
+      const crossBookSignals = [];
+      if (b365Away && fdAway && Math.abs(b365Away-fdAway) >= 8) crossBookSignals.push(`B365 ${fmt(b365Away)} vs FD ${fmt(fdAway)} — sharp on ${b365Away<fdAway?away.split(' ').pop():home.split(' ').pop()}`);
+      if (b365Away && dkAway && Math.abs(b365Away-dkAway) >= 8) crossBookSignals.push(`B365 ${fmt(b365Away)} vs DK ${fmt(dkAway)} — sharp on ${b365Away<dkAway?away.split(' ').pop():home.split(' ').pop()}`);
+
+      // TRUE opening line — frozen the first time this game was ever seen.
+      const nbaGameDate = (game.commence_time||'').split('T')[0];
+      const sbOpening = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+      const nbaGameKey = `nba-${nbaGameDate}-${away}@${home}`;
+      const currentForFreeze = { awayML, homeML, spread, awaySpreadPrice, homeSpreadPrice, total, overPrice, underPrice };
+      const opening = await getOrFreezeOpeningLine(sbOpening, nbaGameKey, nbaGameDate, 'NBA', currentForFreeze);
+      const openingAwayML = opening?.away_ml != null ? (opening.away_ml > 0 ? `+${opening.away_ml}` : `${opening.away_ml}`) : (awayML || 'N/A');
+      const openingHomeML = opening?.home_ml != null ? (opening.home_ml > 0 ? `+${opening.home_ml}` : `${opening.home_ml}`) : (homeML || 'N/A');
+      const lineMovement = buildTrueLineMovementText(opening, currentForFreeze);
 
       // Fetch NBA-specific data in parallel
       const [awayForm, homeForm, h2h, playoffCtx] = await Promise.all([
@@ -1252,10 +1296,10 @@ async function fetchNBAGames(date) {
         time: formatTime(game.commence_time),
         rawTime: game.commence_time,
         awayML, homeML, spread, total,
-        openingAwayML: pricingStr || 'N/A',
-        openingHomeML: pricingStr || 'N/A',
+        openingAwayML, openingHomeML,
         pricingStr,
         lineMovement,
+        sharpSignal: crossBookSignals.join(' | ') || 'No cross-book divergence',
         awayRecord: nbaRecords[away] || 'N/A',
         homeRecord: nbaRecords[home] || 'N/A',
         awayHomeRecord: awayForm.homeRecord,
@@ -1490,12 +1534,21 @@ async function fetchWNBAGames(date) {
       });
       const pricingStr = Object.entries(bookPrices).map(([l,v])=>`${l}: ${v.away||'N/A'}/${v.home||'N/A'}`).join(' | ');
 
-      // Line movement
+      // Cross-book divergence AT THIS MOMENT — useful sharp signal, not movement.
       const b365Away=_raw['bet365']?.away, fdAway=_raw['fanduel']?.away, dkAway=_raw['draftkings']?.away;
-      const signals=[];
-      if(b365Away&&fdAway&&Math.abs(b365Away-fdAway)>=8) signals.push(`B365 ${fmt(b365Away)} vs FD ${fmt(fdAway)} — sharp on ${b365Away<fdAway?away.split(' ').pop():home.split(' ').pop()}`);
-      if(b365Away&&dkAway&&Math.abs(b365Away-dkAway)>=8) signals.push(`B365 ${fmt(b365Away)} vs DK ${fmt(dkAway)} — sharp on ${b365Away<dkAway?away.split(' ').pop():home.split(' ').pop()}`);
-      const lineMovement = signals.join(' | ') || 'No significant movement';
+      const crossBookSignals=[];
+      if(b365Away&&fdAway&&Math.abs(b365Away-fdAway)>=8) crossBookSignals.push(`B365 ${fmt(b365Away)} vs FD ${fmt(fdAway)} — sharp on ${b365Away<fdAway?away.split(' ').pop():home.split(' ').pop()}`);
+      if(b365Away&&dkAway&&Math.abs(b365Away-dkAway)>=8) crossBookSignals.push(`B365 ${fmt(b365Away)} vs DK ${fmt(dkAway)} — sharp on ${b365Away<dkAway?away.split(' ').pop():home.split(' ').pop()}`);
+
+      // TRUE opening line — frozen the first time this game was ever seen.
+      const wnbaGameDate = (game.commence_time||'').split('T')[0];
+      const sbOpening = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+      const wnbaGameKey = `wnba-${wnbaGameDate}-${away}@${home}`;
+      const currentForFreeze = { awayML, homeML, spread, awaySpreadPrice, homeSpreadPrice, total, overPrice, underPrice };
+      const opening = await getOrFreezeOpeningLine(sbOpening, wnbaGameKey, wnbaGameDate, 'WNBA', currentForFreeze);
+      const openingAwayML = opening?.away_ml != null ? (opening.away_ml > 0 ? `+${opening.away_ml}` : `${opening.away_ml}`) : (awayML || 'N/A');
+      const openingHomeML = opening?.home_ml != null ? (opening.home_ml > 0 ? `+${opening.home_ml}` : `${opening.home_ml}`) : (homeML || 'N/A');
+      const lineMovement = buildTrueLineMovementText(opening, currentForFreeze);
 
       // Fetch WNBA-specific data
       const [awayForm, homeForm, h2h] = await Promise.all([
@@ -1520,9 +1573,9 @@ async function fetchWNBAGames(date) {
         rawTime: game.commence_time,
         awayML, homeML, spread, total,
         pricingStr,
-        openingAwayML: pricingStr || 'N/A',
-        openingHomeML: pricingStr || 'N/A',
+        openingAwayML, openingHomeML,
         lineMovement,
+        sharpSignal: crossBookSignals.join(' | ') || 'No cross-book divergence',
         awayRecord: wnbaRecords[away] || Object.entries(wnbaRecords).find(([k]) => away.includes(k.split(' ').pop()) || k.includes(away.split(' ').pop()))?.[1] || 'N/A',
         homeRecord: wnbaRecords[home] || Object.entries(wnbaRecords).find(([k]) => home.includes(k.split(' ').pop()) || k.includes(home.split(' ').pop()))?.[1] || 'N/A',
         awayHomeRecord: awayForm.homeRecord,
