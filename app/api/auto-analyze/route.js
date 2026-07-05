@@ -94,26 +94,75 @@ function shouldReanalyze(game, existing) {
   const lastAnalyzed = new Date(existing.updated_at || existing.created_at || 0);
   const minSince = (Date.now() - lastAnalyzed) / 60000;
 
-  // ── PER-GAME TIME WINDOWING ───────────────────────────────────────────────
+  const snap = (() => { try { return JSON.parse(existing.game_snapshot || '{}'); } catch { return {}; } })();
+  const result = (() => { try { return JSON.parse(existing.result || '{}'); } catch { return {}; } })();
+  const summary = result.summary || {};
+
+  // ── MATERIAL CHANGE DETECTION — runs FIRST, ALWAYS, regardless of how far
+  // out the game is or how recently it was checked. This is what "tracking
+  // all day up until game time" actually means: a pitcher swap, injury news,
+  // lineup posting, or real line movement must trigger a re-analysis the
+  // moment it's detected — never sit unnoticed for hours just because the
+  // game itself is still far away. Only a brief thrash-guard (60 sec) applies,
+  // purely to avoid double-firing if the cron overlaps itself.
+  const justChecked = minSince < 1; // under a minute — avoid double-fire only
+
+  if (!justChecked) {
+    // 1. Starting pitcher changed
+    if (snap.awayPitcher && game.awayPitcher &&
+        snap.awayPitcher !== 'TBD' && game.awayPitcher !== 'TBD' &&
+        snap.awayPitcher !== game.awayPitcher)
+      return { yes: true, reason: `Away pitcher changed: ${snap.awayPitcher} → ${game.awayPitcher}` };
+
+    if (snap.homePitcher && game.homePitcher &&
+        snap.homePitcher !== 'TBD' && game.homePitcher !== 'TBD' &&
+        snap.homePitcher !== game.homePitcher)
+      return { yes: true, reason: `Home pitcher changed: ${snap.homePitcher} → ${game.homePitcher}` };
+
+    // 2. Pitcher confirmed from TBD
+    if (snap.awayPitcher === 'TBD' && game.awayPitcher && game.awayPitcher !== 'TBD')
+      return { yes: true, reason: `Away starter confirmed: ${game.awayPitcher}` };
+    if (snap.homePitcher === 'TBD' && game.homePitcher && game.homePitcher !== 'TBD')
+      return { yes: true, reason: `Home starter confirmed: ${game.homePitcher}` };
+
+    // 3. Lineup confirmed (went from unposted to actual lineup)
+    const awayLineupNow = (game.awayLineup?.length || 0) > 20 && game.awayLineup !== 'Not yet posted';
+    const homeLineupNow = (game.homeLineup?.length || 0) > 20 && game.homeLineup !== 'Not yet posted';
+    if (awayLineupNow && !snap.awayLineupConfirmed)
+      return { yes: true, reason: `${game.away} lineup confirmed` };
+    if (homeLineupNow && !snap.homeLineupConfirmed)
+      return { yes: true, reason: `${game.home} lineup confirmed` };
+
+    // 4. Injury report changed
+    if (snap.injuries && game.injuries && snap.injuries !== game.injuries &&
+        game.injuries !== 'None reported' && game.injuries !== 'Injury data unavailable')
+      return { yes: true, reason: 'Injury report updated' };
+
+    // 5. Significant DraftKings line movement since last analysis
+    const prevML  = parseInt((snap.dkAwayML || snap.awayML || '0').toString().replace(/[^-\d]/g, ''));
+    const currML  = parseInt((game.dkAwayML || game.awayML || '0').toString().replace(/[^-\d]/g, ''));
+    if (!isNaN(prevML) && !isNaN(currML) && Math.abs(currML - prevML) >= 10)
+      return { yes: true, reason: `DraftKings line moved ${Math.abs(currML - prevML)} points` };
+  }
+
+  // ── Everything below only applies to PURE periodic refreshes (nothing
+  // material changed) — these ARE throttled by distance to game time, since
+  // there's no new information to react to and we want to control API cost.
+
   // Each game refreshes on its OWN schedule based on how close it is to start.
-  // The closer to game time, the more often we refresh — because that's when
-  // lineups, scratches, and sharp money actually move. Far-out games barely
-  // change, so we leave them alone to save API cost.
   let minsToStart = Infinity;
   if (game.rawTime) {
     minsToStart = (new Date(game.rawTime) - Date.now()) / 60000;
   }
 
-  // FINAL LOCK-IN WINDOW: 25–75 min before start. This is the single most
-  // important update — lineups are confirmed, late scratches are known, and
-  // the closing line is forming. Always refresh once in this window if we
-  // haven't analyzed in the last 20 min.
+  // FINAL LOCK-IN WINDOW: 25–75 min before start. Always refresh once in this
+  // window if we haven't analyzed in the last 20 min.
   if (minsToStart <= 75 && minsToStart > 20 && minSince >= 20) {
     return { yes: true, reason: 'Final lock-in window (lineups confirmed, closing line)' };
   }
 
-  // FAR-OUT GAMES: more than 10 hours away — data barely changes this early.
-  // Skip unless we have no analysis yet (handled above) to save API cost.
+  // FAR-OUT GAMES: more than 10 hours away — no PERIODIC refresh needed this
+  // early (material changes above already would have caught anything real).
   if (minsToStart > 600 && minSince < 360) {
     return { yes: false, reason: 'Game far out — minimal change expected' };
   }
@@ -127,52 +176,9 @@ function shouldReanalyze(game, existing) {
   else if (minsToStart <= 300) cadenceMin = 60;
   else if (minsToStart <= 600) cadenceMin = 120;
 
-  // Analyzed within 30 min — skip unless something changed materially
-  const snap = (() => { try { return JSON.parse(existing.game_snapshot || '{}'); } catch { return {}; } })();
-  const result = (() => { try { return JSON.parse(existing.result || '{}'); } catch { return {}; } })();
-  const summary = result.summary || {};
-
-  // ── MATERIAL CHANGE DETECTION ────────────────────────────────────────────
-
-  // 1. Starting pitcher changed
-  if (snap.awayPitcher && game.awayPitcher &&
-      snap.awayPitcher !== 'TBD' && game.awayPitcher !== 'TBD' &&
-      snap.awayPitcher !== game.awayPitcher)
-    return { yes: true, reason: `Away pitcher changed: ${snap.awayPitcher} → ${game.awayPitcher}` };
-
-  if (snap.homePitcher && game.homePitcher &&
-      snap.homePitcher !== 'TBD' && game.homePitcher !== 'TBD' &&
-      snap.homePitcher !== game.homePitcher)
-    return { yes: true, reason: `Home pitcher changed: ${snap.homePitcher} → ${game.homePitcher}` };
-
-  // 2. Pitcher confirmed from TBD
-  if (snap.awayPitcher === 'TBD' && game.awayPitcher && game.awayPitcher !== 'TBD')
-    return { yes: true, reason: `Away starter confirmed: ${game.awayPitcher}` };
-  if (snap.homePitcher === 'TBD' && game.homePitcher && game.homePitcher !== 'TBD')
-    return { yes: true, reason: `Home starter confirmed: ${game.homePitcher}` };
-
-  // 3. Lineup confirmed (went from unposted to actual lineup)
-  const awayLineupNow = (game.awayLineup?.length || 0) > 20 && game.awayLineup !== 'Not yet posted';
-  const homeLineupNow = (game.homeLineup?.length || 0) > 20 && game.homeLineup !== 'Not yet posted';
-  if (awayLineupNow && !snap.awayLineupConfirmed)
-    return { yes: true, reason: `${game.away} lineup confirmed` };
-  if (homeLineupNow && !snap.homeLineupConfirmed)
-    return { yes: true, reason: `${game.home} lineup confirmed` };
-
-  // 4. Injury report changed
-  if (snap.injuries && game.injuries && snap.injuries !== game.injuries &&
-      game.injuries !== 'None reported' && game.injuries !== 'Injury data unavailable')
-    return { yes: true, reason: 'Injury report updated' };
-
-  // 5. Significant DraftKings line movement since last analysis
-  const prevML  = parseInt((snap.dkAwayML || snap.awayML || '0').toString().replace(/[^-\d]/g, ''));
-  const currML  = parseInt((game.dkAwayML || game.awayML || '0').toString().replace(/[^-\d]/g, ''));
-  if (!isNaN(prevML) && !isNaN(currML) && Math.abs(currML - prevML) >= 10)
-    return { yes: true, reason: `DraftKings line moved ${Math.abs(currML - prevML)} points` };
-
   // ── STABILITY CHECKS ─────────────────────────────────────────────────────
 
-  // Analyzed very recently (within 20 min) — always stable, never thrash
+  // Analyzed very recently (within 20 min) — stable, never thrash
   if (minSince < 20) return { yes: false, reason: 'Just analyzed — stable' };
 
   // High confidence Tier 1 with no material changes — keep it, but still allow
