@@ -380,7 +380,7 @@ function getTrackRecordSummary(pickHistory, sharedRecord) {
       overallWins: sharedRecord.overall.wins,
       overallLosses: sharedRecord.overall.losses,
       recent: r20 ? { n: r20.n, wins: r20.wins, pct: r20.pct } : { n: sharedRecord.overall.total, wins: sharedRecord.overall.wins, pct: sharedRecord.overall.pct },
-      byTier: [], bySlot: [], byScamLayer: [], byBetCategory: [],
+      byTier: sharedRecord.byTier || [], bySlot: [], byScamLayer: [], byBetCategory: sharedRecord.byBetCategory || [],
       bySport: bySportArr,
     };
   }
@@ -391,19 +391,51 @@ function getTrackRecordSummary(pickHistory, sharedRecord) {
 // prompt — only includes a breakdown line if its sample size is large
 // enough to mean anything, explicitly stating the sample size so the model
 // can calibrate how much to trust it rather than overfitting to small runs.
+// Renders the track record into a plain-language string for the AI prompt —
+// AND, critically, tells the model what to actually DO with it. Reporting
+// "you're 18-16" as trivia doesn't change future behavior; this function
+// turns each statistically meaningful breakdown into an explicit calibration
+// instruction, so real performance data actually shapes the next pick
+// instead of sitting in the prompt unused.
 function trackRecordPromptText(summary) {
   if (!summary) return 'No resolved history yet — analyze this game purely on its own merits.';
   const lines = [];
   lines.push(`Overall: ${summary.overallWins}-${summary.overallLosses} (${summary.totalResolved} resolved picks). Last 20: ${summary.recent.wins}-${summary.recent.n - summary.recent.wins} (${summary.recent.pct}%).`);
-  const sigBreakdown = (rows, label) => rows.filter(r => r.n >= 10).map(r => `${label} ${r.label}: ${r.wins}-${r.losses} (${r.pct}%, n=${r.n})`);
-  const tierLines = sigBreakdown(summary.byTier, '');
-  const slotLines = sigBreakdown(summary.bySlot, '');
-  const scamLines = sigBreakdown(summary.byScamLayer, '');
-  const betCatLines = sigBreakdown(summary.byBetCategory, '');
-  if (tierLines.length) lines.push(`By tier — ${tierLines.join(' | ')}`);
-  if (slotLines.length) lines.push(`By slot — ${slotLines.join(' | ')}`);
-  if (scamLines.length) lines.push(`By scam type (Vegas-slot only) — ${scamLines.join(' | ')}`);
-  if (betCatLines.length) lines.push(`By bet category — ${betCatLines.join(' | ')}`);
+
+  // Only breakdowns with n>=10 are meaningful enough to act on — smaller
+  // samples are noise and should NOT trigger a calibration change.
+  const sig = (rows) => (rows || []).filter(r => r.n >= 10);
+  const tierRows = sig(summary.byTier);
+  const slotRows = sig(summary.bySlot);
+  const scamRows = sig(summary.byScamLayer);
+  const betCatRows = sig(summary.byBetCategory);
+
+  const describe = (rows, label) => rows.map(r => `${label} ${r.label}: ${r.wins}-${r.losses} (${r.pct}%, n=${r.n})`);
+  const allSigLines = [
+    ...describe(tierRows, ''), ...describe(slotRows, ''),
+    ...describe(scamRows, ''), ...describe(betCatRows, ''),
+  ];
+  if (allSigLines.length) lines.push(`Statistically meaningful breakdowns (n≥10) — ${allSigLines.join(' | ')}.`);
+
+  // ── THE ACTIONABLE PART — explicit instructions, not just numbers ────────
+  const CALIBRATION_THRESHOLD = 45; // below this win% at n>=10, treat as underperforming
+  const STRONG_THRESHOLD = 60;      // above this win% at n>=10, treat as validated
+
+  const underperforming = [...tierRows, ...slotRows, ...scamRows, ...betCatRows].filter(r => r.pct < CALIBRATION_THRESHOLD);
+  const overperforming  = [...tierRows, ...slotRows, ...scamRows, ...betCatRows].filter(r => r.pct >= STRONG_THRESHOLD);
+
+  if (underperforming.length) {
+    const names = underperforming.map(r => `${r.label} (${r.pct}%, n=${r.n})`).join(', ');
+    lines.push(`⚡ CALIBRATION SIGNAL — UNDERPERFORMING: ${names} — this is a real, sample-backed pattern (n≥10), not noise. If tonight's pick falls into one of these categories, apply GENUINE extra scrutiny: re-check your reasoning harder than usual, require a cleaner signal alignment before committing, and default toward a lower tier or a pass if the case isn't clearly strong. Do not ignore this because "every pick is different" — a repeated pattern across many different games IS the signal.`);
+  }
+  if (overperforming.length) {
+    const names = overperforming.map(r => `${r.label} (${r.pct}%, n=${r.n})`).join(', ');
+    lines.push(`✅ CALIBRATION SIGNAL — VALIDATED: ${names} — this approach is working with a real sample size. If tonight's pick falls into one of these categories and the reasoning is sound, that's corroborating evidence for confidence — don't second-guess a working pattern without a concrete reason specific to tonight's game.`);
+  }
+  if (!underperforming.length && !overperforming.length && summary.totalResolved >= 10) {
+    lines.push('No category has enough sample size yet to be a strong calibration signal on its own — keep analyzing each game on its actual merits, but track record data will become more actionable as more picks resolve.');
+  }
+
   return lines.join(' ');
 }
 
