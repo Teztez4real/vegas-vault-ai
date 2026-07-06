@@ -3568,10 +3568,11 @@ export default function VegasVaultApp() {
               return (
                 <div key={key} className="vv-gr" onClick={()=>{ if(result) { setActiveGame(game); setActiveResult(result); setActiveDetailTab('AI Reasoning'); } else { handleGenerate(game, game.slot); } }}>
                   <div className="vv-gr-a">
-                    <span className="vv-gr-t">
-                      <img className="vv-gr-lg" src={`https://a.espncdn.com/i/teamlogos/${game.sport==='NBA'?'nba':game.sport==='NFL'?'nfl':'mlb'}/500/${(game.awayAbbr||'').toLowerCase()}.png`} alt="" onError={e=>e.target.style.display='none'} />
+                    <span className="vv-gr-t" style={{ display:'inline-flex', alignItems:'center', gap:4 }}>
+                      <TeamLogo abbr={game.awayAbbr} sport={game.sport} size={18} />
                       {topPlay && topPlay.id === game.id && <span title="Top Play of the Day" style={{ fontSize:11 }}>⭐</span>}
                       {game.awayAbbr} @ {game.homeAbbr}
+                      <TeamLogo abbr={game.homeAbbr} sport={game.sport} size={18} />
                     </span>
                     <span className="vv-gr-time">{game.time}</span>
                     {tier && <span className="vv-gr-stars">{starRating(summary) > 0 ? '★ ' + starRating(summary) : '—'}</span>}
