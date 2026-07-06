@@ -162,6 +162,7 @@ export default function NewLookShell({
   hasNotification = false,
   onBellClick,
   authed = true,
+  hideTopbar = false,
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -189,7 +190,7 @@ export default function NewLookShell({
       <NeuralBg />
 
       {/* Topbar */}
-      <Topbar onMenuToggle={openDrawer} hasNotification={hasNotification} onBellClick={onBellClick} />
+      {!hideTopbar && <Topbar onMenuToggle={openDrawer} hasNotification={hasNotification} onBellClick={onBellClick} />}
 
       {/* Mobile scrim + drawer */}
       <div className={`vv-scrim${drawerOpen ? " open" : ""}`} onClick={closeDrawer} />
