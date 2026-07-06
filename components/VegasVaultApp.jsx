@@ -528,7 +528,27 @@ const WNBA_SLUGS = {
   "Mercury":"phx","Storm":"sea","Mystics":"wsh","Tempo":"tor",
 };
 
-function TeamLogo({ abbr, size=44, sport="MLB" }) {
+// Full-team-name → ESPN slug, independent of ANY abbreviation convention.
+// This is the safety net: whatever abbreviation format a data source uses
+// (MLB Stats API's own codes, The Odds API's naming, betting-book shorthand),
+// the full team name rarely varies — so if the abbreviation lookup ever
+// misses for any reason, this second lookup by name still resolves to the
+// correct logo instead of falling back to a plain initials box.
+const MLB_NAME_TO_SLUG = {
+  "Arizona Diamondbacks":"ari","Atlanta Braves":"atl","Baltimore Orioles":"bal",
+  "Boston Red Sox":"bos","Chicago Cubs":"chc","Chicago White Sox":"chw",
+  "Cincinnati Reds":"cin","Cleveland Guardians":"cle","Colorado Rockies":"col",
+  "Detroit Tigers":"det","Houston Astros":"hou","Kansas City Royals":"kc",
+  "Los Angeles Angels":"laa","Los Angeles Dodgers":"lad","Miami Marlins":"mia",
+  "Milwaukee Brewers":"mil","Minnesota Twins":"min","New York Mets":"nym",
+  "New York Yankees":"nyy","Oakland Athletics":"ath","Athletics":"ath",
+  "Philadelphia Phillies":"phi","Pittsburgh Pirates":"pit","San Diego Padres":"sd",
+  "Seattle Mariners":"sea","San Francisco Giants":"sf","St. Louis Cardinals":"stl",
+  "St Louis Cardinals":"stl","Tampa Bay Rays":"tb","Texas Rangers":"tex",
+  "Toronto Blue Jays":"tor","Washington Nationals":"wsh",
+};
+
+function TeamLogo({ abbr, teamName, size=44, sport="MLB" }) {
   const [err, setErr] = useState(false);
   const abbrUpper = (abbr || '').toUpperCase();
 
@@ -536,7 +556,10 @@ function TeamLogo({ abbr, size=44, sport="MLB" }) {
   let espnSport = null;
 
   if (sport === "MLB") {
-    slug = MLB_SLUGS[abbrUpper];
+    // Try abbreviation first, then fall back to the full-name lookup —
+    // covers every MLB team regardless of which abbreviation format the
+    // data happened to arrive in.
+    slug = MLB_SLUGS[abbrUpper] || (teamName && MLB_NAME_TO_SLUG[teamName]);
     espnSport = "mlb";
   } else if (sport === "NBA") {
     slug = NBA_SLUGS[abbrUpper];
@@ -891,7 +914,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
       {/* Row 2: teams + logos + records */}
       <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:10 }}>
         <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:3,width:60,flexShrink:0 }}>
-          <TeamLogo abbr={awayAbbr} sport={game.sport} size={42} />
+          <TeamLogo abbr={awayAbbr} teamName={awayName} sport={game.sport} size={42} />
           <div style={{ fontSize:10,fontWeight:800,color:'#111' }}>{awayAbbr}</div>
           <div style={{ fontSize:8,color:'#bbb' }}>{awayRec}</div>
         </div>
@@ -919,7 +942,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
           )}
         </div>
         <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:3,width:60,flexShrink:0 }}>
-          <TeamLogo abbr={homeAbbr} sport={game.sport} size={42} />
+          <TeamLogo abbr={homeAbbr} teamName={homeName} sport={game.sport} size={42} />
           <div style={{ fontSize:10,fontWeight:800,color:'#111' }}>{homeAbbr}</div>
           <div style={{ fontSize:8,color:'#bbb' }}>{homeRec}</div>
         </div>
@@ -3569,10 +3592,10 @@ export default function VegasVaultApp() {
                 <div key={key} className="vv-gr" onClick={()=>{ if(result) { setActiveGame(game); setActiveResult(result); setActiveDetailTab('AI Reasoning'); } else { handleGenerate(game, game.slot); } }}>
                   <div className="vv-gr-a">
                     <span className="vv-gr-t" style={{ display:'inline-flex', alignItems:'center', gap:4 }}>
-                      <TeamLogo abbr={game.awayAbbr} sport={game.sport} size={18} />
+                      <TeamLogo abbr={game.awayAbbr} teamName={game.away} sport={game.sport} size={18} />
                       {topPlay && topPlay.id === game.id && <span title="Top Play of the Day" style={{ fontSize:11 }}>⭐</span>}
                       {game.awayAbbr} @ {game.homeAbbr}
-                      <TeamLogo abbr={game.homeAbbr} sport={game.sport} size={18} />
+                      <TeamLogo abbr={game.homeAbbr} teamName={game.home} sport={game.sport} size={18} />
                     </span>
                     <span className="vv-gr-time">{game.time}</span>
                     {tier && <span className="vv-gr-stars">{starRating(summary) > 0 ? '★ ' + starRating(summary) : '—'}</span>}
