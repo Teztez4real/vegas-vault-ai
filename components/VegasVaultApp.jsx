@@ -1763,8 +1763,27 @@ export default function VegasVaultApp() {
         setSelectedDate(prev => prev === ctToday ? prev : ctToday);
       }
     };
-    const interval = setInterval(check, 60 * 1000); // check every minute
-    return () => clearInterval(interval);
+    const interval = setInterval(check, 60 * 1000); // check every minute while foregrounded
+
+    // CRITICAL: mobile browsers (and desktop tabs left in the background)
+    // aggressively suspend/throttle setInterval timers while the tab isn't
+    // actively in the foreground — which is the normal state overnight for
+    // virtually every user. That means the 60-second check above simply
+    // doesn't run while the app is closed or backgrounded, so reopening the
+    // app the next morning could still show yesterday's stale date/results
+    // for up to a minute (or longer) until the throttled interval catches up.
+    // Run the SAME check immediately the moment the tab/app becomes visible
+    // again, so the date is corrected instantly on reopen instead of lagging.
+    const onVisible = () => { if (document.visibilityState === 'visible') check(); };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    check(); // also run once immediately on mount
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+    };
   }, []);
 
   // ── PER-SPORT TOP PLAY — runs after all games in sport are analyzed ────────────
