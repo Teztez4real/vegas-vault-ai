@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { gradeCompletedGames, gradeUserAltPicks } from '@/lib/grading';
+import { gradeCompletedGames, gradeUserAltPicks, regradeHistoricalPicks, regradeHistoricalAltPicks } from '@/lib/grading';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -333,6 +333,8 @@ export async function POST(req) {
     // slows down the analysis response.
     gradeCompletedGames(sb, date, base).catch(() => {});
     gradeUserAltPicks(sb, date, base).catch(() => {});
+    regradeHistoricalPicks(sb).catch(() => {});
+    regradeHistoricalAltPicks(sb).catch(() => {});
 
     // 2. Build the slate. Normal mode: slotted MLB/NBA/NFL games not yet started.
     //    forceAll mode ALSO includes no-slot sports (Tennis/WNBA).
