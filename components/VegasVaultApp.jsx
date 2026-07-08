@@ -720,6 +720,7 @@ function PlayResult({ result, game, onClose, isResolved, resolvedResult }) {
     {label:"Situational",key:"situational"},
     {label:"Trell Rule",key:"trellRule"},
     {label:"Sharp Money",key:"sharpMoney"},
+    {label:"Public Narrative",key:"publicNarrative"},
     {label:"Propaganda",key:"propaganda"},
     {label:"Game Script",key:"gameScript"},
     {label:"Market Logic",key:"marketLogic"},
@@ -4432,7 +4433,7 @@ export default function VegasVaultApp() {
         const ringOffset = ringCirc * (1 - confPct / 100);
 
         // Reasoning bullets pulled from real analysis fields (no invented stats)
-        const reasoningOrder = ['matchupFoundation','pitching','hitterLineup','recentForm','headToHead','situational','sharpMoney','propaganda','gameScript'];
+        const reasoningOrder = ['matchupFoundation','pitching','hitterLineup','recentForm','headToHead','situational','sharpMoney','publicNarrative','propaganda','gameScript'];
         const reasoningBullets = reasoningOrder
           .map(k => analysis[k])
           .filter(v => v && typeof v === 'string' && v.length > 0 && v !== 'N/A')
