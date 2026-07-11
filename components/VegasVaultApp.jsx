@@ -7,6 +7,7 @@ import '@/app/new-look.css';
 import '@/app/vv-4d-modern.css';
 import '@/app/vv-4d-modern-v2.css';
 import '@/app/vv-dark-theme.css';
+import '@/app/vv-float.css';
 
 // ── SUPABASE CROSS-DEVICE SYNC ────────────────────────────────────────────────
 async function syncLoad(userId, key) {

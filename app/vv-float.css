@@ -1,0 +1,163 @@
+/* ============================================================
+   VEGAS VAULT AI — FLOAT LAYER (4D / HIGH-MODERN-TECH)
+   ────────────────────────────────────────────────────────
+   PURELY ADDITIVE. Loads LAST — after vv-dark-theme.css.
+   Design thesis: everything LEVITATES over a dark reactor
+   floor. On a near-black background, black drop shadows are
+   invisible — so depth here is built from the four things
+   that DO read on dark:
+     1. RIM LIGHT — a lit top edge (key light from above)
+     2. UNDER-GLOW — soft battery-green light pooling below
+        each surface, like it's hovering over a lit floor
+     3. SEPARATION — surfaces slightly lighter than the void
+        behind them, darker contact line at their base
+     4. LIFT MOTION — surfaces rise toward the light on hover
+   Signature element: the levitation under-glow. Everything
+   else stays quiet and disciplined.
+   NO transforms on layout containers (breaks position:fixed
+   modals) — lift is applied ONLY to leaf components.
+   ============================================================ */
+
+/* ── ELEVATION TOKENS ─────────────────────────────────────── */
+:root {
+  /* resting: hovering ~8px above the floor */
+  --vvf-float-1:
+    0 1px 0 rgba(255, 255, 255, 0.06) inset,        /* top specular */
+    0 -1px 0 rgba(0, 0, 0, 0.5) inset,              /* bottom contact edge */
+    0 0 0 1px rgba(57, 255, 20, 0.09),              /* hairline rim */
+    0 10px 28px -6px rgba(0, 0, 0, 0.6),            /* void separation */
+    0 16px 36px -14px rgba(57, 255, 20, 0.12);      /* levitation under-glow */
+  /* raised: interactive rest state ~16px */
+  --vvf-float-2:
+    0 1px 0 rgba(255, 255, 255, 0.09) inset,
+    0 -1px 0 rgba(0, 0, 0, 0.5) inset,
+    0 0 0 1px rgba(57, 255, 20, 0.14),
+    0 16px 40px -8px rgba(0, 0, 0, 0.65),
+    0 26px 56px -18px rgba(57, 255, 20, 0.2);
+  /* apex: modals / active surfaces ~32px */
+  --vvf-float-3:
+    0 1px 0 rgba(255, 255, 255, 0.12) inset,
+    0 0 0 1px rgba(57, 255, 20, 0.2),
+    0 32px 90px -12px rgba(0, 0, 0, 0.8),
+    0 40px 110px -30px rgba(57, 255, 20, 0.25);
+  --vvf-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ── AMBIENT ATMOSPHERE — aurora light wells in the void ────
+   Two green light sources + edge vignette, baked directly into
+   the root background layers (background-attachment: fixed).
+   Zero stacking-context risk: nothing overlays content, no
+   z-index games, no repositioned children. */
+.vv-root, body {
+  background-image:
+    radial-gradient(52% 38% at 12% -6%, rgba(57, 255, 20, 0.06), transparent 62%),
+    radial-gradient(44% 34% at 88% 108%, rgba(57, 255, 20, 0.045), transparent 60%),
+    radial-gradient(120% 90% at 50% 50%, transparent 58%, rgba(0, 0, 0, 0.4) 100%) !important;
+  background-attachment: fixed, fixed, fixed !important;
+  background-color: #030603 !important;
+}
+
+/* ── RESTING LEVITATION — the core surfaces ─────────────────
+   Class hooks + the same serialized-inline-style hooks the
+   dark theme uses (inline attributes still hold the ORIGINAL
+   light values — the dark repaint happens in CSS, so we match
+   the same white rgba list the dark theme matches). */
+.vv-glass, .vv-glass-g, .vv-card, .vv-panel, .vv-gc, .vv-game-card,
+.vv-sb-user, .vv-matchup, .vv-result-strip,
+.vv-stat, .vv-stat-card, .vv-ss-card, .vv-score-box, .vv-metric,
+.vv-metric-box, .vv-msg-card,
+[style*="rgba(255, 255, 255, 0.7)"][style*="border-radius"],
+[style*="rgba(255, 255, 255, 0.72)"][style*="border-radius"],
+[style*="rgba(255, 255, 255, 0.75)"][style*="border-radius"],
+[style*="rgba(255, 255, 255, 0.8)"][style*="border-radius"],
+[style*="rgba(255, 255, 255, 0.85)"][style*="border-radius"],
+[style*="rgba(255, 255, 255, 0.88)"][style*="border-radius"],
+[style*="rgba(255, 255, 255, 0.9)"][style*="border-radius"],
+[style*="rgba(255, 255, 255, 0.92)"][style*="border-radius"],
+[style*="background: rgb(255, 255, 255)"][style*="border-radius"] {
+  box-shadow: var(--vvf-float-1) !important;
+}
+
+/* ── INTERACTIVE LIFT — leaf components ONLY ────────────────
+   Rows, buttons, stat chips rise toward the light on hover.
+   Never applied to layout containers (position:fixed safety). */
+.vv-gr,
+.vv-nb,
+.vv-dock-i,
+button:not([disabled]) {
+  transition:
+    transform 0.28s var(--vvf-ease),
+    box-shadow 0.28s var(--vvf-ease),
+    border-color 0.28s var(--vvf-ease);
+}
+.vv-gr:hover,
+.vv-dock-i:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--vvf-float-2) !important;
+}
+.vv-nb:hover {
+  transform: translateX(3px);
+}
+button:not([disabled]):hover {
+  transform: translateY(-2px);
+}
+button:not([disabled]):active {
+  transform: translateY(0);
+  transition-duration: 0.08s;
+}
+
+/* game rows get a faint rim brighten on hover too */
+.vv-gr:hover {
+  border-color: rgba(57, 255, 20, 0.35) !important;
+}
+
+/* ── TOPBAR + SIDEBAR — anchored planes, lit edges ──────────
+   These don't float (they're the frame), but they get the
+   lit-edge treatment so the frame reads as machined metal. */
+.vv-topbar {
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.05) inset,
+    0 8px 30px -8px rgba(0, 0, 0, 0.6),
+    0 1px 0 rgba(57, 255, 20, 0.1) !important;
+}
+.vv-sb {
+  box-shadow:
+    1px 0 0 rgba(57, 255, 20, 0.08),
+    12px 0 40px -18px rgba(0, 0, 0, 0.7) !important;
+}
+
+/* ── APEX LEVEL — the analysis modal floats highest ─────────
+   Serialized inline hook: the modal container is the fixed
+   inset-0 overlay at zIndex 9000; its first child is the card. */
+[style*="z-index: 9000"] > div,
+[style*="zIndex: 9000"] > div {
+  box-shadow: var(--vvf-float-3) !important;
+}
+
+/* deepen the overlay behind the modal so the float reads */
+[style*="z-index: 9000"],
+[style*="zIndex: 9000"] {
+  background: rgba(0, 0, 0, 0.68) !important;
+  backdrop-filter: blur(14px) saturate(1.1) !important;
+}
+
+/* ── GLASS REFINEMENT — richer material on all surfaces ───── */
+.vv-glass, .vv-glass-g, .vv-card, .vv-panel, .vv-gc, .vv-game-card {
+  backdrop-filter: blur(18px) saturate(1.15) !important;
+}
+
+/* ── FOCUS VISIBILITY — quality floor ───────────────────────── */
+button:focus-visible, a:focus-visible, input:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid rgba(57, 255, 20, 0.65) !important;
+  outline-offset: 2px;
+}
+
+/* ── REDUCED MOTION — respect the setting completely ────────── */
+@media (prefers-reduced-motion: reduce) {
+  .vv-gr, .vv-nb, .vv-dock-i, button:not([disabled]) {
+    transition: none;
+  }
+  .vv-gr:hover, .vv-dock-i:hover, .vv-nb:hover,
+  button:not([disabled]):hover { transform: none; }
+}
