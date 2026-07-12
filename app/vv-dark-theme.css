@@ -327,7 +327,7 @@ input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.35) !impor
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
-    height: 26px;
+    height: 34px;
     width: auto;
     pointer-events: none;
     z-index: 1;

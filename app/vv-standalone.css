@@ -76,6 +76,13 @@
     padding-top: env(safe-area-inset-top);
     height: calc(var(--vv-topbar-h) + env(safe-area-inset-top));
   }
+  /* the centered mobile logo positions itself at 50% of the topbar —
+     with the safe-area padding above, 50% of the TOTAL height lands too
+     high (up near the status bar). Center it within the actual content
+     zone below the notch instead. */
+  .vv-tb-logo-mobile {
+    top: calc(env(safe-area-inset-top) + (var(--vv-topbar-h) / 2));
+  }
   .vv-drawer {
     padding-top: calc(env(safe-area-inset-top) + 8px);
     padding-bottom: env(safe-area-inset-bottom);
