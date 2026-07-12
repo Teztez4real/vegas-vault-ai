@@ -1,3 +1,16 @@
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  // App-feel: prevent pinch/double-tap/input-focus zoom like a native app.
+  maximumScale: 1,
+  userScalable: false,
+  // CRITICAL for home-screen installs on notched phones: lets the app draw
+  // edge-to-edge and exposes env(safe-area-inset-*) so we can pad the UI
+  // around the notch / Dynamic Island / home indicator.
+  viewportFit: 'cover',
+  themeColor: '#030603',
+};
+
 export const metadata = {
   title: 'Vegas Vault AI',
   description: 'Professional sports betting intelligence',
@@ -18,7 +31,6 @@ export const metadata = {
     statusBarStyle: 'black-translucent',
     title: 'Vegas Vault AI',
   },
-  themeColor: '#030603',
 };
 
 export default function RootLayout({ children }) {
@@ -40,7 +52,7 @@ export default function RootLayout({ children }) {
         <meta name="apple-mobile-web-app-title" content="Vegas Vault AI"/>
         <meta name="theme-color" content="#030603"/>
       </head>
-      <body style={{ margin: 0, background: '#07091a' }}>
+      <body style={{ margin: 0, background: '#030603' }}>
         {children}
       </body>
     </html>

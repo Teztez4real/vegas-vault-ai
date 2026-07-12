@@ -1,0 +1,112 @@
+/* ============================================================
+   VEGAS VAULT AI — STANDALONE APP FEEL
+   ────────────────────────────────────────────────────────
+   ACTIVE ONLY when launched from the home screen
+   (display-mode: standalone). In a regular browser tab,
+   NOTHING in this file applies — the site is unchanged.
+   Design is untouched: same colors, same layout, same
+   components. This layer only removes the "website in a
+   wrapper" tells and adds the physical behaviors people
+   expect from a real app:
+     1. Edge-to-edge into the notch / Dynamic Island, with
+        safe-area padding so nothing hides under hardware
+     2. No pull-to-refresh, no rubber-band revealing chrome
+     3. No tap-flash, no long-press text-selection on UI,
+        no link callouts — chrome feels solid, not webby
+     4. Press feedback on touch (hover doesn't exist here)
+     5. True dynamic viewport height (no iOS 100vh bugs)
+   ============================================================ */
+
+@media all and (display-mode: standalone) {
+
+  /* ── 1. KILL THE BROWSER PHYSICS ──────────────────────────
+     Pull-to-refresh and edge rubber-banding are the #1
+     "this is a website" tell. Native apps own their scroll. */
+  html, body {
+    overscroll-behavior: none;
+    height: 100%;
+  }
+  body {
+    position: fixed;      /* iOS: the only reliable rubber-band kill */
+    inset: 0;
+    overflow: hidden;
+  }
+  .vv-root {
+    height: 100dvh;       /* dynamic viewport — correct under iOS chrome */
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+  }
+  /* every internal scroller (chat body, modal card, drawer, tables —
+     including the inline-styled ones) contains its own momentum so
+     hitting the end of a list never rubber-bands the whole app */
+  .vv-body, .vv-main, .vv-sidebar, .vv-drawer,
+  [style*="overflow-y: auto"], [style*="overflow: auto"] {
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ── 2. SOLID CHROME — nothing webby on touch ─────────────── */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  html {
+    touch-action: manipulation;        /* no double-tap zoom delay */
+    -webkit-text-size-adjust: 100%;
+  }
+  /* UI chrome is not selectable text — buttons, nav, rows, bars.
+     Analysis prose stays selectable (people copy picks/reasoning). */
+  .vv-topbar, .vv-sidebar, .vv-drawer, .vv-nb, .vv-gr, button,
+  .vv-sb-user, .vv-dock-i {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+  img { -webkit-touch-callout: none; -webkit-user-drag: none; }
+
+  /* hide scrollbars — apps scroll, they don't show rails */
+  .vv-root::-webkit-scrollbar,
+  .vv-main::-webkit-scrollbar { display: none; }
+  .vv-root, .vv-main { scrollbar-width: none; }
+
+  /* ── 3. SAFE AREAS — respect the notch & home indicator ────
+     black-translucent status bar means we draw under the clock;
+     pad the frame so nothing important hides behind hardware. */
+  .vv-topbar {
+    padding-top: env(safe-area-inset-top);
+    height: calc(var(--vv-topbar-h) + env(safe-area-inset-top));
+  }
+  .vv-drawer {
+    padding-top: calc(env(safe-area-inset-top) + 8px);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .vv-sidebar {
+    padding-top: env(safe-area-inset-top);
+  }
+  .vv-main {
+    padding-bottom: calc(env(safe-area-inset-bottom) + 16px);
+  }
+  /* the analysis modal overlay — keep the card clear of both ends */
+  [style*="z-index: 9000"],
+  [style*="zIndex: 9000"] {
+    padding-top: calc(env(safe-area-inset-top) + 12px) !important;
+    padding-bottom: calc(env(safe-area-inset-bottom) + 12px) !important;
+  }
+
+  /* ── 4. TOUCH PRESS FEEDBACK ───────────────────────────────
+     Hover doesn't exist on touch — replace the float layer's
+     hover lift with a physical press-down so taps feel real. */
+  @media (hover: none) {
+    .vv-gr:active,
+    .vv-nb:active,
+    .vv-dock-i:active,
+    button:not([disabled]):active {
+      transform: scale(0.975);
+      transition-duration: 0.08s;
+    }
+  }
+
+  /* ── 5. APP-GRADE POLISH ───────────────────────────────────── */
+  /* inputs: 16px floor prevents any residual iOS focus-zoom */
+  input, select, textarea { font-size: max(16px, 1em); }
+}
