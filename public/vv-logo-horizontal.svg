@@ -20,14 +20,7 @@
       <stop offset="100%" stop-color="#39FF14" stop-opacity="0"/>
     </radialGradient>
 
-    <!-- Small-size clarity: when this SVG renders under 220px wide
-         (the mobile topbar), hide the elements that can't survive
-         the downscale — the tiny tagline (would be ~4px tall: pure
-         smudge) and the soft halo. The badge + wordmark stay, crisp. -->
     <style>
-      @media (max-width: 220px) {
-        .vv-tagline, .vv-halo { display: none; }
-      }
       text { text-rendering: geometricPrecision; }
     </style>
   </defs>
@@ -62,8 +55,8 @@
   </text>
 
   <!-- tagline (hidden at small render sizes via the media query above) -->
-  <text class="vv-tagline" x="140" y="92"
+  <text class="vv-tagline" x="140" y="94"
         font-family="'Helvetica Neue', Arial, sans-serif"
-        font-size="17" font-weight="700" letter-spacing="5"
-        fill="url(#vvGreen)">A I  ·  B E A T  T H E  L I N E</text>
+        font-size="21" font-weight="800" letter-spacing="3.5"
+        fill="url(#vvGreen)">AI · BEAT THE LINE</text>
 </svg>
