@@ -79,8 +79,14 @@ export default function LandingPage() {
       <div style={{ position:'fixed', top:'-15%', right:'-8%', width:'45vw', height:'45vw', maxWidth:650, maxHeight:650, background:`radial-gradient(circle,rgba(57,255,20,0.07) 0%,rgba(57,255,20,0) 65%)`, pointerEvents:'none', zIndex:0 }} />
       <div style={{ position:'fixed', bottom:'-20%', left:'-10%', width:'50vw', height:'50vw', maxWidth:700, maxHeight:700, background:`radial-gradient(circle,rgba(57,255,20,0.05) 0%,rgba(57,255,20,0) 68%)`, pointerEvents:'none', zIndex:0 }} />
 
-      {/* ── NAV ── */}
-      <nav style={{ position:'relative', zIndex:10, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'20px clamp(16px,4vw,56px)', maxWidth:1400, margin:'0 auto' }}>
+      {/* ── NAV ──
+          paddingTop uses max(20px, safe-area-inset-top): in a normal
+          browser tab safe-area-inset-top is 0, so this is just the
+          original 20px. In a home-screen install (viewport-fit=cover
+          makes the page draw edge-to-edge under the status bar/notch),
+          safe-area-inset-top becomes the real inset and pushes the nav
+          below the clock/battery instead of rendering underneath them. */}
+      <nav style={{ position:'relative', zIndex:10, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'max(20px, env(safe-area-inset-top)) clamp(16px,4vw,56px) 20px', maxWidth:1400, margin:'0 auto' }}>
         <div style={{ display:'flex', alignItems:'center', gap:12 }}>
           <img src="/vv-logo-horizontal.svg" alt="Vegas Vault AI" style={{ height:54, width:'auto' }} />
         </div>
