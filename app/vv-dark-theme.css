@@ -324,11 +324,18 @@ input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.35) !impor
   .vv-tb-logo-mobile {
     display: block;
     position: absolute;
-    left: 50%;
+    /* horizontal centering via auto margins, NOT translateX(-50%):
+       the logo's intrinsic width at this height is fractional
+       (~146.5px), so a -50% transform lands it on a half-pixel and
+       the whole image resamples soft. Layout centering rounds to
+       device pixels — crisp. translateY stays (34/2 = integer). */
+    left: 0;
+    right: 0;
+    margin: 0 auto;
+    width: fit-content;
     top: 50%;
-    transform: translate(-50%, -50%);
+    transform: translateY(-50%);
     height: 34px;
-    width: auto;
     pointer-events: none;
     z-index: 1;
   }

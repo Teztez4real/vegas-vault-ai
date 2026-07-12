@@ -7,7 +7,7 @@
       <stop offset="100%" stop-color="#22cc00"/>
     </linearGradient>
 
-    <!-- badge fill: dark glass with green rim glow -->
+    <!-- badge fill: dark glass -->
     <radialGradient id="vvBadge" cx="38%" cy="32%" r="75%">
       <stop offset="0%" stop-color="#0f2a0f"/>
       <stop offset="70%" stop-color="#061206"/>
@@ -20,41 +20,50 @@
       <stop offset="100%" stop-color="#39FF14" stop-opacity="0"/>
     </radialGradient>
 
-    <filter id="vvGlow" x="-60%" y="-60%" width="220%" height="220%">
-      <feGaussianBlur stdDeviation="3.2" result="b"/>
-      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
+    <!-- Small-size clarity: when this SVG renders under 220px wide
+         (the mobile topbar), hide the elements that can't survive
+         the downscale — the tiny tagline (would be ~4px tall: pure
+         smudge) and the soft halo. The badge + wordmark stay, crisp. -->
+    <style>
+      @media (max-width: 220px) {
+        .vv-tagline, .vv-halo { display: none; }
+      }
+      text { text-rendering: geometricPrecision; }
+    </style>
   </defs>
 
   <!-- ── BADGE ── -->
-  <!-- soft halo behind the badge -->
-  <circle cx="65" cy="65" r="62" fill="url(#vvHalo)"/>
+  <!-- soft halo behind the badge (hidden at small render sizes) -->
+  <circle class="vv-halo" cx="65" cy="65" r="62" fill="url(#vvHalo)"/>
 
   <!-- badge disc -->
-  <circle cx="65" cy="65" r="46" fill="url(#vvBadge)" stroke="url(#vvGreen)" stroke-width="2"/>
-  <!-- inner hairline ring -->
-  <circle cx="65" cy="65" r="39" fill="none" stroke="#39FF14" stroke-width="0.6" opacity="0.25"/>
+  <circle cx="65" cy="65" r="46" fill="url(#vvBadge)" stroke="url(#vvGreen)" stroke-width="2.5"/>
+  <!-- inner ring — thickened so it survives downscaling -->
+  <circle cx="65" cy="65" r="39" fill="none" stroke="#39FF14" stroke-width="1.2" opacity="0.3"/>
 
-  <!-- V monogram inside badge -->
-  <g filter="url(#vvGlow)">
-    <path d="M48,44 L65,88 L82,44"
-          fill="none" stroke="url(#vvGreen)" stroke-width="8"
-          stroke-linecap="butt" stroke-linejoin="miter"/>
-  </g>
+  <!-- V monogram — glow rebuilt as CRISP layered strokes instead of a
+       Gaussian blur filter (raster blur smeared the mark at all sizes,
+       worst on mobile). Wide translucent stroke under a sharp core
+       stroke gives the same lit-from-within look with zero blur. -->
+  <path d="M48,44 L65,88 L82,44"
+        fill="none" stroke="#39FF14" stroke-width="14" opacity="0.22"
+        stroke-linecap="butt" stroke-linejoin="miter"/>
+  <path d="M48,44 L65,88 L82,44"
+        fill="none" stroke="url(#vvGreen)" stroke-width="8"
+        stroke-linecap="butt" stroke-linejoin="miter"/>
   <!-- top cap line -->
   <line x1="48" y1="44" x2="82" y2="44" stroke="#39FF14" stroke-width="2" opacity="0.5"/>
 
   <!-- ── WORDMARK ── -->
-  <!-- VEGAS (white) VAULT (green gradient) -->
   <text x="138" y="60"
         font-family="'Helvetica Neue', Arial, sans-serif"
         font-size="38" font-weight="800" letter-spacing="1.5">
     <tspan fill="#ffffff">VEGAS </tspan><tspan fill="url(#vvGreen)">VAULT</tspan>
   </text>
 
-  <!-- tagline -->
-  <text x="140" y="92"
+  <!-- tagline (hidden at small render sizes via the media query above) -->
+  <text class="vv-tagline" x="140" y="92"
         font-family="'Helvetica Neue', Arial, sans-serif"
-        font-size="16" font-weight="700" letter-spacing="6"
-        fill="url(#vvGreen)">A I   ·   B E A T   T H E   L I N E</text>
+        font-size="17" font-weight="700" letter-spacing="5"
+        fill="url(#vvGreen)">A I  ·  B E A T  T H E  L I N E</text>
 </svg>
