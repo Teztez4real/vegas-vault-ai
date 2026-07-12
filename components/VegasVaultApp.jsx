@@ -3624,7 +3624,7 @@ export default function VegasVaultApp() {
             <div className="vv-gc-sub">{new Date(selectedDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>
             <div className="vv-sp-tabs">
               {['ALL', ...new Set([...games.map(g=>g.sport).filter(Boolean), 'NBA', 'NFL'])].map(s=>(
-                <div key={s} className={`vv-sp${filter===s?' on':''}`} onClick={()=>setFilter(s)}>{s}</div>
+                <div key={s} className={`vv-sp${filter===s?' on':''}`} onClick={()=>setFilter(s)}>{s==='ALL'?'Best Picks':s}</div>
               ))}
             </div>
             {loading ? (
@@ -3632,9 +3632,9 @@ export default function VegasVaultApp() {
                 <div style={{ width:20,height:20,border:'2px solid rgba(57,255,20,0.2)',borderTopColor:'#39FF14',borderRadius:'50%',margin:'0 auto 8px',animation:'spin 0.8s linear infinite' }} />
                 Loading...
               </div>
-            ) : games.filter(g=>filter==='ALL'||g.sport===filter).length===0 ? (
-              <div style={{ textAlign:'center',padding:'30px 0',color:'#ccc',fontSize:11 }}>No games</div>
-            ) : games.filter(g=>filter==='ALL'||g.sport===filter).map(game=>{
+            ) : games.filter(g=>filter==='ALL'?(lookupResult(results,g)?.summary?.tier==='1'):g.sport===filter).length===0 ? (
+              <div style={{ textAlign:'center',padding:'30px 0',color:'#ccc',fontSize:11 }}>{filter==='ALL'?'No Tier 1 locks right now':'No games'}</div>
+            ) : games.filter(g=>filter==='ALL'?(lookupResult(results,g)?.summary?.tier==='1'):g.sport===filter).map(game=>{
               const key = `${game.id}-${game.slot}`;
               const result = lookupResult(results, game);
               const summary = result?.summary;
@@ -3723,7 +3723,7 @@ export default function VegasVaultApp() {
               {['ALL', ...new Set([...games.map(g=>g.sport).filter(Boolean), 'NBA', 'NFL'])].map(s=>(
                 <button key={s} onClick={()=>setFilter(s)}
                   style={{ fontSize:11, fontWeight:700, padding:'6px 14px', borderRadius:14, border:filter===s?'1px solid #39FF14':'1px solid rgba(0,0,0,0.07)', background:filter===s?'#39FF14':'rgba(255,255,255,0.7)', color:filter===s?'#111':'#999', cursor:'pointer', boxShadow:filter===s?'0 0 8px rgba(57,255,20,0.3)':'none' }}>
-                  {s}
+                  {s==='ALL'?'Best Picks':s}
                 </button>
               ))}
             </div>
@@ -3756,9 +3756,19 @@ export default function VegasVaultApp() {
               </div>
               <div style={{ fontSize:10, color:'#bbb', letterSpacing:'1.5px', textTransform:'uppercase', marginTop:18 }}>Full 4-Stage AI Analysis · Slot System · Scam Detection</div>
             </div>
+          ) : (filter === 'ALL' && games.filter(g=>lookupResult(results,g)?.summary?.tier==='1').length === 0) ? (
+            <div className="vv-glass" style={{ padding:'70px 24px', textAlign:'center' }}>
+              <div style={{ width:64, height:64, margin:'0 auto 18px', borderRadius:18, background:'linear-gradient(145deg, rgba(57,255,20,0.08), rgba(34,204,0,0.04))', border:'1px solid rgba(57,255,20,0.25)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <i className="ti ti-lock" style={{ fontSize:30, color:'#39FF14' }} />
+              </div>
+              <div style={{ fontSize:20, fontWeight:800, color:'#111', letterSpacing:-0.3, marginBottom:8 }}>No Tier 1 Locks Right Now</div>
+              <div style={{ fontSize:13, color:'#888', lineHeight:1.6, maxWidth:380, margin:'0 auto' }}>
+                The AI hasn't found a Tier 1-quality edge yet today. Check a specific sport tab to see every analyzed game, or check back as the AI keeps analyzing throughout the day.
+              </div>
+            </div>
           ) : (
             <div className="vv-game-grid" style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(340px,1fr))', gap:12 }}>
-              {games.filter(g=>filter==='ALL'||g.sport===filter).map(game=>{
+              {games.filter(g=>filter==='ALL'?(lookupResult(results,g)?.summary?.tier==='1'):g.sport===filter).map(game=>{
                 const key = `${game.id}-${game.slot}`;
                 return (
                   <GameCard
