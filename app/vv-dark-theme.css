@@ -324,17 +324,15 @@ input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.35) !impor
   .vv-tb-logo-mobile {
     display: block;
     position: absolute;
-    /* horizontal centering via auto margins, NOT translateX(-50%):
-       the logo's intrinsic width at this height is fractional
-       (~146.5px), so a -50% transform lands it on a half-pixel and
-       the whole image resamples soft. Layout centering rounds to
-       device pixels — crisp. translateY stays (34/2 = integer). */
-    left: 0;
-    right: 0;
-    margin: 0 auto;
-    width: fit-content;
+    left: 50%;
     top: 50%;
-    transform: translateY(-50%);
+    transform: translate(-50%, -50%);
+    /* explicit INTEGER box (intrinsic aspect 560:130 at h=34 is a
+       fractional ~146.46px wide — that half-pixel is what blurred
+       the whole image under -50% transforms). 146x34 keeps the
+       aspect within 0.3% (invisible) and makes both -50% offsets
+       whole pixels: centered AND crisp. */
+    width: 146px;
     height: 34px;
     pointer-events: none;
     z-index: 1;
