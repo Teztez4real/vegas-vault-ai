@@ -3632,9 +3632,28 @@ export default function VegasVaultApp() {
                 <div style={{ width:20,height:20,border:'2px solid rgba(57,255,20,0.2)',borderTopColor:'#39FF14',borderRadius:'50%',margin:'0 auto 8px',animation:'spin 0.8s linear infinite' }} />
                 Loading...
               </div>
-            ) : games.filter(g=>filter==='ALL'?(lookupResult(results,g)?.summary?.tier==='1'):g.sport===filter).length===0 ? (
-              <div style={{ textAlign:'center',padding:'30px 0',color:'#ccc',fontSize:11 }}>{filter==='ALL'?'No Tier 1 locks right now':'No games'}</div>
-            ) : games.filter(g=>filter==='ALL'?(lookupResult(results,g)?.summary?.tier==='1'):g.sport===filter).map(game=>{
+            ) : (() => {
+              // BEST PICKS — every real, actionable play across every sport
+              // (Tier 1 AND Tier 2), ranked strongest-first. Excludes only
+              // PASS (tier 3, not a real pick) and not-yet-analyzed games.
+              // Deliberately broader than the dashboard's Tier-1-only "Top
+              // Play"/Lock widgets — this tab is the full "best of everything"
+              // view, not a duplicate of the narrow Tier 1 spotlight.
+              const isBestPick = g => {
+                const s = lookupResult(results, g)?.summary;
+                return s && s.tier && s.tier !== '3';
+              };
+              const bestSort = (a, b) => {
+                const sa = lookupResult(results, a)?.summary, sb = lookupResult(results, b)?.summary;
+                if (sa.tier !== sb.tier) return sa.tier.localeCompare(sb.tier); // '1' before '2'
+                return (sb.confidencePercent || 0) - (sa.confidencePercent || 0);
+              };
+              const visibleGames = filter === 'ALL'
+                ? games.filter(isBestPick).sort(bestSort)
+                : games.filter(g => g.sport === filter);
+              return visibleGames.length === 0 ? (
+                <div style={{ textAlign:'center',padding:'30px 0',color:'#ccc',fontSize:11 }}>{filter==='ALL'?'No strong plays right now':'No games'}</div>
+              ) : visibleGames.map(game=>{
               const key = `${game.id}-${game.slot}`;
               const result = lookupResult(results, game);
               const summary = result?.summary;
@@ -3672,7 +3691,8 @@ export default function VegasVaultApp() {
                   </div>
                 </div>
               );
-            })}
+              });
+            })()}
             <div className="vv-gc-va" onClick={()=>setShellView('analytics')}>View pick history <i className="ti ti-arrow-right" style={{ fontSize:10 }} /></div>
           </div>
 
@@ -3756,19 +3776,27 @@ export default function VegasVaultApp() {
               </div>
               <div style={{ fontSize:10, color:'#bbb', letterSpacing:'1.5px', textTransform:'uppercase', marginTop:18 }}>Full 4-Stage AI Analysis · Slot System · Scam Detection</div>
             </div>
-          ) : (filter === 'ALL' && games.filter(g=>lookupResult(results,g)?.summary?.tier==='1').length === 0) ? (
+          ) : (filter === 'ALL' && games.filter(g=>{const s=lookupResult(results,g)?.summary; return s && s.tier && s.tier !== '3';}).length === 0) ? (
             <div className="vv-glass" style={{ padding:'70px 24px', textAlign:'center' }}>
               <div style={{ width:64, height:64, margin:'0 auto 18px', borderRadius:18, background:'linear-gradient(145deg, rgba(57,255,20,0.08), rgba(34,204,0,0.04))', border:'1px solid rgba(57,255,20,0.25)', display:'flex', alignItems:'center', justifyContent:'center' }}>
                 <i className="ti ti-lock" style={{ fontSize:30, color:'#39FF14' }} />
               </div>
-              <div style={{ fontSize:20, fontWeight:800, color:'#111', letterSpacing:-0.3, marginBottom:8 }}>No Tier 1 Locks Right Now</div>
+              <div style={{ fontSize:20, fontWeight:800, color:'#111', letterSpacing:-0.3, marginBottom:8 }}>No Strong Plays Right Now</div>
               <div style={{ fontSize:13, color:'#888', lineHeight:1.6, maxWidth:380, margin:'0 auto' }}>
-                The AI hasn't found a Tier 1-quality edge yet today. Check a specific sport tab to see every analyzed game, or check back as the AI keeps analyzing throughout the day.
+                The AI hasn't found a real edge yet today — every analyzed game came back a pass. Check a specific sport tab to see every analyzed game, or check back as the AI keeps analyzing throughout the day.
               </div>
             </div>
           ) : (
             <div className="vv-game-grid" style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(340px,1fr))', gap:12 }}>
-              {games.filter(g=>filter==='ALL'?(lookupResult(results,g)?.summary?.tier==='1'):g.sport===filter).map(game=>{
+              {(filter === 'ALL'
+                ? games.filter(g=>{const s=lookupResult(results,g)?.summary; return s && s.tier && s.tier !== '3';})
+                    .sort((a,b)=>{
+                      const sa=lookupResult(results,a).summary, sb=lookupResult(results,b).summary;
+                      if (sa.tier !== sb.tier) return sa.tier.localeCompare(sb.tier); // Tier 1 before Tier 2
+                      return (sb.confidencePercent||0) - (sa.confidencePercent||0);
+                    })
+                : games.filter(g=>g.sport===filter)
+              ).map(game=>{
                 const key = `${game.id}-${game.slot}`;
                 return (
                   <GameCard
