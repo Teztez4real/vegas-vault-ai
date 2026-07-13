@@ -441,6 +441,17 @@ function trackRecordPromptText(summary) {
   return lines.join(' ');
 }
 
+// Fire-and-forget haptic tap — native app only, silently no-ops in any
+// browser context (including standalone/home-screen PWA installs).
+function nativeHaptic(style = 'Light') {
+  import('@capacitor/core').then(({ Capacitor }) => {
+    if (!Capacitor.isNativePlatform()) return;
+    import('@capacitor/haptics').then(({ Haptics, ImpactStyle }) => {
+      Haptics.impact({ style: ImpactStyle[style] || ImpactStyle.Light }).catch(() => {});
+    }).catch(() => {});
+  }).catch(() => {});
+}
+
 function lookupResult(results, game) {
   const exactKey = `${game.id}-${game.slot}`;
   if (results[exactKey]) return results[exactKey];
@@ -2198,12 +2209,72 @@ export default function VegasVaultApp() {
     // Results are loaded per-user from Supabase on login
   }, [selectedDate]);
 
+  // ── NATIVE STATUS BAR (Capacitor/iOS app only) ───────────────────────────────
+  // capacitor.config.ts sets a default, but an explicit call on launch is more
+  // reliable across iOS versions/WebView reloads. No-ops silently in any
+  // browser context.
+  useEffect(() => {
+    (async () => {
+      try {
+        const { Capacitor } = await import('@capacitor/core');
+        if (!Capacitor.isNativePlatform()) return;
+        const { StatusBar, Style } = await import('@capacitor/status-bar');
+        await StatusBar.setStyle({ style: Style.Dark });
+        await StatusBar.setBackgroundColor({ color: '#030603' });
+      } catch {}
+    })();
+  }, []);
+
   // ── SERVICE WORKER + PUSH NOTIFICATIONS ──────────────────────────────────────
   // Register service worker immediately (needed for PWA install + push).
   useEffect(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
     navigator.serviceWorker.register('/sw.js').catch(() => {});
   }, []);
+
+  // ── NATIVE PUSH (Capacitor/iOS app only) ─────────────────────────────────────
+  // Completely separate from the web-push flow below — Capacitor.isNativePlatform()
+  // is false in every browser context (including standalone/home-screen PWA),
+  // so this ONLY runs inside the actual native app shell. Real APNs delivery
+  // additionally requires an Apple Push Notification Auth Key configured
+  // server-side (Mac/Apple Developer portal step) — this wires the client-side
+  // registration + token storage now so delivery can be turned on later
+  // without touching this code again.
+  useEffect(() => {
+    if (!authUser?.id) return;
+    (async () => {
+      try {
+        const { Capacitor } = await import('@capacitor/core');
+        if (!Capacitor.isNativePlatform()) return;
+        const { PushNotifications } = await import('@capacitor/push-notifications');
+
+        let permission = await PushNotifications.checkPermissions();
+        if (permission.receive === 'prompt') {
+          permission = await PushNotifications.requestPermissions();
+        }
+        if (permission.receive !== 'granted') return;
+
+        await PushNotifications.register();
+
+        PushNotifications.addListener('registration', async (token) => {
+          await fetch('/api/push/register-native', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              token: token.value,
+              userId: authUser.id,
+              email: authUser.email || null,
+              platform: Capacitor.getPlatform(),
+            }),
+          }).catch(() => {});
+        });
+        PushNotifications.addListener('registrationError', () => {});
+      } catch {
+        // @capacitor/core not resolvable in a pure web context — expected
+        // and harmless; the web-push flow below covers browser installs.
+      }
+    })();
+  }, [authUser?.id]);
 
   // Subscribe to Web Push only AFTER the user is logged in, so we can
   // correctly associate this device's subscription with their userId/email.
@@ -4696,6 +4767,7 @@ export default function VegasVaultApp() {
                         const currentAlt = altPicks[altKey];
 
                         const selectAlt = (market, side) => {
+                          nativeHaptic('Light');
                           const newAlt = { market, pick: side.pick, betType: side.betType, selectedAt: new Date().toISOString() };
                           setAltPicks(prev => {
                             const updated = { ...prev, [altKey]: newAlt };
