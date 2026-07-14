@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { AI_MODEL } from '@/lib/aiModel';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -69,7 +70,7 @@ Note: Detailed AI analysis (matchup breakdowns, picks, tiers, confidence) for th
     ];
 
     const response = await ai.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: AI_MODEL,
       max_tokens: 1024,
       system: SYSTEM_PROMPT,
       messages,

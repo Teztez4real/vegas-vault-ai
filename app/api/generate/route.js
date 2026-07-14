@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { AI_MODEL } from '@/lib/aiModel';
 import {
   buildStage1Prompt, buildStage2Prompt, buildStage3Prompt, buildStage4Prompt,
   buildNBAStage1Prompt, buildNBAStage2Prompt, buildNBAStage3Prompt, buildNBAStage4Prompt,
@@ -31,7 +32,7 @@ Do not search for things already provided in the data above. Keep searches focus
   }
 
   const params = {
-    model: 'claude-sonnet-4-6',
+    model: AI_MODEL,
     max_tokens: maxTokens,
     messages: [{ role: 'user', content: fullPrompt + '\n\nRespond with a JSON object only. No markdown. No explanation.' }],
   };

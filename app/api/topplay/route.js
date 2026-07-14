@@ -17,6 +17,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import Anthropic from '@anthropic-ai/sdk';
+import { AI_MODEL } from '@/lib/aiModel';
 import { buildBaseballPrompt } from '@/lib/prompts';
 
 const ADMIN_EMAIL = 'battlecortez@gmail.com';
@@ -165,7 +166,7 @@ If you cannot clearly identify the edge after full analysis — PASS. A confiden
   const fullPrompt = basePrompt + topPlayContext;
 
   const message = await client.messages.create({
-    model: 'claude-sonnet-4-6',  // Use Opus for top play — max accuracy
+    model: AI_MODEL,
     max_tokens: 4000,
     messages: [{ role: 'user', content: fullPrompt }],
   });

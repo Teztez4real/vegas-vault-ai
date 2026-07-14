@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { AI_MODEL } from '@/lib/aiModel.js';
 import { buildPropsPrompt } from '../../../lib/propsModel.js';
 
 export const runtime = 'nodejs';
@@ -14,7 +15,7 @@ export async function POST(req) {
     const prompt = buildPropsPrompt(propData);
 
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: AI_MODEL,
       max_tokens: 2000,
       messages: [
         { role: 'user', content: prompt + '\n\nRespond with ONLY a valid JSON object. No preamble, no markdown. Start with { and end with }.' },
