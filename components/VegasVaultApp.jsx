@@ -1042,8 +1042,11 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
                 <div style={{ fontSize:24,fontWeight:900,color:'#111' }}>{live.awayScore??'-'}</div>
               </div>
               <div style={{ textAlign:'center' }}>
-                {isLive?<div><div style={{ fontSize:9,color:'#dc2626',fontWeight:700 }}>{live.inningHalf?.slice(0,3).toUpperCase()||''} {live.inning||''}</div><div style={{ fontSize:9,color:'#aaa' }}>{live.outs??0} out{live.outs===1?'':'s'}</div></div>
-                :<div style={{ fontSize:10,color:'#aaa',fontWeight:600 }}>FINAL</div>}
+                {isLive
+                  ? (game.sport === 'MLB'
+                      ? <div><div style={{ fontSize:9,color:'#dc2626',fontWeight:700 }}>{live.inningHalf?.slice(0,3).toUpperCase()||''} {live.inning||''}</div><div style={{ fontSize:9,color:'#aaa' }}>{live.outs??0} out{live.outs===1?'':'s'}</div></div>
+                      : <div><div style={{ fontSize:9,color:'#dc2626',fontWeight:700 }}>{live.period ? `${game.sport==='NFL'?'Q':'P'}${live.period}` : 'LIVE'}</div><div style={{ fontSize:9,color:'#aaa' }}>{live.clock||''}</div></div>)
+                  : <div style={{ fontSize:10,color:'#aaa',fontWeight:600 }}>FINAL</div>}
               </div>
               <div style={{ textAlign:'center' }}>
                 <div style={{ fontSize:9,color:'#aaa',marginBottom:2 }}>{homeAbbr}</div>
