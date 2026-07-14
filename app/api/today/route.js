@@ -1572,6 +1572,7 @@ async function fetchWNBAGames(date) {
         time: formatTime(game.commence_time),
         rawTime: game.commence_time,
         awayML, homeML, spread, total,
+        awaySpreadPrice, homeSpreadPrice, overPrice, underPrice,
         pricingStr,
         openingAwayML, openingHomeML,
         lineMovement,
@@ -1591,6 +1592,16 @@ async function fetchWNBAGames(date) {
         homeLast10: homeForm.last10,
         homeStreak: homeForm.streak,
         h2h,
+        // The Stage 1/2 prompts read h2hLast5 + h2hAtHome (not the raw h2h
+        // string) — map the fetched H2H to both so the AI actually receives
+        // it instead of blanks. Same H2H source; the prompt just splits the
+        // reference into "recent" and "at this venue" framing.
+        h2hLast5: h2h || 'N/A',
+        h2hAtHome: h2h || 'N/A',
+        // injuries + rest are read by the WNBA prompt (roster depth and
+        // fatigue are core WNBA edges) — populate them so those checks run on
+        // real data instead of defaulting to "None reported" / blank.
+        injuries: game.injuries || 'None reported',
         slot: 'WNBA',
       };
     }));
