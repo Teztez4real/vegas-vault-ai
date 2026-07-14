@@ -1089,6 +1089,37 @@ async function fetchNBARecentForm(teamName) {
     // ATS (spread -3.5 approx): win by 4+
     const atsW = results.filter(g => g.win && (g.myScore - g.oppScore) >= 4).length + results.filter(g => !g.win && (g.oppScore - g.myScore) <= 3).length;
 
+    // ── SEASON SCORING STATS — computed from the real game scores above ──
+    // These are legitimate, verifiable stats derived from actual results (not
+    // fabricated): season PPG, opponent PPG (defense), point differential, and
+    // a pace proxy (combined points per game — higher = faster/higher-scoring
+    // games). Full-season sample when available, so they're stable.
+    const scoredGames = results.filter(g => g.myScore > 0 || g.oppScore > 0);
+    const gp = scoredGames.length;
+    let ppg = 'N/A', oppPpg = 'N/A', diff = 'N/A', paceProxy = 'N/A';
+    if (gp >= 3) {
+      const totalFor = scoredGames.reduce((s, g) => s + g.myScore, 0);
+      const totalAgainst = scoredGames.reduce((s, g) => s + g.oppScore, 0);
+      ppg = (totalFor / gp).toFixed(1);
+      oppPpg = (totalAgainst / gp).toFixed(1);
+      diff = ((totalFor - totalAgainst) / gp).toFixed(1);
+      // Pace proxy: average combined points per game. Not true possessions,
+      // but a reliable directional signal for over/under and game-speed reads.
+      paceProxy = ((totalFor + totalAgainst) / gp).toFixed(1);
+    }
+
+    // Rest / back-to-back: derive from the gap between the last completed game
+    // and now (the schedule is date-sorted). B2B = played yesterday.
+    let restDays = 'N/A', isB2B = false;
+    if (games.length) {
+      const lastGameDate = new Date(games[games.length - 1].date);
+      const daysSince = Math.floor((Date.now() - lastGameDate.getTime()) / 86400000);
+      if (daysSince >= 0 && daysSince <= 30) {
+        restDays = String(daysSince);
+        isB2B = daysSince <= 1;
+      }
+    }
+
     return {
       last5: `${wins5}-${last5.length - wins5} (${last5str})`,
       last10: `${wins10}-${last10.length - wins10} (${last10str})`,
@@ -1096,8 +1127,10 @@ async function fetchNBARecentForm(teamName) {
       homeRecord: `${homeW}-${homeG.length - homeW}`,
       awayRecord: `${awayW}-${awayG.length - awayW}`,
       atsRecord: `${atsW}-${results.length - atsW}`,
+      ppg, oppPpg, pointDiff: diff, paceProxy, gamesPlayed: gp,
+      restDays, isB2B,
     };
-  } catch { return { last5: 'N/A', last10: 'N/A', streak: 'N/A', homeRecord: 'N/A', awayRecord: 'N/A', atsRecord: 'N/A' }; }
+  } catch { return { last5: 'N/A', last10: 'N/A', streak: 'N/A', homeRecord: 'N/A', awayRecord: 'N/A', atsRecord: 'N/A', ppg: 'N/A', oppPpg: 'N/A', pointDiff: 'N/A', paceProxy: 'N/A', gamesPlayed: 0, restDays: 'N/A', isB2B: false }; }
 }
 
 async function fetchNBAH2H(awayTeam, homeTeam) {
@@ -1314,6 +1347,11 @@ async function fetchNBAGames(date) {
         homeLast5: homeForm.last5,
         homeLast10: homeForm.last10,
         homeStreak: homeForm.streak,
+        // Real computed scoring stats (from season game scores, not fabricated)
+        awayPPG: awayForm.ppg, awayOppPPG: awayForm.oppPpg, awayPaceProxy: awayForm.paceProxy, awayPointDiff: awayForm.pointDiff,
+        homePPG: homeForm.ppg, homeOppPPG: homeForm.oppPpg, homePaceProxy: homeForm.paceProxy, homePointDiff: homeForm.pointDiff,
+        awayRest: awayForm.restDays, awayB2B: awayForm.isB2B,
+        homeRest: homeForm.restDays, homeB2B: homeForm.isB2B,
         h2hLast5: h2h?.overall || h2h,
         h2hAtHome: h2h?.atHome || h2h,
         awaySpreadPrice: game.awaySpreadPrice || '-110',
@@ -1434,6 +1472,23 @@ async function fetchWNBARecentForm(teamName) {
     const homeG=results.filter(g=>g.isHome), awayG=results.filter(g=>!g.isHome);
     const atsW=results.filter(g=>g.win&&(g.myScore-g.oppScore)>=4).length + results.filter(g=>!g.win&&(g.oppScore-g.myScore)<=3).length;
 
+    // Real computed scoring stats from actual game scores (not fabricated)
+    const scored = results.filter(g => g.myScore > 0 || g.oppScore > 0);
+    const gp = scored.length;
+    let ppg='N/A', oppPpg='N/A', diff='N/A', paceProxy='N/A';
+    if (gp >= 3) {
+      const tf = scored.reduce((s,g)=>s+g.myScore,0), ta = scored.reduce((s,g)=>s+g.oppScore,0);
+      ppg=(tf/gp).toFixed(1); oppPpg=(ta/gp).toFixed(1); diff=((tf-ta)/gp).toFixed(1); paceProxy=((tf+ta)/gp).toFixed(1);
+    }
+    // Rest / B2B from the most recent completed game date
+    let restDays='N/A', isB2B=false;
+    const completedEvents = (sched.events || []).filter(e => e.competitions?.[0]?.status?.type?.completed).sort((a,b)=>new Date(a.date)-new Date(b.date));
+    if (completedEvents.length) {
+      const lastDate = new Date(completedEvents[completedEvents.length-1].date);
+      const ds = Math.floor((Date.now()-lastDate.getTime())/86400000);
+      if (ds>=0 && ds<=30) { restDays=String(ds); isB2B=ds<=1; }
+    }
+
     return {
       last5: `${w5}-${last5.length-w5} (${l5str})`,
       last10: `${w10}-${last10.length-w10} (${l10str})`,
@@ -1441,8 +1496,9 @@ async function fetchWNBARecentForm(teamName) {
       homeRecord: `${homeG.filter(g=>g.win).length}-${homeG.filter(g=>!g.win).length}`,
       awayRecord: `${awayG.filter(g=>g.win).length}-${awayG.filter(g=>!g.win).length}`,
       atsRecord: `${atsW}-${results.length-atsW}`,
+      ppg, oppPpg, pointDiff: diff, paceProxy, restDays, isB2B,
     };
-  } catch { return { last5:'N/A', last10:'N/A', streak:'N/A', homeRecord:'N/A', awayRecord:'N/A', atsRecord:'N/A' }; }
+  } catch { return { last5:'N/A', last10:'N/A', streak:'N/A', homeRecord:'N/A', awayRecord:'N/A', atsRecord:'N/A', ppg:'N/A', oppPpg:'N/A', pointDiff:'N/A', paceProxy:'N/A', restDays:'N/A', isB2B:false }; }
 }
 
 async function fetchWNBAH2H(awayTeam, homeTeam) {
@@ -1591,6 +1647,10 @@ async function fetchWNBAGames(date) {
         homeLast5: homeForm.last5,
         homeLast10: homeForm.last10,
         homeStreak: homeForm.streak,
+        awayPPG: awayForm.ppg, awayOppPPG: awayForm.oppPpg, awayPaceProxy: awayForm.paceProxy, awayPointDiff: awayForm.pointDiff,
+        homePPG: homeForm.ppg, homeOppPPG: homeForm.oppPpg, homePaceProxy: homeForm.paceProxy, homePointDiff: homeForm.pointDiff,
+        awayRest: awayForm.restDays, awayB2B: awayForm.isB2B,
+        homeRest: homeForm.restDays, homeB2B: homeForm.isB2B,
         h2h,
         // The Stage 1/2 prompts read h2hLast5 + h2hAtHome (not the raw h2h
         // string) — map the fetched H2H to both so the AI actually receives
