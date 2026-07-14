@@ -3753,7 +3753,7 @@ export default function VegasVaultApp() {
             <div className="vv-gc-hd"><div className="vv-gc-t">Game Slate</div><i className="ti ti-dots" style={{ color:'#ccc',fontSize:13 }} /></div>
             <div className="vv-gc-sub">{new Date(selectedDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>
             <div className="vv-sp-tabs">
-              {['ALL', ...new Set([...games.map(g=>g.sport).filter(Boolean), 'MLB', 'NBA', 'NFL'])].map(s=>(
+              {['ALL', ...new Set([...games.map(g=>g.sport).filter(Boolean), 'MLB', 'NBA', 'WNBA', 'NFL'])].map(s=>(
                 <div key={s} className={`vv-sp${filter===s?' on':''}`} onClick={()=>setFilter(s)}>{s==='ALL'?'Best Picks':s}</div>
               ))}
             </div>
@@ -3874,7 +3874,7 @@ export default function VegasVaultApp() {
                   <i className="ti ti-chevron-right" style={{ fontSize:14 }} />
                 </button>
               </div>
-              {['ALL', ...new Set([...games.map(g=>g.sport).filter(Boolean), 'MLB', 'NBA', 'NFL'])].map(s=>(
+              {['ALL', ...new Set([...games.map(g=>g.sport).filter(Boolean), 'MLB', 'NBA', 'WNBA', 'NFL'])].map(s=>(
                 <button key={s} onClick={()=>setFilter(s)}
                   style={{ fontSize:11, fontWeight:700, padding:'6px 14px', borderRadius:14, border:filter===s?'1px solid #39FF14':'1px solid rgba(0,0,0,0.07)', background:filter===s?'#39FF14':'rgba(255,255,255,0.7)', color:filter===s?'#111':'#999', cursor:'pointer', boxShadow:filter===s?'0 0 8px rgba(57,255,20,0.3)':'none' }}>
                   {s==='ALL'?'Best Picks':s}
@@ -4644,8 +4644,24 @@ export default function VegasVaultApp() {
         const hasMlMovement = game.lineMovement && !['No significant movement','N/A','No significant movement detected','No movement detected'].includes(game.lineMovement);
         const hasMovement = hasMlMovement || game.spreadMoveSignificant || game.totalMoveSignificant;
 
-        const TABS = ['AI Reasoning','Matchup & Stats','Odds & Sharp Money','Injury & Weather','Scam Play','Line Movement','Series Context'];
-        const activeTab = activeDetailTab || 'AI Reasoning';
+        // Sport-aware analysis tabs — only show tabs relevant to the sport
+        // being analyzed. Baseball has multi-game series and outdoor weather;
+        // basketball (NBA/WNBA) is indoor and has no series concept; football
+        // is outdoor (weather matters) but also has no series.
+        const sport = game.sport;
+        const isBaseball = sport === 'MLB';
+        const isIndoor = sport === 'NBA' || sport === 'WNBA'; // weather irrelevant
+        const injuryTabLabel = isIndoor ? 'Injuries' : 'Injury & Weather';
+        const TABS = [
+          'AI Reasoning',
+          'Matchup & Stats',
+          'Odds & Sharp Money',
+          injuryTabLabel,
+          'Scam Play',
+          'Line Movement',
+          ...(isBaseball ? ['Series Context'] : []),
+        ];
+        const activeTab = TABS.includes(activeDetailTab) ? activeDetailTab : 'AI Reasoning';
 
         return (
           <div style={{ position:'fixed',inset:0,zIndex:9000,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(8px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}
@@ -5172,7 +5188,7 @@ export default function VegasVaultApp() {
                 )}
 
                 {/* Injury & Weather tab */}
-                {activeTab === 'Injury & Weather' && (
+                {(activeTab === 'Injury & Weather' || activeTab === 'Injuries') && (
                   <>
                     <div style={{ background:'rgba(255,250,235,0.5)',border:'1px solid rgba(255,150,0,0.35)',borderRadius:14,padding:'14px 16px',marginBottom:12 }}>
                       <div style={{ fontSize:11,fontWeight:800,color:'#bb6600',marginBottom:10,display:'flex',alignItems:'center',gap:6 }}>
@@ -5190,6 +5206,7 @@ export default function VegasVaultApp() {
                         </div>
                       )}
                     </div>
+                    {!isIndoor && (
                     <div style={{ background:'rgba(240,248,255,0.5)',border:'1px solid rgba(80,140,255,0.25)',borderRadius:14,padding:'14px 16px' }}>
                       <div style={{ fontSize:11,fontWeight:800,color:'#5588ee',marginBottom:10,display:'flex',alignItems:'center',gap:6 }}>
                         <i className="ti ti-cloud" style={{ fontSize:14 }} /> Weather
@@ -5200,6 +5217,7 @@ export default function VegasVaultApp() {
                         <div style={{ fontSize:11,color:'#bbb' }}>No weather data — indoor or unavailable.</div>
                       )}
                     </div>
+                    )}
                   </>
                 )}
 
