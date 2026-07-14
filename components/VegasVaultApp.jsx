@@ -961,6 +961,16 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
   // No-slot sports (WNBA) are keyed by sport, not slot.
   const slotKey = game.slot || (game.sport === 'WNBA' ? game.sport : game.slot);
   const key = `${game.id}-${slotKey}`;
+
+  // WNBA auto-analyzes (queues automatically) only Monday–Friday. On the
+  // weekend (Saturday/Sunday), clients press the analyze button themselves.
+  // Uses the game's own date (in local time) rather than "today" so it's
+  // correct even when viewing a past/future slate. day 0 = Sunday, 6 = Saturday.
+  const gameDay = game.rawTime ? new Date(game.rawTime).getDay()
+                : game.date ? new Date(game.date + 'T12:00:00').getDay()
+                : new Date().getDay();
+  const isWeekend = gameDay === 0 || gameDay === 6;
+  const wnbaAutoQueues = game.sport === 'WNBA' && !isWeekend;
   const isGen = generating === key;
   const hasRes = !!results[key];
   const histEntry = pickHistory?.find(p => p.key === key);
@@ -1128,11 +1138,19 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
             <span style={{ fontSize:10,fontWeight:700,color:'#33aa00' }}>✓ {game.slot || game.sport} — ANALYZED</span>
           </div>
         )
-      ):hasSlotPattern||game.sport==='WNBA'?(
+      ):hasSlotPattern||wnbaAutoQueues?(
         <div style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:'10px 0',background:'rgba(57,255,20,0.06)',border:'1px solid rgba(57,255,20,0.2)',borderRadius:10 }}>
           <div style={{ width:12,height:12,borderRadius:'50%',border:'2px solid rgba(57,255,20,0.3)',borderTop:'2px solid #39FF14',animation:'spin 0.8s linear infinite' }}/>
           <span style={{ fontSize:10,fontWeight:700,color:'#33aa00' }}>QUEUED FOR ANALYSIS…</span>
         </div>
+      ):game.sport==='WNBA'?(
+        // Weekend WNBA (Sat/Sun) — no auto-queue; client analyzes manually.
+        <button
+          onClick={(e)=>{ e.stopPropagation(); onGenerate && onGenerate(game, game.slot); }}
+          style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:8,width:'100%',padding:'10px 0',background:'rgba(57,255,20,0.06)',border:'1px solid rgba(57,255,20,0.25)',borderRadius:10,cursor:'pointer',fontFamily:'inherit' }}>
+          <i className="ti ti-player-play" style={{ fontSize:12,color:'#33aa00' }} />
+          <span style={{ fontSize:10,fontWeight:700,color:'#33aa00',letterSpacing:'0.06em' }}>ANALYZE GAME</span>
+        </button>
       ):(
         <div style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'10px 0',background:'rgba(0,0,0,0.03)',border:'1px solid rgba(0,0,0,0.06)',borderRadius:10 }}>
           <span style={{ fontSize:10,fontWeight:700,color:'#aaa',letterSpacing:'0.06em' }}>AWAITING SLOT PATTERN</span>

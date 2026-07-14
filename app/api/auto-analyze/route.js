@@ -11,6 +11,18 @@ async function getSB() {
   return cc(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 }
 
+// WNBA auto-analyzes on the server Monday–Friday only. On Saturday/Sunday,
+// clients trigger analysis manually (the card shows an "Analyze Game" button),
+// so the cron must NOT auto-analyze weekend WNBA games. Uses the game's own
+// date. Other sports are unaffected. Returns true if this game should be
+// EXCLUDED from server auto-analysis for the weekend-WNBA rule.
+function isWeekendWNBA(g) {
+  if (g.sport !== 'WNBA') return false;
+  const d = g.rawTime ? new Date(g.rawTime) : (g.date ? new Date(g.date + 'T12:00:00') : new Date());
+  const day = d.getDay(); // 0 = Sunday, 6 = Saturday
+  return day === 0 || day === 6;
+}
+
 // Checks whether EVERY game that needs analysis today has a result yet,
 // and if so — and we haven't already notified for this date — sends a
 // ONE-TIME broadcast push to every subscribed client: "today's slate is
@@ -34,6 +46,7 @@ async function checkAndNotifySlateComplete(sb, date, base) {
     // games are locked and excluded from the completion check).
     const needsAnalysis = games.filter(g => {
       if (g.rawTime && new Date(g.rawTime) <= now) return false; // started/locked, doesn't block completion
+      if (isWeekendWNBA(g)) return false; // weekend WNBA is client-triggered, not auto
       const noSlotSport = g.sport === 'Tennis' || g.sport === 'WNBA';
       if (noSlotSport) return true;
       return !!g.slot && g.slot !== 'NONE';
@@ -342,6 +355,10 @@ export async function POST(req) {
     const forceAllMode = body.forceAll === true;
     const slateGames = games.filter(g => {
       if (g.rawTime && new Date(g.rawTime) <= now) return false; // already started
+      // Weekend WNBA is client-triggered, not server-auto — exclude from the
+      // normal cron. forceAll (explicit admin "analyze everything now") still
+      // includes it, so an admin can override on demand.
+      if (isWeekendWNBA(g) && !forceAllMode) return false;
       const noSlotSport = g.sport === 'Tennis' || g.sport === 'WNBA';
       if (noSlotSport) return true; // always eligible
       if (!g.slot || g.slot === 'NONE') return false; // slotted sports need a slot
