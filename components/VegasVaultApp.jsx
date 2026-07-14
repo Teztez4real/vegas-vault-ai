@@ -3784,7 +3784,7 @@ export default function VegasVaultApp() {
               return visibleGames.length === 0 ? (
                 <div style={{ textAlign:'center',padding:'30px 0',color:'#ccc',fontSize:11 }}>
                   {filter==='ALL' ? 'No strong plays right now'
-                    : filter==='MLB' ? 'No MLB games scheduled today'
+                    : (filter==='MLB' || filter==='WNBA') ? `No ${filter} games scheduled today`
                     : 'No games'}
                 </div>
               ) : visibleGames.map(game=>{
@@ -3899,14 +3899,14 @@ export default function VegasVaultApp() {
               <div style={{ width:32, height:32, border:'3px solid rgba(57,255,20,0.2)', borderTopColor:'#39FF14', borderRadius:'50%', margin:'0 auto 12px', animation:'spin 0.8s linear infinite' }} />
               Loading today's games...
             </div>
-          ) : (filter === 'MLB' && games.filter(g=>g.sport==='MLB').length === 0) ? (
+          ) : ((filter === 'MLB' || filter === 'WNBA') && games.filter(g=>g.sport===filter).length === 0) ? (
             <div className="vv-glass" style={{ padding:'70px 24px', textAlign:'center' }}>
               <div style={{ width:64, height:64, margin:'0 auto 18px', borderRadius:18, background:'linear-gradient(145deg, rgba(57,255,20,0.08), rgba(34,204,0,0.04))', border:'1px solid rgba(57,255,20,0.25)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                <i className="ti ti-calendar-off" style={{ fontSize:30, color:'#39FF14' }} />
+                <i className={filter==='WNBA' ? "ti ti-ball-basketball" : "ti ti-calendar-off"} style={{ fontSize:30, color:'#39FF14' }} />
               </div>
-              <div style={{ fontSize:20, fontWeight:800, color:'#111', letterSpacing:-0.3, marginBottom:8 }}>No MLB Games Today</div>
+              <div style={{ fontSize:20, fontWeight:800, color:'#111', letterSpacing:-0.3, marginBottom:8 }}>No {filter} Games Today</div>
               <div style={{ fontSize:13, color:'#888', lineHeight:1.6, maxWidth:380, margin:'0 auto' }}>
-                No MLB games are scheduled for today's slate. Check back tomorrow, or take a look at another sport tab.
+                No {filter} games are scheduled for today's slate. Check back tomorrow, or take a look at another sport tab.
               </div>
             </div>
           ) : ((filter === 'NFL' || filter === 'NBA') && games.filter(g=>g.sport===filter).length === 0) ? (
