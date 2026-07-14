@@ -224,31 +224,27 @@ export default function LandingPage() {
             )}
           </div>
 
-          {/* CARD 2 — Win Rate: genuine loading skeleton until first fetch
-              resolves; honest "building track record" message if there
-              genuinely aren't 5+ graded picks yet — never a fake percent. */}
+          {/* CARD 2 — 4-Stage AI Analysis: a feature callout instead of a
+              performance stat. Static (not data-dependent), showcasing the
+              depth of the analysis pipeline rather than a single number. */}
           <div style={cardStyle({ top:'30%', right:'-2%', width:'52%' })}>
-            <div style={cardLabel}><i className="ti ti-trophy" style={{ fontSize:13, color:GREEN }} /> SEASON WIN RATE</div>
-            {statsLoading ? (
-              <>
-                <div style={{ width:90, height:36, borderRadius:6, background:'rgba(255,255,255,0.06)', animation:'vvpulse 1.4s ease-in-out infinite', margin:'8px 0 6px' }} />
-                <div style={{ display:'flex', gap:4, alignItems:'flex-end', height:30 }}>
-                  {[1,2,3,4,5,6,7,8].map(i=>(<div key={i} style={{ flex:1, height:'40%', background:'rgba(255,255,255,0.05)', borderRadius:2 }} />))}
+            <div style={cardLabel}><i className="ti ti-layers-intersect" style={{ fontSize:13, color:GREEN }} /> 4-STAGE AI ANALYSIS</div>
+            <div style={{ fontSize:26, fontWeight:900, color:'#fff', lineHeight:1.15, margin:'8px 0 10px' }}>
+              Data <span style={{ color:GREEN }}>→</span> Edge <span style={{ color:GREEN }}>→</span> Market <span style={{ color:GREEN }}>→</span> Verdict
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+              {[
+                ['Data Assembly', 'Every stat, line, and signal gathered'],
+                ['Edge Filter', 'Real edge or pass — no forced picks'],
+                ['Market Selection', 'Which bet actually expresses the edge'],
+                ['Final Verdict', 'Pick, tier, and confidence — one clean play'],
+              ].map(([title, desc], i) => (
+                <div key={i} style={{ display:'flex', alignItems:'center', gap:8 }}>
+                  <div style={{ width:18, height:18, borderRadius:6, background:'rgba(57,255,20,0.12)', border:'1px solid rgba(57,255,20,0.35)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:900, color:GREEN, flexShrink:0 }}>{i+1}</div>
+                  <div style={{ fontSize:11.5, color:'rgba(255,255,255,0.6)' }}><span style={{ color:'rgba(255,255,255,0.9)', fontWeight:700 }}>{title}</span> — {desc}</div>
                 </div>
-              </>
-            ) : stats?.winRate ? (
-              <>
-                <div style={{ fontSize:38, fontWeight:900, color:GREEN, lineHeight:1, margin:'8px 0 6px', filter:`drop-shadow(0 0 18px rgba(57,255,20,0.4))` }}>{stats.winRate.pct}%</div>
-                <div style={{ display:'flex', gap:4, alignItems:'flex-end', height:30 }}>
-                  {[60,72,55,80,68,90,74,85].map((h,i)=>(
-                    <div key={i} style={{ flex:1, height:`${h}%`, background:i%2?GREEN:'rgba(57,255,20,0.4)', borderRadius:2 }} />
-                  ))}
-                </div>
-                <div style={{ fontSize:11, color:'rgba(255,255,255,0.45)', marginTop:8 }}>{`${stats.winRate.wins}W · ${stats.winRate.losses}L tracked`}</div>
-              </>
-            ) : (
-              <div style={{ fontSize:14, color:'rgba(255,255,255,0.5)', margin:'14px 0' }}>Building track record…</div>
-            )}
+              ))}
+            </div>
           </div>
 
           {/* CARD 3 — Line Movement — ALWAYS genuinely live: real odds
