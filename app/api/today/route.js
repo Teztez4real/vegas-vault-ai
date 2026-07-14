@@ -2070,11 +2070,12 @@ export async function GET(request) {
     const dateParam = searchParams.get('date') || todayStr();
     const isPast = dateParam < todayStr();
 
-    const [scheduleGames, mlbOddsResult, nbaGamesRaw, nflGamesRaw] = await Promise.all([
+    const [scheduleGames, mlbOddsResult, nbaGamesRaw, nflGamesRaw, wnbaGamesRaw] = await Promise.all([
       fetchMLBSchedule(dateParam),
       isPast ? Promise.resolve({ oddsMap: {}, bookmakerCount: 0 }) : fetchOdds('baseball_mlb', dateParam),
       isPast ? Promise.resolve([]) : fetchNBAGames(dateParam),
       isPast ? Promise.resolve([]) : fetchNFLGames(dateParam),
+      isPast ? Promise.resolve([]) : fetchWNBAGames(dateParam),
     ]);
     const mlbOdds = mlbOddsResult.oddsMap || mlbOddsResult;
     const mlbBookmakerCount = mlbOddsResult.bookmakerCount || 0;
@@ -2126,7 +2127,17 @@ export async function GET(request) {
     } catch {}
     const nbaGames = nbaPattern ? nbaGamesRaw.map((g,i) => ({ ...g, slot: nbaPattern[i]||null })) : nbaGamesRaw.map(g => ({ ...g, slot: null }));
 
-    const allGames = [...mlbGames, ...nbaGames, ...nflGames];
+    // Fetch WNBA slot pattern and apply (mirrors NBA — no slot system by
+    // default, slot stays null unless an admin pattern exists)
+    let wnbaPattern = null;
+    try {
+      const sb4 = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+      const { data: nd3 } = await sb4.from('slot_patterns').select('pattern').eq('date', dateParam).eq('sport', 'wnba').maybeSingle();
+      if (nd3?.pattern?.length) wnbaPattern = nd3.pattern;
+    } catch {}
+    const wnbaGames = wnbaPattern ? wnbaGamesRaw.map((g,i) => ({ ...g, slot: wnbaPattern[i]||g.slot })) : wnbaGamesRaw;
+
+    const allGames = [...mlbGames, ...nbaGames, ...wnbaGames, ...nflGames];
 
     // ── LIVE AI INSIGHTS from real line movement data ────────────────────────
     const insights = [];
