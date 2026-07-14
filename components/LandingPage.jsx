@@ -125,31 +125,10 @@ export default function LandingPage() {
           </div>
 
           {/* headline */}
-          <h1 style={{ fontSize:'clamp(42px,6.4vw,92px)', fontWeight:900, lineHeight:0.96, letterSpacing:'-0.02em', margin:'0 0 28px', textTransform:'uppercase' }}>
+          <h1 style={{ fontSize:'clamp(42px,6.4vw,92px)', fontWeight:900, lineHeight:0.96, letterSpacing:'-0.02em', margin:'0 0 40px', textTransform:'uppercase' }}>
             <span style={{ color:'#fff' }}>The AI That</span><br/>
             <span style={{ background:`linear-gradient(135deg,${GREEN} 0%,#8fff6e 45%,#22cc00 100%)`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text', filter:`drop-shadow(0 0 28px rgba(57,255,20,0.35))` }}>Beats The Line.</span>
           </h1>
-
-          {/* big stat + bar */}
-          <div style={{ marginBottom:24 }}>
-            <div style={{ display:'flex', alignItems:'baseline', gap:14, marginBottom:12 }}>
-              {statsLoading ? (
-                <div style={{ width:140, height:48, borderRadius:8, background:'rgba(255,255,255,0.06)', animation:'vvpulse 1.4s ease-in-out infinite' }} />
-              ) : stats?.winRate ? (
-                <>
-                  <span style={{ fontSize:'clamp(36px,5vw,58px)', fontWeight:900, color:GREEN, filter:`drop-shadow(0 0 22px rgba(57,255,20,0.4))`, lineHeight:1 }}>{stats.winRate.pct}%</span>
-                  <span style={{ fontSize:'clamp(14px,1.6vw,20px)', fontWeight:700, color:'rgba(255,255,255,0.75)', letterSpacing:'1px' }}>WIN RATE</span>
-                </>
-              ) : (
-                <span style={{ fontSize:'clamp(18px,2.2vw,26px)', fontWeight:700, color:'rgba(255,255,255,0.55)' }}>Building track record…</span>
-              )}
-            </div>
-            {!statsLoading && (
-              <div style={{ height:6, borderRadius:6, background:'rgba(255,255,255,0.06)', overflow:'hidden', maxWidth:520 }}>
-                <div style={{ width:`${stats?.winRate ? Math.min(100, stats.winRate.pct) : 8}%`, height:'100%', background:`linear-gradient(90deg,#22cc00,${GREEN})`, borderRadius:6, boxShadow:`0 0 16px rgba(57,255,20,0.5)` }} />
-              </div>
-            )}
-          </div>
 
           {/* feature chips */}
           <div style={{ display:'flex', flexWrap:'wrap', gap:10, marginBottom:28 }}>
