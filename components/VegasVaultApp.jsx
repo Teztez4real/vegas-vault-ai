@@ -870,6 +870,61 @@ function ConfidenceChart({ history }) {
   );
 }
 
+// ── BEST PICK CARD — stripped-down card for the "Best Picks" tab ──────────────
+// Deliberately minimal: just the pick, confidence, and stars — no matchup
+// details, pitching breakdowns, or reasoning fields. The Best Picks tab is a
+// scan-fast ranked list of everything worth looking at; the full GameCard
+// (with all the reasoning) is one tap away via onCardClick. Glows with a
+// slow, pulsing battery-green breathe — "turning on and off" — to read as
+// alive/live rather than a static list.
+function BestPickCard({ game, results, onCardClick, isSubscribed, onShowAuth }) {
+  const key = `${game.id}-${game.slot}`;
+  const result = lookupResult(results, game);
+  const summary = result?.summary;
+  if (!summary?.pick) return null;
+
+  const stars = starRating(summary);
+  const pct = summary.confidencePercent;
+  const isLock = summary.tier === '1';
+  const awayShort = (game.away || '').split(' ').pop();
+  const homeShort = (game.home || '').split(' ').pop();
+
+  return (
+    <div
+      className="vv-bp-card"
+      onClick={() => { if (!isSubscribed) { onShowAuth?.(); return; } onCardClick(game, result); }}
+      style={{
+        position: 'relative', cursor: 'pointer', borderRadius: 20, padding: '20px 22px',
+        background: 'linear-gradient(160deg, rgba(14,30,14,0.92), rgba(6,14,6,0.95))',
+        border: '1px solid rgba(57,255,20,0.3)',
+        animation: 'vvBestPickGlow 2.6s ease-in-out infinite',
+        overflow: 'hidden',
+      }}
+    >
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
+        <span style={{ fontSize:10.5, fontWeight:800, letterSpacing:'1px', color:'rgba(57,255,20,0.65)', textTransform:'uppercase' }}>
+          {game.sport}{game.away && game.home ? ` · ${awayShort} @ ${homeShort}` : ''}
+        </span>
+        {isLock && (
+          <span style={{ fontSize:9, fontWeight:800, color:'#0a1a0a', background:'#39FF14', padding:'3px 9px', borderRadius:6, letterSpacing:'0.5px' }}>LOCK</span>
+        )}
+      </div>
+
+      <div style={{ fontSize:22, fontWeight:900, color:'#fff', letterSpacing:-0.3, lineHeight:1.2, marginBottom:14 }}>
+        {formatPickDisplay(summary.pick, summary.betType)}
+      </div>
+
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+        <div style={{ display:'flex', alignItems:'baseline', gap:5 }}>
+          <span style={{ fontSize:24, fontWeight:900, color:'#39FF14' }}>{typeof pct === 'number' ? pct : '—'}</span>
+          {typeof pct === 'number' && <span style={{ fontSize:12, fontWeight:700, color:'rgba(57,255,20,0.6)' }}>% CONF</span>}
+        </div>
+        <span style={{ fontSize:16, color:'#39FF14', letterSpacing:1 }}>{stars > 0 ? '★'.repeat(stars) + '☆'.repeat(5-stars) : ''}</span>
+      </div>
+    </div>
+  );
+}
+
 // ── GAME CARD (new glass design) ──────────────────────────────────────────────
 function GameCard({ game, onGenerate, results, generating, onCardClick, liveScores, isSubscribed, finalized, isQueued, betReady, onShowAuth, watchlist, onToggleWatch, pickHistory, hasSlotPattern, isTopPlay, altPick }) {
   const resultVegas  = results[`${game.id}-VEGAS`];
@@ -3078,6 +3133,10 @@ export default function VegasVaultApp() {
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.35;} }
+        @keyframes vvBestPickGlow {
+          0%, 100% { box-shadow: 0 0 0px rgba(57,255,20,0), 0 4px 20px rgba(0,0,0,0.3); border-color: rgba(57,255,20,0.25); }
+          50% { box-shadow: 0 0 28px rgba(57,255,20,0.55), 0 4px 20px rgba(0,0,0,0.3); border-color: rgba(57,255,20,0.75); }
+        }
         button { font-family: inherit; }
         ::-webkit-scrollbar{width:4px;}
         ::-webkit-scrollbar-thumb{background:rgba(57,255,20,0.2);border-radius:2px;}
@@ -3883,6 +3942,18 @@ export default function VegasVaultApp() {
                 : games.filter(g=>g.sport===filter)
               ).map(game=>{
                 const key = `${game.id}-${game.slot}`;
+                if (filter === 'ALL') {
+                  return (
+                    <BestPickCard
+                      key={key}
+                      game={game}
+                      results={results}
+                      onCardClick={(g,r)=>{setActiveGame(g);setActiveResult(r);setActiveDetailTab('AI Reasoning');}}
+                      isSubscribed={isSubscribed}
+                      onShowAuth={()=>setShowAuth(true)}
+                    />
+                  );
+                }
                 return (
                   <GameCard
                     key={key}
