@@ -230,6 +230,7 @@ export default function SettingsPage() {
                   <select value={slotSport} onChange={e => { setSlotSport(e.target.value); setSlotPattern([]); setSlotNote(''); }} style={{ ...inputStyle, width:'100%' }}>
                     <option value="mlb">MLB</option>
                     <option value="nba">NBA</option>
+                    <option value="wnba">WNBA</option>
                     <option value="nfl">NFL</option>
                   </select>
                 </div>

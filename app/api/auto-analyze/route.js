@@ -41,15 +41,21 @@ async function checkAndNotifySlateComplete(sb, date, base) {
     if (!games?.length) return;
 
     const now = new Date();
-    // A game "needs analysis" if it's a slotted MLB/NBA/NFL game or a
-    // no-slot sport (Tennis/WNBA), and hasn't already started (started
-    // games are locked and excluded from the completion check).
+    // A game "needs analysis" if it's a slotted MLB/NBA/WNBA/NFL game (has a
+    // REAL PUBLIC/VEGAS slot from an admin-saved pattern) or a genuine
+    // no-slot sport (Tennis), and hasn't already started. WNBA is NOT a
+    // no-slot sport — it needs its own admin pattern just like MLB/NBA/NFL;
+    // the difference is only that weekend WNBA never auto-analyzes at all
+    // (handled by isWeekendWNBA below), regardless of whether a pattern
+    // exists. A WNBA game with slot:'WNBA' (the fallback when no pattern has
+    // been saved yet) does NOT count as slotted — only real 'PUBLIC'/'VEGAS'
+    // values (assigned once an admin saves a pattern) do.
+    const hasRealSlot = g => g.slot === 'PUBLIC' || g.slot === 'VEGAS';
     const needsAnalysis = games.filter(g => {
       if (g.rawTime && new Date(g.rawTime) <= now) return false; // started/locked, doesn't block completion
       if (isWeekendWNBA(g)) return false; // weekend WNBA is client-triggered, not auto
-      const noSlotSport = g.sport === 'Tennis' || g.sport === 'WNBA';
-      if (noSlotSport) return true;
-      return !!g.slot && g.slot !== 'NONE';
+      if (g.sport === 'Tennis') return true; // genuine no-slot sport
+      return hasRealSlot(g);
     });
     if (!needsAnalysis.length) return; // nothing to analyze today at all yet (e.g. no slot pattern saved)
 
@@ -349,22 +355,31 @@ export async function POST(req) {
     regradeHistoricalPicks(sb).catch(() => {});
     regradeHistoricalAltPicks(sb).catch(() => {});
 
-    // 2. Build the slate. Normal mode: slotted MLB/NBA/NFL games not yet started.
-    //    forceAll mode ALSO includes no-slot sports (Tennis/WNBA).
+    // 2. Build the slate. Normal mode: slotted MLB/NBA/WNBA/NFL games (real
+    //    PUBLIC/VEGAS assignment from an admin-saved pattern) not yet started.
+    //    forceAll mode ALSO includes genuine no-slot sports (Tennis) AND lets
+    //    an admin override WNBA's slot requirement on demand.
     const now = new Date();
     const forceAllMode = body.forceAll === true;
+    const hasRealSlot = g => g.slot === 'PUBLIC' || g.slot === 'VEGAS';
     const slateGames = games.filter(g => {
       if (g.rawTime && new Date(g.rawTime) <= now) return false; // already started
       // Weekend WNBA is client-triggered, not server-auto — exclude from the
       // normal cron. forceAll (explicit admin "analyze everything now") still
       // includes it, so an admin can override on demand.
       if (isWeekendWNBA(g) && !forceAllMode) return false;
-      const noSlotSport = g.sport === 'Tennis' || g.sport === 'WNBA';
-      if (noSlotSport) return true; // always eligible
+      if (g.sport === 'Tennis') return true; // genuine no-slot sport, always eligible
+      if (g.sport === 'WNBA') {
+        // WNBA needs a real admin-saved pattern, same as MLB/NBA/NFL — UNLESS
+        // this is an explicit forceAll admin override, which bypasses the
+        // slot requirement entirely (same behavior as Tennis in that mode).
+        return hasRealSlot(g) || forceAllMode;
+      }
       if (!g.slot || g.slot === 'NONE') return false; // slotted sports need a slot
       return true;
     }).map(g => {
-      // no-slot sports use their sport as the slot key
+      // Tennis uses its sport as the slot key. WNBA under forceAll without a
+      // saved pattern also needs a slot key to key off of.
       if ((g.sport === 'Tennis' || g.sport === 'WNBA') && !g.slot) return { ...g, slot: g.sport };
       return g;
     });
@@ -372,8 +387,8 @@ export async function POST(req) {
       // Precise diagnostic so we know WHY nothing is eligible
       const total = games.length;
       const started = games.filter(g => g.rawTime && new Date(g.rawTime) <= now).length;
-      const withSlot = games.filter(g => g.slot && g.slot !== 'NONE').length;
-      const noSlotSports = games.filter(g => g.sport === 'Tennis' || g.sport === 'WNBA').length;
+      const withSlot = games.filter(g => g.slot === 'PUBLIC' || g.slot === 'VEGAS').length;
+      const noSlotSports = games.filter(g => g.sport === 'Tennis').length;
       const bySport = {};
       games.forEach(g => { bySport[g.sport] = (bySport[g.sport]||0)+1; });
       return NextResponse.json({

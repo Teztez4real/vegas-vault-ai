@@ -2284,6 +2284,12 @@ export async function GET(request) {
       oddsFeed: oddsFeed.length > 0 ? oddsFeed : null,
       marketScanner,
       hasSlotPattern: !!(mlbPattern || nflPattern || nbaPattern),
+      // Dedicated WNBA flag — WNBA's gating is genuinely different (weekday
+      // needs its OWN saved pattern; weekend never auto-queues regardless of
+      // any pattern), so it can't reuse the generic OR'd hasSlotPattern above,
+      // which would be wrong for WNBA (that flag going true because MLB's
+      // pattern was set says nothing about whether WNBA's was).
+      hasWNBAPattern: !!wnbaPattern,
       generatedAt: new Date().toISOString(),
     });
   } catch (err) {

@@ -771,7 +771,7 @@ function PlayResult({ result, game, onClose, isResolved, resolvedResult }) {
         <div style={{ padding:"22px 22px 18px" }}>
           <div style={{ display:"flex",flexWrap:"wrap",gap:8,marginBottom:18 }}>
             <span style={{ fontSize:10,fontWeight:700,letterSpacing:"0.06em",padding:"4px 12px",borderRadius:6,background:tier.bg,border:`1px solid ${tier.border}`,color:tier.text }}>{tier.label}</span>
-            {game?.sport !== "WNBA" && <span style={{ fontSize:10,fontWeight:700,padding:"4px 12px",borderRadius:6,background:isVegas?"rgba(248,113,113,0.08)":"rgba(96,165,250,0.08)",border:isVegas?"1px solid rgba(248,113,113,0.25)":"1px solid rgba(96,165,250,0.25)",color:isVegas?"#f87171":"#60a5fa",letterSpacing:"0.08em" }}>{isVegas?"VEGAS SLOT":"PUBLIC SLOT"}</span>}
+            {(game?.slot === "VEGAS" || game?.slot === "PUBLIC") && <span style={{ fontSize:10,fontWeight:700,padding:"4px 12px",borderRadius:6,background:isVegas?"rgba(248,113,113,0.08)":"rgba(96,165,250,0.08)",border:isVegas?"1px solid rgba(248,113,113,0.25)":"1px solid rgba(96,165,250,0.25)",color:isVegas?"#f87171":"#60a5fa",letterSpacing:"0.08em" }}>{isVegas?"VEGAS SLOT":"PUBLIC SLOT"}</span>}
             {result.summary.isScamPlay&&<span style={{ fontSize:10,fontWeight:700,padding:"4px 12px",borderRadius:6,background:"rgba(59,130,246,0.08)",border:"1px solid rgba(59,130,246,0.25)",color:"#3b82f6",letterSpacing:"0.08em" }}>⚡ SCAM PLAY</span>}
             <span style={{ fontSize:10,padding:"4px 12px",borderRadius:6,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(59,130,246,0.14)",color:conf.color,marginLeft:"auto" }}>Confidence: <strong>{result.summary.confidence}</strong></span>
           </div>
@@ -926,7 +926,7 @@ function BestPickCard({ game, results, onCardClick, isSubscribed, onShowAuth }) 
 }
 
 // ── GAME CARD (new glass design) ──────────────────────────────────────────────
-function GameCard({ game, onGenerate, results, generating, onCardClick, liveScores, isSubscribed, finalized, isQueued, betReady, onShowAuth, watchlist, onToggleWatch, pickHistory, hasSlotPattern, isTopPlay, altPick }) {
+function GameCard({ game, onGenerate, results, generating, onCardClick, liveScores, isSubscribed, finalized, isQueued, betReady, onShowAuth, watchlist, onToggleWatch, pickHistory, hasSlotPattern, hasWNBAPattern, isTopPlay, altPick }) {
   const resultVegas  = results[`${game.id}-VEGAS`];
   const resultPublic = results[`${game.id}-PUBLIC`];
   const slotResult   = results[`${game.id}-${game.slot}`];
@@ -962,15 +962,22 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
   const slotKey = game.slot || (game.sport === 'WNBA' ? game.sport : game.slot);
   const key = `${game.id}-${slotKey}`;
 
-  // WNBA auto-analyzes (queues automatically) only Monday–Friday. On the
-  // weekend (Saturday/Sunday), clients press the analyze button themselves.
-  // Uses the game's own date (in local time) rather than "today" so it's
-  // correct even when viewing a past/future slate. day 0 = Sunday, 6 = Saturday.
+  // WNBA needs its own admin-set slot pattern to auto-queue, exactly like
+  // MLB/NBA/NFL — it is NOT a no-slot sport that always auto-analyzes.
+  // Monday–Friday: auto-queues ONLY if a WNBA pattern has been saved for
+  // this date (hasWNBAPattern). Saturday/Sunday: NEVER auto-queues, no
+  // matter what — clients press Analyze themselves. Uses the game's own
+  // date (not "today") so this is correct on any slate being viewed.
+  // day 0 = Sunday, 6 = Saturday.
   const gameDay = game.rawTime ? new Date(game.rawTime).getDay()
                 : game.date ? new Date(game.date + 'T12:00:00').getDay()
                 : new Date().getDay();
   const isWeekend = gameDay === 0 || gameDay === 6;
-  const wnbaAutoQueues = game.sport === 'WNBA' && !isWeekend;
+  const wnbaAutoQueues = game.sport === 'WNBA' && !isWeekend && hasWNBAPattern;
+  // Manual "Analyze" button is a WEEKEND-only affordance. On a weekday
+  // without a saved pattern yet, WNBA behaves exactly like MLB/NBA/NFL
+  // without one — shows "AWAITING SLOT PATTERN", not a manual button.
+  const wnbaNeedsManual = game.sport === 'WNBA' && isWeekend;
   const isGen = generating === key;
   const hasRes = !!results[key];
   const histEntry = pickHistory?.find(p => p.key === key);
@@ -1141,13 +1148,14 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
             <span style={{ fontSize:10,fontWeight:700,color:'#33aa00' }}>✓ {game.slot || game.sport} — ANALYZED</span>
           </div>
         )
-      ):hasSlotPattern||wnbaAutoQueues?(
+      ):(game.sport === 'WNBA' ? wnbaAutoQueues : hasSlotPattern)?(
         <div style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:'10px 0',background:'rgba(57,255,20,0.06)',border:'1px solid rgba(57,255,20,0.2)',borderRadius:10 }}>
           <div style={{ width:12,height:12,borderRadius:'50%',border:'2px solid rgba(57,255,20,0.3)',borderTop:'2px solid #39FF14',animation:'spin 0.8s linear infinite' }}/>
           <span style={{ fontSize:10,fontWeight:700,color:'#33aa00' }}>QUEUED FOR ANALYSIS…</span>
         </div>
-      ):game.sport==='WNBA'?(
-        // Weekend WNBA (Sat/Sun) — no auto-queue; client analyzes manually.
+      ):wnbaNeedsManual?(
+        // Weekend WNBA (Sat/Sun) — never auto-queues, regardless of any
+        // saved pattern; client analyzes manually.
         <button
           onClick={(e)=>{ e.stopPropagation(); onGenerate && onGenerate(game, game.slot); }}
           style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:8,width:'100%',padding:'10px 0',background:'rgba(57,255,20,0.06)',border:'1px solid rgba(57,255,20,0.25)',borderRadius:10,cursor:'pointer',fontFamily:'inherit' }}>
@@ -1741,6 +1749,7 @@ export default function VegasVaultApp() {
   const [time, setTime]               = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(todayStrCT());
   const [hasSlotPattern, setHasSlotPattern] = useState(false);
+  const [hasWNBAPattern, setHasWNBAPattern] = useState(false);
 
   // ── AUTO-UPDATE POLL — every 5 minutes ───────────────────────────────────
   // MUST be placed AFTER selectedDate is declared (TDZ safety).
@@ -1806,6 +1815,7 @@ export default function VegasVaultApp() {
         if (data.insights?.length) setInsights(data.insights);
         if (data.bookmakerCount > 0) setBookmakerCount(data.bookmakerCount);
         setHasSlotPattern(!!data.hasSlotPattern);
+        setHasWNBAPattern(!!data.hasWNBAPattern);
         if (!data.hasSlotPattern) setTopPlay(null);
         setLoading(false);
 
@@ -3993,6 +4003,7 @@ export default function VegasVaultApp() {
                     onToggleWatch={(id)=>setWatchlist(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id])}
                     pickHistory={pickHistory}
                     hasSlotPattern={hasSlotPattern}
+                    hasWNBAPattern={hasWNBAPattern}
                     isTopPlay={topPlay && topPlay.id === game.id}
                     altPick={(() => {
                       const k = `${game.id}-${game.slot}`;
@@ -4050,6 +4061,7 @@ export default function VegasVaultApp() {
                     onToggleWatch={(id)=>setWatchlist(p=>{const u=p.includes(id)?p.filter(x=>x!==id):[...p,id];if(authUser?.id)saveKey(authUser.id,'watchlist',u);return u;})}
                     pickHistory={pickHistory}
                     hasSlotPattern={hasSlotPattern}
+                    hasWNBAPattern={hasWNBAPattern}
                     isTopPlay={topPlay && topPlay.id === game.id}
                     altPick={(() => {
                       const k = `${game.id}-${game.slot}`;
