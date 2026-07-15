@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { gradeCompletedGames, gradeUserAltPicks, regradeHistoricalPicks, regradeHistoricalAltPicks } from '@/lib/grading';
+import { gradeCompletedGames, gradeUserAltPicks, regradeHistoricalPicks, regradeHistoricalAltPicks, invalidateWrongSportAnalyses } from '@/lib/grading';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -354,6 +354,11 @@ export async function POST(req) {
     gradeUserAltPicks(sb, date, base).catch(() => {});
     regradeHistoricalPicks(sb).catch(() => {});
     regradeHistoricalAltPicks(sb).catch(() => {});
+    // Awaited (not fire-and-forget) so any invalidated games are already gone
+    // from game_analyses before the "already analyzed" check below runs —
+    // they get picked up and re-analyzed with corrected code in THIS same
+    // cron cycle, not delayed to the next one.
+    await invalidateWrongSportAnalyses(sb, date);
 
     // 2. Build the slate. Normal mode: slotted MLB/NBA/WNBA/NFL games (real
     //    PUBLIC/VEGAS assignment from an admin-saved pattern) not yet started.

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { gradeCompletedGames, gradeUserAltPicks, regradeHistoricalPicks, regradeHistoricalAltPicks } from '@/lib/grading';
+import { gradeCompletedGames, gradeUserAltPicks, regradeHistoricalPicks, regradeHistoricalAltPicks, invalidateWrongSportAnalyses } from '@/lib/grading';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -48,6 +48,7 @@ export async function GET(req) {
     try { await gradeUserAltPicks(sb, todayStr, origin); } catch {}
     try { await regradeHistoricalPicks(sb); } catch {}
     try { await regradeHistoricalAltPicks(sb); } catch {}
+    try { await invalidateWrongSportAnalyses(sb, todayStr); } catch {}
 
     // 1. Build a map of gameId -> [userIds who have it watchlisted]
     const { data: watchRows } = await sb.from('user_data').select('user_id, value').eq('key', 'watchlist');
