@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import { supabase as _supabase } from '@/lib/supabaseClient';
+import { ENABLED_TEAM_SPORT_KEYS, isOutdoorSport, hasMultiGameSeries } from '@/lib/sports';
 
 import NewLookShell from '@/components/NewLookShell';
 import '@/app/new-look.css';
@@ -1373,8 +1374,16 @@ export default function VegasVaultApp() {
   const [showOddsMovement, setShowOddsMovement] = useState(false);
   const [topPlay, setTopPlay] = useState(null);
   const [topPlayLoading, setTopPlayLoading] = useState(false);
-  const [sportTopPlays, setSportTopPlays] = useState({ MLB: null, NBA: null, NFL: null });
-  const [sportTopPlayDone, setSportTopPlayDone] = useState({ MLB: false, NBA: false, NFL: false });
+  // Built from the sport registry rather than a hardcoded object — WNBA was
+  // silently missing from Top Plays because it was never added to this list.
+  // Now every enabled team sport is included automatically, and any future
+  // sport added to lib/sports.js inherits Top Plays with no code change here.
+  const [sportTopPlays, setSportTopPlays] = useState(
+    () => Object.fromEntries(ENABLED_TEAM_SPORT_KEYS.map(k => [k, null]))
+  );
+  const [sportTopPlayDone, setSportTopPlayDone] = useState(
+    () => Object.fromEntries(ENABLED_TEAM_SPORT_KEYS.map(k => [k, false]))
+  );
   const [activeNav, setActiveNav] = useState('DASHBOARD');
   const [activeTab, setActiveTab] = useState('DASHBOARD');
   const [watchlist, setWatchlist] = useState([]);
@@ -1888,7 +1897,9 @@ export default function VegasVaultApp() {
 
   // ── PER-SPORT TOP PLAY — runs after all games in sport are analyzed ────────────
   useEffect(() => {
-    const SPORTS = ['MLB', 'NBA', 'NFL'];
+    // Registry-driven — was hardcoded ['MLB','NBA','NFL'], which is exactly
+    // why WNBA never got a Top Play. Future sports inherit this automatically.
+    const SPORTS = ENABLED_TEAM_SPORT_KEYS;
     SPORTS.forEach(sport => {
       if (sportTopPlayDone[sport]) return;
       const sportGames = games.filter(g => g.sport === sport);
@@ -2163,7 +2174,9 @@ export default function VegasVaultApp() {
 
     const checkLineupAndInjury = async () => {
       for (const game of games) {
-        if (!['MLB','NBA','NFL'].includes(game.sport)) continue;
+        // Registry-driven — was hardcoded ['MLB','NBA','NFL'], so WNBA games
+        // never got auto-reanalyzed on a lineup confirmation or injury update.
+        if (!ENABLED_TEAM_SPORT_KEYS.includes(game.sport)) continue;
         const slots = ['PUBLIC', 'VEGAS'];
         const hasResult = slots.some(slot => results[`${game.id}-${slot}`]?.summary);
         if (!hasResult) continue;
@@ -3784,7 +3797,7 @@ export default function VegasVaultApp() {
             <div className="vv-gc-hd"><div className="vv-gc-t">Game Slate</div><i className="ti ti-dots" style={{ color:'#ccc',fontSize:13 }} /></div>
             <div className="vv-gc-sub">{new Date(selectedDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>
             <div className="vv-sp-tabs">
-              {['ALL', ...new Set([...games.map(g=>g.sport).filter(Boolean), 'MLB', 'NBA', 'WNBA', 'NFL'])].map(s=>(
+              {['ALL', ...new Set([...games.map(g=>g.sport).filter(Boolean), ...ENABLED_TEAM_SPORT_KEYS])].map(s=>(
                 <div key={s} className={`vv-sp${filter===s?' on':''}`} onClick={()=>setFilter(s)}>{s==='ALL'?'Best Picks':s}</div>
               ))}
             </div>
@@ -3905,7 +3918,7 @@ export default function VegasVaultApp() {
                   <i className="ti ti-chevron-right" style={{ fontSize:14 }} />
                 </button>
               </div>
-              {['ALL', ...new Set([...games.map(g=>g.sport).filter(Boolean), 'MLB', 'NBA', 'WNBA', 'NFL'])].map(s=>(
+              {['ALL', ...new Set([...games.map(g=>g.sport).filter(Boolean), ...ENABLED_TEAM_SPORT_KEYS])].map(s=>(
                 <button key={s} onClick={()=>setFilter(s)}
                   style={{ fontSize:11, fontWeight:700, padding:'6px 14px', borderRadius:14, border:filter===s?'1px solid #39FF14':'1px solid rgba(0,0,0,0.07)', background:filter===s?'#39FF14':'rgba(255,255,255,0.7)', color:filter===s?'#111':'#999', cursor:'pointer', boxShadow:filter===s?'0 0 8px rgba(57,255,20,0.3)':'none' }}>
                   {s==='ALL'?'Best Picks':s}
@@ -4682,8 +4695,10 @@ export default function VegasVaultApp() {
         // basketball (NBA/WNBA) is indoor and has no series concept; football
         // is outdoor (weather matters) but also has no series.
         const sport = game.sport;
-        const isBaseball = sport === 'MLB';
-        const isIndoor = sport === 'NBA' || sport === 'WNBA'; // weather irrelevant
+        // Registry-driven — a future sport gets the right tabs automatically
+        // from its config (hasMultiGameSeries / isOutdoor) with no code change.
+        const isBaseball = hasMultiGameSeries(sport);
+        const isIndoor = !isOutdoorSport(sport); // weather irrelevant indoors
         const injuryTabLabel = isIndoor ? 'Injuries' : 'Injury & Weather';
         const TABS = [
           'AI Reasoning',

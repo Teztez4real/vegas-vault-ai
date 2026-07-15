@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { isCurrentSeason } from '@/lib/seasonUtils';
+import { ALL_SPORT_KEYS } from '@/lib/sports';
 
 export const runtime = 'nodejs';
 export const maxDuration = 20;
@@ -58,7 +59,10 @@ export async function GET() {
     const overall = total > 0 ? { wins, losses, total, pct: Math.round((wins / total) * 1000) / 10 } : null;
 
     const bySport = {};
-    for (const sport of ['MLB', 'NBA', 'NFL', 'Tennis', 'WNBA']) {
+    // Registry-driven (ALL sports, including disabled ones) so a sport's
+    // historical record survives being toggled off, and any future sport is
+    // tracked automatically without editing this list.
+    for (const sport of ALL_SPORT_KEYS) {
       const sportRows = rows.filter(r => r.sport === sport);
       const w = sportRows.filter(r => r.result === 'win').length;
       const l = sportRows.filter(r => r.result === 'loss').length;

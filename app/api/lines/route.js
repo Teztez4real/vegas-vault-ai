@@ -15,6 +15,7 @@ export const revalidate = 0;
 
 import { NextResponse } from 'next/server';
 import { trackLines, purgeOld } from '@/lib/lineTracker';
+import { SPORTS, ALL_SPORT_KEYS } from '@/lib/sports';
 
 function todayStr() {
   // Use US Central time, not UTC — matches /api/today's convention and
@@ -41,8 +42,14 @@ async function fetchAllBooks(sportKey, dateParam) {
   const oddsKey = process.env.ODDS_API_KEY;
   if (oddsKey) {
     try {
-      const leagueMap = { baseball_mlb: 'baseball_mlb', basketball_nba: 'basketball_nba', americanfootball_nfl: 'americanfootball_nfl' };
-      const apiSport = leagueMap[sportKey] || 'baseball_mlb';
+      // sportKey is already an Odds API key (from sportKeyMap below, which
+      // now reads the sport registry). Previously this re-mapped it through a
+      // hardcoded list that omitted WNBA and fell through to 'baseball_mlb',
+      // so WNBA line movement fetched BASEBALL lines. Validate against the
+      // registry instead and bail cleanly if the sport isn't supported —
+      // never substitute another sport's lines.
+      const apiSport = sportKey;
+      if (!apiSport) return { movements: [], error: 'Unsupported sport for line movement' };
       const BOOKS = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'bet365'];
       const res = await fetch(
         `https://api.the-odds-api.com/v4/sports/${apiSport}/odds/?apiKey=${oddsKey}&regions=us&markets=h2h,spreads,totals&oddsFormat=american&bookmakers=${BOOKS.join(',')}`,
@@ -193,8 +200,22 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const dateParam = searchParams.get('date') || todayStr();
   const sport     = (searchParams.get('sport') || 'mlb').toLowerCase();
-  const sportKeyMap = { mlb: 'baseball_mlb', nba: 'basketball_nba', nfl: 'americanfootball_nfl' };
-  const sportKey  = sportKeyMap[sport] || 'baseball_mlb';
+  // Resolve via the sport registry — the old hardcoded map had NO wnba entry
+  // and fell through to 'baseball_mlb', so WNBA line movement silently
+  // fetched baseball lines. The registry covers every sport, and returns
+  // null (skip cleanly) rather than defaulting for anything unsupported.
+  const sportEntry = ALL_SPORT_KEYS
+    .map(k => SPORTS[k])
+    .find(s => s.key.toLowerCase() === sport);
+  const sportKey  = sportEntry?.oddsApiKey || null;
+
+  // Sport genuinely has no odds-API coverage (or isn't a known sport) —
+  // return an honest empty result instead of falling back to another
+  // sport's lines. The UI shows "no line movement data" rather than
+  // confidently displaying the wrong sport's numbers.
+  if (!sportKey) {
+    return NextResponse.json({ movements: {}, summary: { sharp: 0, moving: 0, stable: 0, total: 0 }, fetchedAt: new Date().toISOString() });
+  }
 
   try {
     await purgeOld(dateParam);

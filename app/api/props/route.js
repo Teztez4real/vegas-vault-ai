@@ -71,7 +71,11 @@ export async function GET(req) {
       'Tennis': 'tennis_atp_french_open',
       'WNBA': 'basketball_wnba',
     };
-    const apiSport = sportMap[sport] || 'baseball_mlb';
+    // No MLB fallback: an unrecognized sport must NOT silently fetch baseball
+    // props (that would show MLB batter/pitcher props on a non-MLB game).
+    // Return an honest empty result instead.
+    const apiSport = sportMap[sport];
+    if (!apiSport) return NextResponse.json({ props: [] });
 
     const marketsMap = {
       'MLB': 'batter_hits,batter_home_runs,batter_rbis,batter_total_bases,pitcher_strikeouts,pitcher_hits_allowed,pitcher_earned_runs',
@@ -80,7 +84,10 @@ export async function GET(req) {
       'Tennis': 'match_winner',
       'WNBA': 'player_points,player_rebounds,player_assists',
     };
-    const markets = marketsMap[sport] || marketsMap['MLB'];
+    // Same rule for markets — MLB's markets (batter_hits, pitcher_strikeouts)
+    // are meaningless for any other sport, so never default to them.
+    const markets = marketsMap[sport];
+    if (!markets) return NextResponse.json({ props: [] });
 
     // Step 1: Get today's events for this sport
     const eventsRes = await fetch(

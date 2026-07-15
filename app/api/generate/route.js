@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { AI_MODEL } from '@/lib/aiModel';
+import { hasStartingPitchers, isOutdoorSport } from '@/lib/sports';
 import {
   buildStage1Prompt, buildStage2Prompt, buildStage3Prompt, buildStage4Prompt,
   buildNBAStage1Prompt, buildNBAStage2Prompt, buildNBAStage3Prompt, buildNBAStage4Prompt,
@@ -176,10 +177,14 @@ export async function POST(request) {
     // reasoning output. matchupFacts specifically is referenced by every
     // sport's Stage 2/4 prompt, so it must contain sport-appropriate content,
     // not a fixed template.
-    const isMLB = sport === 'MLB';
+    // Registry-driven capability checks — NOT hardcoded sport-name lists.
+    // A future sport added to lib/sports.js automatically lands in the right
+    // branch based on its declared characteristics, instead of silently
+    // falling into whichever branch happened to be the `else`.
+    const isMLB = hasStartingPitchers(sport);       // baseball-only concept
     const isBasketball = sport === 'NBA' || sport === 'WNBA';
     const isFootball = sport === 'NFL';
-    const isOutdoor = isMLB || isFootball;
+    const isOutdoor = isOutdoorSport(sport);
 
     let matchupFacts, pitchingFacts, hitterLineup, seriesContext;
 

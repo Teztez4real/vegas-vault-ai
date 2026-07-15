@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { gradeCompletedGames, gradeUserAltPicks, regradeHistoricalPicks, regradeHistoricalAltPicks, invalidateWrongSportAnalyses } from '@/lib/grading';
+import { isWeekdayOnlySlotSport, hasSlotSystem } from '@/lib/sports';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -17,7 +18,10 @@ async function getSB() {
 // date. Other sports are unaffected. Returns true if this game should be
 // EXCLUDED from server auto-analysis for the weekend-WNBA rule.
 function isWeekendWNBA(g) {
-  if (g.sport !== 'WNBA') return false;
+  // Registry-driven: any sport flagged slotWeekdaysOnly gets this rule, so a
+  // future sport with the same weekday-only behavior inherits it by config
+  // rather than needing this function edited.
+  if (!isWeekdayOnlySlotSport(g.sport)) return false;
   const d = g.rawTime ? new Date(g.rawTime) : (g.date ? new Date(g.date + 'T12:00:00') : new Date());
   const day = d.getDay(); // 0 = Sunday, 6 = Saturday
   return day === 0 || day === 6;
@@ -54,7 +58,7 @@ async function checkAndNotifySlateComplete(sb, date, base) {
     const needsAnalysis = games.filter(g => {
       if (g.rawTime && new Date(g.rawTime) <= now) return false; // started/locked, doesn't block completion
       if (isWeekendWNBA(g)) return false; // weekend WNBA is client-triggered, not auto
-      if (g.sport === 'Tennis') return true; // genuine no-slot sport
+      if (!hasSlotSystem(g.sport)) return true; // genuine no-slot sport (registry-driven)
       return hasRealSlot(g);
     });
     if (!needsAnalysis.length) return; // nothing to analyze today at all yet (e.g. no slot pattern saved)
@@ -373,7 +377,7 @@ export async function POST(req) {
       // normal cron. forceAll (explicit admin "analyze everything now") still
       // includes it, so an admin can override on demand.
       if (isWeekendWNBA(g) && !forceAllMode) return false;
-      if (g.sport === 'Tennis') return true; // genuine no-slot sport, always eligible
+      if (!hasSlotSystem(g.sport)) return true; // genuine no-slot sport, always eligible (registry-driven)
       if (g.sport === 'WNBA') {
         // WNBA needs a real admin-saved pattern, same as MLB/NBA/NFL — UNLESS
         // this is an explicit forceAll admin override, which bypasses the
@@ -393,7 +397,7 @@ export async function POST(req) {
       const total = games.length;
       const started = games.filter(g => g.rawTime && new Date(g.rawTime) <= now).length;
       const withSlot = games.filter(g => g.slot === 'PUBLIC' || g.slot === 'VEGAS').length;
-      const noSlotSports = games.filter(g => g.sport === 'Tennis').length;
+      const noSlotSports = games.filter(g => !hasSlotSystem(g.sport)).length;
       const bySport = {};
       games.forEach(g => { bySport[g.sport] = (bySport[g.sport]||0)+1; });
       return NextResponse.json({

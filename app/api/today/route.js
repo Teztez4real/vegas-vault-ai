@@ -6,6 +6,7 @@ function assignNFLSlots(games, pattern) {
 }
 import { createClient } from '@supabase/supabase-js';
 import { getOrFreezeOpeningLine, buildTrueLineMovementText } from '@/lib/openingLines';
+import { espnPathFor, oddsApiKeyFor } from '@/lib/sports';
 
 // ── UTILITIES ─────────────────────────────────────────────────────────────────
 
@@ -576,7 +577,13 @@ async function fetchFullPitcherStats(pitcherId, pitcherName) {
 async function fetchGameNarrative(away, home, sport) {
   try {
     const keyword = `${away.split(' ').pop()} ${home.split(' ').pop()}`;
-    const sportKey = sport === 'MLB' ? 'baseball/mlb' : sport === 'NBA' ? 'basketball/nba' : sport === 'NFL' ? 'football/nfl' : 'baseball/mlb';
+    // Registry lookup — NOT a chain of ternaries ending in a baseball default.
+    // The old code fell through to 'baseball/mlb' for any unrecognized sport,
+    // which meant a WNBA game's storyline research literally fetched MLB
+    // news headlines. If a sport has no ESPN path, skip the fetch entirely
+    // rather than serve another sport's news as if it were this game's.
+    const sportKey = espnPathFor(sport);
+    if (!sportKey) return null;
 
     // Fetch ESPN news for both teams
     const [awayNews, homeNews] = await Promise.all([
