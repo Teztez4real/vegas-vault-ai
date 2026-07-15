@@ -10,6 +10,32 @@ import { getOrFreezeOpeningLine, buildTrueLineMovementText } from '@/lib/opening
 
 // ── UTILITIES ─────────────────────────────────────────────────────────────────
 
+// Robustly extracts a numeric score from an ESPN competitor's `score` field,
+// which is NOT consistently shaped across ESPN endpoints — sometimes a plain
+// string ("85"), sometimes a number, sometimes a nested object
+// ({value: 85, displayValue: "85"}). A naive parseInt() on the object case
+// silently produces NaN, and NaN > NaN is always false — which makes EVERY
+// game evaluate as a loss for EVERY team, corrupting L5/L10/streak/ATS with
+// a fake "always loses" record that looks plausible but is completely wrong.
+// Returns null (not 0) on failure, so callers can tell "genuinely lost 0-X"
+// apart from "couldn't parse this game's score" and exclude the latter
+// instead of quietly computing a fabricated result from it.
+function extractScore(scoreField) {
+  if (scoreField == null) return null;
+  if (typeof scoreField === 'number') return isNaN(scoreField) ? null : scoreField;
+  if (typeof scoreField === 'string') {
+    const n = parseInt(scoreField, 10);
+    return isNaN(n) ? null : n;
+  }
+  if (typeof scoreField === 'object') {
+    const raw = scoreField.value ?? scoreField.displayValue ?? scoreField.$ref;
+    if (raw == null) return null;
+    const n = typeof raw === 'number' ? raw : parseInt(String(raw), 10);
+    return isNaN(n) ? null : n;
+  }
+  return null;
+}
+
 function todayStr() {
   // Use US Central time, not UTC — UTC's date rolls over to "tomorrow"
   // during US evening hours (e.g. 9 PM CT = ~2-3 AM UTC next day), which
@@ -84,8 +110,8 @@ async function fetchESPNFinalScores(sportPath, dateStr) {
       const completed = comp.status?.type?.completed === true;
       const scoreData = {
         isFinal: completed,
-        awayScore: away.score != null ? parseInt(away.score, 10) : null,
-        homeScore: home.score != null ? parseInt(home.score, 10) : null,
+        awayScore: extractScore(away.score),
+        homeScore: extractScore(home.score),
         status: comp.status?.type?.description || (completed ? 'Final' : 'Scheduled'),
       };
       // Exact full-name key (e.g. "Kansas City Chiefs|Buffalo Bills")
@@ -1059,11 +1085,16 @@ async function fetchNBARecentForm(teamName) {
                      comp.competitors?.[1]?.homeAway === 'home' && comp.competitors?.[1]?.team?.id === teamId;
       const myTeam = comp.competitors?.find(c => c.team?.id === teamId);
       const oppTeam = comp.competitors?.find(c => c.team?.id !== teamId);
-      const myScore = parseInt(myTeam?.score || 0);
-      const oppScore = parseInt(oppTeam?.score || 0);
+      const myScore = extractScore(myTeam?.score);
+      const oppScore = extractScore(oppTeam?.score);
+      // A game whose score couldn't be parsed is NOT a loss — it's missing
+      // data. Marking it unusable (rather than defaulting to 0-0, which
+      // always evaluates as a loss) prevents a parsing failure from
+      // fabricating a fake "lost every game" record.
+      if (myScore == null || oppScore == null) return null;
       const win = myScore > oppScore;
       return { win, myScore, oppScore, isHome };
-    });
+    }).filter(Boolean);
 
     const last10 = results.slice(-10);
     const last5 = last10.slice(-5);
@@ -1169,14 +1200,15 @@ async function fetchNBAH2H(awayTeam, homeTeam) {
       const comp = e.competitions[0];
       const homeComp = comp.competitors?.find(c => c.homeAway === 'home' && (c.team?.displayName || '').includes(homeTeam.split(' ').pop()));
       const awayComp = comp.competitors?.find(c => c.homeAway === 'away');
-      const homeScore = parseInt(homeComp?.score || 0);
-      const awayScore = parseInt(awayComp?.score || 0);
+      const homeScore = extractScore(homeComp?.score);
+      const awayScore = extractScore(awayComp?.score);
+      if (homeScore == null || awayScore == null) return null; // unparseable — exclude, don't fabricate
       const homeWin = homeScore > awayScore;
       const atHome = !!homeComp;
       return { homeWin, homeScore, awayScore, atHome };
     };
 
-    const parsed = h2hGames.map(parseGame);
+    const parsed = h2hGames.map(parseGame).filter(Boolean);
     const homeWins = parsed.filter(g => g.homeWin).length;
     const results = parsed.map(g => `${g.homeWin ? homeTeam.split(' ').pop() : awayTeam.split(' ').pop()} ${g.homeScore}-${g.awayScore}`);
 
@@ -1450,10 +1482,14 @@ async function fetchWNBARecentForm(teamName) {
         const comp = e.competitions[0];
         const my = comp.competitors?.find(c => c.team?.id === team.team.id);
         const opp = comp.competitors?.find(c => c.team?.id !== team.team.id);
-        const myScore = parseInt(my?.score || 0);
-        const oppScore = parseInt(opp?.score || 0);
+        const myScore = extractScore(my?.score);
+        const oppScore = extractScore(opp?.score);
+        // Unparseable score = missing data, not a loss — exclude rather than
+        // fabricate a fake result from a 0-0 default (see extractScore above).
+        if (myScore == null || oppScore == null) return null;
         return { win: myScore > oppScore, myScore, oppScore, isHome: my?.homeAway === 'home' };
-      });
+      })
+      .filter(Boolean);
 
     const last10 = results.slice(-10);
     const last5 = last10.slice(-5);
@@ -1532,14 +1568,17 @@ async function fetchWNBAH2H(awayTeam, homeTeam) {
       const comp = e.competitions[0];
       const homeComp = comp.competitors?.find(c=>c.homeAway==='home'&&(c.team?.displayName||'').includes(homeKeyword));
       const awayComp = comp.competitors?.find(c=>c.homeAway==='away');
-      return parseInt(homeComp?.score||0) > parseInt(awayComp?.score||0);
+      const hs = extractScore(homeComp?.score), as = extractScore(awayComp?.score);
+      return hs != null && as != null && hs > as;
     }).length;
 
     const results = h2hGames.map(e => {
       const comp = e.competitions[0];
       const c1 = comp.competitors?.[0], c2 = comp.competitors?.[1];
-      return `${parseInt(c1?.score||0)>parseInt(c2?.score||0)?c1.team?.abbreviation:c2.team?.abbreviation} ${c1?.score}-${c2?.score}`;
-    }).join(', ');
+      const s1 = extractScore(c1?.score), s2 = extractScore(c2?.score);
+      if (s1 == null || s2 == null) return null;
+      return `${s1>s2?c1.team?.abbreviation:c2.team?.abbreviation} ${s1}-${s2}`;
+    }).filter(Boolean).join(', ');
 
     return `${homeTeam.split(' ').pop()} ${homeWins}-${h2hGames.length-homeWins} vs ${awayTeam.split(' ').pop()} this season | Results: ${results}`;
   } catch { return 'H2H unavailable'; }

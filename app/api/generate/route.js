@@ -166,19 +166,63 @@ export async function POST(request) {
     const stages = getStages(sport);
 
     // ── STAGE 1: Build data summary directly from game object (no AI call) ──
+    // CRITICAL: fields must be built PER-SPORT, not one universal shape for
+    // every sport. A single shared object here previously always constructed
+    // baseball-specific text (pitchingFacts, hitterLineup, umpire) and
+    // basketball-specific text (matchupFacts using PPG/OffRtg/DefRtg) for
+    // EVERY sport regardless of relevance — so a WNBA game's prompt carried
+    // "Away starter: TBD | Away bullpen: N/A | batter splits vs pitcher: N/A"
+    // baseball padding, and the model could echo it straight into its
+    // reasoning output. matchupFacts specifically is referenced by every
+    // sport's Stage 2/4 prompt, so it must contain sport-appropriate content,
+    // not a fixed template.
+    const isMLB = sport === 'MLB';
+    const isBasketball = sport === 'NBA' || sport === 'WNBA';
+    const isFootball = sport === 'NFL';
+    const isOutdoor = isMLB || isFootball;
+
+    let matchupFacts, pitchingFacts, hitterLineup, seriesContext;
+
+    if (isMLB) {
+      pitchingFacts = `Away starter: ${game.awayPitcher || 'TBD'} | ${game.awayPitcherStats || 'Stats N/A'} | Home starter: ${game.homePitcher || 'TBD'} | ${game.homePitcherStats || 'Stats N/A'} | Away bullpen: ${game.awayBullpen || 'N/A'} | Home bullpen: ${game.homeBullpen || 'N/A'} | Away starter vs this opponent (career, last 6 seasons): ${game.awayPitcherVsOpponent || 'N/A'} | Home starter vs this opponent (career, last 6 seasons): ${game.homePitcherVsOpponent || 'N/A'}`;
+      hitterLineup = `Away offense: ${game.awayOffense || game.awayLineup || 'N/A'} | Home offense: ${game.homeOffense || game.homeLineup || 'N/A'} | Away batter splits vs pitcher: ${game.awayBatterSplits || 'N/A'} | Home batter splits vs pitcher: ${game.homeBatterSplits || 'N/A'}`;
+      seriesContext = `${game.seriesContext || 'N/A'} | Type: ${game.gameType || 'Regular Season'} | Record: ${game.seriesRecord || 'N/A'} | Playoff: ${game.playoffContext || 'N/A'} — MANDATORY: State actual series game number and record for ${game.away} vs ${game.home}. Use your knowledge if API data is missing. Never say not specified.`;
+      matchupFacts = `${pitchingFacts} || ${hitterLineup}`; // MLB's "matchup" IS the pitching/hitting matchup
+    } else if (isBasketball) {
+      // Real computed scoring stats (PPG/OppPPG/pace) — see fetchNBARecentForm
+      // / fetchWNBARecentForm. Deliberately no OffRtg/DefRtg — those aren't
+      // fetched, so we don't ask for or reference numbers that don't exist.
+      matchupFacts = `Away PPG ${game.awayPPG || 'N/A'} OppPPG ${game.awayOppPPG || 'N/A'} PtDiff ${game.awayPointDiff || 'N/A'} Pace(combined PPG) ${game.awayPaceProxy || 'N/A'} | Home PPG ${game.homePPG || 'N/A'} OppPPG ${game.homeOppPPG || 'N/A'} PtDiff ${game.homePointDiff || 'N/A'} Pace(combined PPG) ${game.homePaceProxy || 'N/A'}`;
+      pitchingFacts = 'N/A — not a baseball game';
+      hitterLineup = 'N/A — not a baseball game';
+      seriesContext = sport === 'NBA' ? (game.playoffContext || 'Regular Season — no multi-game series unless playoffs') : 'N/A — WNBA has no multi-game series format';
+    } else if (isFootball) {
+      matchupFacts = `Away: ${game.awayOffense || 'N/A'} offense vs Home: ${game.homeDefense || 'N/A'} defense | Home: ${game.homeOffense || 'N/A'} offense vs Away: ${game.awayDefense || 'N/A'} defense`;
+      pitchingFacts = 'N/A — not a baseball game';
+      hitterLineup = 'N/A — not a baseball game';
+      seriesContext = 'N/A — NFL has no multi-game series format';
+    } else {
+      // Tennis or any other/future sport — generic fallback, no baseball/
+      // basketball-specific fields at all.
+      matchupFacts = 'N/A';
+      pitchingFacts = 'N/A — not a baseball game';
+      hitterLineup = 'N/A — not a baseball game';
+      seriesContext = 'N/A';
+    }
+
     const stage1 = {
       awayFacts: `${game.away}: ${game.awayRecord || 'N/A'} | L5: ${game.awayLast5 || 'N/A'} | L10: ${game.awayLast10 || 'N/A'} | Streak: ${game.awayStreak || 'N/A'} | Away record: ${game.awayAwayRecord || 'N/A'}`,
       homeFacts: `${game.home}: ${game.homeRecord || 'N/A'} | L5: ${game.homeLast5 || 'N/A'} | L10: ${game.homeLast10 || 'N/A'} | Streak: ${game.homeStreak || 'N/A'} | Home record: ${game.homeHomeRecord || 'N/A'}`,
       recentForm: `Away L5 ${game.awayLast5 || 'N/A'} L10 ${game.awayLast10 || 'N/A'} streak ${game.awayStreak || 'N/A'} | Home L5 ${game.homeLast5 || 'N/A'} L10 ${game.homeLast10 || 'N/A'} streak ${game.homeStreak || 'N/A'}. If L5/L10 shows all zeros or impossible records, that field may be missing data — note it as such rather than treating it as a real 0-10 record.`,
       headToHead: `Overall H2H: ${game.h2hLast5 || 'N/A'} | Last time at this home venue: ${game.h2hAtHome || 'N/A'}`,
-      pitchingFacts: `Away starter: ${game.awayPitcher || 'TBD'} | ${game.awayPitcherStats || 'Stats N/A'} | Home starter: ${game.homePitcher || 'TBD'} | ${game.homePitcherStats || 'Stats N/A'} | Away bullpen: ${game.awayBullpen || 'N/A'} | Home bullpen: ${game.homeBullpen || 'N/A'} | Away starter vs this opponent (career, last 6 seasons): ${game.awayPitcherVsOpponent || 'N/A'} | Home starter vs this opponent (career, last 6 seasons): ${game.homePitcherVsOpponent || 'N/A'}`,
-      hitterLineup: `Away offense: ${game.awayOffense || game.awayLineup || 'N/A'} | Home offense: ${game.homeOffense || game.homeLineup || 'N/A'} | Away batter splits vs pitcher: ${game.awayBatterSplits || 'N/A'} | Home batter splits vs pitcher: ${game.homeBatterSplits || 'N/A'}`,
-      seriesContext: `${game.seriesContext || 'N/A'} | Type: ${game.gameType || 'Regular Season'} | Record: ${game.seriesRecord || 'N/A'} | Playoff: ${game.playoffContext || 'N/A'} — MANDATORY: State actual series game number and record for ${game.away} vs ${game.home}. Use your knowledge if API data is missing. Never say not specified.`,
-      matchupFacts: `Away PPG ${game.awayPPG || 'N/A'} OppPPG ${game.awayOppPPG || 'N/A'} OffRtg ${game.awayOffRating || 'N/A'} DefRtg ${game.awayDefRating || 'N/A'} | Home PPG ${game.homePPG || 'N/A'} OppPPG ${game.homeOppPPG || 'N/A'} OffRtg ${game.homeOffRating || 'N/A'} DefRtg ${game.homeDefRating || 'N/A'}`,
-      situationalFacts: `Series: ${game.seriesContext || 'N/A'} | Week: ${game.week || 'N/A'} | Rest: Away ${game.awayRest || 'N/A'} Home ${game.homeRest || 'N/A'} | B2B: Away ${game.awayB2B ? 'YES' : 'No'} Home ${game.homeB2B ? 'YES' : 'No'}`,
+      pitchingFacts,
+      hitterLineup,
+      seriesContext,
+      matchupFacts,
+      situationalFacts: `${isMLB ? `Series: ${game.seriesContext || 'N/A'} | ` : isFootball ? `Week: ${game.week || 'N/A'} | ` : ''}Rest: Away ${game.awayRest || 'N/A'} Home ${game.homeRest || 'N/A'} | B2B: Away ${game.awayB2B ? 'YES' : 'No'} Home ${game.homeB2B ? 'YES' : 'No'}`,
       injuries: game.injuries || 'None reported',
-      weather: game.weather || 'N/A',
-      umpire: game.umpire || 'N/A',
+      weather: isOutdoor ? (game.weather || 'N/A') : 'N/A — indoor sport',
+      umpire: isMLB ? (game.umpire || 'N/A') : 'N/A — not applicable',
       lineFacts: (() => {
         const hs = game.spread || game.dkSpread || null;
         const hsNum = hs ? parseFloat(hs) : null;

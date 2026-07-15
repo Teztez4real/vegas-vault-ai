@@ -17,6 +17,26 @@ function fmtCT(t) {
   } catch { return null; }
 }
 
+// Robustly extracts a numeric score from an ESPN competitor's `score` field
+// — not consistently shaped across ESPN endpoints (plain string, number, or
+// nested {value, displayValue} object). See app/api/today/route.js for the
+// full rationale; kept in sync here since this is a separate route module.
+function extractScore(scoreField) {
+  if (scoreField == null) return null;
+  if (typeof scoreField === 'number') return isNaN(scoreField) ? null : scoreField;
+  if (typeof scoreField === 'string') {
+    const n = parseInt(scoreField, 10);
+    return isNaN(n) ? null : n;
+  }
+  if (typeof scoreField === 'object') {
+    const raw = scoreField.value ?? scoreField.displayValue;
+    if (raw == null) return null;
+    const n = typeof raw === 'number' ? raw : parseInt(String(raw), 10);
+    return isNaN(n) ? null : n;
+  }
+  return null;
+}
+
 // ── MLB (statsapi.mlb.com — richest baseball data) ──
 async function fetchMLBScores(date) {
   const out = [];
@@ -99,8 +119,8 @@ async function fetchESPNScores(sportPath, leagueLabel, date) {
         gamePk: event.id,
         away: away.team?.displayName, home: home.team?.displayName,
         awayAbbr: away.team?.abbreviation, homeAbbr: home.team?.abbreviation,
-        awayScore: away.score != null ? parseInt(away.score) : null,
-        homeScore: home.score != null ? parseInt(home.score) : null,
+        awayScore: extractScore(away.score),
+        homeScore: extractScore(home.score),
         inning: null, inningHalf: null, outs: null,
         period: status.period ?? null,
         clock: status.displayClock ?? null,
