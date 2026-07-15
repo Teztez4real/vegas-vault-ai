@@ -2,8 +2,7 @@ import { NextResponse } from 'next/server';
 import { assignNBASlots } from '@/lib/nbaModel';
 
 function assignNFLSlots(games, pattern) {
-  if (!pattern) return games.map(g => ({ ...g, slot: null }));
-  return games.map((g, i) => ({ ...g, slot: pattern[i] || null }));
+  return assignSlotFromPattern(games, pattern);
 }
 import { createClient } from '@supabase/supabase-js';
 import { getOrFreezeOpeningLine, buildTrueLineMovementText } from '@/lib/openingLines';
@@ -71,15 +70,24 @@ function fmt(price) {
 // 6. Last game different time slot = switch
 // 7. Last game same time slot = hold
 
+// Shared slot-assignment logic for every sport. CRITICAL: every game must get
+// a real PUBLIC/VEGAS slot whenever an admin pattern exists — previously each
+// sport's assignment did `pattern[i] || null`, which left any game beyond the
+// pattern's length with NO slot at all (e.g. admin saves an 10-slot pattern
+// but 12 games are actually scheduled that day — games 11 and 12 silently got
+// no slot, showing "AWAITING SLOT PATTERN" even though a pattern WAS set).
+// Now the pattern cycles (wraps back to the start) so every game index maps
+// to a real slot, no matter how many games exist relative to pattern length.
+function assignSlotFromPattern(games, pattern) {
+  if (!pattern || !Array.isArray(pattern) || pattern.length === 0) {
+    return games.map(g => ({ ...g, slot: null }));
+  }
+  return games.map((g, i) => ({ ...g, slot: pattern[i % pattern.length] }));
+}
+
 function assignMLBSlots(games, adminPattern = null) {
   // Slots ONLY come from the admin pattern — no auto-assignment
-  if (adminPattern && Array.isArray(adminPattern) && adminPattern.length > 0) {
-    return games.map((g, i) => ({ ...g, slot: adminPattern[i] || null }));
-  }
-  // No pattern set — return games with no slot (unassigned)
-  return games.map(g => ({ ...g, slot: null }));
-
-
+  return assignSlotFromPattern(games, adminPattern);
 }
 
 // ── SHARED ESPN SCOREBOARD (final/live scores) ────────────────────────────────
@@ -2235,7 +2243,7 @@ export async function GET(request) {
       const { data: nd2 } = await sb3.from('slot_patterns').select('pattern').eq('date', dateParam).eq('sport', 'nba').maybeSingle();
       if (nd2?.pattern?.length) nbaPattern = nd2.pattern;
     } catch {}
-    const nbaGames = nbaPattern ? nbaGamesRaw.map((g,i) => ({ ...g, slot: nbaPattern[i]||null })) : nbaGamesRaw.map(g => ({ ...g, slot: null }));
+    const nbaGames = assignSlotFromPattern(nbaGamesRaw, nbaPattern);
 
     // Fetch WNBA slot pattern and apply (mirrors NBA — no slot system by
     // default, slot stays null unless an admin pattern exists)
@@ -2245,7 +2253,7 @@ export async function GET(request) {
       const { data: nd3 } = await sb4.from('slot_patterns').select('pattern').eq('date', dateParam).eq('sport', 'wnba').maybeSingle();
       if (nd3?.pattern?.length) wnbaPattern = nd3.pattern;
     } catch {}
-    const wnbaGames = wnbaPattern ? wnbaGamesRaw.map((g,i) => ({ ...g, slot: wnbaPattern[i]||g.slot })) : wnbaGamesRaw;
+    const wnbaGames = wnbaPattern ? assignSlotFromPattern(wnbaGamesRaw, wnbaPattern) : wnbaGamesRaw;
 
     const allGames = [...mlbGames, ...nbaGames, ...wnbaGames, ...nflGames];
 
