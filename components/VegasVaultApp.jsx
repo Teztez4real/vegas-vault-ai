@@ -574,6 +574,17 @@ const WNBA_SLUGS = {
   "Mercury":"phx","Storm":"sea","Mystics":"wsh","Tempo":"tor",
 };
 
+// NFL team slugs for ESPN CDN — ESPN's NFL logo slug is simply the lowercased
+// team abbreviation for all 32 teams, so this maps each abbr to its lowercase.
+const NFL_SLUGS = {
+  "ARI":"ari","ATL":"atl","BAL":"bal","BUF":"buf","CAR":"car","CHI":"chi",
+  "CIN":"cin","CLE":"cle","DAL":"dal","DEN":"den","DET":"det","GB":"gb",
+  "HOU":"hou","IND":"ind","JAX":"jax","KC":"kc","LV":"lv","LAC":"lac",
+  "LAR":"lar","MIA":"mia","MIN":"min","NE":"ne","NO":"no","NYG":"nyg",
+  "NYJ":"nyj","PHI":"phi","PIT":"pit","SF":"sf","SEA":"sea","TB":"tb",
+  "TEN":"ten","WSH":"wsh","WAS":"wsh",
+};
+
 // Full-team-name → ESPN slug, independent of ANY abbreviation convention.
 // This is the safety net: whatever abbreviation format a data source uses
 // (MLB Stats API's own codes, The Odds API's naming, betting-book shorthand),
@@ -594,31 +605,49 @@ const MLB_NAME_TO_SLUG = {
   "Toronto Blue Jays":"tor","Washington Nationals":"wsh",
 };
 
-function TeamLogo({ abbr, teamName, size=44, sport="MLB" }) {
+function TeamLogo({ abbr, teamName, size=44, sport="MLB", logoUrl=null }) {
   const [err, setErr] = useState(false);
   const abbrUpper = (abbr || '').toUpperCase();
 
-  let slug = null;
-  let espnSport = null;
-
-  if (sport === "MLB") {
-    // Try abbreviation first, then fall back to the full-name lookup —
-    // covers every MLB team regardless of which abbreviation format the
-    // data happened to arrive in.
-    slug = MLB_SLUGS[abbrUpper] || (teamName && MLB_NAME_TO_SLUG[teamName]);
-    espnSport = "mlb";
-  } else if (sport === "NBA") {
-    slug = NBA_SLUGS[abbrUpper];
-    espnSport = "nba";
-  } else if (sport === "WNBA") {
-    slug = WNBA_SLUGS[abbrUpper];
-    espnSport = "wnba";
+  // Preferred source: an explicit ESPN logo URL captured in the data layer.
+  // College sports (CFB, CBB) have 300+ teams and no static abbreviation→slug
+  // map is feasible, so their logos arrive as full URLs from ESPN's scoreboard.
+  // Pro sports resolve via their static slug maps below.
+  let src = null;
+  if (logoUrl && !err) {
+    src = logoUrl;
+  } else {
+    let slug = null;
+    let espnSport = null;
+    if (sport === "MLB") {
+      // Try abbreviation first, then fall back to the full-name lookup —
+      // covers every MLB team regardless of which abbreviation format the
+      // data happened to arrive in.
+      slug = MLB_SLUGS[abbrUpper] || (teamName && MLB_NAME_TO_SLUG[teamName]);
+      espnSport = "mlb";
+    } else if (sport === "NBA") {
+      // Keys are uppercase abbreviations plus mixed-case nickname fallbacks —
+      // try the uppercased abbr, the raw abbr, then the team's nickname.
+      slug = NBA_SLUGS[abbrUpper] || NBA_SLUGS[abbr] || (teamName && NBA_SLUGS[teamName.split(' ').pop()]);
+      espnSport = "nba";
+    } else if (sport === "WNBA") {
+      // WNBA's data layer passes nicknames as the abbr (e.g. "Aces"), which the
+      // uppercased lookup alone would miss — cover both forms and the nickname.
+      slug = WNBA_SLUGS[abbrUpper] || WNBA_SLUGS[abbr] || (teamName && WNBA_SLUGS[teamName.split(' ').pop()]);
+      espnSport = "wnba";
+    } else if (sport === "NFL") {
+      slug = NFL_SLUGS[abbrUpper];
+      espnSport = "nfl";
+    }
+    if (slug && espnSport) {
+      src = `https://a.espncdn.com/i/teamlogos/${espnSport}/500/${slug}.png`;
+    }
   }
 
-  if (slug && espnSport && !err) {
+  if (src && !err) {
     return (
       <img
-        src={`https://a.espncdn.com/i/teamlogos/${espnSport}/500/${slug}.png`}
+        src={src}
         alt={abbr}
         width={size} height={size}
         style={{ objectFit:"contain", flexShrink:0 }}
@@ -630,7 +659,7 @@ function TeamLogo({ abbr, teamName, size=44, sport="MLB" }) {
   const col = MLB_COLORS[abbrUpper] || "#1e3a5f";
   return (
     <div style={{ width:size, height:size, borderRadius:8, background:`${col}22`, border:`1.5px solid ${col}66`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:size*0.3, fontWeight:900, color:col, flexShrink:0 }}>
-      {abbr.slice(0,2)}
+      {(abbr || '').slice(0,2)}
     </div>
   );
 }
@@ -1033,7 +1062,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
       {/* Row 2: teams + logos + records */}
       <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:10 }}>
         <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:3,width:60,flexShrink:0 }}>
-          <TeamLogo abbr={awayAbbr} teamName={awayName} sport={game.sport} size={42} />
+          <TeamLogo abbr={awayAbbr} teamName={awayName} sport={game.sport} size={42} logoUrl={game.awayLogo} />
           <div style={{ fontSize:10,fontWeight:800,color:'#111' }}>{awayAbbr}</div>
           <div style={{ fontSize:8,color:'#bbb' }}>{awayRec}</div>
         </div>
@@ -1053,7 +1082,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
                 {isLive
                   ? (game.sport === 'MLB'
                       ? <div><div style={{ fontSize:9,color:'#dc2626',fontWeight:700 }}>{live.inningHalf?.slice(0,3).toUpperCase()||''} {live.inning||''}</div><div style={{ fontSize:9,color:'#aaa' }}>{live.outs??0} out{live.outs===1?'':'s'}</div></div>
-                      : <div><div style={{ fontSize:9,color:'#dc2626',fontWeight:700 }}>{live.period ? `${game.sport==='NFL'?'Q':'P'}${live.period}` : 'LIVE'}</div><div style={{ fontSize:9,color:'#aaa' }}>{live.clock||''}</div></div>)
+                      : <div><div style={{ fontSize:9,color:'#dc2626',fontWeight:700 }}>{live.period ? `${(game.sport==='NFL'||game.sport==='CFB')?'Q':game.sport==='CBB'?'H':'P'}${live.period}` : 'LIVE'}</div><div style={{ fontSize:9,color:'#aaa' }}>{live.clock||''}</div></div>)
                   : <div style={{ fontSize:10,color:'#aaa',fontWeight:600 }}>FINAL</div>}
               </div>
               <div style={{ textAlign:'center' }}>
@@ -1064,7 +1093,7 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
           )}
         </div>
         <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:3,width:60,flexShrink:0 }}>
-          <TeamLogo abbr={homeAbbr} teamName={homeName} sport={game.sport} size={42} />
+          <TeamLogo abbr={homeAbbr} teamName={homeName} sport={game.sport} size={42} logoUrl={game.homeLogo} />
           <div style={{ fontSize:10,fontWeight:800,color:'#111' }}>{homeAbbr}</div>
           <div style={{ fontSize:8,color:'#bbb' }}>{homeRec}</div>
         </div>
@@ -3847,10 +3876,10 @@ export default function VegasVaultApp() {
                 <div key={key} className="vv-gr" onClick={()=>{ if(result) { setActiveGame(game); setActiveResult(result); setActiveDetailTab('AI Reasoning'); } else { handleGenerate(game, game.slot); } }}>
                   <div className="vv-gr-a">
                     <span className="vv-gr-t" style={{ display:'inline-flex', alignItems:'center', gap:4 }}>
-                      <TeamLogo abbr={game.awayAbbr} teamName={game.away} sport={game.sport} size={18} />
+                      <TeamLogo abbr={game.awayAbbr} teamName={game.away} sport={game.sport} size={18} logoUrl={game.awayLogo} />
                       {topPlay && topPlay.id === game.id && <span title="Top Play of the Day" style={{ fontSize:11 }}>⭐</span>}
                       {game.awayAbbr} @ {game.homeAbbr}
-                      <TeamLogo abbr={game.homeAbbr} teamName={game.home} sport={game.sport} size={18} />
+                      <TeamLogo abbr={game.homeAbbr} teamName={game.home} sport={game.sport} size={18} logoUrl={game.homeLogo} />
                     </span>
                     <span className="vv-gr-time">{game.time}</span>
                     {tier && <span className="vv-gr-stars">{starRating(summary) > 0 ? '★ ' + starRating(summary) : '—'}</span>}

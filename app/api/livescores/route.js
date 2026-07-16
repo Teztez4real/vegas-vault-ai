@@ -87,12 +87,12 @@ async function fetchMLBScores(date) {
 }
 
 // ── ESPN scoreboard for NBA / WNBA / NFL (basketball & football) ──
-async function fetchESPNScores(sportPath, leagueLabel, date) {
+async function fetchESPNScores(sportPath, leagueLabel, date, extraParams = '') {
   const out = [];
   try {
     const espnDate = date.replace(/-/g, ''); // ESPN wants YYYYMMDD
     const res = await fetch(
-      `https://site.api.espn.com/apis/site/v2/sports/${sportPath}/scoreboard?dates=${espnDate}`,
+      `https://site.api.espn.com/apis/site/v2/sports/${sportPath}/scoreboard?dates=${espnDate}${extraParams}`,
       { cache: 'no-store' }
     );
     if (!res.ok) return out;
@@ -141,14 +141,18 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const date = searchParams.get('date') || new Date().toISOString().split('T')[0];
 
-    const [mlb, nba, wnba, nfl] = await Promise.all([
+    const [mlb, nba, wnba, nfl, cfb, cbb] = await Promise.all([
       fetchMLBScores(date),
       fetchESPNScores('basketball/nba', 'NBA', date),
       fetchESPNScores('basketball/wnba', 'WNBA', date),
       fetchESPNScores('football/nfl', 'NFL', date),
+      // College needs the group + limit params to return the full slate
+      // (matches the CFB/CBB scoreboard fetches in the today route).
+      fetchESPNScores('football/college-football', 'CFB', date, '&groups=80&limit=200'),
+      fetchESPNScores('basketball/mens-college-basketball', 'CBB', date, '&groups=50&limit=300'),
     ]);
 
-    const scores = [...mlb, ...nba, ...wnba, ...nfl];
+    const scores = [...mlb, ...nba, ...wnba, ...nfl, ...cfb, ...cbb];
     return NextResponse.json({ scores, fetchedAt: new Date().toISOString() });
   } catch (err) {
     console.error('Live scores error:', err.message);

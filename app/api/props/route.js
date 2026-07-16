@@ -70,6 +70,8 @@ export async function GET(req) {
       'NFL': 'americanfootball_nfl',
       'Tennis': 'tennis_atp_french_open',
       'WNBA': 'basketball_wnba',
+      'CFB': 'americanfootball_ncaaf',
+      'CBB': 'basketball_ncaab',
     };
     // No MLB fallback: an unrecognized sport must NOT silently fetch baseball
     // props (that would show MLB batter/pitcher props on a non-MLB game).
@@ -83,6 +85,8 @@ export async function GET(req) {
       'NFL': 'player_pass_tds,player_pass_yards,player_rush_yards,player_reception_yards,player_receptions',
       'Tennis': 'match_winner',
       'WNBA': 'player_points,player_rebounds,player_assists',
+      'CFB': 'player_pass_tds,player_pass_yards,player_rush_yards,player_reception_yards,player_receptions',
+      'CBB': 'player_points,player_rebounds,player_assists,player_threes',
     };
     // Same rule for markets — MLB's markets (batter_hits, pitcher_strikeouts)
     // are meaningless for any other sport, so never default to them.

@@ -363,11 +363,11 @@ async function fetchNFLGames(dateParam) {
 // so one call covers rank, full/home/road records, and neutral-site status
 // for the whole slate.
 async function fetchCFBScoreboardData(dateParam) {
-  const records = {}, ranks = {}, neutralSites = {};
+  const records = {}, ranks = {}, neutralSites = {}, logos = {};
   try {
     const dateStr = (dateParam || todayStr()).replace(/-/g, '');
     const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=${dateStr}&groups=80&limit=200`, { cache: 'no-store' });
-    if (!res.ok) return { records, ranks, neutralSites };
+    if (!res.ok) return { records, ranks, neutralSites, logos };
     const data = await res.json();
     for (const ev of data.events || []) {
       const comp = ev.competitions?.[0];
@@ -384,13 +384,16 @@ async function fetchCFBScoreboardData(dateParam) {
         };
         const rank = c.curatedRank?.current;
         if (rank && rank <= 25) ranks[name] = rank;
+        // ESPN provides the team logo URL directly — the only feasible logo
+        // source for college (300+ teams, no static abbr→slug map possible).
+        if (c.team?.logo) logos[name] = c.team.logo;
       }
       if (awayC?.team?.displayName && homeC?.team?.displayName) {
         neutralSites[`${awayC.team.displayName}@${homeC.team.displayName}`] = !!comp.neutralSite;
       }
     }
   } catch {}
-  return { records, ranks, neutralSites };
+  return { records, ranks, neutralSites, logos };
 }
 
 async function fetchCFBGames(dateParam) {
@@ -401,7 +404,7 @@ async function fetchCFBGames(dateParam) {
     const ODDS_KEY = process.env.ODDS_API_KEY;
     if (!ODDS_KEY) return [];
 
-    const [{ records: cfbRecords, ranks: cfbRanks, neutralSites }] = await Promise.all([
+    const [{ records: cfbRecords, ranks: cfbRanks, neutralSites, logos: cfbLogos }] = await Promise.all([
       fetchCFBScoreboardData(dateParam),
     ]);
 
@@ -497,6 +500,7 @@ async function fetchCFBGames(dateParam) {
         homeScore: espnScore?.homeScore ?? null,
         awayAbbr: away.split(' ').pop().slice(0,4).toUpperCase(),
         homeAbbr: home.split(' ').pop().slice(0,4).toUpperCase(),
+        awayLogo: cfbLogos[away] || null, homeLogo: cfbLogos[home] || null,
         awayRank: cfbRanks[away] || null, homeRank: cfbRanks[home] || null,
         awayRecord: awayRec.total || 'N/A', homeRecord: homeRec.total || 'N/A',
         awayAwayRecord: awayRec.road || 'N/A', homeHomeRecord: homeRec.home || 'N/A',
@@ -536,11 +540,11 @@ async function fetchCFBGames(dateParam) {
 // orientation, decided inside the analysis itself (see lib/analysisEngine.js
 // buildCBBStage2Prompt). Matches Tennis's genuine no-slot treatment.
 async function fetchCBBScoreboardData(dateParam) {
-  const records = {}, ranks = {}, neutralSites = {};
+  const records = {}, ranks = {}, neutralSites = {}, logos = {};
   try {
     const dateStr = (dateParam || todayStr()).replace(/-/g, '');
     const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?dates=${dateStr}&groups=50&limit=300`, { cache: 'no-store' });
-    if (!res.ok) return { records, ranks, neutralSites };
+    if (!res.ok) return { records, ranks, neutralSites, logos };
     const data = await res.json();
     for (const ev of data.events || []) {
       const comp = ev.competitions?.[0];
@@ -557,13 +561,16 @@ async function fetchCBBScoreboardData(dateParam) {
         };
         const rank = c.curatedRank?.current;
         if (rank && rank <= 25) ranks[name] = rank;
+        // ESPN logo URL — the only feasible logo source for college basketball
+        // (300+ teams, no static abbr→slug map possible).
+        if (c.team?.logo) logos[name] = c.team.logo;
       }
       if (awayC?.team?.displayName && homeC?.team?.displayName) {
         neutralSites[`${awayC.team.displayName}@${homeC.team.displayName}`] = !!comp.neutralSite;
       }
     }
   } catch {}
-  return { records, ranks, neutralSites };
+  return { records, ranks, neutralSites, logos };
 }
 
 async function fetchCBBGames(dateParam) {
@@ -574,7 +581,7 @@ async function fetchCBBGames(dateParam) {
     const ODDS_KEY = process.env.ODDS_API_KEY;
     if (!ODDS_KEY) return [];
 
-    const { records: cbbRecords, ranks: cbbRanks, neutralSites } = await fetchCBBScoreboardData(dateParam);
+    const { records: cbbRecords, ranks: cbbRanks, neutralSites, logos: cbbLogos } = await fetchCBBScoreboardData(dateParam);
 
     const BOOKS = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'bet365'];
     const res = await fetch(
@@ -668,6 +675,7 @@ async function fetchCBBGames(dateParam) {
         homeScore: espnScore?.homeScore ?? null,
         awayAbbr: away.split(' ').pop().slice(0,4).toUpperCase(),
         homeAbbr: home.split(' ').pop().slice(0,4).toUpperCase(),
+        awayLogo: cbbLogos[away] || null, homeLogo: cbbLogos[home] || null,
         awayRank: cbbRanks[away] || null, homeRank: cbbRanks[home] || null,
         awayRecord: awayRec.total || 'N/A', homeRecord: homeRec.total || 'N/A',
         awayAwayRecord: awayRec.road || 'N/A', homeHomeRecord: homeRec.home || 'N/A',

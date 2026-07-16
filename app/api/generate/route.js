@@ -355,9 +355,18 @@ export async function POST(request) {
       finalVerdict: stage4?.finalVerdict || `${stage3.pick} ${stage3.betType} — ${stage2.edgeReason}`,
     };
 
-    // Clean up null/undefined fields
+    // Clean up null/undefined and not-applicable placeholder fields.
+    // CRITICAL: strip ANY value that starts with "N/A" (e.g. "N/A — not a
+    // baseball game", "N/A — indoor sport", "N/A — not applicable"), not just
+    // the exact string "N/A". These sport-inapplicable placeholders come from
+    // falling back to a baseball-specific stage1 field on a non-baseball sport.
+    // If one survives into the stored result, invalidateWrongSportAnalyses (in
+    // lib/grading.js) matches its "not a baseball game" marker and deletes the
+    // analysis every cron cycle — an endless, costly re-analysis loop on every
+    // non-MLB game. Stripping them here is what prevents that.
     Object.keys(result.analysis).forEach(k => {
-      if (!result.analysis[k] || result.analysis[k] === 'N/A' || result.analysis[k] === 'undefined') {
+      const v = result.analysis[k];
+      if (!v || v === 'undefined' || (typeof v === 'string' && v.trim().startsWith('N/A'))) {
         delete result.analysis[k];
       }
     });

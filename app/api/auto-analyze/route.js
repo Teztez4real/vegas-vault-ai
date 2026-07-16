@@ -387,9 +387,11 @@ export async function POST(req) {
       if (!g.slot || g.slot === 'NONE') return false; // slotted sports need a slot
       return true;
     }).map(g => {
-      // Tennis uses its sport as the slot key. WNBA under forceAll without a
-      // saved pattern also needs a slot key to key off of.
-      if ((g.sport === 'Tennis' || g.sport === 'WNBA') && !g.slot) return { ...g, slot: g.sport };
+      // Any genuine no-slot sport (Tennis, CBB, and future ones — registry-
+      // driven, not a hardcoded list) uses its sport name as the slot key when
+      // it doesn't already carry one. WNBA under forceAll without a saved
+      // pattern also needs a slot key to key off of.
+      if ((!hasSlotSystem(g.sport) || g.sport === 'WNBA') && !g.slot) return { ...g, slot: g.sport };
       return g;
     });
     if (!slateGames.length) {
