@@ -1019,7 +1019,10 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
 
   return (
     <div onClick={()=>hasRes&&onCardClick&&onCardClick(game, results[key])}
-      style={{ background:'rgba(255,255,255,0.72)',border:isLock&&isSubscribed?'1px solid rgba(57,255,20,0.35)':'1px solid rgba(255,255,255,0.93)',borderRadius:16,backdropFilter:'blur(20px)',boxShadow:isLock&&isSubscribed?'0 8px 30px rgba(57,255,20,0.12),inset 0 1px 0 rgba(255,255,255,0.95)':'0 8px 30px rgba(0,0,0,0.06),inset 0 1px 0 rgba(255,255,255,0.95)',padding:'14px 16px',cursor:hasRes?'pointer':'default' }}>
+      className={`vv-game-card${isLock&&isSubscribed?' lock':''}${hasRes?' clickable':''}`}>
+
+      {/* Tier-1 LOCK accent — shimmering bar so a lock reads as alive */}
+      {isLock&&isSubscribed&&<div className="vv-lock-bar" />}
 
       {/* Row 1: slot tag + status + time + watchlist */}
       <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10 }}>
@@ -1059,6 +1062,20 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
         </div>
       </div>
 
+      {/* AI confidence meter — surfaces summary.confidence, which the engine
+          already computes but the card never showed. Subscriber-gated like the
+          rest of the analysis. */}
+      {isSubscribed&&hasRes&&summary?.confidence&&summary.pick!=='Analysis Failed'&&(()=>{
+        const c = summary.confidence;
+        const pct = c==='HIGH'?100:c==='MEDIUM'?60:30;
+        const col = c==='HIGH'?'#39FF14':c==='MEDIUM'?'#ffc107':'#ff8a65';
+        return (
+          <div title={`AI confidence: ${c}`} className="vv-conf-meter">
+            <div className="vv-conf-fill" style={{ width:`${pct}%`,background:`linear-gradient(90deg, ${col}, ${col}55)` }} />
+          </div>
+        );
+      })()}
+
       {/* Row 2: teams + logos + records */}
       <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:10 }}>
         <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:3,width:60,flexShrink:0 }}>
@@ -1067,8 +1084,14 @@ function GameCard({ game, onGenerate, results, generating, onCardClick, liveScor
           <div style={{ fontSize:8,color:'#bbb' }}>{awayRec}</div>
         </div>
         <div style={{ flex:1,textAlign:'center' }}>
-          <div style={{ fontSize:13,fontWeight:800,color:'#111' }}>
-            {isTennis?`${awayName} vs ${homeName}`:`${awayAbbr} @ ${homeAbbr}`}
+          <div style={{ fontSize:13,fontWeight:800,color:'#111',display:'flex',alignItems:'center',justifyContent:'center',gap:7 }}>
+            {isTennis ? `${awayName} vs ${homeName}` : (
+              <>
+                <span>{awayAbbr}</span>
+                <span className="vv-vs-chip">@</span>
+                <span>{homeAbbr}</span>
+              </>
+            )}
           </div>
           <div style={{ fontSize:9,color:'#aaa',marginTop:2 }}>{game.venue||''}</div>
           {/* Live score */}
@@ -3206,6 +3229,32 @@ export default function VegasVaultApp() {
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.35;} }
+
+        /* ── GAME CARD POLISH (main sport tabs only — Best Picks uses the
+           separate BestPickCard component and is deliberately untouched) ── */
+        /* fill-mode "backwards" (not "both") is deliberate: an animation that
+           holds its final transform would override the :hover transform below,
+           killing the hover lift entirely. "backwards" applies the from-frame
+           before the run and releases the element afterward, so hover works. */
+        @keyframes vvCardIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes vvGlowShimmer { 0%{background-position:0% 0%} 50%{background-position:100% 0%} 100%{background-position:0% 0%} }
+        /* Base card styling lives here rather than inline: inline styles beat
+           stylesheet rules, so a border/box-shadow set inline would silently
+           override the :hover state below and the lift would never show. */
+        .vv-game-card{background:rgba(255,255,255,0.72);border:1px solid rgba(255,255,255,0.93);border-radius:16px;backdrop-filter:blur(20px);box-shadow:0 8px 30px rgba(0,0,0,0.06),inset 0 1px 0 rgba(255,255,255,0.95);padding:14px 16px;transition:transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease; animation:vvCardIn 0.35s ease backwards}
+        .vv-game-card.lock{border-color:rgba(57,255,20,0.35);box-shadow:0 8px 30px rgba(57,255,20,0.12),inset 0 1px 0 rgba(255,255,255,0.95)}
+        .vv-game-card.clickable{cursor:pointer}
+        .vv-game-card.clickable:hover{transform:translateY(-3px);border-color:rgba(57,255,20,0.35);box-shadow:0 18px 40px rgba(0,0,0,0.09),0 4px 14px rgba(0,0,0,0.05),inset 0 1px 0 rgba(255,255,255,0.95)}
+        .vv-game-card.lock.clickable:hover{box-shadow:0 18px 44px rgba(57,255,20,0.20),0 4px 14px rgba(0,0,0,0.05),inset 0 1px 0 rgba(255,255,255,0.95)}
+        .vv-lock-bar{height:2px;border-radius:2px;margin-bottom:10px;background:linear-gradient(90deg,#39FF14,#22cc00,#39FF14);background-size:200% 100%;animation:vvGlowShimmer 2.6s ease-in-out infinite}
+        .vv-conf-meter{height:3px;border-radius:2px;overflow:hidden;background:rgba(0,0,0,0.05);margin-bottom:10px}
+        .vv-conf-fill{height:100%;border-radius:2px;background-size:200% 100%;animation:vvGlowShimmer 2.4s ease-in-out infinite}
+        .vv-vs-chip{width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#999;background:rgba(0,0,0,0.04);border:1px solid rgba(0,0,0,0.07);flex-shrink:0}
+        @media (prefers-reduced-motion: reduce){
+          .vv-game-card{animation:none}
+          .vv-game-card.clickable:hover{transform:none}
+          .vv-lock-bar,.vv-conf-fill{animation:none}
+        }
         @keyframes vvBestPickGlow {
           0%, 100% { box-shadow: 0 0 0px rgba(57,255,20,0), 0 4px 20px rgba(0,0,0,0.3); border-color: rgba(57,255,20,0.25); }
           50% { box-shadow: 0 0 28px rgba(57,255,20,0.55), 0 4px 20px rgba(0,0,0,0.3); border-color: rgba(57,255,20,0.75); }
