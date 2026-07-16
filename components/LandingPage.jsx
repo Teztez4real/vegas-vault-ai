@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { formatPickDisplay } from '@/lib/pickFormat';
+import { ENABLED_TEAM_SPORT_KEYS } from '@/lib/sports';
 
 // ── VEGAS VAULT AI — LANDING PAGE ────────────────────────────────────────────
 // Structure modeled on a modern AI fintech hero (two-column: copy left,
@@ -11,9 +12,15 @@ import { formatPickDisplay } from '@/lib/pickFormat';
 // dashboard component, so it can't affect app stability.
 
 const GREEN = '#39FF14';
+// Registry-driven — pulls whichever sports are enabled in lib/sports.js
+// instead of a hardcoded list, so this never goes stale when a sport is added.
+const SPORTS_LIST = ENABLED_TEAM_SPORT_KEYS.join(' · ');
+const SPORTS_PROSE = ENABLED_TEAM_SPORT_KEYS.length > 1
+  ? `${ENABLED_TEAM_SPORT_KEYS.slice(0, -1).join(', ')}, and ${ENABLED_TEAM_SPORT_KEYS[ENABLED_TEAM_SPORT_KEYS.length - 1]}`
+  : ENABLED_TEAM_SPORT_KEYS[0];
 const TICKER = [
   '$19.99 TO START', 'AI-POWERED ANALYSIS', 'TIER-1 LOCKS', 'LINE MOVEMENT TRACKING',
-  'SCAM PLAY DETECTION', 'MLB · NBA · NFL', 'SHARP MONEY SIGNALS', 'AUTO-UPDATING PLAYS',
+  'SCAM PLAY DETECTION', SPORTS_LIST, 'SHARP MONEY SIGNALS', 'AUTO-UPDATING PLAYS',
 ];
 
 export default function LandingPage() {
@@ -141,7 +148,7 @@ export default function LandingPage() {
 
           {/* description */}
           <p style={{ fontSize:'clamp(15px,1.7vw,18px)', lineHeight:1.6, color:'rgba(255,255,255,0.62)', maxWidth:540, margin:'0 0 32px' }}>
-            An anonymous AI model that finds where the market misrepresents reality — analyzing pitching, matchups, line movement, and sharp money across MLB, NBA, and NFL. <span style={{ color:'#fff', fontWeight:700 }}>Plays auto-update all day</span> and lock when the game starts.
+            An anonymous AI model that finds where the market misrepresents reality — analyzing pitching, matchups, line movement, and sharp money across {SPORTS_PROSE}. <span style={{ color:'#fff', fontWeight:700 }}>Plays auto-update all day</span> and lock when the game starts.
           </p>
 
           {/* CTAs */}
@@ -407,7 +414,7 @@ export default function LandingPage() {
         <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
           {[
             { q:'How accurate is the AI model?', a:'The model targets the highest-conviction plays — the Tier-1 locks where every signal aligns. It only commits to a play when line movement, pricing, matchup data, and situational context all agree. When signals conflict, it either flags a scam or passes the game entirely rather than forcing a pick.' },
-            { q:'What sports are covered?', a:'MLB is fully live right now. NBA and NFL models are built and ready — they switch on automatically the moment each season starts. Tennis and WNBA analysis are also supported within the model.' },
+            { q:'What sports are covered?', a:'MLB, NBA, WNBA, NFL, and college football (CFB) and college basketball (CBB) are all live in the model. Each one switches on automatically the moment its season starts, so you’re never shown a play for a sport that isn’t actually in season. Tennis analysis is also built and ready.' },
             { q:'How often do the plays update?', a:'All day. The AI works the entire board like a professional bettor — refining each game as lineups confirm, injuries break, and lines move. The cadence intensifies as each game approaches, with a final lock-in update right before start. Once a game begins, the play is locked and never changes.' },
             { q:'Do I have to be on the app for it to work?', a:'Once the daily slot pattern is set each morning, the model runs entirely on its own — no device needs to be open. It analyzes the full slate, re-checks each game as lineups confirm and lines move, and locks plays before game time. You\'ll get a push alert when something material changes on a game you\'re tracking, whether the app is open or not. The one daily step is entering the Public/Vegas pattern in Settings — once that\'s saved, the rest is fully automated.' },
             { q:'Should I always follow the AI\'s play without question?', a:'No — and we\'d never tell you to. The AI surfaces a well-reasoned edge, but you should always read the full analysis, understand the reasoning behind the pick, and decide whether you actually agree with it before placing a bet. Check the matchup, the line, the injury report, any factors that matter to you. If something doesn\'t sit right, trust your instincts and pass. The model is a tool to sharpen your process, not a signal to follow blindly. The best bettors use it to validate and challenge their own read — not to replace it.' },

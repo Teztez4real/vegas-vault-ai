@@ -151,6 +151,49 @@ function lookupESPNScore(scoresMap, away, home) {
   return scoresMap[`${awayNick}|${homeNick}`] || null;
 }
 
+// Real records (total/home/road), keyed by full team display name, sourced
+// from ESPN's scoreboard — was previously left as 'See NFL standings'
+// placeholders. One call covers the whole week's slate.
+async function fetchNFLRecords(dateParam) {
+  try {
+    const dateStr = (dateParam || todayStr()).replace(/-/g, '');
+    const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates=${dateStr}&limit=50`, { cache: 'no-store' });
+    if (!res.ok) return {};
+    const data = await res.json();
+    const records = {};
+    for (const ev of data.events || []) {
+      for (const c of ev.competitions?.[0]?.competitors || []) {
+        const name = c.team?.displayName;
+        if (!name) continue;
+        records[name] = {
+          total: c.records?.find(r => r.type === 'total')?.summary || 'N/A',
+          home: c.records?.find(r => r.type === 'home')?.summary || 'N/A',
+          road: c.records?.find(r => r.type === 'road')?.summary || 'N/A',
+        };
+      }
+    }
+    return records;
+  } catch { return {}; }
+}
+
+// League-wide injury report, keyed by team display name — was previously
+// left as a 'Check rotowire.com...' placeholder with no real data behind it.
+async function fetchNFLInjuries() {
+  try {
+    const res = await fetch('https://site.api.espn.com/apis/site/v2/sports/football/nfl/injuries', { cache: 'no-store' });
+    if (!res.ok) return {};
+    const data = await res.json();
+    const map = {};
+    for (const team of data.injuries || []) {
+      const list = (team.injuries || []).slice(0, 4).map(inj =>
+        `${inj.athlete?.displayName || 'Player'} (${inj.status || 'Unknown'}${inj.type?.description ? ' - ' + inj.type.description : ''})`
+      );
+      if (list.length) map[team.displayName] = list.join('; ');
+    }
+    return map;
+  } catch { return {}; }
+}
+
 async function fetchNFLGames(dateParam) {
   try {
     // Check if NFL season is active (September through February)
@@ -159,6 +202,8 @@ async function fetchNFLGames(dateParam) {
 
     const ODDS_KEY = process.env.ODDS_API_KEY;
     if (!ODDS_KEY) return [];
+
+    const [nflRecords, nflInjuries] = await Promise.all([fetchNFLRecords(dateParam), fetchNFLInjuries()]);
 
     const BOOKS = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'bet365'];
     const res = await fetch(
@@ -260,6 +305,8 @@ async function fetchNFLGames(dateParam) {
       const openingAwayML = opening?.away_ml != null ? (opening.away_ml > 0 ? `+${opening.away_ml}` : `${opening.away_ml}`) : (awayML || 'N/A');
       const openingHomeML = opening?.home_ml != null ? (opening.home_ml > 0 ? `+${opening.home_ml}` : `${opening.home_ml}`) : (homeML || 'N/A');
       const trueLineMovement = buildTrueLineMovementText(opening, currentForFreeze);
+      const awayRec = nflRecords[away] || {};
+      const homeRec = nflRecords[home] || {};
 
       return {
         id: `nfl-${gameDate}-${i}`, sport: 'NFL',
@@ -274,8 +321,8 @@ async function fetchNFLGames(dateParam) {
         homeCity: home.split(' ').slice(0,-1).join(' ').toUpperCase(),
         awayAbbr: ABBR[away] || away.split(' ').pop().slice(0,3).toUpperCase(),
         homeAbbr: ABBR[home] || home.split(' ').pop().slice(0,3).toUpperCase(),
-        awayRecord: 'See NFL standings', homeRecord: 'See NFL standings',
-        awayAwayRecord: 'N/A', homeHomeRecord: 'N/A',
+        awayRecord: awayRec.total || 'N/A', homeRecord: homeRec.total || 'N/A',
+        awayAwayRecord: awayRec.road || 'N/A', homeHomeRecord: homeRec.home || 'N/A',
         awayLast5: 'N/A', homeLast5: 'N/A', awayLast10: 'N/A', homeLast10: 'N/A',
         awayStreak: 'N/A', homeStreak: 'N/A',
         awayML, homeML,
@@ -294,7 +341,7 @@ async function fetchNFLGames(dateParam) {
         awayOffense: 'Check NFL stats', homeOffense: 'Check NFL stats',
         awayDefense: 'Check NFL stats', homeDefense: 'Check NFL stats',
         h2hLast5: 'Check NFL H2H history',
-        injuries: 'Check rotowire.com/football/nfl/injury-report.php',
+        injuries: [nflInjuries[away] && `${away}: ${nflInjuries[away]}`, nflInjuries[home] && `${home}: ${nflInjuries[home]}`].filter(Boolean).join(' | ') || 'None reported',
         weather: 'Check game time weather',
         cbsPreview: await fetchGameNarrative(away, home, 'NFL'),
         gameStatus: 'Scheduled',
@@ -306,6 +353,355 @@ async function fetchNFLGames(dateParam) {
     return games; // slots applied externally
   } catch (err) {
     console.error('NFL games error:', err.message);
+    return [];
+  }
+}
+
+// ── CFB (College Football) ───────────────────────────────────────────────────
+// Rankings (AP Top 25) matter a lot for CFB specifically — the mentorship
+// this engine is built from treats ranked games as the primary scrutiny
+// filter. ESPN's scoreboard embeds curatedRank + records directly per team,
+// so one call covers rank, full/home/road records, and neutral-site status
+// for the whole slate.
+async function fetchCFBScoreboardData(dateParam) {
+  const records = {}, ranks = {}, neutralSites = {};
+  try {
+    const dateStr = (dateParam || todayStr()).replace(/-/g, '');
+    const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=${dateStr}&groups=80&limit=200`, { cache: 'no-store' });
+    if (!res.ok) return { records, ranks, neutralSites };
+    const data = await res.json();
+    for (const ev of data.events || []) {
+      const comp = ev.competitions?.[0];
+      if (!comp) continue;
+      const homeC = comp.competitors?.find(c => c.homeAway === 'home');
+      const awayC = comp.competitors?.find(c => c.homeAway === 'away');
+      for (const c of comp.competitors || []) {
+        const name = c.team?.displayName;
+        if (!name) continue;
+        records[name] = {
+          total: c.records?.find(r => r.type === 'total')?.summary || 'N/A',
+          home: c.records?.find(r => r.type === 'home')?.summary || 'N/A',
+          road: c.records?.find(r => r.type === 'road')?.summary || 'N/A',
+        };
+        const rank = c.curatedRank?.current;
+        if (rank && rank <= 25) ranks[name] = rank;
+      }
+      if (awayC?.team?.displayName && homeC?.team?.displayName) {
+        neutralSites[`${awayC.team.displayName}@${homeC.team.displayName}`] = !!comp.neutralSite;
+      }
+    }
+  } catch {}
+  return { records, ranks, neutralSites };
+}
+
+async function fetchCFBGames(dateParam) {
+  try {
+    // Season: late August through the January championship game
+    const month = new Date().getMonth() + 1;
+    if (month >= 2 && month <= 7) return []; // Feb-Jul = offseason
+
+    const ODDS_KEY = process.env.ODDS_API_KEY;
+    if (!ODDS_KEY) return [];
+
+    const [{ records: cfbRecords, ranks: cfbRanks, neutralSites }] = await Promise.all([
+      fetchCFBScoreboardData(dateParam),
+    ]);
+
+    const BOOKS = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'bet365'];
+    const res = await fetch(
+      `https://api.the-odds-api.com/v4/sports/americanfootball_ncaaf/odds/?apiKey=${ODDS_KEY}&regions=us&markets=h2h,spreads,totals&oddsFormat=american&bookmakers=${BOOKS.join(',')}`,
+      { cache: 'no-store' }
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+
+    const targetDate = dateParam || todayStr();
+    const filtered = data.filter(game => {
+      if (!game.commence_time) return false;
+      const gameDate = new Date(game.commence_time);
+      const ct = new Date(gameDate.getTime() - 5 * 60 * 60 * 1000);
+      return ct.toISOString().split('T')[0] === targetDate;
+    });
+    if (filtered.length === 0) return [];
+
+    const cfbScores = await fetchESPNFinalScores('football/college-football', targetDate);
+
+    const games = (await Promise.all(filtered.map(async (game, i) => {
+      const away = (game.away_team || '').trim();
+      const home = (game.home_team || '').trim();
+
+      let awayML = 'N/A', homeML = 'N/A', spread = 'N/A', total = 'N/A';
+      let awaySpreadPrice = null, homeSpreadPrice = null, overPrice = null, underPrice = null;
+      const bookPrices = {};
+      const _raw = {};
+
+      const PRIORITY = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'bet365'];
+      const books = (game.bookmakers || []).sort((a,b) => PRIORITY.indexOf(a.key) - PRIORITY.indexOf(b.key));
+
+      books.forEach(bm => {
+        const label = bm.key === 'draftkings' ? 'DK' : bm.key === 'fanduel' ? 'FD' : bm.key === 'betmgm' ? 'MGM' : bm.key === 'caesars' ? 'CZR' : 'B365';
+        bm.markets?.forEach(mkt => {
+          if (mkt.key === 'h2h') mkt.outcomes?.forEach(o => {
+            if (o.name === away && awayML === 'N/A') awayML = fmt(o.price);
+            if (o.name === home && homeML === 'N/A') homeML = fmt(o.price);
+            bookPrices[label] = bookPrices[label] || {};
+            _raw[bm.key] = _raw[bm.key] || {};
+            if (o.name === away) { bookPrices[label].away = fmt(o.price); _raw[bm.key].away = o.price; }
+            if (o.name === home) { bookPrices[label].home = fmt(o.price); _raw[bm.key].home = o.price; }
+          });
+          if (mkt.key === 'spreads') mkt.outcomes?.forEach(o => {
+            if (o.name === home && spread === 'N/A') {
+              spread = o.point > 0 ? `+${o.point}` : `${o.point}`;
+              homeSpreadPrice = fmt(o.price);
+            }
+            if (o.name === away && !awaySpreadPrice) {
+              awaySpreadPrice = fmt(o.price);
+            }
+          });
+          if (mkt.key === 'totals') mkt.outcomes?.forEach(o => {
+            if (o.name === 'Over' && total === 'N/A') total = o.point;
+            if (o.name === 'Over' && !overPrice) overPrice = fmt(o.price);
+            if (o.name === 'Under' && !underPrice) underPrice = fmt(o.price);
+          });
+        });
+      });
+
+      const b365 = _raw['bet365']?.away;
+      const fd = _raw['fanduel']?.away;
+      const dk = _raw['draftkings']?.away;
+      const crossBookSignals = [];
+      if (b365 && fd && Math.abs(b365-fd) >= 10) crossBookSignals.push(`B365 ${fmt(b365)} vs FD ${fmt(fd)} — sharp on ${b365<fd?away.split(' ').pop():home.split(' ').pop()}`);
+      if (b365 && dk && Math.abs(b365-dk) >= 10) crossBookSignals.push(`B365 ${fmt(b365)} vs DK ${fmt(dk)} — sharp on ${b365<dk?away.split(' ').pop():home.split(' ').pop()}`);
+      if (fd && dk && Math.abs(fd-dk) >= 8) crossBookSignals.push(`FD ${fmt(fd)} vs DK ${fmt(dk)} — divergence on ${fd<dk?away.split(' ').pop():home.split(' ').pop()}`);
+
+      const gameDate = new Date(game.commence_time).toISOString().split('T')[0];
+      const espnScore = lookupESPNScore(cfbScores, away, home);
+
+      const sbOpening = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+      const cfbGameKey = `cfb-${gameDate}-${away}@${home}`;
+      const currentForFreeze = { awayML, homeML, spread, awaySpreadPrice, homeSpreadPrice, total, overPrice, underPrice };
+      const opening = await getOrFreezeOpeningLine(sbOpening, cfbGameKey, gameDate, 'CFB', currentForFreeze);
+      const openingAwayML = opening?.away_ml != null ? (opening.away_ml > 0 ? `+${opening.away_ml}` : `${opening.away_ml}`) : (awayML || 'N/A');
+      const openingHomeML = opening?.home_ml != null ? (opening.home_ml > 0 ? `+${opening.home_ml}` : `${opening.home_ml}`) : (homeML || 'N/A');
+      const trueLineMovement = buildTrueLineMovementText(opening, currentForFreeze);
+
+      const awayRec = cfbRecords[away] || {};
+      const homeRec = cfbRecords[home] || {};
+
+      return {
+        id: `cfb-${gameDate}-${i}`, sport: 'CFB',
+        rawTime: game.commence_time,
+        time: formatTime(game.commence_time),
+        date: gameDate,
+        away, home,
+        isFinal: espnScore?.isFinal ?? false,
+        awayScore: espnScore?.awayScore ?? null,
+        homeScore: espnScore?.homeScore ?? null,
+        awayAbbr: away.split(' ').pop().slice(0,4).toUpperCase(),
+        homeAbbr: home.split(' ').pop().slice(0,4).toUpperCase(),
+        awayRank: cfbRanks[away] || null, homeRank: cfbRanks[home] || null,
+        awayRecord: awayRec.total || 'N/A', homeRecord: homeRec.total || 'N/A',
+        awayAwayRecord: awayRec.road || 'N/A', homeHomeRecord: homeRec.home || 'N/A',
+        isNeutralSite: !!neutralSites[`${away}@${home}`],
+        awayLast5: 'N/A', homeLast5: 'N/A', awayLast10: 'N/A', homeLast10: 'N/A',
+        awayStreak: 'N/A', homeStreak: 'N/A',
+        awayML, homeML,
+        openingAwayML, openingHomeML,
+        spread, total,
+        awaySpreadPrice: awaySpreadPrice || '-110',
+        homeSpreadPrice: homeSpreadPrice || '-110',
+        overPrice: overPrice || '-110',
+        underPrice: underPrice || '-110',
+        lineMovement: trueLineMovement,
+        sharpSignal: crossBookSignals.join(' | ') || 'No cross-book divergence',
+        betPercentage: 'Available with paid tier',
+        moneyPercentage: 'Available with paid tier',
+        h2hLast5: 'Check CFB H2H history',
+        injuries: 'Check rotowire.com/football/college/injury-report.php',
+        weather: 'Check game time weather',
+        cbsPreview: await fetchGameNarrative(away, home, 'CFB'),
+        gameStatus: 'Scheduled',
+        week: 'N/A', gameType: 'Regular Season',
+        slot: null,
+      };
+    }))).filter(Boolean);
+
+    return games; // slots applied externally
+  } catch (err) {
+    console.error('CFB games error:', err.message);
+    return [];
+  }
+}
+
+// ── CBB (College Basketball) ─────────────────────────────────────────────────
+// No admin-assigned slot pattern — ranked-vs-unranked status is the
+// orientation, decided inside the analysis itself (see lib/analysisEngine.js
+// buildCBBStage2Prompt). Matches Tennis's genuine no-slot treatment.
+async function fetchCBBScoreboardData(dateParam) {
+  const records = {}, ranks = {}, neutralSites = {};
+  try {
+    const dateStr = (dateParam || todayStr()).replace(/-/g, '');
+    const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?dates=${dateStr}&groups=50&limit=300`, { cache: 'no-store' });
+    if (!res.ok) return { records, ranks, neutralSites };
+    const data = await res.json();
+    for (const ev of data.events || []) {
+      const comp = ev.competitions?.[0];
+      if (!comp) continue;
+      const homeC = comp.competitors?.find(c => c.homeAway === 'home');
+      const awayC = comp.competitors?.find(c => c.homeAway === 'away');
+      for (const c of comp.competitors || []) {
+        const name = c.team?.displayName;
+        if (!name) continue;
+        records[name] = {
+          total: c.records?.find(r => r.type === 'total')?.summary || 'N/A',
+          home: c.records?.find(r => r.type === 'home')?.summary || 'N/A',
+          road: c.records?.find(r => r.type === 'road')?.summary || 'N/A',
+        };
+        const rank = c.curatedRank?.current;
+        if (rank && rank <= 25) ranks[name] = rank;
+      }
+      if (awayC?.team?.displayName && homeC?.team?.displayName) {
+        neutralSites[`${awayC.team.displayName}@${homeC.team.displayName}`] = !!comp.neutralSite;
+      }
+    }
+  } catch {}
+  return { records, ranks, neutralSites };
+}
+
+async function fetchCBBGames(dateParam) {
+  try {
+    // Season: early November through the April championship
+    const month = new Date().getMonth() + 1;
+    if (month >= 5 && month <= 10) return []; // May-Oct = offseason
+
+    const ODDS_KEY = process.env.ODDS_API_KEY;
+    if (!ODDS_KEY) return [];
+
+    const { records: cbbRecords, ranks: cbbRanks, neutralSites } = await fetchCBBScoreboardData(dateParam);
+
+    const BOOKS = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'bet365'];
+    const res = await fetch(
+      `https://api.the-odds-api.com/v4/sports/basketball_ncaab/odds/?apiKey=${ODDS_KEY}&regions=us&markets=h2h,spreads,totals&oddsFormat=american&bookmakers=${BOOKS.join(',')}`,
+      { cache: 'no-store' }
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+
+    const targetDate = dateParam || todayStr();
+    const filtered = data.filter(game => {
+      if (!game.commence_time) return false;
+      const gameDate = new Date(game.commence_time);
+      const ct = new Date(gameDate.getTime() - 5 * 60 * 60 * 1000);
+      return ct.toISOString().split('T')[0] === targetDate;
+    });
+    if (filtered.length === 0) return [];
+
+    const cbbScores = await fetchESPNFinalScores('basketball/mens-college-basketball', targetDate);
+
+    const games = (await Promise.all(filtered.map(async (game, i) => {
+      const away = (game.away_team || '').trim();
+      const home = (game.home_team || '').trim();
+
+      let awayML = 'N/A', homeML = 'N/A', spread = 'N/A', total = 'N/A';
+      let awaySpreadPrice = null, homeSpreadPrice = null, overPrice = null, underPrice = null;
+      const bookPrices = {};
+      const _raw = {};
+
+      const PRIORITY = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'bet365'];
+      const books = (game.bookmakers || []).sort((a,b) => PRIORITY.indexOf(a.key) - PRIORITY.indexOf(b.key));
+
+      books.forEach(bm => {
+        const label = bm.key === 'draftkings' ? 'DK' : bm.key === 'fanduel' ? 'FD' : bm.key === 'betmgm' ? 'MGM' : bm.key === 'caesars' ? 'CZR' : 'B365';
+        bm.markets?.forEach(mkt => {
+          if (mkt.key === 'h2h') mkt.outcomes?.forEach(o => {
+            if (o.name === away && awayML === 'N/A') awayML = fmt(o.price);
+            if (o.name === home && homeML === 'N/A') homeML = fmt(o.price);
+            bookPrices[label] = bookPrices[label] || {};
+            _raw[bm.key] = _raw[bm.key] || {};
+            if (o.name === away) { bookPrices[label].away = fmt(o.price); _raw[bm.key].away = o.price; }
+            if (o.name === home) { bookPrices[label].home = fmt(o.price); _raw[bm.key].home = o.price; }
+          });
+          if (mkt.key === 'spreads') mkt.outcomes?.forEach(o => {
+            if (o.name === home && spread === 'N/A') {
+              spread = o.point > 0 ? `+${o.point}` : `${o.point}`;
+              homeSpreadPrice = fmt(o.price);
+            }
+            if (o.name === away && !awaySpreadPrice) {
+              awaySpreadPrice = fmt(o.price);
+            }
+          });
+          if (mkt.key === 'totals') mkt.outcomes?.forEach(o => {
+            if (o.name === 'Over' && total === 'N/A') total = o.point;
+            if (o.name === 'Over' && !overPrice) overPrice = fmt(o.price);
+            if (o.name === 'Under' && !underPrice) underPrice = fmt(o.price);
+          });
+        });
+      });
+
+      const b365 = _raw['bet365']?.away;
+      const fd = _raw['fanduel']?.away;
+      const dk = _raw['draftkings']?.away;
+      const crossBookSignals = [];
+      if (b365 && fd && Math.abs(b365-fd) >= 10) crossBookSignals.push(`B365 ${fmt(b365)} vs FD ${fmt(fd)} — sharp on ${b365<fd?away.split(' ').pop():home.split(' ').pop()}`);
+      if (b365 && dk && Math.abs(b365-dk) >= 10) crossBookSignals.push(`B365 ${fmt(b365)} vs DK ${fmt(dk)} — sharp on ${b365<dk?away.split(' ').pop():home.split(' ').pop()}`);
+      if (fd && dk && Math.abs(fd-dk) >= 8) crossBookSignals.push(`FD ${fmt(fd)} vs DK ${fmt(dk)} — divergence on ${fd<dk?away.split(' ').pop():home.split(' ').pop()}`);
+
+      const gameDate = new Date(game.commence_time).toISOString().split('T')[0];
+      const espnScore = lookupESPNScore(cbbScores, away, home);
+
+      const sbOpening = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+      const cbbGameKey = `cbb-${gameDate}-${away}@${home}`;
+      const currentForFreeze = { awayML, homeML, spread, awaySpreadPrice, homeSpreadPrice, total, overPrice, underPrice };
+      const opening = await getOrFreezeOpeningLine(sbOpening, cbbGameKey, gameDate, 'CBB', currentForFreeze);
+      const openingAwayML = opening?.away_ml != null ? (opening.away_ml > 0 ? `+${opening.away_ml}` : `${opening.away_ml}`) : (awayML || 'N/A');
+      const openingHomeML = opening?.home_ml != null ? (opening.home_ml > 0 ? `+${opening.home_ml}` : `${opening.home_ml}`) : (homeML || 'N/A');
+      const trueLineMovement = buildTrueLineMovementText(opening, currentForFreeze);
+
+      const awayRec = cbbRecords[away] || {};
+      const homeRec = cbbRecords[home] || {};
+
+      return {
+        id: `cbb-${gameDate}-${i}`, sport: 'CBB',
+        rawTime: game.commence_time,
+        time: formatTime(game.commence_time),
+        date: gameDate,
+        away, home,
+        isFinal: espnScore?.isFinal ?? false,
+        awayScore: espnScore?.awayScore ?? null,
+        homeScore: espnScore?.homeScore ?? null,
+        awayAbbr: away.split(' ').pop().slice(0,4).toUpperCase(),
+        homeAbbr: home.split(' ').pop().slice(0,4).toUpperCase(),
+        awayRank: cbbRanks[away] || null, homeRank: cbbRanks[home] || null,
+        awayRecord: awayRec.total || 'N/A', homeRecord: homeRec.total || 'N/A',
+        awayAwayRecord: awayRec.road || 'N/A', homeHomeRecord: homeRec.home || 'N/A',
+        isNeutralSite: !!neutralSites[`${away}@${home}`],
+        awayLast5: 'N/A', homeLast5: 'N/A', awayLast10: 'N/A', homeLast10: 'N/A',
+        awayStreak: 'N/A', homeStreak: 'N/A',
+        awayML, homeML,
+        openingAwayML, openingHomeML,
+        spread, total,
+        awaySpreadPrice: awaySpreadPrice || '-110',
+        homeSpreadPrice: homeSpreadPrice || '-110',
+        overPrice: overPrice || '-110',
+        underPrice: underPrice || '-110',
+        lineMovement: trueLineMovement,
+        sharpSignal: crossBookSignals.join(' | ') || 'No cross-book divergence',
+        betPercentage: 'Available with paid tier',
+        moneyPercentage: 'Available with paid tier',
+        h2hLast5: 'Check CBB H2H history',
+        injuries: 'None reported',
+        cbsPreview: await fetchGameNarrative(away, home, 'CBB'),
+        gameStatus: 'Scheduled',
+        week: 'N/A', gameType: 'Regular Season',
+        // No admin slot system for CBB — fixed default, matches Tennis's
+        // no-slot convention (see lib/sports.js hasSlotSystem: false).
+        slot: 'CBB',
+      };
+    }))).filter(Boolean);
+
+    return games;
+  } catch (err) {
+    console.error('CBB games error:', err.message);
     return [];
   }
 }
@@ -2195,12 +2591,14 @@ export async function GET(request) {
     const dateParam = searchParams.get('date') || todayStr();
     const isPast = dateParam < todayStr();
 
-    const [scheduleGames, mlbOddsResult, nbaGamesRaw, nflGamesRaw, wnbaGamesRaw] = await Promise.all([
+    const [scheduleGames, mlbOddsResult, nbaGamesRaw, nflGamesRaw, wnbaGamesRaw, cfbGamesRaw, cbbGames] = await Promise.all([
       fetchMLBSchedule(dateParam),
       isPast ? Promise.resolve({ oddsMap: {}, bookmakerCount: 0 }) : fetchOdds('baseball_mlb', dateParam),
       isPast ? Promise.resolve([]) : fetchNBAGames(dateParam),
       isPast ? Promise.resolve([]) : fetchNFLGames(dateParam),
       isPast ? Promise.resolve([]) : fetchWNBAGames(dateParam),
+      isPast ? Promise.resolve([]) : fetchCFBGames(dateParam),
+      isPast ? Promise.resolve([]) : fetchCBBGames(dateParam),
     ]);
     const mlbOdds = mlbOddsResult.oddsMap || mlbOddsResult;
     const mlbBookmakerCount = mlbOddsResult.bookmakerCount || 0;
@@ -2262,7 +2660,18 @@ export async function GET(request) {
     } catch {}
     const wnbaGames = wnbaPattern ? assignSlotFromPattern(wnbaGamesRaw, wnbaPattern) : wnbaGamesRaw;
 
-    const allGames = [...mlbGames, ...nbaGames, ...wnbaGames, ...nflGames];
+    // Fetch CFB slot pattern and apply (admin PUBLIC/VEGAS pattern, same as NFL/NBA)
+    let cfbPattern = null;
+    try {
+      const sb5 = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+      const { data: nd4 } = await sb5.from('slot_patterns').select('pattern').eq('date', dateParam).eq('sport', 'cfb').maybeSingle();
+      if (nd4?.pattern?.length) cfbPattern = nd4.pattern;
+    } catch {}
+    const cfbGames = assignSlotFromPattern(cfbGamesRaw, cfbPattern);
+
+    // CBB has no slot pattern — fetchCBBGames already set slot: 'CBB' directly.
+
+    const allGames = [...mlbGames, ...nbaGames, ...wnbaGames, ...nflGames, ...cfbGames, ...cbbGames];
 
     // ── LIVE AI INSIGHTS from real line movement data ────────────────────────
     const insights = [];
