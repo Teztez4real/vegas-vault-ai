@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { ENABLED_TEAM_SPORT_KEYS } from '../lib/sports';
 
 const PLANS = [
   {
@@ -8,7 +9,7 @@ const PLANS = [
     label: 'Weekly',
     price: '$19.99',
     period: '/week',
-    features: ['Full Vegas Vault AI model', 'MLB, NBA, NFL, Tennis', 'Auto-generated plays', 'Trell Rule alerts', 'Props AI', 'Play history'],
+    features: ['Full Vegas Vault AI model', ENABLED_TEAM_SPORT_KEYS.join(', '), 'Auto-generated plays', 'Trell Rule alerts', 'Props AI', 'Play history'],
     highlight: false,
   },
   {

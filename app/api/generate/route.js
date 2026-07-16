@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { AI_MODEL } from '@/lib/aiModel';
-import { hasStartingPitchers, isOutdoorSport } from '@/lib/sports';
+import { hasStartingPitchers, isOutdoorSport, sportCategory } from '@/lib/sports';
 import {
   buildStage1Prompt, buildStage2Prompt, buildStage3Prompt, buildStage4Prompt,
   buildNBAStage1Prompt, buildNBAStage2Prompt, buildNBAStage3Prompt, buildNBAStage4Prompt,
@@ -104,50 +104,28 @@ Do not search for things already provided in the data above. Keep searches focus
   }
 }
 
+// Every enabled sport MUST have an explicit entry here. This is a lookup,
+// not an if/else with a fallback — a sport missing from this map throws
+// in getStages() below rather than silently reusing MLB's baseball-specific
+// Stage 1-4 prompts (the exact bug class lib/sports.js was built to end).
+// Adding a future sport = write its buildXStage1-4Prompt functions in
+// lib/analysisEngine.js, import them above, and add one entry here.
+const STAGE_BUILDERS = {
+  MLB: { s1: buildStage1Prompt, s2: buildStage2Prompt, s3: buildStage3Prompt, s4: buildStage4Prompt },
+  NBA: { s1: buildNBAStage1Prompt, s2: buildNBAStage2Prompt, s3: buildNBAStage3Prompt, s4: buildNBAStage4Prompt },
+  NFL: { s1: buildNFLStage1Prompt, s2: buildNFLStage2Prompt, s3: buildNFLStage3Prompt, s4: buildNFLStage4Prompt },
+  Tennis: { s1: buildTennisStage1Prompt, s2: buildTennisStage2Prompt, s3: buildTennisStage3Prompt, s4: buildTennisStage4Prompt },
+  WNBA: { s1: buildWNBAStage1Prompt, s2: buildWNBAStage2Prompt, s3: buildWNBAStage3Prompt, s4: buildWNBAStage4Prompt },
+  CFB: { s1: buildCFBStage1Prompt, s2: buildCFBStage2Prompt, s3: buildCFBStage3Prompt, s4: buildCFBStage4Prompt },
+  CBB: { s1: buildCBBStage1Prompt, s2: buildCBBStage2Prompt, s3: buildCBBStage3Prompt, s4: buildCBBStage4Prompt },
+};
+
 function getStages(sport) {
-  if (sport === 'NBA') return {
-    s1: buildNBAStage1Prompt,
-    s2: buildNBAStage2Prompt,
-    s3: buildNBAStage3Prompt,
-    s4: buildNBAStage4Prompt,
-  };
-  if (sport === 'NFL') return {
-    s1: buildNFLStage1Prompt,
-    s2: buildNFLStage2Prompt,
-    s3: buildNFLStage3Prompt,
-    s4: buildNFLStage4Prompt,
-  };
-  if (sport === 'Tennis') return {
-    s1: buildTennisStage1Prompt,
-    s2: buildTennisStage2Prompt,
-    s3: buildTennisStage3Prompt,
-    s4: buildTennisStage4Prompt,
-  };
-  if (sport === 'WNBA') return {
-    s1: buildWNBAStage1Prompt,
-    s2: buildWNBAStage2Prompt,
-    s3: buildWNBAStage3Prompt,
-    s4: buildWNBAStage4Prompt,
-  };
-  if (sport === 'CFB') return {
-    s1: buildCFBStage1Prompt,
-    s2: buildCFBStage2Prompt,
-    s3: buildCFBStage3Prompt,
-    s4: buildCFBStage4Prompt,
-  };
-  if (sport === 'CBB') return {
-    s1: buildCBBStage1Prompt,
-    s2: buildCBBStage2Prompt,
-    s3: buildCBBStage3Prompt,
-    s4: buildCBBStage4Prompt,
-  };
-  // MLB only — base engine
-  return {
-    s1: buildStage1Prompt,
-    s2: buildStage2Prompt,
-    s3: buildStage3Prompt,
-    s4: buildStage4Prompt,
-  };
+  const stages = STAGE_BUILDERS[sport];
+  if (!stages) {
+    throw new Error(`No 4-stage analysis flow registered for sport "${sport}" — add it to STAGE_BUILDERS in app/api/generate/route.js before enabling it in lib/sports.js.`);
+  }
+  return stages;
 }
 
 function passResult(reason, slot) {
@@ -193,20 +171,38 @@ export async function POST(request) {
     // not a fixed template.
     // Registry-driven capability checks — NOT hardcoded sport-name lists.
     // A future sport added to lib/sports.js automatically lands in the right
-    // branch based on its declared characteristics, instead of silently
-    // falling into whichever branch happened to be the `else`.
+    // branch based on its declared category, instead of silently falling
+    // into whichever branch happened to be the `else`. (CBB/CFB previously
+    // fell into the generic else here despite having real matchupFacts to
+    // build — sport-name checks only listed NBA/WNBA/NFL.)
+    const category = sportCategory(sport);
     const isMLB = hasStartingPitchers(sport);       // baseball-only concept
-    const isBasketball = sport === 'NBA' || sport === 'WNBA';
-    const isFootball = sport === 'NFL';
+    // Ranked sports (CFB, CBB) don't have PPG/offense-defense stats fetched —
+    // only rank + record + form — so they need their own branch rather than
+    // borrowing NBA/WNBA's PPG fields or NFL's offense/defense fields, which
+    // would just render as misleading "attempted but N/A" padding. Checked
+    // before category so a ranked sport is never mistaken for its category's
+    // stat-based sibling (e.g. CBB vs NBA, both 'basketball').
+    const isRanked = game.awayRank != null || game.homeRank != null;
+    const isBasketball = !isRanked && category === 'basketball';
+    const isFootball = !isRanked && category === 'football';
     const isOutdoor = isOutdoorSport(sport);
 
-    let matchupFacts, pitchingFacts, hitterLineup, seriesContext;
+    let matchupFacts, pitchingFacts, hitterLineup, seriesContext, rankGap;
 
     if (isMLB) {
       pitchingFacts = `Away starter: ${game.awayPitcher || 'TBD'} | ${game.awayPitcherStats || 'Stats N/A'} | Home starter: ${game.homePitcher || 'TBD'} | ${game.homePitcherStats || 'Stats N/A'} | Away bullpen: ${game.awayBullpen || 'N/A'} | Home bullpen: ${game.homeBullpen || 'N/A'} | Away starter vs this opponent (career, last 6 seasons): ${game.awayPitcherVsOpponent || 'N/A'} | Home starter vs this opponent (career, last 6 seasons): ${game.homePitcherVsOpponent || 'N/A'}`;
       hitterLineup = `Away offense: ${game.awayOffense || game.awayLineup || 'N/A'} | Home offense: ${game.homeOffense || game.homeLineup || 'N/A'} | Away batter splits vs pitcher: ${game.awayBatterSplits || 'N/A'} | Home batter splits vs pitcher: ${game.homeBatterSplits || 'N/A'}`;
       seriesContext = `${game.seriesContext || 'N/A'} | Type: ${game.gameType || 'Regular Season'} | Record: ${game.seriesRecord || 'N/A'} | Playoff: ${game.playoffContext || 'N/A'} — MANDATORY: State actual series game number and record for ${game.away} vs ${game.home}. Use your knowledge if API data is missing. Never say not specified.`;
       matchupFacts = `${pitchingFacts} || ${hitterLineup}`; // MLB's "matchup" IS the pitching/hitting matchup
+    } else if (isRanked) {
+      // CFB/CBB: no advanced stats fetched yet — rank, record, and form are
+      // the real signal. The AI is told plainly that's the case rather than
+      // fed borrowed PPG/offense-defense fields that don't apply here.
+      matchupFacts = `No advanced offense/defense or pace stats tracked for this sport — assess the matchup from rank, full-season record, road/home splits, and recent form below.`;
+      pitchingFacts = 'N/A — not a baseball game';
+      hitterLineup = 'N/A — not a baseball game';
+      seriesContext = 'N/A — no multi-game series format';
     } else if (isBasketball) {
       // Real computed scoring stats (PPG/OppPPG/pace) — see fetchNBARecentForm
       // / fetchWNBARecentForm. Deliberately no OffRtg/DefRtg — those aren't
@@ -229,6 +225,13 @@ export async function POST(request) {
       seriesContext = 'N/A';
     }
 
+    // Referenced directly by CFB/CBB's Stage 2 prompts (lib/analysisEngine.js)
+    // as the headline signal for those sports — must always be set for any
+    // ranked sport, never left undefined.
+    rankGap = isRanked
+      ? `Away ${game.awayRank ? `#${game.awayRank}` : 'unranked'} vs Home ${game.homeRank ? `#${game.homeRank}` : 'unranked'}`
+      : 'N/A — not a ranked sport';
+
     const stage1 = {
       awayFacts: `${game.away}: ${game.awayRecord || 'N/A'} | L5: ${game.awayLast5 || 'N/A'} | L10: ${game.awayLast10 || 'N/A'} | Streak: ${game.awayStreak || 'N/A'} | Away record: ${game.awayAwayRecord || 'N/A'}`,
       homeFacts: `${game.home}: ${game.homeRecord || 'N/A'} | L5: ${game.homeLast5 || 'N/A'} | L10: ${game.homeLast10 || 'N/A'} | Streak: ${game.homeStreak || 'N/A'} | Home record: ${game.homeHomeRecord || 'N/A'}`,
@@ -238,6 +241,7 @@ export async function POST(request) {
       hitterLineup,
       seriesContext,
       matchupFacts,
+      rankGap,
       situationalFacts: `${isMLB ? `Series: ${game.seriesContext || 'N/A'} | ` : isFootball ? `Week: ${game.week || 'N/A'} | ` : ''}Rest: Away ${game.awayRest || 'N/A'} Home ${game.homeRest || 'N/A'} | B2B: Away ${game.awayB2B ? 'YES' : 'No'} Home ${game.homeB2B ? 'YES' : 'No'}`,
       injuries: game.injuries || 'None reported',
       weather: isOutdoor ? (game.weather || 'N/A') : 'N/A — indoor sport',

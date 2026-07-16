@@ -6,7 +6,7 @@ function assignNFLSlots(games, pattern) {
 }
 import { createClient } from '@supabase/supabase-js';
 import { getOrFreezeOpeningLine, buildTrueLineMovementText } from '@/lib/openingLines';
-import { espnPathFor, oddsApiKeyFor } from '@/lib/sports';
+import { espnPathFor, oddsApiKeyFor, isSportInSeason } from '@/lib/sports';
 
 // ── UTILITIES ─────────────────────────────────────────────────────────────────
 
@@ -196,9 +196,8 @@ async function fetchNFLInjuries() {
 
 async function fetchNFLGames(dateParam) {
   try {
-    // Check if NFL season is active (September through February)
-    const month = new Date().getMonth() + 1; // 1-12
-    if (month >= 3 && month <= 8) return []; // March-August = offseason, no games
+    // Season window lives once in lib/sports.js — never duplicate it here.
+    if (!isSportInSeason('NFL')) return [];
 
     const ODDS_KEY = process.env.ODDS_API_KEY;
     if (!ODDS_KEY) return [];
@@ -396,9 +395,8 @@ async function fetchCFBScoreboardData(dateParam) {
 
 async function fetchCFBGames(dateParam) {
   try {
-    // Season: late August through the January championship game
-    const month = new Date().getMonth() + 1;
-    if (month >= 2 && month <= 7) return []; // Feb-Jul = offseason
+    // Season window lives once in lib/sports.js — never duplicate it here.
+    if (!isSportInSeason('CFB')) return [];
 
     const ODDS_KEY = process.env.ODDS_API_KEY;
     if (!ODDS_KEY) return [];
@@ -570,9 +568,8 @@ async function fetchCBBScoreboardData(dateParam) {
 
 async function fetchCBBGames(dateParam) {
   try {
-    // Season: early November through the April championship
-    const month = new Date().getMonth() + 1;
-    if (month >= 5 && month <= 10) return []; // May-Oct = offseason
+    // Season window lives once in lib/sports.js — never duplicate it here.
+    if (!isSportInSeason('CBB')) return [];
 
     const ODDS_KEY = process.env.ODDS_API_KEY;
     if (!ODDS_KEY) return [];
@@ -1678,8 +1675,8 @@ async function fetchNBAPlayoffContext(awayTeam, homeTeam, date) {
 
 async function fetchNBAGames(date) {
   try {
-    const month = new Date().getMonth() + 1;
-    if (month >= 7 && month <= 9) return [];
+    // Season window lives once in lib/sports.js — never duplicate it here.
+    if (!isSportInSeason('NBA')) return [];
     const nbaRecords = await fetchNBARecords();
     const res = await fetch(
       `https://api.the-odds-api.com/v4/sports/basketball_nba/odds/?apiKey=${process.env.ODDS_API_KEY}&regions=us&markets=h2h,spreads,totals&oddsFormat=american`,

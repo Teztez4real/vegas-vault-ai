@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import { supabase as _supabase } from '@/lib/supabaseClient';
-import { ENABLED_TEAM_SPORT_KEYS, isOutdoorSport, hasMultiGameSeries } from '@/lib/sports';
+import { ENABLED_TEAM_SPORT_KEYS, isOutdoorSport, hasMultiGameSeries, getSport, hasSlotSystem, isSportInSeason } from '@/lib/sports';
 
 import NewLookShell from '@/components/NewLookShell';
 import '@/app/new-look.css';
@@ -3342,13 +3342,16 @@ export default function VegasVaultApp() {
         .vv-em{background:rgba(246,255,246,0.6);border:1px solid rgba(195,240,195,0.5);border-radius:10px;padding:10px;text-align:center}
         .vv-em-v{font-size:16px;font-weight:800;color:#111}
         .vv-em-l{font-size:8px;color:#aaa;text-transform:uppercase;letter-spacing:0.4px;margin-top:1px}
-        .vv-model-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+        .vv-model-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
         .vv-model-card{padding:14px}
         .vv-model-hd{display:flex;align-items:center;gap:10px;margin-bottom:10px}
-        .vv-model-ic{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-weight:800;color:#fff}
+        .vv-model-ic{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:10px;font-weight:800;color:#fff}
         .vv-model-ic.mlb{background:linear-gradient(135deg,#003278,#0a4ba0)}
         .vv-model-ic.nba{background:linear-gradient(135deg,#c8102e,#1d428a)}
+        .vv-model-ic.wnba{background:linear-gradient(135deg,#FF6900,#FF8200)}
         .vv-model-ic.nfl{background:linear-gradient(135deg,#013369,#d50a0a)}
+        .vv-model-ic.cfb{background:linear-gradient(135deg,#7A003C,#A6192E)}
+        .vv-model-ic.cbb{background:linear-gradient(135deg,#003DA5,#0057B8)}
         .vv-model-ic.ten{background:linear-gradient(135deg,#33aa00,#39FF14)}
         .vv-model-nm{font-size:12px;font-weight:800;color:#111}
         .vv-model-stages{font-size:9px;color:#aaa}
@@ -3561,7 +3564,7 @@ export default function VegasVaultApp() {
               ))}
             </div>
             <div style={{ padding:'0 28px 20px' }}>
-              {['Full AI analysis on every game — MLB, NBA, NFL, Tennis','Daily Top Play of the Day with AI Lock','Tier 1 / Tier 2 / Pass breakdowns','Scam play alerts, line movement & sharp money','Vault storage for saved plays'].map((f,i)=>(
+              {[`Full AI analysis on every game — ${ENABLED_TEAM_SPORT_KEYS.join(', ')}`,'Daily Top Play of the Day with AI Lock','Tier 1 / Tier 2 / Pass breakdowns','Scam play alerts, line movement & sharp money','Vault storage for saved plays'].map((f,i)=>(
                 <div key={i} style={{ display:'flex',alignItems:'flex-start',gap:8,padding:'6px 0',fontSize:11,color:'#444',lineHeight:1.5 }}>
                   <div style={{ width:18,height:18,borderRadius:'50%',background:'rgba(57,255,20,0.1)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,marginTop:1 }}>
                     <i className="ti ti-check" style={{ fontSize:11,color:'#33aa00' }} />
@@ -3736,7 +3739,7 @@ export default function VegasVaultApp() {
                   <div className="vv-mc-body">
                     <div className="vv-mc-3d"><i className="ti ti-cube-3d-sphere" /></div>
                     <div className="vv-mc-rows">
-                      <div className="vv-mc-r"><span className="vv-mk">Sports:</span><span className="vv-mv">MLB · NBA · NFL · Tennis</span></div>
+                      <div className="vv-mc-r"><span className="vv-mk">Sports:</span><span className="vv-mv">{ENABLED_TEAM_SPORT_KEYS.join(' · ')}</span></div>
                       <div className="vv-mc-r"><span className="vv-mk">Status:</span><span className="vv-mv g">● Active</span></div>
                       <div className="vv-mc-r"><span className="vv-mk">Slot System:</span><span className="vv-mv">Public / Vegas</span></div>
                       <div className="vv-mc-r"><span className="vv-mk">Today's Date:</span><span className="vv-mv">{new Date(selectedDate+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span></div>
@@ -3828,8 +3831,8 @@ export default function VegasVaultApp() {
               return visibleGames.length === 0 ? (
                 <div style={{ textAlign:'center',padding:'30px 0',color:'#ccc',fontSize:11 }}>
                   {filter==='ALL' ? 'No strong plays right now'
-                    : (filter==='MLB' || filter==='WNBA') ? `No ${filter} games scheduled today`
-                    : 'No games'}
+                    : isSportInSeason(filter, selectedDate) ? `No ${filter} games scheduled today`
+                    : `${filter} — Coming Soon`}
                 </div>
               ) : visibleGames.map(game=>{
               const key = `${game.id}-${game.slot}`;
@@ -3943,20 +3946,20 @@ export default function VegasVaultApp() {
               <div style={{ width:32, height:32, border:'3px solid rgba(57,255,20,0.2)', borderTopColor:'#39FF14', borderRadius:'50%', margin:'0 auto 12px', animation:'spin 0.8s linear infinite' }} />
               Loading today's games...
             </div>
-          ) : ((filter === 'MLB' || filter === 'WNBA') && games.filter(g=>g.sport===filter).length === 0) ? (
+          ) : (filter !== 'ALL' && games.filter(g=>g.sport===filter).length === 0 && isSportInSeason(filter, selectedDate)) ? (
             <div className="vv-glass" style={{ padding:'70px 24px', textAlign:'center' }}>
               <div style={{ width:64, height:64, margin:'0 auto 18px', borderRadius:18, background:'linear-gradient(145deg, rgba(57,255,20,0.08), rgba(34,204,0,0.04))', border:'1px solid rgba(57,255,20,0.25)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                <i className={filter==='WNBA' ? "ti ti-ball-basketball" : "ti ti-calendar-off"} style={{ fontSize:30, color:'#39FF14' }} />
+                <i className="ti ti-calendar-off" style={{ fontSize:30, color:'#39FF14' }} />
               </div>
               <div style={{ fontSize:20, fontWeight:800, color:'#111', letterSpacing:-0.3, marginBottom:8 }}>No {filter} Games Today</div>
               <div style={{ fontSize:13, color:'#888', lineHeight:1.6, maxWidth:380, margin:'0 auto' }}>
                 No {filter} games are scheduled for today's slate. Check back tomorrow, or take a look at another sport tab.
               </div>
             </div>
-          ) : ((filter === 'NFL' || filter === 'NBA') && games.filter(g=>g.sport===filter).length === 0) ? (
+          ) : (filter !== 'ALL' && games.filter(g=>g.sport===filter).length === 0 && !isSportInSeason(filter, selectedDate)) ? (
             <div className="vv-glass" style={{ padding:'70px 24px', textAlign:'center' }}>
               <div style={{ width:64, height:64, margin:'0 auto 18px', borderRadius:18, background:'linear-gradient(145deg, rgba(57,255,20,0.08), rgba(34,204,0,0.04))', border:'1px solid rgba(57,255,20,0.25)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                <i className={filter==='NBA' ? "ti ti-ball-basketball" : "ti ti-ball-football"} style={{ fontSize:30, color:'#39FF14' }} />
+                <i className="ti ti-clock-hour-4" style={{ fontSize:30, color:'#39FF14' }} />
               </div>
               <div style={{ fontSize:20, fontWeight:800, color:'#111', letterSpacing:-0.3, marginBottom:8 }}>{filter} — Coming Soon</div>
               <div style={{ fontSize:13, color:'#888', lineHeight:1.6, maxWidth:380, margin:'0 auto' }}>
@@ -4220,12 +4223,22 @@ export default function VegasVaultApp() {
           return { rate, record: total>0?`${w}-${l}`:'—' };
         };
 
-        const models = [
-          { ic:'MLB', cls:'mlb', name:'MLB Model', stages:'4-stage analysis flow', dataSources:'MLB Stats API, The Odds API', slot:'MLB Pattern', ...sportStats('MLB') },
-          { ic:'NBA', cls:'nba', name:'NBA Model', stages:'4-stage analysis flow', dataSources:'ESPN', slot:'NBA Pattern', ...sportStats('NBA') },
-          { ic:'NFL', cls:'nfl', name:'NFL Model', stages:'4-stage analysis flow', dataSources:'CBS, The Odds API', slot:'NFL Pattern', ...sportStats('NFL') },
-          { ic:'ATP', cls:'ten', name:'Tennis Model', stages:'14-step analysis flow', dataSources:'ATP/WTA Live', slot:'N/A', ...sportStats('Tennis') },
-        ];
+        // Every model card is generated from the sport registry — a future
+        // sport just needs an entry in lib/sports.js and it appears here
+        // automatically, always labeled with the same 4-stage flow every
+        // sport actually runs through (app/api/generate/route.js).
+        const models = ENABLED_TEAM_SPORT_KEYS.map(key => {
+          const sport = getSport(key);
+          return {
+            ic: key,
+            cls: key.toLowerCase(),
+            name: `${sport.label} Model`,
+            stages: '4-stage analysis flow',
+            dataSources: sport.dataSources || 'N/A',
+            slot: hasSlotSystem(key) ? `${sport.label} Pattern` : 'N/A',
+            ...sportStats(key),
+          };
+        });
 
         return (
         <div style={{ display:'flex', flexDirection:'column', gap:12, flex:1, minHeight:0, overflowY:'auto' }}>
@@ -4239,7 +4252,7 @@ export default function VegasVaultApp() {
               <div className="vv-engine-icon"><i className="ti ti-cube-3d-sphere" /></div>
               <div className="vv-engine-info">
                 <div className="vv-engine-nm">Vegas Vault Analysis Engine <span className="vv-engine-badge">PREMIUM</span></div>
-                <div className="vv-engine-sub">Core engine · Anthropic Claude API · MLB · NBA · NFL · Tennis</div>
+                <div className="vv-engine-sub">Core engine · Anthropic Claude API · {ENABLED_TEAM_SPORT_KEYS.join(' · ')}</div>
               </div>
             </div>
             <div className="vv-engine-mets">
