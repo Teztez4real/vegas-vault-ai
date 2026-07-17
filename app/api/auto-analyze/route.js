@@ -36,10 +36,6 @@ function isWeekendWNBA(g) {
 // wait on anything themselves.
 async function checkAndNotifySlateComplete(sb, date, base) {
   try {
-    // Already notified for this date — nothing to do.
-    const { data: already } = await sb.from('slate_complete_notifications').select('date').eq('date', date).maybeSingle();
-    if (already) return;
-
     const gamesRes = await fetch(`${base}/api/today?date=${date}`, { cache: 'no-store' });
     if (!gamesRes.ok) return;
     const { games } = await gamesRes.json();
@@ -48,7 +44,7 @@ async function checkAndNotifySlateComplete(sb, date, base) {
     const now = new Date();
     // A game "needs analysis" if it's a slotted MLB/NBA/WNBA/NFL game (has a
     // REAL PUBLIC/VEGAS slot from an admin-saved pattern) or a genuine
-    // no-slot sport (Tennis), and hasn't already started. WNBA is NOT a
+    // no-slot sport (Tennis/CBB), and hasn't already started. WNBA is NOT a
     // no-slot sport — it needs its own admin pattern just like MLB/NBA/NFL;
     // the difference is only that weekend WNBA never auto-analyzes at all
     // (handled by isWeekendWNBA below), regardless of whether a pattern
@@ -67,26 +63,52 @@ async function checkAndNotifySlateComplete(sb, date, base) {
     const { data: rows } = await sb.from('game_analyses').select('away, home, sport, slot').eq('date', date);
     const analyzedKeys = new Set((rows || []).map(r => `${r.away}|${r.home}|${r.sport}`));
 
-    const allDone = needsAnalysis.every(g => analyzedKeys.has(`${g.away}|${g.home}|${g.sport}`));
-    if (!allDone) return;
+    // Group the day's needs-analysis games by sport, so each sport's slate can
+    // complete — and notify — independently ("All NBA plays are ready" fires
+    // when NBA is done, separately from MLB/CFB/etc.).
+    const bySport = {};
+    for (const g of needsAnalysis) (bySport[g.sport] = bySport[g.sport] || []).push(g);
 
-    // Everything's analyzed — send the one-time broadcast and mark it sent.
-    try {
-      await fetch(`${base}/api/push/send`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: '✅ Today\'s Slate Is Ready',
-          body: `All ${needsAnalysis.length} games have been analyzed — open the app to see today's plays.`,
-          url: '/dashboard',
-          tag: `vv-slate-complete-${date}`,
-          adminKey: process.env.ADMIN_SECRET_KEY,
-        }),
-      });
-      // Notification Agent heartbeat — the "slate ready" broadcast fired.
-      await recordHeartbeat(sb, 'notification', { status: 'ok', detail: `Sent "slate ready" for ${date}`, count: needsAnalysis.length });
-    } catch {}
-    await sb.from('slate_complete_notifications').upsert({ date, notified_at: new Date().toISOString() }, { onConflict: 'date' });
+    // Which (date, sport) completions have we already broadcast? Keyed per
+    // sport so each fires exactly once per day, not every cron cycle.
+    const { data: sentRows } = await sb.from('slate_complete_notifications').select('sport').eq('date', date);
+    const alreadySent = new Set((sentRows || []).map(r => r.sport));
+
+    let notifiedGames = 0;
+    for (const [sport, sportGames] of Object.entries(bySport)) {
+      if (alreadySent.has(sport)) continue; // already announced this sport today
+      const allDone = sportGames.every(g => analyzedKeys.has(`${g.away}|${g.home}|${g.sport}`));
+      if (!allDone) continue; // this sport still has games pending — wait
+
+      const n = sportGames.length;
+      try {
+        await fetch(`${base}/api/push/send`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: `✅ ${sport} Plays Are Ready`,
+            body: `All ${n} ${sport} game${n === 1 ? '' : 's'} analyzed — open the app to see today's ${sport} plays.`,
+            url: '/dashboard',
+            // Distinct tag per sport per day so MLB's and NBA's alerts don't
+            // replace each other on the device.
+            tag: `vv-slate-complete-${date}-${sport}`,
+            adminKey: process.env.ADMIN_SECRET_KEY,
+          }),
+        });
+        // Mark THIS sport done for THIS date — the composite (date, sport) key
+        // makes it idempotent so it never re-fires on later cron cycles.
+        await sb.from('slate_complete_notifications').upsert(
+          { date, sport, notified_at: new Date().toISOString() },
+          { onConflict: 'date,sport' }
+        );
+        notifiedGames += n;
+      } catch {}
+    }
+
+    // Notification Agent heartbeat — record when we actually broadcast something.
+    if (notifiedGames > 0) {
+      await recordHeartbeat(sb, 'notification', { status: 'ok', detail: `Sent per-sport "plays ready" broadcast for ${date}`, count: notifiedGames });
+    }
   } catch {}
 }
 
