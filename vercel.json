@@ -15,6 +15,9 @@
     "app/api/auto-analyze/route.js": {
       "maxDuration": 300
     },
+    "app/api/auto-slot-pattern/route.js": {
+      "maxDuration": 300
+    },
     "app/api/live-score-push/route.js": {
       "maxDuration": 30
     }
@@ -27,6 +30,14 @@
     {
       "path": "/api/live-score-push",
       "schedule": "*/2 * * * *"
+    },
+    {
+      "path": "/api/auto-slot-pattern",
+      "schedule": "0 11 * * *"
+    },
+    {
+      "path": "/api/auto-slot-pattern",
+      "schedule": "0 12 * * *"
     }
   ]
 }
