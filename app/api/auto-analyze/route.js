@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { gradeCompletedGames, gradeUserAltPicks, regradeHistoricalPicks, regradeHistoricalAltPicks, invalidateWrongSportAnalyses } from '@/lib/grading';
 import { isWeekdayOnlySlotSport, hasSlotSystem } from '@/lib/sports';
+import { recordHeartbeat } from '@/lib/agentHeartbeat';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -82,6 +83,8 @@ async function checkAndNotifySlateComplete(sb, date, base) {
           adminKey: process.env.ADMIN_SECRET_KEY,
         }),
       });
+      // Notification Agent heartbeat — the "slate ready" broadcast fired.
+      await recordHeartbeat(sb, 'notification', { status: 'ok', detail: `Sent "slate ready" for ${date}`, count: needsAnalysis.length });
     } catch {}
     await sb.from('slate_complete_notifications').upsert({ date, notified_at: new Date().toISOString() }, { onConflict: 'date' });
   } catch {}
@@ -349,6 +352,9 @@ export async function POST(req) {
       return NextResponse.json({ error: `Could not fetch slate from ${base}/api/today (HTTP ${gamesRes.status}). ${body_txt.slice(0,100)}` }, { status: 200 });
     }
     const { games } = await gamesRes.json();
+    // Slate Sync heartbeat — the data pipeline reached the providers and got a
+    // real slate back (or a real empty one). Either way, it's alive.
+    await recordHeartbeat(sb, 'slate-sync', { status: 'ok', detail: `Fetched slate for ${date}`, count: games?.length || 0 });
     if (!games?.length) return NextResponse.json({ message: 'No games on the slate today', analyzed: 0 }, { status: 200 });
 
     // Grade any completed games server-side — independent of watchlist status
@@ -358,6 +364,9 @@ export async function POST(req) {
     gradeUserAltPicks(sb, date, base).catch(() => {});
     regradeHistoricalPicks(sb).catch(() => {});
     regradeHistoricalAltPicks(sb).catch(() => {});
+    // Outcome Tracker heartbeat — grading ran this cycle (it self-decides
+    // whether there are finals to grade; the heartbeat marks the agent alive).
+    await recordHeartbeat(sb, 'outcome-tracker', { status: 'ok', detail: 'Checked finals & applied grades', count: 0 });
     // Awaited (not fire-and-forget) so any invalidated games are already gone
     // from game_analyses before the "already analyzed" check below runs —
     // they get picked up and re-analyzed with corrected code in THIS same
@@ -507,8 +516,30 @@ export async function POST(req) {
     const failed    = results.filter(r => r.status === 'error').length;
     const deferred  = toAnalyze.length - cronBatch.length;
 
+    // Analysis + Scam Hunter heartbeats. Analysis is 'idle' (healthy, nothing
+    // to do) when there was nothing eligible this cycle, 'ok' when it worked,
+    // 'error' only if every attempt failed. Scam Hunter's count is the subset
+    // of analyzed games that were on a Vegas slot (its actual workload).
+    const vegasDone = results.filter(r => r.status === 'ok' && r.game?.slot === 'VEGAS').length;
+    await recordHeartbeat(sb, 'analysis', {
+      status: cronBatch.length === 0 ? 'idle' : (succeeded === 0 && failed > 0 ? 'error' : 'ok'),
+      detail: cronBatch.length === 0 ? 'No games eligible this cycle' : `${succeeded} analyzed, ${failed} failed, ${deferred} deferred`,
+      count: succeeded,
+    });
+    await recordHeartbeat(sb, 'scam-hunter', {
+      status: vegasDone > 0 ? 'ok' : 'idle',
+      detail: vegasDone > 0 ? `Hunted ${vegasDone} Vegas-slot game(s)` : 'No Vegas-slot games this cycle',
+      count: vegasDone,
+    });
+
     await notifyWatchlisted(results, sb, base);
     await checkAndNotifySlateComplete(sb, date, base);
+
+    // Keep the Top Play of the Day generated server-side so it's ready before
+    // anyone opens the app. GET self-generates and caches on a miss (and is a
+    // cheap no-op on a hit), so this fire-and-forget call is all it takes to
+    // remove Top Play's old dependency on a client visiting the endpoint.
+    fetch(`${base}/api/topplay?date=${date}`, { cache: 'no-store', headers: { 'x-internal': '1' } }).catch(() => {});
 
     return NextResponse.json({
       success: true,

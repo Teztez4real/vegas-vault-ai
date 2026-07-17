@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { gradeCompletedGames, gradeUserAltPicks, regradeHistoricalPicks, regradeHistoricalAltPicks, invalidateWrongSportAnalyses } from '@/lib/grading';
+import { recordHeartbeat } from '@/lib/agentHeartbeat';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -49,6 +50,14 @@ export async function GET(req) {
     try { await regradeHistoricalPicks(sb); } catch {}
     try { await regradeHistoricalAltPicks(sb); } catch {}
     try { await invalidateWrongSportAnalyses(sb, todayStr); } catch {}
+    // Outcome Tracker heartbeat — this frequent cron is the fastest grader,
+    // so it keeps the agent's heartbeat fresh (~2 min) even between the
+    // 30-min analysis runs. 'ok' when it graded finals, 'idle' otherwise.
+    await recordHeartbeat(sb, 'outcome-tracker', {
+      status: gradedCount > 0 ? 'ok' : 'idle',
+      detail: gradedCount > 0 ? `Graded ${gradedCount} finished game(s)` : 'No new finals to grade',
+      count: gradedCount,
+    });
 
     // 1. Build a map of gameId -> [userIds who have it watchlisted]
     const { data: watchRows } = await sb.from('user_data').select('user_id, value').eq('key', 'watchlist');

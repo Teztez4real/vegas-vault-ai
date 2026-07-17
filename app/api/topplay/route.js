@@ -19,6 +19,7 @@ import { createClient } from '@supabase/supabase-js';
 import Anthropic from '@anthropic-ai/sdk';
 import { AI_MODEL } from '@/lib/aiModel';
 import { buildBaseballPrompt } from '@/lib/prompts';
+import { recordHeartbeat } from '@/lib/agentHeartbeat';
 
 const ADMIN_EMAIL = 'battlecortez@gmail.com';
 
@@ -194,8 +195,14 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const dateParam = searchParams.get('date') || todayStr();
   const force = searchParams.get('force') === '1';
+  // Only the server-side trigger (auto-analyze) carries x-internal — client
+  // page loads don't. The Top Play agent's heartbeat should reflect the
+  // agent's own unattended work, not "a browser opened the app," so we record
+  // it only on internal calls.
+  const isInternal = request.headers.get('x-internal') === '1';
 
   const sb = getAdmin();
+  const beat = (status, detail, count = 0) => { if (isInternal) return recordHeartbeat(sb, 'top-play', { status, detail, count }); };
 
   // Top play only generates on the day of the games
   const todayDate = todayStr();
@@ -213,6 +220,7 @@ export async function GET(request) {
         .maybeSingle();
 
       if (data?.result) {
+        await beat('ok', `Top play ready (cached) for ${dateParam}`, 1);
         return NextResponse.json({
           topPlay: data,
           cached: true,
@@ -243,6 +251,7 @@ export async function GET(request) {
     }
 
     if (!games.length) {
+      await beat('idle', 'No games available to curate today', 0);
       return NextResponse.json({ error: 'No games available', topPlay: null });
     }
 
@@ -254,6 +263,7 @@ export async function GET(request) {
       .sort((a, b) => b.score - a.score);
 
     if (!scored.length) {
+      await beat('idle', 'No eligible games for a top play today', 0);
       return NextResponse.json({ error: 'No eligible games for top play today', topPlay: null });
     }
 
@@ -303,10 +313,12 @@ export async function GET(request) {
       console.error('Top play cache write error:', e.message);
     }
 
+    await beat('ok', `Generated top play: ${finalGame.away} @ ${finalGame.home}`, 1);
     return NextResponse.json({ topPlay, cached: false });
 
   } catch (err) {
     console.error('/api/topplay error:', err.message);
+    await beat('error', `Top play failed: ${err.message}`, 0);
     return NextResponse.json({ error: err.message, topPlay: null }, { status: 500 });
   }
 }

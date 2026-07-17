@@ -26,6 +26,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { AI_MODEL } from '@/lib/aiModel';
 import { ENABLED_SPORT_KEYS, hasSlotSystem, slotPatternKeyFor, getSport } from '@/lib/sports';
 import { buildSlotPrompt, parseSlots } from '@/lib/slotFoundation';
+import { recordHeartbeat } from '@/lib/agentHeartbeat';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -125,6 +126,20 @@ async function run(origin, { dryRun = false, force = false } = {}) {
       });
       analyzeTriggered = true;
     } catch {}
+  }
+
+  // Foundation Agent heartbeat — records what the morning run actually did.
+  // 'ok' if it assigned at least one sport; 'idle' if everything was already
+  // set manually or there were no games (healthy, nothing to do).
+  if (!dryRun) {
+    const assignedCount = assigned.filter(a => a.status === 'assigned').length;
+    const anyError = assigned.some(a => a.status === 'ai-error' || a.status === 'write-error');
+    const summary = assigned.map(a => `${a.sport}:${a.status}`).join(', ');
+    await recordHeartbeat(sb, 'foundation', {
+      status: anyError ? 'error' : (assignedCount > 0 ? 'ok' : 'idle'),
+      detail: assignedCount > 0 ? `Assigned ${assignedCount} sport(s) — ${summary}` : `Nothing to assign — ${summary || 'no slate'}`,
+      count: assignedCount,
+    });
   }
 
   return { date, dow, ctHour: hour, dryRun, analyzeTriggered, assigned };
