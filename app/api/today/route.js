@@ -8,6 +8,7 @@ import { createClient } from '@supabase/supabase-js';
 import { getOrFreezeOpeningLine, buildTrueLineMovementText } from '@/lib/openingLines';
 import { espnPathFor, oddsApiKeyFor, isSportInSeason } from '@/lib/sports';
 import { getCFBDTeamRatings, matchCFBDRating, cfbSeasonYear } from '@/lib/cfbd';
+import { getBarttorvikRatings, matchBarttorvikRating, cbbSeasonYear } from '@/lib/barttorvik';
 
 // ── UTILITIES ─────────────────────────────────────────────────────────────────
 
@@ -593,7 +594,11 @@ async function fetchCBBGames(dateParam) {
     const ODDS_KEY = process.env.ODDS_API_KEY;
     if (!ODDS_KEY) return [];
 
-    const { records: cbbRecords, ranks: cbbRanks, neutralSites, logos: cbbLogos } = await fetchCBBScoreboardData(dateParam);
+    const [{ records: cbbRecords, ranks: cbbRanks, neutralSites, logos: cbbLogos }, cbbTRank] = await Promise.all([
+      fetchCBBScoreboardData(dateParam),
+      // Barttorvik T-Rank efficiency (free public JSON; empty map on any error).
+      getBarttorvikRatings(cbbSeasonYear(dateParam || todayStr())),
+    ]);
 
     const BOOKS = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'bet365'];
     const res = await fetch(
@@ -675,6 +680,10 @@ async function fetchCBBGames(dateParam) {
 
       const awayRec = cbbRecords[away] || {};
       const homeRec = cbbRecords[home] || {};
+      // Barttorvik T-Rank efficiency — matched once per team (null if unmatched
+      // or no data; analysis then falls back to rank/record/form as before).
+      const awayTR = matchBarttorvikRating(away, cbbTRank);
+      const homeTR = matchBarttorvikRating(home, cbbTRank);
 
       return {
         id: `cbb-${gameDate}-${i}`, sport: 'CBB',
@@ -689,6 +698,11 @@ async function fetchCBBGames(dateParam) {
         homeAbbr: home.split(' ').pop().slice(0,4).toUpperCase(),
         awayLogo: cbbLogos[away] || null, homeLogo: cbbLogos[home] || null,
         awayRank: cbbRanks[away] || null, homeRank: cbbRanks[home] || null,
+        // Barttorvik T-Rank advanced efficiency (null-safe — see above).
+        awayAdjOE: awayTR?.adjOE ?? null, awayAdjDE: awayTR?.adjDE ?? null,
+        awayBarthag: awayTR?.barthag ?? null, awayTempo: awayTR?.tempo ?? null,
+        homeAdjOE: homeTR?.adjOE ?? null, homeAdjDE: homeTR?.adjDE ?? null,
+        homeBarthag: homeTR?.barthag ?? null, homeTempo: homeTR?.tempo ?? null,
         awayRecord: awayRec.total || 'N/A', homeRecord: homeRec.total || 'N/A',
         awayAwayRecord: awayRec.road || 'N/A', homeHomeRecord: homeRec.home || 'N/A',
         isNeutralSite: !!neutralSites[`${away}@${home}`],

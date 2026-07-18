@@ -200,10 +200,15 @@ export async function POST(request) {
       // a CFBD key is configured; when present, feed them as the matchup
       // foundation. Otherwise (CBB, or CFB with no key) fall back to the honest
       // "rank/record/form only" message rather than inventing numbers.
-      const hasSP = game.awaySpRating != null || game.homeSpRating != null;
+      const hasSP = game.awaySpRating != null || game.homeSpRating != null;      // CFB (CFBD)
+      const hasTRank = game.awayBarthag != null || game.homeBarthag != null;      // CBB (Barttorvik)
       const spFmt = v => (v == null ? 'N/A' : (v > 0 ? `+${v.toFixed(1)}` : v.toFixed(1)));
+      const n1 = v => (v == null ? 'N/A' : v.toFixed(1));
+      const n3 = v => (v == null ? 'N/A' : v.toFixed(3));
       if (hasSP) {
         matchupFacts = `SP+ ADVANCED RATINGS (CollegeFootballData — the strongest predictive team-quality metric in college football). Away ${game.away}: overall ${spFmt(game.awaySpRating)}, offense ${spFmt(game.awaySpOffense)}, defense ${spFmt(game.awaySpDefense)} | Home ${game.home}: overall ${spFmt(game.homeSpRating)}, offense ${spFmt(game.homeSpOffense)}, defense ${spFmt(game.homeSpDefense)}. HOW TO READ SP+: overall and offense — HIGHER is better; defense — LOWER (more negative) is better (fewer points allowed vs an average team). The overall-rating gap is a real, predictive power gap: compare it against the spread — a large SP+ edge the line doesn't reflect is a genuine mispricing, and match each team's offense rating against the other's defense rating for the scoring lean. These are season-quality ratings, so still weigh injuries, recent form, and situation below.`;
+      } else if (hasTRank) {
+        matchupFacts = `BARTTORVIK T-RANK ADVANCED EFFICIENCY (tempo-free, KenPom-class — the strongest predictive metrics in college basketball). Away ${game.away}: AdjO ${n1(game.awayAdjOE)} (points scored per 100 possessions), AdjD ${n1(game.awayAdjDE)} (points allowed per 100), Barthag ${n3(game.awayBarthag)} (overall power rating 0–1), Tempo ${n1(game.awayTempo)} (possessions/40 min) | Home ${game.home}: AdjO ${n1(game.homeAdjOE)}, AdjD ${n1(game.homeAdjDE)}, Barthag ${n3(game.homeBarthag)}, Tempo ${n1(game.homeTempo)}. HOW TO READ: AdjO — HIGHER is better; AdjD — LOWER is better; Barthag is the single best team-quality number (higher = stronger). A clear Barthag gap the spread doesn't reflect is a real edge. For the side, match each team's AdjO against the other's AdjD; for the total, combine the tempos and efficiencies (two fast, efficient offenses → over lean; two slow, elite defenses → under lean). Season ratings — still weigh injuries, rest, venue, and recent form below.`;
       } else {
         matchupFacts = `No advanced offense/defense or pace stats tracked for this sport — assess the matchup from rank, full-season record, road/home splits, and recent form below.`;
       }
