@@ -7,6 +7,7 @@ function assignNFLSlots(games, pattern) {
 import { createClient } from '@supabase/supabase-js';
 import { getOrFreezeOpeningLine, buildTrueLineMovementText } from '@/lib/openingLines';
 import { espnPathFor, oddsApiKeyFor, isSportInSeason } from '@/lib/sports';
+import { getCFBDTeamRatings, matchCFBDRating, cfbSeasonYear } from '@/lib/cfbd';
 
 // ── UTILITIES ─────────────────────────────────────────────────────────────────
 
@@ -404,8 +405,10 @@ async function fetchCFBGames(dateParam) {
     const ODDS_KEY = process.env.ODDS_API_KEY;
     if (!ODDS_KEY) return [];
 
-    const [{ records: cfbRecords, ranks: cfbRanks, neutralSites, logos: cfbLogos }] = await Promise.all([
+    const [{ records: cfbRecords, ranks: cfbRanks, neutralSites, logos: cfbLogos }, cfbSP] = await Promise.all([
       fetchCFBScoreboardData(dateParam),
+      // SP+ advanced ratings from CollegeFootballData (empty map if no key set).
+      getCFBDTeamRatings(cfbSeasonYear(dateParam || todayStr())),
     ]);
 
     const BOOKS = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'bet365'];
@@ -489,8 +492,17 @@ async function fetchCFBGames(dateParam) {
       const awayRec = cfbRecords[away] || {};
       const homeRec = cfbRecords[home] || {};
 
+      // SP+ advanced ratings (CollegeFootballData). Null-safe: if no key is set
+      // or a team doesn't match, these stay null and the analysis falls back to
+      // rank/record/form exactly as before.
+      const awaySP = matchCFBDRating(away, cfbSP);
+      const homeSP = matchCFBDRating(home, cfbSP);
+
       return {
         id: `cfb-${gameDate}-${i}`, sport: 'CFB',
+        awaySpRating: awaySP?.overall ?? null, homeSpRating: homeSP?.overall ?? null,
+        awaySpOffense: awaySP?.offense ?? null, homeSpOffense: homeSP?.offense ?? null,
+        awaySpDefense: awaySP?.defense ?? null, homeSpDefense: homeSP?.defense ?? null,
         rawTime: game.commence_time,
         time: formatTime(game.commence_time),
         date: gameDate,

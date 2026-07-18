@@ -196,10 +196,17 @@ export async function POST(request) {
       seriesContext = `${game.seriesContext || 'N/A'} | Type: ${game.gameType || 'Regular Season'} | Record: ${game.seriesRecord || 'N/A'} | Playoff: ${game.playoffContext || 'N/A'} — MANDATORY: State actual series game number and record for ${game.away} vs ${game.home}. Use your knowledge if API data is missing. Never say not specified.`;
       matchupFacts = `${pitchingFacts} || ${hitterLineup}`; // MLB's "matchup" IS the pitching/hitting matchup
     } else if (isRanked) {
-      // CFB/CBB: no advanced stats fetched yet — rank, record, and form are
-      // the real signal. The AI is told plainly that's the case rather than
-      // fed borrowed PPG/offense-defense fields that don't apply here.
-      matchupFacts = `No advanced offense/defense or pace stats tracked for this sport — assess the matchup from rank, full-season record, road/home splits, and recent form below.`;
+      // CFB/CBB. CFB now carries real SP+ ratings from CollegeFootballData when
+      // a CFBD key is configured; when present, feed them as the matchup
+      // foundation. Otherwise (CBB, or CFB with no key) fall back to the honest
+      // "rank/record/form only" message rather than inventing numbers.
+      const hasSP = game.awaySpRating != null || game.homeSpRating != null;
+      const spFmt = v => (v == null ? 'N/A' : (v > 0 ? `+${v.toFixed(1)}` : v.toFixed(1)));
+      if (hasSP) {
+        matchupFacts = `SP+ ADVANCED RATINGS (CollegeFootballData — the strongest predictive team-quality metric in college football). Away ${game.away}: overall ${spFmt(game.awaySpRating)}, offense ${spFmt(game.awaySpOffense)}, defense ${spFmt(game.awaySpDefense)} | Home ${game.home}: overall ${spFmt(game.homeSpRating)}, offense ${spFmt(game.homeSpOffense)}, defense ${spFmt(game.homeSpDefense)}. HOW TO READ SP+: overall and offense — HIGHER is better; defense — LOWER (more negative) is better (fewer points allowed vs an average team). The overall-rating gap is a real, predictive power gap: compare it against the spread — a large SP+ edge the line doesn't reflect is a genuine mispricing, and match each team's offense rating against the other's defense rating for the scoring lean. These are season-quality ratings, so still weigh injuries, recent form, and situation below.`;
+      } else {
+        matchupFacts = `No advanced offense/defense or pace stats tracked for this sport — assess the matchup from rank, full-season record, road/home splits, and recent form below.`;
+      }
       pitchingFacts = 'N/A — not a baseball game';
       hitterLineup = 'N/A — not a baseball game';
       seriesContext = 'N/A — no multi-game series format';

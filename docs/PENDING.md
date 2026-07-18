@@ -30,6 +30,9 @@ Confirm each table exists (run its migration if not):
 - [ ] `CRON_SECRET` — generated: `47154f48…5857c6`
 - [ ] `NEXT_PUBLIC_APP_URL` = `https://vegasvaultai.com`
 - [ ] `SUPABASE_SERVICE_ROLE_KEY` — confirm it matches Supabase
+- [ ] `CFBD_API_KEY` — CollegeFootballData SP+ ratings for CFB analysis.
+      Free key: collegefootballdata.com/key ($10/mo tier lifts the call cap).
+      Optional — with it unset, CFB cleanly falls back to ESPN rank/record/form.
 
 ---
 
