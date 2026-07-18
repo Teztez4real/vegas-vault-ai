@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { AI_MODEL } from '@/lib/aiModel.js';
 import { buildPropsPrompt } from '../../../lib/propsModel.js';
+import { getBDLPlayerAverages, formatBDLAverages, bdlSeason } from '../../../lib/balldontlie.js';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -12,6 +13,22 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 export async function POST(req) {
   try {
     const propData = await req.json();
+
+    // Ground the analysis in REAL season averages when it's a basketball prop
+    // and a BALLDONTLIE key is configured — replaces the old "fetch from your
+    // knowledge" guess with actual production. Fully optional/graceful: no key
+    // or an unmatched player leaves propData untouched.
+    const league = propData.sport === 'NBA' ? 'nba' : propData.sport === 'WNBA' ? 'wnba' : null;
+    if (league && propData.playerName) {
+      try {
+        // bdlSeason wants a YYYY-MM-DD; commenceTime is an ISO timestamp.
+        const dateStr = (propData.commenceTime || '').split('T')[0] || undefined;
+        const avg = await getBDLPlayerAverages(league, bdlSeason(league, dateStr), propData.playerName);
+        const line = formatBDLAverages(avg);
+        if (line) { propData.seasonStats = line; propData.bdlVerified = true; }
+      } catch {}
+    }
+
     const prompt = buildPropsPrompt(propData);
 
     const message = await client.messages.create({
