@@ -220,6 +220,12 @@ export async function POST(request) {
       // / fetchWNBARecentForm. Deliberately no OffRtg/DefRtg — those aren't
       // fetched, so we don't ask for or reference numbers that don't exist.
       matchupFacts = `Away PPG ${game.awayPPG || 'N/A'} OppPPG ${game.awayOppPPG || 'N/A'} PtDiff ${game.awayPointDiff || 'N/A'} Pace(combined PPG) ${game.awayPaceProxy || 'N/A'} | Home PPG ${game.homePPG || 'N/A'} OppPPG ${game.homeOppPPG || 'N/A'} PtDiff ${game.homePointDiff || 'N/A'} Pace(combined PPG) ${game.homePaceProxy || 'N/A'}`;
+      // Authoritative BALLDONTLIE standings, appended only when present (i.e. a
+      // GOAT key is configured). Conference rank + home/road splits are a real
+      // positioning signal on top of the computed scoring stats above.
+      if (game.awayConfRank != null || game.homeConfRank != null) {
+        matchupFacts += ` || STANDINGS (BALLDONTLIE): Away ${game.away} ${game.awayStdRecord || 'N/A'}, conf #${game.awayConfRank ?? 'N/A'} (${game.awayHomeRoad || 'splits N/A'}) | Home ${game.home} ${game.homeStdRecord || 'N/A'}, conf #${game.homeConfRank ?? 'N/A'} (${game.homeHomeRoad || 'splits N/A'}). Weigh conference standing and the home/road splits against the line — a team far better in its true home/road context than its overall record suggests is a common edge.`;
+      }
       pitchingFacts = 'N/A — not a baseball game';
       hitterLineup = 'N/A — not a baseball game';
       seriesContext = sport === 'NBA' ? (game.playoffContext || 'Regular Season — no multi-game series unless playoffs') : 'N/A — WNBA has no multi-game series format';

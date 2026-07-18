@@ -33,6 +33,11 @@ Confirm each table exists (run its migration if not):
 - [ ] `CFBD_API_KEY` — CollegeFootballData SP+ ratings for CFB analysis.
       Free key: collegefootballdata.com/key ($10/mo tier lifts the call cap).
       Optional — with it unset, CFB cleanly falls back to ESPN rank/record/form.
+- [ ] `BALLDONTLIE_API_KEY` — BALLDONTLIE standings for NBA/WNBA analysis.
+      Standings/props are the GOAT tier (~$39.99/mo PER SPORT). Optional — with
+      it unset (or a lower tier), basketball falls back to ESPN records/form.
+      NOTE: standings mostly overlap ESPN; the real prize on this key is player
+      props + team advanced averages (not yet wired — a good next step).
 
 ---
 

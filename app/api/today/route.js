@@ -9,6 +9,7 @@ import { getOrFreezeOpeningLine, buildTrueLineMovementText } from '@/lib/opening
 import { espnPathFor, oddsApiKeyFor, isSportInSeason } from '@/lib/sports';
 import { getCFBDTeamRatings, matchCFBDRating, cfbSeasonYear } from '@/lib/cfbd';
 import { getBarttorvikRatings, matchBarttorvikRating, cbbSeasonYear } from '@/lib/barttorvik';
+import { getBDLStandings, matchBDLTeam, bdlSeason } from '@/lib/balldontlie';
 
 // ── UTILITIES ─────────────────────────────────────────────────────────────────
 
@@ -1712,6 +1713,8 @@ async function fetchNBAGames(date) {
     // Season window lives once in lib/sports.js — never duplicate it here.
     if (!isSportInSeason('NBA')) return [];
     const nbaRecords = await fetchNBARecords();
+    // BALLDONTLIE standings (empty map without a GOAT key — graceful).
+    const nbaStandings = await getBDLStandings('nba', bdlSeason('nba', date || todayStr()));
     const res = await fetch(
       `https://api.the-odds-api.com/v4/sports/basketball_nba/odds/?apiKey=${process.env.ODDS_API_KEY}&regions=us&markets=h2h,spreads,totals&oddsFormat=american`,
       { cache: 'no-store' }
@@ -1791,10 +1794,19 @@ async function fetchNBAGames(date) {
         fetchNBAPlayoffContext(away, home, game.commence_time),
       ]);
 
+      // BALLDONTLIE standings (null without a GOAT key — matched once per team).
+      const awayStd = matchBDLTeam(away, nbaStandings);
+      const homeStd = matchBDLTeam(home, nbaStandings);
+
       return {
         id: `nba-${(game.commence_time||'').split('T')[0]}-${i}`, sport: 'NBA',
         date: (game.commence_time||'').split('T')[0],
         away, home,
+        awayConfRank: awayStd?.conferenceRank ?? null, homeConfRank: homeStd?.conferenceRank ?? null,
+        awayStdRecord: (awayStd && awayStd.wins != null) ? `${awayStd.wins}-${awayStd.losses}` : null,
+        homeStdRecord: (homeStd && homeStd.wins != null) ? `${homeStd.wins}-${homeStd.losses}` : null,
+        awayHomeRoad: awayStd ? `home ${awayStd.homeRecord || 'N/A'} / road ${awayStd.roadRecord || 'N/A'}` : null,
+        homeHomeRoad: homeStd ? `home ${homeStd.homeRecord || 'N/A'} / road ${homeStd.roadRecord || 'N/A'}` : null,
         isFinal: lookupESPNScore(nbaScores, away, home)?.isFinal ?? false,
         awayScore: lookupESPNScore(nbaScores, away, home)?.awayScore ?? null,
         homeScore: lookupESPNScore(nbaScores, away, home)?.homeScore ?? null,
@@ -2029,6 +2041,8 @@ async function fetchWNBAH2H(awayTeam, homeTeam) {
 async function fetchWNBAGames(date) {
   try {
     const wnbaRecords = await fetchWNBARecords();
+    // BALLDONTLIE standings (empty map without a GOAT key — graceful).
+    const wnbaStandings = await getBDLStandings('wnba', bdlSeason('wnba', date || todayStr()));
     const res = await fetch(
       `https://api.the-odds-api.com/v4/sports/basketball_wnba/odds/?apiKey=${process.env.ODDS_API_KEY}&regions=us&markets=h2h,spreads,totals&oddsFormat=american`,
       { cache: 'no-store' }
@@ -2097,10 +2111,19 @@ async function fetchWNBAGames(date) {
       console.log("WNBA forms:", JSON.stringify({away: awayForm, home: homeForm, h2h: h2h?.slice(0,80)}));
       const wnbaAbbrMap = {'Atlanta Dream':'Dream','Chicago Sky':'Sky','Connecticut Sun':'Sun','Dallas Wings':'Wings','Indiana Fever':'Fever','Las Vegas Aces':'Aces','Los Angeles Sparks':'Sparks','Minnesota Lynx':'Lynx','New York Liberty':'Liberty','Phoenix Mercury':'Mercury','Seattle Storm':'Storm','Washington Mystics':'Mystics','Toronto Tempo':'Tempo'};
 
+      // BALLDONTLIE standings (null without a GOAT key — matched once per team).
+      const awayStd = matchBDLTeam(away, wnbaStandings);
+      const homeStd = matchBDLTeam(home, wnbaStandings);
+
       return {
         id: `wnba-${(game.commence_time||'').split('T')[0]}-${i}`, sport: 'WNBA',
         date: (game.commence_time||'').split('T')[0],
         away, home,
+        awayConfRank: awayStd?.conferenceRank ?? null, homeConfRank: homeStd?.conferenceRank ?? null,
+        awayStdRecord: (awayStd && awayStd.wins != null) ? `${awayStd.wins}-${awayStd.losses}` : null,
+        homeStdRecord: (homeStd && homeStd.wins != null) ? `${homeStd.wins}-${homeStd.losses}` : null,
+        awayHomeRoad: awayStd ? `home ${awayStd.homeRecord || 'N/A'} / road ${awayStd.roadRecord || 'N/A'}` : null,
+        homeHomeRoad: homeStd ? `home ${homeStd.homeRecord || 'N/A'} / road ${homeStd.roadRecord || 'N/A'}` : null,
         isFinal: lookupESPNScore(wnbaScores, away, home)?.isFinal ?? false,
         awayScore: lookupESPNScore(wnbaScores, away, home)?.awayScore ?? null,
         homeScore: lookupESPNScore(wnbaScores, away, home)?.homeScore ?? null,
