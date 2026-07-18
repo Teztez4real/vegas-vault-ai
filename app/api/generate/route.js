@@ -230,7 +230,22 @@ export async function POST(request) {
       hitterLineup = 'N/A — not a baseball game';
       seriesContext = sport === 'NBA' ? (game.playoffContext || 'Regular Season — no multi-game series unless playoffs') : 'N/A — WNBA has no multi-game series format';
     } else if (isFootball) {
-      matchupFacts = `Away: ${game.awayOffense || 'N/A'} offense vs Home: ${game.homeDefense || 'N/A'} defense | Home: ${game.homeOffense || 'N/A'} offense vs Away: ${game.awayDefense || 'N/A'} defense`;
+      // Real scoring (ESPN) + offensive EPA (nflverse) when present; otherwise a
+      // clean honest fallback (early season / unmatched) — never the old
+      // "Check NFL stats" placeholder that used to reach the model.
+      const hasScoring = game.awayPPG != null || game.homePPG != null;
+      const hasEPA = game.awayPassEPA != null || game.homePassEPA != null;
+      if (hasScoring || hasEPA) {
+        const scoreLine = hasScoring
+          ? `SCORING (ESPN, per game): Away ${game.away} ${game.awayPPG ?? 'N/A'} scored / ${game.awayOppPPG ?? 'N/A'} allowed (diff ${game.awayPtDiff ?? 'N/A'}) | Home ${game.home} ${game.homePPG ?? 'N/A'} scored / ${game.homeOppPPG ?? 'N/A'} allowed (diff ${game.homePtDiff ?? 'N/A'}). Points scored = offense; points ALLOWED = defense (lower is better).`
+          : 'Scoring stats not yet available this season.';
+        const epaLine = hasEPA
+          ? ` OFFENSIVE EPA (nflverse — season total; the strongest efficiency signal in football, higher = more productive): Away pass ${game.awayPassEPA ?? 'N/A'} / rush ${game.awayRushEPA ?? 'N/A'} | Home pass ${game.homePassEPA ?? 'N/A'} / rush ${game.homeRushEPA ?? 'N/A'}.`
+          : '';
+        matchupFacts = `${scoreLine}${epaLine} HOW TO USE: match each team's scoring offense (and EPA) against the other's scoring defense; a clear scoring/EPA edge the spread doesn't reflect is a real mispricing. Weigh it against injuries (esp. QB), weather, and situation below.`;
+      } else {
+        matchupFacts = `No team scoring/EPA data available yet (early season or unmatched) — assess from records, recent form, injuries, and situation below.`;
+      }
       pitchingFacts = 'N/A — not a baseball game';
       hitterLineup = 'N/A — not a baseball game';
       seriesContext = 'N/A — NFL has no multi-game series format';

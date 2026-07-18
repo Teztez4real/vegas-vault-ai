@@ -10,6 +10,7 @@ import { espnPathFor, oddsApiKeyFor, isSportInSeason } from '@/lib/sports';
 import { getCFBDTeamRatings, matchCFBDRating, cfbSeasonYear } from '@/lib/cfbd';
 import { getBarttorvikRatings, matchBarttorvikRating, cbbSeasonYear } from '@/lib/barttorvik';
 import { getBDLStandings, matchBDLTeam, bdlSeason } from '@/lib/balldontlie';
+import { getNFLTeamScoring, matchNFLScoring, getNFLTeamEPA, matchNFLEPA, nflSeasonYear } from '@/lib/nflStats';
 
 // ── UTILITIES ─────────────────────────────────────────────────────────────────
 
@@ -205,7 +206,12 @@ async function fetchNFLGames(dateParam) {
     const ODDS_KEY = process.env.ODDS_API_KEY;
     if (!ODDS_KEY) return [];
 
-    const [nflRecords, nflInjuries] = await Promise.all([fetchNFLRecords(dateParam), fetchNFLInjuries()]);
+    const [nflRecords, nflInjuries, nflScoring, nflEPA] = await Promise.all([
+      fetchNFLRecords(dateParam),
+      fetchNFLInjuries(),
+      getNFLTeamScoring(),                                  // ESPN: PPG for/against (keyless)
+      getNFLTeamEPA(nflSeasonYear(dateParam || todayStr())), // nflverse: offensive EPA (keyless)
+    ]);
 
     const BOOKS = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'bet365'];
     const res = await fetch(
@@ -309,6 +315,16 @@ async function fetchNFLGames(dateParam) {
       const trueLineMovement = buildTrueLineMovementText(opening, currentForFreeze);
       const awayRec = nflRecords[away] || {};
       const homeRec = nflRecords[home] || {};
+      // Real scoring (ESPN) + offensive EPA (nflverse) — replaces the old
+      // "Check NFL stats" placeholders. Null-safe: offseason/early-season or an
+      // unmatched team leaves these null and analysis falls back cleanly.
+      const awayScoring = matchNFLScoring(away, nflScoring);
+      const homeScoring = matchNFLScoring(home, nflScoring);
+      const awayAbbrKey = ABBR[away] || away.split(' ').pop().slice(0,3).toUpperCase();
+      const homeAbbrKey = ABBR[home] || home.split(' ').pop().slice(0,3).toUpperCase();
+      const awayEpa = matchNFLEPA(awayAbbrKey, nflEPA);
+      const homeEpa = matchNFLEPA(homeAbbrKey, nflEPA);
+      const fmt1 = v => (v == null ? null : v.toFixed(1));
 
       return {
         id: `nfl-${gameDate}-${i}`, sport: 'NFL',
@@ -340,8 +356,13 @@ async function fetchNFLGames(dateParam) {
         moneyPercentage: 'Available with paid tier',
         awayQB: 'Check depth chart', homeQB: 'Check depth chart',
         awayQBStats: 'N/A', homeQBStats: 'N/A',
-        awayOffense: 'Check NFL stats', homeOffense: 'Check NFL stats',
-        awayDefense: 'Check NFL stats', homeDefense: 'Check NFL stats',
+        // Real team scoring (ESPN standings) — PPG scored = offense, PPG
+        // allowed = defense; plus offensive EPA (nflverse). Null when the
+        // season hasn't produced data yet or a team didn't match.
+        awayPPG: fmt1(awayScoring?.ppg), awayOppPPG: fmt1(awayScoring?.oppPpg), awayPtDiff: awayScoring?.pointDiff ?? null,
+        homePPG: fmt1(homeScoring?.ppg), homeOppPPG: fmt1(homeScoring?.oppPpg), homePtDiff: homeScoring?.pointDiff ?? null,
+        awayPassEPA: fmt1(awayEpa?.passEPA), awayRushEPA: fmt1(awayEpa?.rushEPA),
+        homePassEPA: fmt1(homeEpa?.passEPA), homeRushEPA: fmt1(homeEpa?.rushEPA),
         h2hLast5: 'Check NFL H2H history',
         injuries: [nflInjuries[away] && `${away}: ${nflInjuries[away]}`, nflInjuries[home] && `${home}: ${nflInjuries[home]}`].filter(Boolean).join(' | ') || 'None reported',
         weather: 'Check game time weather',
