@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { canonicalBase } from '@/lib/baseUrl';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -47,8 +48,9 @@ export async function GET(req) {
 
   const { createClient } = await import('@supabase/supabase-js');
   const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
-  const reqUrl = new URL(req.url);
-  const base = process.env.NEXT_PUBLIC_APP_URL || `${reqUrl.protocol}//${reqUrl.host}`;
+  // canonicalBase, not the request host — cron invocations arrive on the
+  // SSO-protected deployment-unique URL (see lib/baseUrl.js).
+  const base = canonicalBase(req);
 
   try {
     // US Central date — matches the slate + slot patterns (not UTC)

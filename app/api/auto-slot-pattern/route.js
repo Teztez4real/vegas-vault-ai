@@ -27,6 +27,7 @@ import { AI_MODEL } from '@/lib/aiModel';
 import { ENABLED_SPORT_KEYS, hasSlotSystem, slotPatternKeyFor, getSport } from '@/lib/sports';
 import { buildSlotPrompt, parseSlots } from '@/lib/slotFoundation';
 import { recordHeartbeat } from '@/lib/agentHeartbeat';
+import { canonicalBase } from '@/lib/baseUrl';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -69,8 +70,9 @@ async function run(origin, { dryRun = false, force = false } = {}) {
     return { skipped: 'outside-morning-window', ctHour: hour, date };
   }
 
-  const base = origin || process.env.NEXT_PUBLIC_APP_URL
-    || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+  // canonicalBase, never VERCEL_URL — that's the SSO-protected deployment-
+  // unique host (see lib/baseUrl.js).
+  const base = origin || canonicalBase();
 
   const slateRes = await fetch(`${base}/api/today?date=${date}`, { cache: 'no-store' });
   if (!slateRes.ok) return { error: `slate fetch failed (HTTP ${slateRes.status})`, date };
@@ -154,7 +156,9 @@ function isCron(req) {
 
 export async function GET(req) {
   if (!isCron(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const origin = new URL(req.url).origin;
+  // canonicalBase, not the request origin — cron invocations arrive on the
+  // SSO-protected deployment-unique URL (see lib/baseUrl.js).
+  const origin = canonicalBase(req);
   const result = await run(origin);
   return NextResponse.json(result);
 }
@@ -173,7 +177,7 @@ export async function POST(req) {
   }
   if (!authorized) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const origin = body.base || new URL(req.url).origin;
+  const origin = body.base || canonicalBase(req);
   const result = await run(origin, { dryRun: body.dryRun === true, force: body.force === true });
   return NextResponse.json(result);
 }

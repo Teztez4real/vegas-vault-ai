@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { gradeCompletedGames, gradeUserAltPicks, regradeHistoricalPicks, regradeHistoricalAltPicks, invalidateWrongSportAnalyses } from '@/lib/grading';
 import { recordHeartbeat } from '@/lib/agentHeartbeat';
+import { canonicalBase } from '@/lib/baseUrl';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -36,7 +37,9 @@ export async function GET(req) {
   try {
     const { createClient } = await import('@supabase/supabase-js');
     const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
-    const origin = new URL(req.url).origin;
+    // canonicalBase, not the request origin — cron invocations arrive on the
+    // SSO-protected deployment-unique URL (see lib/baseUrl.js).
+    const origin = canonicalBase(req);
 
     // CT date, matching the rest of the app
     const ctNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }));

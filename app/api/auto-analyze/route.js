@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { gradeCompletedGames, gradeUserAltPicks, regradeHistoricalPicks, regradeHistoricalAltPicks, invalidateWrongSportAnalyses } from '@/lib/grading';
 import { isWeekdayOnlySlotSport, hasSlotSystem } from '@/lib/sports';
 import { recordHeartbeat } from '@/lib/agentHeartbeat';
+import { canonicalBase } from '@/lib/baseUrl';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -264,13 +265,11 @@ function buildSnapshot(game) {
 
 // ── ANALYZE ONE GAME via the 4-stage engine ───────────────────────────────────
 async function analyzeGame(game, base) {
-  // base is derived from the incoming request origin (passed by caller) so the
-  // server can reach its own /api/generate even when NEXT_PUBLIC_APP_URL isn't
-  // set. Falling back to localhost:3000 here silently broke ALL analysis on
-  // Vercel — every game threw, so nothing got re-analyzed.
-  const target = base
-    || process.env.NEXT_PUBLIC_APP_URL
-    || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+  // base comes from the caller; canonicalBase() is the safety net. NEVER fall
+  // back to VERCEL_URL — that's the deployment-unique host behind Deployment
+  // Protection, whose /api/* answers with the Vercel SSO HTML page (see
+  // lib/baseUrl.js for the full story).
+  const target = base || canonicalBase();
   const res = await fetch(`${target}/api/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -363,15 +362,19 @@ export async function POST(req) {
     const sb = await getSB();
 
     // 1. Fetch today's full game slate with all live data.
-    // Prefer the base URL passed from the cron (derived from the request
-    // origin) so this works on Vercel without NEXT_PUBLIC_APP_URL set.
-    const base = body.base
-      || process.env.NEXT_PUBLIC_APP_URL
-      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+    // canonicalBase — never the request origin or VERCEL_URL: under a cron
+    // those are the SSO-protected deployment-unique host (see lib/baseUrl.js).
+    const base = body.base || canonicalBase(req);
     const gamesRes = await fetch(`${base}/api/today?date=${date}`, { cache: 'no-store' });
     if (!gamesRes.ok) {
       const body_txt = await gamesRes.text().catch(() => '');
       return NextResponse.json({ error: `Could not fetch slate from ${base}/api/today (HTTP ${gamesRes.status}). ${body_txt.slice(0,100)}` }, { status: 200 });
+    }
+    // Guard against a 200 that ISN'T JSON (e.g. a redirect chased to an auth
+    // or error page) — name the real problem instead of dying on JSON.parse
+    // with an opaque "Unexpected token '<'".
+    if (!(gamesRes.headers.get('content-type') || '').includes('application/json')) {
+      return NextResponse.json({ error: `Slate fetch from ${base}/api/today returned non-JSON (content-type: ${gamesRes.headers.get('content-type')}). base URL is likely wrong or behind auth.` }, { status: 200 });
     }
     const { games } = await gamesRes.json();
     // Slate Sync heartbeat — the data pipeline reached the providers and got a
@@ -600,9 +603,12 @@ export async function GET(req) {
   const ctDate = `${ctNow.getFullYear()}-${String(ctNow.getMonth()+1).padStart(2,'0')}-${String(ctNow.getDate()).padStart(2,'0')}`;
 
   if (isCron) {
-    // Derive the absolute base URL from the incoming request so the server can
-    // reach its own /api/today even when NEXT_PUBLIC_APP_URL isn't set.
-    const origin = new URL(req.url).origin;
+    // canonicalBase, NOT new URL(req.url).origin: Vercel invokes crons on the
+    // deployment-unique URL, which sits behind Deployment Protection. Using it
+    // as the self-fetch base made every scheduled run die on the SSO HTML page
+    // ("Unexpected token '<'") — analysis/grading only ran when a human was on
+    // the site. canonicalBase always resolves to a stable public host.
+    const origin = canonicalBase(req);
     return POST(new Request(`${origin}/api/auto-analyze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'authorization': authHeader, 'x-vv-cron': '1' },
