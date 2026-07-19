@@ -24,20 +24,8 @@
   },
   "crons": [
     {
-      "path": "/api/auto-analyze",
-      "schedule": "*/30 * * * *"
-    },
-    {
       "path": "/api/live-score-push",
       "schedule": "*/2 * * * *"
-    },
-    {
-      "path": "/api/auto-slot-pattern",
-      "schedule": "0 11 * * *"
-    },
-    {
-      "path": "/api/auto-slot-pattern",
-      "schedule": "0 12 * * *"
     }
   ]
 }
